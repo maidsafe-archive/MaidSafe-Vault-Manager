@@ -19,11 +19,10 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "boost/signals2/signal.hpp"
-#include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/chunk_validation.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/version.h"
@@ -37,36 +36,40 @@ namespace bs2 = boost::signals2;
 
 namespace maidsafe {
 
-namespace asymm = rsa;
-
 class ChunkStore;
+
+enum DataType {
+  kUnknown = -1,
+  kHashableSigned,
+  kNonHashableSigned,
+  kAnmpid,
+  kMpid,
+  kMsid,
+  kMmid
+};
 
 namespace priv {
 
 class DataWrapper;
 
-template <class ValidationType, class VersionType>
-class ChunkActionAuthority : public ChunkValidation {
+class ChunkActionAuthority {
  public:
-  enum OperationType { kStore, kDelete, kUpdate, kGet, kHas };
+  enum OperationType { kStore, kDelete, kUpdate, kGet };
+  typedef std::shared_ptr<bs2::signal<void(const std::string&)>>
+          GetStringSignalPtr;
+  typedef std::shared_ptr<bs2::signal<void(const std::vector<std::string>&)>>
+          GetVectorSignalPtr;
 
   ChunkActionAuthority();
   ~ChunkActionAuthority();
 
-  bool ValidName(const std::string &name);
-  bool Hashable(const std::string &name);
-  bool Modifiable(const std::string &name);
-  bool ValidChunk(const std::string &name, const std::string &content);
-  bool ValidChunk(const std::string &name, const fs::path &path);
-  std::string Version(const std::string &name, const std::string &content);
-  std::string Version(const std::string &name, const fs::path &path);
-
-  std::shared_ptr<bs2::signal<void(const std::string&)>> get_data_signal();
+  GetStringSignalPtr get_string_signal() const;
+  GetVectorSignalPtr get_vector_signal() const;
 
   int ProcessData(const OperationType &op_type,
                   const std::string &name,
-                  const asymm::PublicKey &public_key,
                   const std::string &data,
+                  const asymm::PublicKey &public_key,
                   std::shared_ptr<ChunkStore> chunk_store);
 
  private:
@@ -91,7 +94,23 @@ class ChunkActionAuthority : public ChunkValidation {
                         std::shared_ptr<ChunkStore> chunk_store,
                         std::string *current_data);
 
-  std::shared_ptr<bs2::signal<void(const std::string&)>> get_data_signal_;
+  int ProcessMsidData(const OperationType &op_type,
+                      const std::string &name,
+                      const DataWrapper &data,
+                      const asymm::PublicKey &public_key,
+                      std::shared_ptr<ChunkStore> chunk_store);
+
+  int ProcessMmidData(const OperationType &op_type,
+                      const std::string &name,
+                      const DataWrapper &data,
+                      const asymm::PublicKey &public_key,
+                      std::shared_ptr<ChunkStore> chunk_store);
+
+  DataType GetDataType(const std::string &name,
+                       std::shared_ptr<ChunkStore> chunk_store) const;
+
+  GetStringSignalPtr get_string_signal_;
+  GetVectorSignalPtr get_vector_signal_;
 };
 
 }  // namespace priv
