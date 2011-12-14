@@ -69,6 +69,12 @@ SET(ALL_FILES_PRIVATE_DIR ${SOURCE_FILES_PRIVATE_DIR} ${HEADER_FILES_PRIVATE_DIR
 SOURCE_GROUP("Private Source Files" FILES ${SOURCE_FILES_PRIVATE_DIR})
 SOURCE_GROUP("Private Header Files" FILES ${HEADER_FILES_PRIVATE_DIR})
 
+FILE(GLOB SOURCE_FILES_PRIVATE_DETAIL_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/detail/*.cc")
+FILE(GLOB HEADER_FILES_PRIVATE_DETAIL_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/detail/*.h")
+SET(ALL_FILES_PRIVATE_DETAIL_DIR ${SOURCE_FILES_PRIVATE_DETAIL_DIR} ${HEADER_FILES_PRIVATE_DETAIL_DIR})
+SOURCE_GROUP("Private Detail Source Files" FILES ${SOURCE_FILES_PRIVATE_DETAIL_DIR})
+SOURCE_GROUP("Private Detail Header Files" FILES ${HEADER_FILES_PRIVATE_DETAIL_DIR})
+
 ####    TESTS    ####
 FILE(GLOB SOURCE_FILES_PRIVATE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/*.cc")
 FILE(GLOB HEADER_FILES_PRIVATE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/*.h")
@@ -80,7 +86,7 @@ SOURCE_GROUP("Tests Header Files" FILES ${HEADER_FILES_PRIVATE_TESTS_DIR})
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR})
+MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_DETAIL_DIR})
 MS_ADD_EXECUTABLE(TESTprivate Tests ${ALL_FILES_PRIVATE_TESTS_DIR})
 
 TARGET_LINK_LIBRARIES(maidsafe_private_static maidsafe_common_static)
@@ -91,12 +97,12 @@ TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
 # Set compiler and linker flags                                                                   #
 ###################################################################################################
 INCLUDE(maidsafe_standard_flags)
+
+FILE(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 IF(MSVC)
-  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages.pb.cc
-                                PROPERTIES COMPILE_FLAGS "/W0")
+  SET_SOURCE_FILES_PROPERTIES(${PROTO_SOURCE_FILES} PROPERTIES COMPILE_FLAGS "/W0")
 ELSEIF(UNIX)
-  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages.pb.cc
-                                PROPERTIES COMPILE_FLAGS "-w")
+  SET_SOURCE_FILES_PROPERTIES(${PROTO_SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-w")
 ENDIF()
 
 

@@ -22,57 +22,43 @@
 
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
-#include "maidsafe/private/detail/hashable_signed_rules.h"
-
-
-namespace args = std::placeholders;
 
 
 namespace maidsafe {
 
 namespace priv {
 
-unsigned char GetDataType(const std::string &name) {
+DataType GetDataType(const std::string &name) {
   if (name.size() == crypto::SHA512::DIGESTSIZE)
     return kHashableSigned;
 
-  if (name.size() == crypto::SHA512::DIGESTSIZE + 1)
-    return name.front();
+  if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
+    DataType type(static_cast<DataType>(name.front()));
+    if ((type > 0) && (type < kMaxDataType))
+      return type;
+  }
 
-  DLOG(WARNING) << "Unknown data type " << static_cast<int>(name.front());
-  return kUnknownDataType;
+  DLOG(WARNING) << "Unknown data type " << static_cast<DataType>(name.front());
+  return kUnknown;
 }
 
 
 
 ChunkActionAuthority::ChunkActionAuthority()
-    : rules_(),
-      initialised_(false) {
-  Init();
-}
+    : get_string_signal_(new GetStringSignalPtr::element_type),
+      get_vector_signal_(new GetVectorSignalPtr::element_type) {}
 
 ChunkActionAuthority::~ChunkActionAuthority() {}
 
-void ChunkActionAuthority::Init() {
-  auto result(rules_.insert(std::make_pair(kHashableSigned,
-      std::bind(&detail::ProcessHashableSigned, args::_1, args::_2,
-                args::_3, args::_4, args::_5))));
-  if (!result.second) {
-    DLOG(ERROR) << "Failed to insert rules for type kHashableSigned";
-    return;
-  }
-
-  result = rules_.insert(std::make_pair(kHashableSigned,
-      std::bind(&detail::ProcessHashableSigned, args::_1, args::_2,
-                args::_3, args::_4, args::_5)));
-  if (!result.second) {
-    DLOG(ERROR) << "Failed to insert rules for type kHashableSigned";
-    return;
-  }
-  initialised_ = true;
+ChunkActionAuthority::GetStringSignalPtr
+    ChunkActionAuthority::get_string_signal() const {
+  return get_string_signal_;
 }
 
-
+ChunkActionAuthority::GetVectorSignalPtr
+    ChunkActionAuthority::get_vector_signal() const {
+  return get_vector_signal_;
+}
 
 int ChunkActionAuthority::ProcessData(const OperationType &op_type,
                                       const std::string &name,

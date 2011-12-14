@@ -23,3 +23,25 @@ message Message {
   optional bytes timestamp = 6;
   optional bytes subject = 7;
 }
+
+// MaidSafe Contact ID
+message MCID {
+  required bytes encrypted_mmid = 1;
+  required bytes encrypted_public_username = 2;
+  required bytes signature = 3;
+}
+
+// MaidSafe Message ID
+message MMID {
+  required bytes public_key = 1;
+  required bytes signature = 2;
+  repeated Encrypted encrypted_message = 3;
+}
+
+// MaidSafe Selectable ID
+message MSID {
+  required bytes public_key = 1;
+  required bytes signature = 2;
+  required bool accepts_new_contacts = 3;
+  repeated bytes encrypted_mcid = 4;
+}

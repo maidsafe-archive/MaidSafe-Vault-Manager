@@ -23,9 +23,8 @@
 
 #include "boost/signals2/signal.hpp"
 
-#include "maidsafe/common/rsa.h"
-
 #include "maidsafe/private/chunk_messages_pb.h"
+#include "maidsafe/private/config.h"
 #include "maidsafe/private/version.h"
 
 #if MAIDSAFE_PRIVATE_VERSION != 100
@@ -38,42 +37,16 @@ namespace bs2 = boost::signals2;
 
 namespace maidsafe {
 
-class ChunkStore;
-
-
 namespace priv {
 
-enum DataType {
-  kUnknown = -1,
-  kHashableSigned,
-  kNonHashableSigned,
-  kAnmpid,
-  kMpid,
-  kMsid,
-  kMmid,
-  kMaxDataType  // This enumeration must always be last
-};
-
-class DataWrapper;
-
-DataType GetDataType(const std::string &name);
+unsigned char GetDataType(const std::string &name);
 
 
 
 class ChunkActionAuthority {
  public:
-  enum OperationType { kStore, kDelete, kUpdate, kGet, kHas };
-  typedef std::shared_ptr<bs2::signal<void(const std::string&)>>
-          GetStringSignalPtr;
-  typedef std::shared_ptr<bs2::signal<void(const std::vector<std::string>&)>>
-          GetVectorSignalPtr;
-  typedef std::shared_ptr<ChunkStore> ChunkStorePtr;
-
   ChunkActionAuthority();
   ~ChunkActionAuthority();
-
-  GetStringSignalPtr get_string_signal() const;
-  GetVectorSignalPtr get_vector_signal() const;
 
   int ProcessData(const OperationType &op_type,
                   const std::string &name,
@@ -84,6 +57,8 @@ class ChunkActionAuthority {
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
   ChunkActionAuthority(const ChunkActionAuthority&);
+
+  void Init();
 
   int ProcessSignedData(const OperationType &op_type,
                         const std::string &name,
@@ -115,8 +90,8 @@ class ChunkActionAuthority {
                       const asymm::PublicKey &public_key,
                       ChunkStorePtr chunk_store);
 
-  GetStringSignalPtr get_string_signal_;
-  GetVectorSignalPtr get_vector_signal_;
+  std::map<unsigned char, ProcessDataFunctor> rules_;
+  bool initialised_;
 };
 
 }  // namespace priv
