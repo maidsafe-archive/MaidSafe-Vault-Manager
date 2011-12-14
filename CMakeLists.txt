@@ -53,6 +53,8 @@ INCLUDE(maidsafe_find_common)
 ###################################################################################################
 # Standard setup                                                                                  #
 ###################################################################################################
+SET(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+FILE(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 INCLUDE(maidsafe_standard_setup)
 HANDLE_VERSIONS(${PROJECT_SOURCE_DIR}/src/maidsafe/private/version.h)
 
@@ -89,6 +91,13 @@ TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
 # Set compiler and linker flags                                                                   #
 ###################################################################################################
 INCLUDE(maidsafe_standard_flags)
+IF(MSVC)
+  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages.pb.cc
+                                PROPERTIES COMPILE_FLAGS "/W0")
+ELSEIF(UNIX)
+  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages.pb.cc
+                                PROPERTIES COMPILE_FLAGS "-w")
+ENDIF()
 
 
 ###################################################################################################
@@ -107,6 +116,8 @@ RENAME_OUTDATED_BUILT_EXES()
 
 SET(MAIDSAFE_PRIVATE_INSTALL_FILES
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_action_authority.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages_pb.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_messages.pb.h
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/version.h)
 
 MS_INSTALL_LIBS(maidsafe_private_static)

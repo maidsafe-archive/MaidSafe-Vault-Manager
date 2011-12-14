@@ -25,6 +25,7 @@
 
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/chunk_messages_pb.h"
 #include "maidsafe/private/version.h"
 
 #if MAIDSAFE_PRIVATE_VERSION != 100
@@ -34,9 +35,13 @@
 
 namespace bs2 = boost::signals2;
 
+
 namespace maidsafe {
 
 class ChunkStore;
+
+
+namespace priv {
 
 enum DataType {
   kUnknown = -1,
@@ -45,16 +50,19 @@ enum DataType {
   kAnmpid,
   kMpid,
   kMsid,
-  kMmid
+  kMmid,
+  kMaxDataType  // This enumeration must always be last
 };
-
-namespace priv {
 
 class DataWrapper;
 
+DataType GetDataTypeFromName(const std::string &name);
+
+
+
 class ChunkActionAuthority {
  public:
-  enum OperationType { kStore, kDelete, kUpdate, kGet };
+  enum OperationType { kStore, kDelete, kUpdate, kGet, kHas };
   typedef std::shared_ptr<bs2::signal<void(const std::string&)>>
           GetStringSignalPtr;
   typedef std::shared_ptr<bs2::signal<void(const std::vector<std::string>&)>>

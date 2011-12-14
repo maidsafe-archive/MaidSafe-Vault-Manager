@@ -17,6 +17,7 @@
 #include "maidsafe/private/chunk_action_authority.h"
 
 #include "maidsafe/common/chunk_store.h"
+#include "maidsafe/common/crypto.h"
 
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
@@ -25,6 +26,22 @@
 namespace maidsafe {
 
 namespace priv {
+
+DataType GetDataTypeFromName(const std::string &name) {
+  if (name.size() == crypto::SHA512::DIGESTSIZE)
+    return kHashableSigned;
+
+  if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
+    DataType type(static_cast<DataType>(name.front()));
+    if ((type > 0) && (type < kMaxDataType))
+      return type;
+  }
+
+  DLOG(WARNING) << "Unknown data type " << static_cast<DataType>(name.front());
+  return kUnknown;
+}
+
+
 
 ChunkActionAuthority::ChunkActionAuthority()
     : get_string_signal_(new GetStringSignalPtr::element_type),
@@ -47,25 +64,24 @@ int ChunkActionAuthority::ProcessData(const OperationType &op_type,
                                       const std::string &data,
                                       const asymm::PublicKey &public_key,
                                       std::shared_ptr<ChunkStore> chunk_store) {
-//  if (op_type == ChunkActionAuthority::kHas) {
-//    if (chunk_store->Has(name))
-//      return kKeyNotUnique;
-//    else
-//      return kKeyUnique;
-//  }
-
-  DataWrapper data_wrapper;
-  DataType data_type(kUnknown);
-  if (op_type == ChunkActionAuthority::kGet) {
-    data_type = GetDataType(name, chunk_store);
-  } else {
-    if (!data_wrapper.ParseFromString(data)) {
-      DLOG(WARNING) << "Failed to parse data. Could be chunk.";
-      return kParseFailure;
-    } else {
-      data_type = static_cast<DataType>(data_wrapper.data_type());
-    }
+  if (op_type == ChunkActionAuthority::kHas) {
+    if (chunk_store->Has(name))
+      return kKeyNotUnique;
+    else
+      return kKeyUnique;
   }
+
+  DataType data_type(GetDataTypeFromName(name));
+//  if (op_type == ChunkActionAuthority::kGet) {
+//    data_type = GetDataType(name, chunk_store);
+//  } else {
+//    if (!data_wrapper.ParseFromString(data)) {
+//      DLOG(WARNING) << "Failed to parse data. Could be chunk.";
+//      return kParseFailure;
+//    } else {
+//      data_type = static_cast<DataType>(data_wrapper.data_type());
+//    }
+//  }
 
   switch (data_type) {
     case kAnmpid:
