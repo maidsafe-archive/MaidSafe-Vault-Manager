@@ -18,6 +18,7 @@
 
 #include "maidsafe/common/chunk_store.h"
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
@@ -27,7 +28,7 @@ namespace maidsafe {
 
 namespace priv {
 
-DataType GetDataTypeFromName(const std::string &name) {
+DataType GetDataType(const std::string &name) {
   if (name.size() == crypto::SHA512::DIGESTSIZE)
     return kHashableSigned;
 
@@ -63,108 +64,90 @@ int ChunkActionAuthority::ProcessData(const OperationType &op_type,
                                       const std::string &name,
                                       const std::string &data,
                                       const asymm::PublicKey &public_key,
-                                      std::shared_ptr<ChunkStore> chunk_store) {
-  if (op_type == ChunkActionAuthority::kHas) {
-    if (chunk_store->Has(name))
-      return kKeyNotUnique;
-    else
-      return kKeyUnique;
-  }
+                                      ChunkStorePtr chunk_store) {
+  if (op_type == ChunkActionAuthority::kHas)
+    return chunk_store->Has(name) ? kKeyNotUnique : kKeyUnique;
 
-  DataType data_type(GetDataTypeFromName(name));
-//  if (op_type == ChunkActionAuthority::kGet) {
-//    data_type = GetDataType(name, chunk_store);
-//  } else {
-//    if (!data_wrapper.ParseFromString(data)) {
-//      DLOG(WARNING) << "Failed to parse data. Could be chunk.";
-//      return kParseFailure;
-//    } else {
-//      data_type = static_cast<DataType>(data_wrapper.data_type());
-//    }
-//  }
-
-  switch (data_type) {
+  switch (GetDataType(name)) {
     case kAnmpid:
     case kMpid:
     case kHashableSigned:
-        return ProcessSignedData(op_type, name, data_wrapper, public_key, true,
-                                 chunk_store);
+      return ProcessSignedData(op_type, name, data, public_key, true,
+                               chunk_store);
     case kNonHashableSigned:
-        return ProcessSignedData(op_type, name, data_wrapper, public_key, false,
-                                 chunk_store);
+      return ProcessSignedData(op_type, name, data, public_key, false,
+                               chunk_store);
     case kMsid:
-        return ProcessMsidData(op_type, name, data_wrapper, public_key,
-                               chunk_store);
+      return ProcessMsidData(op_type, name, data, public_key, chunk_store);
     case kMmid:
-        return ProcessMmidData(op_type, name, data_wrapper, public_key,
-                               chunk_store);
-    default: return kUnknownFailure;
+      return ProcessMmidData(op_type, name, data, public_key, chunk_store);
+    default:
+      return kUnknownFailure;
   }
 }
 
-int ChunkActionAuthority::ProcessSignedData(
-    const OperationType &op_type,
-    const std::string &name,
-    const DataWrapper &data_wrapper,
-    const asymm::PublicKey &public_key,
-    const bool &hashable,
-    std::shared_ptr<ChunkStore> chunk_store) {
-  if (PreOperationChecks(op_type, name, data_wrapper, public_key, hashable) !=
+int ChunkActionAuthority::ProcessSignedData(const OperationType &op_type,
+                                            const std::string &name,
+                                            const std::string &data,
+                                            const asymm::PublicKey &public_key,
+                                            const bool &hashable,
+                                            ChunkStorePtr chunk_store) {
+  if (PreOperationChecks(op_type, name, data, public_key, hashable) !=
       kSuccess) {
-    DLOG(ERROR) << "ProcessSignedData - PreOperationChecks failure.";
+    DLOG(ERROR) << "PreOperationChecks failure.";
     return kPreOperationCheckFailure;
   }
 
   std::string current_data;
   switch (op_type) {
-    case kStore: {
-        if (chunk_store->Has(name)) {
-          DLOG(ERROR) << "ProcessSignedData - Name of data exists. Use update.";
-          return kDuplicateNameFailure;
-        }
-        if (!chunk_store->Store(name, data_wrapper.SerializeAsString())) {
-          DLOG(ERROR) << "ProcessSignedData - ChunkStore Store failure.";
-          return kStoreFailure;
-        }
-        break;
-    }
-    case kDelete: {
-        if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
-            kSuccess) {
-          DLOG(ERROR) << "ProcessSignedData - VerifyCurrentData failure.";
-          return kVerifyDataFailure;
-        }
 
-        if (!chunk_store->Delete(name)) {
-          DLOG(ERROR) << "ProcessSignedData - Error deleting packet";
-          return kDeleteFailure;
-        }
+    case kStore:
+      if (chunk_store->Has(name)) {
+        DLOG(ERROR) << "Name of data exists. Use update.";
+        return kDuplicateNameFailure;
+      }
+      if (!chunk_store->Store(name, data)) {
+        DLOG(ERROR) << "ChunkStore Store failure.";
+        return kStoreFailure;
+      }
+      break;
 
-        break;
-    }
-    case kUpdate: {
-        if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
-            kSuccess) {
-          DLOG(ERROR) << "ProcessSignedData - VerifyCurrentData failure.";
-          return kVerifyDataFailure;
-        }
-        if (!chunk_store->Modify(name, data_wrapper.SerializeAsString())) {
-          DLOG(ERROR) << "ProcessSignedData - Error Modifying packet";
-          return kModifyFailure;
-        }
-        break;
-    }
-    case kGet: {
-        if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
-            kSuccess) {
-          DLOG(ERROR) << "ProcessSignedData - VerifyCurrentData failure.";
-          return kVerifyDataFailure;
-        }
+    case kDelete:
+      if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
+          kSuccess) {
+        DLOG(ERROR) << "VerifyCurrentData failure.";
+        return kVerifyDataFailure;
+      }
+      if (!chunk_store->Delete(name)) {
+        DLOG(ERROR) << "Error deleting packet";
+        return kDeleteFailure;
+      }
+      break;
 
-        (*get_string_signal_)(current_data);
-        break;
-    }
-    case kHas: DLOG(INFO) << "At this moment, code should not reach here.";
+    case kUpdate:
+      if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
+          kSuccess) {
+        DLOG(ERROR) << "VerifyCurrentData failure.";
+        return kVerifyDataFailure;
+      }
+      if (!chunk_store->Modify(name, data)) {
+        DLOG(ERROR) << "Error Modifying packet";
+        return kModifyFailure;
+      }
+      break;
+
+    case kGet:
+      if (VerifyCurrentData(name, public_key, chunk_store, &current_data) !=
+          kSuccess) {
+        DLOG(ERROR) << "VerifyCurrentData failure.";
+        return kVerifyDataFailure;
+      }
+      (*get_string_signal_)(current_data);
+      break;
+
+    case kHas:
+    default:
+      DLOG(INFO) << "At this moment, code should not reach here.";
   }
 
   return kSuccess;
@@ -172,78 +155,83 @@ int ChunkActionAuthority::ProcessSignedData(
 
 int ChunkActionAuthority::PreOperationChecks(const OperationType &op_type,
                                              const std::string &name,
-                                             const DataWrapper &data_wrapper,
+                                             const std::string &data,
                                              const asymm::PublicKey &public_key,
                                              const bool &hashable) {
   if (op_type == kGet)
     return kSuccess;
 
-  if (!data_wrapper.has_signed_data()) {
-    DLOG(ERROR) << "ProcessSignedData - No signed data passed";
-    return kMissingSignedData;
+  GenericPacket generic_packet;
+  try {
+    if (!generic_packet.ParseFromString(data)) {
+      DLOG(ERROR) << "Data doesn't parse as a GenericPacket";
+      return kInvalidSignedData;
+    }
+  }
+  catch(const std::exception &e) {
+    DLOG(ERROR) << "Data doesn't parse as a GenericPacket: " << e.what();
+    return kInvalidSignedData;
   }
 
-  if (hashable && op_type == kUpdate) {
-    DLOG(ERROR) << "ProcessSignedData - No update of hashable data allowed";
-    return kInvalidUpdate;
+  if (hashable) {
+    if (op_type == kUpdate) {
+      DLOG(ERROR) << "No update of hashable data allowed";
+      return kInvalidUpdate;
+    }
+    if (crypto::Hash<crypto::SHA512>(
+            generic_packet.data() + generic_packet.signature()) != name) {
+      DLOG(ERROR) << "Marked hashable, doesn't hash";
+      return kNotHashable;
+    }
   }
-
-
-  if (asymm::CheckSignature(data_wrapper.signed_data().data(),
-                            data_wrapper.signed_data().signature(),
-                            public_key) != 0) {
-    DLOG(ERROR) << "ProcessSignedData - Signature verification failed";
+  
+  if (asymm::CheckSignature(generic_packet.data(), generic_packet.signature(),
+                            public_key) != kSuccess) {
+    DLOG(ERROR) << "Signature verification failed";
     return kSignatureVerificationFailure;
-  }
-
-  if (hashable &&
-      crypto::Hash<crypto::SHA512>(data_wrapper.signed_data().data() +
-                                   data_wrapper.signed_data().signature()) !=
-      name) {
-    DLOG(ERROR) << "ProcessSignedData - Marked hashable, doesn't hash";
-    return kNotHashable;
   }
 
   return kSuccess;
 }
 
-int ChunkActionAuthority::VerifyCurrentData(
-    const std::string &name,
-    const asymm::PublicKey &public_key,
-    std::shared_ptr<ChunkStore> chunk_store,
-    std::string *current_data) {
+int ChunkActionAuthority::VerifyCurrentData(const std::string &name,
+                                            const asymm::PublicKey &public_key,
+                                            ChunkStorePtr chunk_store,
+                                            std::string *current_data) {
   *current_data = chunk_store->Get(name);
   if (current_data->empty()) {
     DLOG(ERROR) << "VerifyCurrentData - Failure to get data";
     return kVerifyDataFailure;
   }
 
-  DataWrapper data_wrapper;
-  if (!data_wrapper.ParseFromString(*current_data)) {
-    DLOG(ERROR) << "VerifyCurrentData - Error parsing packet";
-    return kParseFailure;
+  GenericPacket generic_packet;
+  try {
+    if (!generic_packet.ParseFromString(*current_data)) {
+      DLOG(ERROR) << "Data doesn't parse as a GenericPacket";
+      return kInvalidSignedData;
+    }
+  }
+  catch(const std::exception &e) {
+    DLOG(ERROR) << "Data doesn't parse as a GenericPacket: " << e.what();
+    return kInvalidSignedData;
   }
 
   if (asymm::ValidateKey(public_key) &&
-      data_wrapper.has_signed_data() &&
-      asymm::CheckSignature(data_wrapper.signed_data().data(),
-                            data_wrapper.signed_data().signature(),
-                            public_key) != 0) {
+      asymm::CheckSignature(generic_packet.data(),
+                            generic_packet.signature(),
+                            public_key) != kSuccess) {
     DLOG(ERROR) << "VerifyCurrentData - Not owner of packet";
     return kNotOwner;
   }
 
-  *current_data = data_wrapper.signed_data().SerializeAsString();
-
   return kSuccess;
 }
 
-int ChunkActionAuthority::ProcessMsidData(
-    const OperationType &op_type,
-    const std::string &name,
-    const DataWrapper &data,
-    const asymm::PublicKey &public_key,
-    std::shared_ptr<ChunkStore> chunk_store) {
+int ChunkActionAuthority::ProcessMsidData(const OperationType &op_type,
+                                          const std::string &name,
+                                          const std::string &data,
+                                          const asymm::PublicKey &public_key,
+                                          ChunkStorePtr chunk_store) {
   std::string current_data(chunk_store->Get(name));
   bool already_exists(true);
   if (current_data.empty()) {
@@ -296,39 +284,39 @@ int ChunkActionAuthority::ProcessMsidData(
     } else {
       switch (op_type) {
         case kGet:
-            if (current_msid.encrypted_mcid_size() > 0) {
-              std::vector<std::string> mcids;
-              for (int n(0); n != current_msid.encrypted_mcid_size(); ++n)
-                mcids.push_back(current_msid.encrypted_mcid(n));
-              current_msid.clear_encrypted_mcid();
-              data_wrapper.mutable_signed_data()->set_data(
-                  current_msid.SerializeAsString());
-              if (!chunk_store->Modify(
-                      name,
-                      data_wrapper.SerializeAsString())) {
-                DLOG(ERROR) << "Failed to modify after geting MCIDs";
-                return kModifyFailure;
-              }
-              (*get_vector_signal_)(mcids);
+          if (current_msid.encrypted_mcid_size() > 0) {
+            std::vector<std::string> mcids;
+            for (int n(0); n != current_msid.encrypted_mcid_size(); ++n)
+              mcids.push_back(current_msid.encrypted_mcid(n));
+            current_msid.clear_encrypted_mcid();
+            data_wrapper.mutable_signed_data()->set_data(
+                current_msid.SerializeAsString());
+            if (!chunk_store->Modify(
+                    name,
+                    data_wrapper.SerializeAsString())) {
+              DLOG(ERROR) << "Failed to modify after geting MCIDs";
+              return kModifyFailure;
             }
-            break;
+            (*get_vector_signal_)(mcids);
+          }
+          break;
         case kUpdate:
-            /***
-             * If owner, change the allowance of storage.
-             * Other ops in the future?
-             ***/
-             break;
+          /***
+            * If owner, change the allowance of storage.
+            * Other ops in the future?
+            ***/
+            break;
         case kDelete:
-            // Delete the whole thing
-            if (!chunk_store->Delete(name)) {
-              DLOG(ERROR) << "Failure to delete value";
-              return kDeleteFailure;
-            }
-            /************** or all messages
-            MSID mmid;
-            msid.Parse(current_data);
-            msid.clear_encrypted_mcid();
-            ******************************/
+          // Delete the whole thing
+          if (!chunk_store->Delete(name)) {
+            DLOG(ERROR) << "Failure to delete value";
+            return kDeleteFailure;
+          }
+          /************** or all messages
+          MSID mmid;
+          msid.Parse(current_data);
+          msid.clear_encrypted_mcid();
+          ******************************/
         default: return kUnknownFailure;
       }
     }
@@ -357,12 +345,11 @@ int ChunkActionAuthority::ProcessMsidData(
   return kSuccess;
 }
 
-int ChunkActionAuthority::ProcessMmidData(
-    const OperationType &op_type,
-    const std::string &name,
-    const DataWrapper &data,
-    const asymm::PublicKey &public_key,
-    std::shared_ptr<ChunkStore> chunk_store) {
+int ChunkActionAuthority::ProcessMmidData(const OperationType &op_type,
+                                          const std::string &name,
+                                          const std::string &data,
+                                          const asymm::PublicKey &public_key,
+                                          ChunkStorePtr chunk_store) {
   // Check existance
   std::string current_data(chunk_store->Get(name));
   bool already_exists(true);
@@ -420,34 +407,34 @@ int ChunkActionAuthority::ProcessMmidData(
       switch (op_type) {
         case kGet:
 //            (*get_string_signal_)(current_data);
-            if (current_mmid.encrypted_message_size() > 0) {
-              std::vector<std::string> mmids;
-              for (int n(0); n != current_mmid.encrypted_message_size(); ++n)
-                mmids.push_back(
-                    current_mmid.encrypted_message(n).SerializeAsString());
-              current_mmid.clear_encrypted_message();
-              data_wrapper.mutable_signed_data()->set_data(
-                  current_mmid.SerializeAsString());
-              if (!chunk_store->Modify(
-                      name,
-                      data_wrapper.SerializeAsString())) {
-                DLOG(ERROR) << "Failed to modify after geting MCIDs";
-                return kModifyFailure;
-              }
-              (*get_vector_signal_)(mmids);
+          if (current_mmid.encrypted_message_size() > 0) {
+            std::vector<std::string> mmids;
+            for (int n(0); n != current_mmid.encrypted_message_size(); ++n)
+              mmids.push_back(
+                  current_mmid.encrypted_message(n).SerializeAsString());
+            current_mmid.clear_encrypted_message();
+            data_wrapper.mutable_signed_data()->set_data(
+                current_mmid.SerializeAsString());
+            if (!chunk_store->Modify(
+                    name,
+                    data_wrapper.SerializeAsString())) {
+              DLOG(ERROR) << "Failed to modify after geting MCIDs";
+              return kModifyFailure;
             }
-            break;
+            (*get_vector_signal_)(mmids);
+          }
+          break;
         case kDelete:
-            // Delete the whole thing
-            if (!chunk_store->Delete(name)) {
-              DLOG(ERROR) << "Failure to delete value";
-              return kDeleteFailure;
-            }
-            /************** or all messages
-            MMID mmid;
-            mmid.Parse(current_data);
-            mmid.clear_encrypted_message();
-            ******************************/
+          // Delete the whole thing
+          if (!chunk_store->Delete(name)) {
+            DLOG(ERROR) << "Failure to delete value";
+            return kDeleteFailure;
+          }
+          /************** or all messages
+          MMID mmid;
+          mmid.Parse(current_data);
+          mmid.clear_encrypted_message();
+          ******************************/
         default: return kUnknownFailure;
       }
     }
@@ -477,25 +464,6 @@ int ChunkActionAuthority::ProcessMmidData(
 
   return kSuccess;
 }
-
-DataType ChunkActionAuthority::GetDataType(
-    const std::string &name,
-    std::shared_ptr<ChunkStore> chunk_store) const {
-  std::string data(chunk_store->Get(name));
-  if (data.empty()) {
-    DLOG(INFO) << "No chunk found: " << Base32Substr(name);
-    return kUnknown;
-  }
-
-  DataWrapper data_wrapper;
-  if (!data_wrapper.ParseFromString(data)) {
-    DLOG(INFO) << "Chunk doesn't parse.";
-    return kUnknown;
-  }
-
-  return static_cast<DataType>(data_wrapper.data_type());
-}
-
 
 }  // namespace priv
 

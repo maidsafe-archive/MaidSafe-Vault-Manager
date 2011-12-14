@@ -56,7 +56,7 @@ enum DataType {
 
 class DataWrapper;
 
-DataType GetDataTypeFromName(const std::string &name);
+DataType GetDataType(const std::string &name);
 
 
 
@@ -67,6 +67,7 @@ class ChunkActionAuthority {
           GetStringSignalPtr;
   typedef std::shared_ptr<bs2::signal<void(const std::vector<std::string>&)>>
           GetVectorSignalPtr;
+  typedef std::shared_ptr<ChunkStore> ChunkStorePtr;
 
   ChunkActionAuthority();
   ~ChunkActionAuthority();
@@ -78,7 +79,7 @@ class ChunkActionAuthority {
                   const std::string &name,
                   const std::string &data,
                   const asymm::PublicKey &public_key,
-                  std::shared_ptr<ChunkStore> chunk_store);
+                  ChunkStorePtr chunk_store);
 
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
@@ -86,36 +87,33 @@ class ChunkActionAuthority {
 
   int ProcessSignedData(const OperationType &op_type,
                         const std::string &name,
-                        const DataWrapper &data,
+                        const std::string &data,
                         const asymm::PublicKey &public_key,
                         const bool &hashable,
-                        std::shared_ptr<ChunkStore> chunk_store);
+                        ChunkStorePtr chunk_store);
 
   int PreOperationChecks(const OperationType &op_type,
                          const std::string &name,
-                         const DataWrapper &data_wrapper,
+                         const std::string &data,
                          const asymm::PublicKey &public_key,
                          const bool &hashable);
 
   int VerifyCurrentData(const std::string &name,
                         const asymm::PublicKey &public_key,
-                        std::shared_ptr<ChunkStore> chunk_store,
+                        ChunkStorePtr chunk_store,
                         std::string *current_data);
 
   int ProcessMsidData(const OperationType &op_type,
                       const std::string &name,
-                      const DataWrapper &data,
+                      const std::string &data,
                       const asymm::PublicKey &public_key,
-                      std::shared_ptr<ChunkStore> chunk_store);
+                      ChunkStorePtr chunk_store);
 
   int ProcessMmidData(const OperationType &op_type,
                       const std::string &name,
-                      const DataWrapper &data,
+                      const std::string &data,
                       const asymm::PublicKey &public_key,
-                      std::shared_ptr<ChunkStore> chunk_store);
-
-  DataType GetDataType(const std::string &name,
-                       std::shared_ptr<ChunkStore> chunk_store) const;
+                      ChunkStorePtr chunk_store);
 
   GetStringSignalPtr get_string_signal_;
   GetVectorSignalPtr get_vector_signal_;

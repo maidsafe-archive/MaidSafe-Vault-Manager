@@ -41,7 +41,7 @@ enum ReturnCode {
   kStoreFailure = -150008,
   kDeleteFailure = -150009,
   kModifyFailure = -150010,
-  kMissingSignedData = -150011,
+  kInvalidSignedData = -150011,
   kInvalidUpdate = -150012,
   kSignatureVerificationFailure = -150013,
   kNotHashable = -150014,
