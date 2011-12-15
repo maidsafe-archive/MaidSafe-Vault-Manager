@@ -14,17 +14,15 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_DETAIL_HASHABLE_SIGNED_RULES_H_
-#define MAIDSAFE_PRIVATE_DETAIL_HASHABLE_SIGNED_RULES_H_
+#ifndef MAIDSAFE_PRIVATE_DETAIL_UTILS_H_
+#define MAIDSAFE_PRIVATE_DETAIL_UTILS_H_
 
-//#include <memory>
-//#include <string>
-//#include <vector>
+#include <memory>
+#include <string>
 
+#include "boost/filesystem/path.hpp"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/chunk_messages_pb.h"
-#include "maidsafe/private/config.h"
 #include "maidsafe/private/version.h"
 
 #if MAIDSAFE_PRIVATE_VERSION != 100
@@ -32,20 +30,60 @@
     Please update the library.
 #endif
 
+namespace fs = boost::filesystem;
+
 
 namespace maidsafe {
 
+class ChunkStore;
+
+
 namespace priv {
 
-const char kHashableSigned(0);
+const unsigned char kUnknownData(255);
+
+unsigned char GetDataType(const std::string &name);
+
+template <unsigned char DataType>
+bool Cacheable();
+
 
 namespace detail {
 
-int ProcessHashableSigned(const OperationType &op_type,
-                          const std::string &name,
-                          const std::string &data,
-                          const asymm::PublicKey &public_key,
-                          ChunkStorePtr chunk_store);
+template <unsigned char DataType>
+int ProcessData(const int &op_type,
+                const std::string &name,
+                const std::string &content,
+                const asymm::PublicKey &public_key,
+                std::shared_ptr<ChunkStore> chunk_store,
+                std::string *new_content = NULL);
+
+template <unsigned char DataType>
+int ProcessData(const int &op_type,
+                const std::string &name,
+                const fs::path &path,
+                const asymm::PublicKey &public_key,
+                std::shared_ptr<ChunkStore> chunk_store,
+                std::string *new_content = NULL);
+
+int ProcessSignedData(const int &op_type,
+                      const std::string &name,
+                      const std::string &data,
+                      const asymm::PublicKey &public_key,
+                      const bool &hashable,
+                      std::shared_ptr<ChunkStore> chunk_store,
+                      std::string *new_content);
+
+int PreOperationChecks(const int &op_type,
+                       const std::string &name,
+                       const std::string &data,
+                       const asymm::PublicKey &public_key,
+                       const bool &hashable);
+
+int VerifyCurrentData(const std::string &name,
+                      const asymm::PublicKey &public_key,
+                      std::shared_ptr<ChunkStore> chunk_store,
+                      std::string *current_data);
 
 }  // namespace detail
 
@@ -53,4 +91,4 @@ int ProcessHashableSigned(const OperationType &op_type,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_DETAIL_HASHABLE_SIGNED_RULES_H_
+#endif  // MAIDSAFE_PRIVATE_DETAIL_UTILS_H_

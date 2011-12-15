@@ -17,14 +17,14 @@
 #ifndef MAIDSAFE_PRIVATE_CHUNK_ACTION_AUTHORITY_H_
 #define MAIDSAFE_PRIVATE_CHUNK_ACTION_AUTHORITY_H_
 
+#include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "boost/signals2/signal.hpp"
 
-#include "maidsafe/private/chunk_messages_pb.h"
-#include "maidsafe/private/config.h"
+#include "maidsafe/common/chunk_action_authority.h"
+
 #include "maidsafe/private/version.h"
 
 #if MAIDSAFE_PRIVATE_VERSION != 100
@@ -39,59 +39,37 @@ namespace maidsafe {
 
 namespace priv {
 
-unsigned char GetDataType(const std::string &name);
 
-
-
-class ChunkActionAuthority {
+class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
  public:
-  ChunkActionAuthority();
-  ~ChunkActionAuthority();
-
-  int ProcessData(const OperationType &op_type,
-                  const std::string &name,
-                  const std::string &data,
-                  const asymm::PublicKey &public_key,
-                  ChunkStorePtr chunk_store);
+  ChunkActionAuthority() {}
+  virtual ~ChunkActionAuthority() {}
+  virtual int ValidOperation(const int &op_type,
+                             const std::string &name,
+                             const std::string &content,
+                             const asymm::PublicKey &public_key,
+                             std::shared_ptr<ChunkStore> chunk_store,
+                             std::string *new_content = NULL) const;
+  virtual int ValidOperation(const int &op_type,
+                             const std::string &name,
+                             const fs::path &path,
+                             const asymm::PublicKey &public_key,
+                             std::shared_ptr<ChunkStore> chunk_store,
+                             std::string *new_content = NULL) const;
+  virtual bool ValidName(const std::string &name) const;
+  virtual bool Cacheable(const std::string &name) const;
+  virtual bool ValidChunk(const std::string &name,
+                          const std::string &content) const;
+  virtual bool ValidChunk(const std::string &name,
+                          const fs::path &path) const;
+  virtual std::string Version(const std::string &name,
+                              const std::string &content) const;
+  virtual std::string Version(const std::string &name,
+                              const fs::path &path) const;
 
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
   ChunkActionAuthority(const ChunkActionAuthority&);
-
-  void Init();
-
-  int ProcessSignedData(const OperationType &op_type,
-                        const std::string &name,
-                        const std::string &data,
-                        const asymm::PublicKey &public_key,
-                        const bool &hashable,
-                        ChunkStorePtr chunk_store);
-
-  int PreOperationChecks(const OperationType &op_type,
-                         const std::string &name,
-                         const std::string &data,
-                         const asymm::PublicKey &public_key,
-                         const bool &hashable);
-
-  int VerifyCurrentData(const std::string &name,
-                        const asymm::PublicKey &public_key,
-                        ChunkStorePtr chunk_store,
-                        std::string *current_data);
-
-  int ProcessMsidData(const OperationType &op_type,
-                      const std::string &name,
-                      const std::string &data,
-                      const asymm::PublicKey &public_key,
-                      ChunkStorePtr chunk_store);
-
-  int ProcessMmidData(const OperationType &op_type,
-                      const std::string &name,
-                      const std::string &data,
-                      const asymm::PublicKey &public_key,
-                      ChunkStorePtr chunk_store);
-
-  std::map<unsigned char, ProcessDataFunctor> rules_;
-  bool initialised_;
 };
 
 }  // namespace priv

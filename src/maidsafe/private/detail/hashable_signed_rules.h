@@ -17,35 +17,36 @@
 #ifndef MAIDSAFE_PRIVATE_DETAIL_HASHABLE_SIGNED_RULES_H_
 #define MAIDSAFE_PRIVATE_DETAIL_HASHABLE_SIGNED_RULES_H_
 
-//#include <memory>
-//#include <string>
-//#include <vector>
-
-#include "maidsafe/common/rsa.h"
-
-#include "maidsafe/private/chunk_messages_pb.h"
-#include "maidsafe/private/config.h"
-#include "maidsafe/private/version.h"
-
-#if MAIDSAFE_PRIVATE_VERSION != 100
-#  error This API is not compatible with the installed library.\
-    Please update the library.
-#endif
+#include "maidsafe/private/detail/utils.h"
 
 
 namespace maidsafe {
 
 namespace priv {
 
-const char kHashableSigned(0);
+const unsigned char kHashableSignedData(0);  // Chunk type
+
+// Whether this type can be cached or not.
+template<> bool Cacheable<kHashableSignedData>() { return true; }
+
 
 namespace detail {
 
-int ProcessHashableSigned(const OperationType &op_type,
-                          const std::string &name,
-                          const std::string &data,
-                          const asymm::PublicKey &public_key,
-                          ChunkStorePtr chunk_store);
+template<>
+int ProcessData<kHashableSignedData>(const int &op_type,
+                                     const std::string &name,
+                                     const std::string &content,
+                                     const asymm::PublicKey &public_key,
+                                     std::shared_ptr<ChunkStore> chunk_store,
+                                     std::string *new_content);
+
+template<>
+int ProcessData<kHashableSignedData>(const int &op_type,
+                                     const std::string &name,
+                                     const fs::path &path,
+                                     const asymm::PublicKey &public_key,
+                                     std::shared_ptr<ChunkStore> chunk_store,
+                                     std::string *new_content);
 
 }  // namespace detail
 
