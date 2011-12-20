@@ -49,46 +49,6 @@ class Chunk;
 
 unsigned char GetDataType(const std::string &name);
 
-template <unsigned char DataType>
-bool IsCacheable();
-
-template <unsigned char DataType>
-bool IsValidChunk(const std::string &name,
-                  std::shared_ptr<ChunkStore> chunk_store);
-
-template <unsigned char DataType>
-int ProcessGet(const std::string &name,
-               const std::string &version,
-               const asymm::PublicKey &public_key,
-               std::string *existing_content,
-               std::shared_ptr<ChunkStore> chunk_store);
-
-template <unsigned char DataType>
-int ProcessStore(const std::string &name,
-                 const std::string &content,
-                 const asymm::PublicKey &public_key,
-                 std::shared_ptr<ChunkStore> chunk_store);
-
-template <unsigned char DataType>
-int ProcessDelete(const std::string &name,
-                  const std::string &version,
-                  const asymm::PublicKey &public_key,
-                  std::shared_ptr<ChunkStore> chunk_store);
-
-template <unsigned char DataType>
-int ProcessModify(const std::string &name,
-                  const std::string &content,
-                  const std::string &version,
-                  const asymm::PublicKey &public_key,
-                  std::string *new_content,
-                  std::shared_ptr<ChunkStore> chunk_store);
-
-template <unsigned char DataType>
-int ProcessHas(const std::string &name,
-               const std::string &version,
-               const asymm::PublicKey &public_key,
-               std::shared_ptr<ChunkStore> chunk_store);
-
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 

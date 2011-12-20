@@ -51,6 +51,8 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual bool Cacheable(const std::string &name) const;
   virtual bool ValidChunk(const std::string &name) const;
   virtual std::string Version(const std::string &name) const;
+  std::string ApplyTypeToName(const std::string &name,
+                              unsigned char chunk_type) const;
 
  protected:
   virtual int ValidGet(const std::string &name,

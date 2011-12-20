@@ -25,7 +25,12 @@
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_types.h"
-#include "maidsafe/private/chunk_actions/utils.h"
+#include "maidsafe/private/version.h"
+
+#if MAIDSAFE_PRIVATE_VERSION != 100
+#  error This API is not compatible with the installed library.\
+    Please update the library.
+#endif
 
 
 namespace maidsafe {
@@ -36,6 +41,46 @@ class ChunkStore;
 namespace priv {
 
 namespace chunk_actions {
+
+template <unsigned char DataType>
+bool IsCacheable();
+
+template <unsigned char DataType>
+bool IsValidChunk(const std::string &name,
+                  std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
+int ProcessGet(const std::string &name,
+               const std::string &version,
+               const asymm::PublicKey &public_key,
+               std::string *existing_content,
+               std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
+int ProcessStore(const std::string &name,
+                 const std::string &content,
+                 const asymm::PublicKey &public_key,
+                 std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
+int ProcessDelete(const std::string &name,
+                  const std::string &version,
+                  const asymm::PublicKey &public_key,
+                  std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
+int ProcessModify(const std::string &name,
+                  const std::string &content,
+                  const std::string &version,
+                  const asymm::PublicKey &public_key,
+                  std::string *new_content,
+                  std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
+int ProcessHas(const std::string &name,
+               const std::string &version,
+               const asymm::PublicKey &public_key,
+               std::shared_ptr<ChunkStore> chunk_store);
 
 // Returns true
 template <>

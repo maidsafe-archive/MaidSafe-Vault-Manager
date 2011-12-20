@@ -21,6 +21,7 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
+#include "maidsafe/private/chunk_actions/utils.h"
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
 

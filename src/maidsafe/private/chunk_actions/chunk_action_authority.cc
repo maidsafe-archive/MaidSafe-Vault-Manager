@@ -17,6 +17,8 @@
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 
 #include "maidsafe/common/chunk_store.h"
+#include "maidsafe/common/crypto.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
@@ -24,6 +26,7 @@
 #include "maidsafe/private/chunk_actions/default_rules.h"
 #include "maidsafe/private/chunk_actions/appendable_by_all_rules.h"
 #include "maidsafe/private/chunk_actions/modifiable_by_owner_rules.h"
+#include "maidsafe/private/chunk_actions/utils.h"
 
 
 namespace maidsafe {
@@ -66,7 +69,20 @@ bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
   }
 }
 
-std::string ChunkActionAuthority::Version(const std::string &name) const {}
+std::string ChunkActionAuthority::Version(const std::string &/*name*/) const { return ""; }
+
+std::string ChunkActionAuthority::ApplyTypeToName(
+    const std::string &name,
+    unsigned char chunk_type) const {
+  if (name.size() != crypto::SHA512::DIGESTSIZE) {
+    DLOG(ERROR) << "Name " << Base32Substr(name) << " is " << name.size()
+                << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
+    return "";
+  }
+
+  return chunk_type == kDefaultType ? name :
+                                      name + static_cast<char>(chunk_type);
+}
 
 int ChunkActionAuthority::ValidGet(const std::string &name,
                                    const std::string &version,

@@ -121,12 +121,18 @@ FINAL_MESSAGE()
 RENAME_OUTDATED_BUILT_EXES()
 
 SET(MAIDSAFE_PRIVATE_INSTALL_FILES
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/return_codes.h
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/version.h)
 SET(MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_action_authority.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_pb.h
-      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h)
-
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_types.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/default_rules.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_pb.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_rules.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/modifiable_by_owner_rules.h)
 MS_INSTALL_LIBS(maidsafe_private_static)
 MS_INSTALL_HEADERS(private ${MAIDSAFE_PRIVATE_INSTALL_FILES})
 MS_INSTALL_HEADERS(private/chunk_actions ${MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES})
