@@ -5,7 +5,7 @@
 *
 * The following source code is property of maidsafe.net limited and is not
 * meant for external use.  The use of this code is governed by the license
-* file licence.txt found in the root of this directory and also on
+* file LICENSE.TXT found in the root of this directory and also on
 * www.maidsafe.net.
 *
 * You are not free to copy, amend or otherwise use this source code without
@@ -14,8 +14,18 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
-#define MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
+
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_PB_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_PB_H_
+
+#ifdef __MSVC__
+#  pragma warning(push)
+#  pragma warning(disable: 4127 4244 4267)
+#endif
+#include "maidsafe/private/chunk_actions/signature_packet.pb.h"
+#ifdef __MSVC__
+#  pragma warning(pop)
+#endif
 
 #include "maidsafe/private/version.h"
 
@@ -24,22 +34,4 @@
     Please update the library.
 #endif
 
-namespace maidsafe {
-
-namespace priv {
-  
-namespace chunk_actions {
-
-const unsigned char kDefaultType(0);
-const unsigned char kAppendableByAll(1);
-const unsigned char kModifiableByOwner(2);
-const unsigned char kSignaturePacket(3);
-const unsigned char kUnknownType(255);
-
-}  // namespace chunk_actions
-
-}  // namespace priv
-
-}  // namespace maidsafe
-
-#endif  // MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_PB_H_

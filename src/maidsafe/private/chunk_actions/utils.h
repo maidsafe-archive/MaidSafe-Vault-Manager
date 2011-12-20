@@ -58,6 +58,7 @@ int DeleteIfOwner(const std::string &name,
                   const asymm::PublicKey &public_key,
                   std::shared_ptr<ChunkStore> chunk_store);
 
+
 //int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
 //                      const std::string &name,
 //                      const std::string &data,
