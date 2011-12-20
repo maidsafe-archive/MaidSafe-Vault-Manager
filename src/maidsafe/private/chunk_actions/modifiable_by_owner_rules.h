@@ -1,0 +1,118 @@
+/*
+* ============================================================================
+*
+* Copyright [2011] maidsafe.net limited
+*
+* The following source code is property of maidsafe.net limited and is not
+* meant for external use.  The use of this code is governed by the license
+* file licence.txt found in the root of this directory and also on
+* www.maidsafe.net.
+*
+* You are not free to copy, amend or otherwise use this source code without
+* the explicit written permission of the board of directors of maidsafe.net.
+*
+* ============================================================================
+*/
+
+// Applies to encrypted Directory Listing DataMaps
+
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_MODIFIABLE_BY_OWNER_RULES_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_MODIFIABLE_BY_OWNER_RULES_H_
+
+#include <memory>
+#include <string>
+
+#include "maidsafe/common/rsa.h"
+
+#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/utils.h"
+
+
+namespace maidsafe {
+
+class ChunkStore;
+
+
+namespace priv {
+
+namespace chunk_actions {
+
+template <>
+bool IsCacheable<kModifiableByOwner>() { return false; }
+
+// Returns true if the chunk exists.
+template <>
+bool IsValidChunk<kModifiableByOwner>(const std::string &name,
+                                      std::shared_ptr<ChunkStore> chunk_store);
+
+// Any user can Get.
+// For overall success, the following must be true:
+//   * chunk_store.get() succeeds.
+template <>
+int ProcessGet<kModifiableByOwner>(const std::string &name,
+                                   const std::string &version,
+                                   const asymm::PublicKey &public_key,
+                                   std::string *existing_content,
+                                   std::shared_ptr<ChunkStore> chunk_store);
+
+// Any user can Store.
+// For overall success, the following must be true:
+//   * the chunk doesn't already exist
+//   * content parses as a chunk
+//   * public_key is valid
+//   * chunk.signature() validates with public_key
+// This assumes that public_key has not been revoked on the network.
+template <>
+int ProcessStore<kModifiableByOwner>(const std::string &name,
+                                     const std::string &content,
+                                     const asymm::PublicKey &public_key,
+                                     std::shared_ptr<ChunkStore> chunk_store);
+
+// Only owner can Delete.
+// For overall success, the following must be true:
+//   * the chunk doesn't already exsist
+//                OR
+//   * chunk_store.get() succeeds.
+//   * public_key is valid
+//   * retrieved chunk.signature() validates with public_key
+//   * deletion_token validates with public_key
+// This assumes that public_key has not been revoked on the network.
+template <>
+int ProcessDelete<kModifiableByOwner>(const std::string &name,
+                                      const std::string &version,
+                                      const asymm::PublicKey &public_key,
+                                      std::shared_ptr<ChunkStore> chunk_store);
+
+// Only owner can Modify.
+// For overall success, the following must be true:
+//   * chunk_store.get() succeeds.
+//   * retrieved content parses as Chunk
+//   * public_key is valid
+//   * retrieved chunk.signature() validates with public_key
+//   * content parses as Chunk
+//   * new chunk.signature() validates with public_key
+// This assumes that public_key has not been revoked on the network.
+template <>
+int ProcessModify<kModifiableByOwner>(const std::string &name,
+                                      const std::string &content,
+                                      const std::string &version,
+                                      const asymm::PublicKey &public_key,
+                                      std::string *new_content,
+                                      std::shared_ptr<ChunkStore> chunk_store);
+
+// Any user can call Has.
+// For overall success, the following must be true:
+//   * chunk_store.has() succeeds.
+template <>
+int ProcessHas<kModifiableByOwner>(const std::string &name,
+                                   const std::string &version,
+                                   const asymm::PublicKey &public_key,
+                                   std::shared_ptr<ChunkStore> chunk_store);
+
+}  // namespace chunk_actions
+
+}  // namespace priv
+
+}  // namespace maidsafe
+
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_MODIFIABLE_BY_OWNER_RULES_H_

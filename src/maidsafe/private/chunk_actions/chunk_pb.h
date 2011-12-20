@@ -15,14 +15,14 @@
 */
 
 
-#ifndef MAIDSAFE_PRIVATE_DETAIL_MCID_MESSAGE_PB_H_
-#define MAIDSAFE_PRIVATE_DETAIL_MCID_MESSAGE_PB_H_
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_PB_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_PB_H_
 
 #ifdef __MSVC__
 #  pragma warning(push)
 #  pragma warning(disable: 4127 4244 4267)
 #endif
-#include "maidsafe/private/detail/MCID_message.pb.h"
+#include "maidsafe/private/chunk_actions/chunk.pb.h"
 #ifdef __MSVC__
 #  pragma warning(pop)
 #endif
@@ -34,4 +34,4 @@
     Please update the library.
 #endif
 
-#endif  // MAIDSAFE_PRIVATE_DETAIL_MCID_MESSAGE_PB_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_PB_H_

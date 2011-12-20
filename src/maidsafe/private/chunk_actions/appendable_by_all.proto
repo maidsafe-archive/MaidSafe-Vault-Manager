@@ -1,0 +1,12 @@
+import "maidsafe/private/chunk_actions/chunk.proto";
+package maidsafe.priv.chunk_actions;
+
+// MaidSafe Contact ID & MaidSafe Message ID
+message AppendableByAll {
+  message ControlInfo {
+    required bytes encryption_public_key = 1;
+    required bool allow_others_to_append = 2;
+  }
+  required Chunk control = 1;
+  repeated Chunk appendices = 2;
+}

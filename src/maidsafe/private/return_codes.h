@@ -42,10 +42,14 @@ enum ReturnCode {
   kDeleteFailure = -150009,
   kModifyFailure = -150010,
   kInvalidSignedData = -150011,
-  kInvalidUpdate = -150012,
+  kInvalidModify = -150012,
   kSignatureVerificationFailure = -150013,
   kNotHashable = -150014,
-  kNotOwner = -150015
+  kNotOwner = -150015,
+  kInvalidChunkType = -150016,
+  kFailedToFindChunk = -150017,
+  kInvalidPublicKey = -150018,
+  kAppendDisallowed = -150019
 };
 
 }  // namespace priv

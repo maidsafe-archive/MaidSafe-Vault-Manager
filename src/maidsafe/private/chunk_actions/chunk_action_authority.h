@@ -38,39 +38,46 @@ namespace bs2 = boost::signals2;
 namespace maidsafe {
 
 namespace priv {
+  
+namespace chunk_actions {
 
 
 class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
  public:
-  ChunkActionAuthority() {}
+  explicit ChunkActionAuthority(std::shared_ptr<ChunkStore> chunk_store)
+      : maidsafe::ChunkActionAuthority(chunk_store) {}
   virtual ~ChunkActionAuthority() {}
-  virtual int ValidOperation(const int &op_type,
-                             const std::string &name,
-                             const std::string &content,
-                             const asymm::PublicKey &public_key,
-                             std::shared_ptr<ChunkStore> chunk_store,
-                             std::string *new_content = NULL) const;
-  virtual int ValidOperation(const int &op_type,
-                             const std::string &name,
-                             const fs::path &path,
-                             const asymm::PublicKey &public_key,
-                             std::shared_ptr<ChunkStore> chunk_store,
-                             std::string *new_content = NULL) const;
   virtual bool ValidName(const std::string &name) const;
   virtual bool Cacheable(const std::string &name) const;
-  virtual bool ValidChunk(const std::string &name,
-                          const std::string &content) const;
-  virtual bool ValidChunk(const std::string &name,
-                          const fs::path &path) const;
-  virtual std::string Version(const std::string &name,
-                              const std::string &content) const;
-  virtual std::string Version(const std::string &name,
-                              const fs::path &path) const;
+  virtual bool ValidChunk(const std::string &name) const;
+  virtual std::string Version(const std::string &name) const;
+
+ protected:
+  virtual int ValidGet(const std::string &name,
+                       const std::string &version,
+                       const asymm::PublicKey &public_key,
+                       std::string *existing_content = NULL) const;
+  virtual int ValidStore(const std::string &name,
+                         const std::string &content,
+                         const asymm::PublicKey &public_key) const;
+  virtual int ValidDelete(const std::string &name,
+                          const std::string &version,
+                          const asymm::PublicKey &public_key) const;
+  virtual int ValidModify(const std::string &name,
+                          const std::string &content,
+                          const std::string &version,
+                          const asymm::PublicKey &public_key,
+                          std::string *new_content = NULL) const;
+  virtual int ValidHas(const std::string &name,
+                       const std::string &version,
+                       const asymm::PublicKey &public_key) const;
 
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
   ChunkActionAuthority(const ChunkActionAuthority&);
 };
+
+}  // namespace chunk_actions
 
 }  // namespace priv
 

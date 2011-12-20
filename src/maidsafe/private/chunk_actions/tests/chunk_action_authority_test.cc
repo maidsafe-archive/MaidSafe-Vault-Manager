@@ -14,7 +14,7 @@
 * ============================================================================
 */
 
-#include "maidsafe/private/chunk_action_authority.h"
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/common/test.h"
 
 namespace maidsafe {
