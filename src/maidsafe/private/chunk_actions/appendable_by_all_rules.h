@@ -37,8 +37,9 @@ namespace priv {
 
 namespace chunk_actions {
 
+// Returns false
 template <>
-bool IsCacheable<kAppendableByAll>() { return false; }
+bool IsCacheable<kAppendableByAll>();
 
 // Returns true if the chunk exists.
 template <>

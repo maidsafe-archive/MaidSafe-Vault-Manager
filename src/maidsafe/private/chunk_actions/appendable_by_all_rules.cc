@@ -33,6 +33,9 @@ namespace priv {
 namespace chunk_actions {
 
 template <>
+bool IsCacheable<kAppendableByAll>() { return false; }
+
+template <>
 bool IsValidChunk<kAppendableByAll>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here

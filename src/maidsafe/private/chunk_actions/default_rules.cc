@@ -33,6 +33,9 @@ namespace priv {
 namespace chunk_actions {
 
 template <>
+bool IsCacheable<kDefaultType>() { return true; }
+
+template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store) {
   std::string existing_data;

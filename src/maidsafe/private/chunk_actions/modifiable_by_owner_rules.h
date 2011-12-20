@@ -37,8 +37,9 @@ namespace priv {
 
 namespace chunk_actions {
 
+// Returns false
 template <>
-bool IsCacheable<kModifiableByOwner>() { return false; }
+bool IsCacheable<kModifiableByOwner>();
 
 // Returns true if the chunk exists.
 template <>

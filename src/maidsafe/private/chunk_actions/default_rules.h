@@ -37,8 +37,9 @@ namespace priv {
 
 namespace chunk_actions {
 
+// Returns true
 template <>
-bool IsCacheable<kDefaultType>() { return true; }
+bool IsCacheable<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(chunk.data()).
 template <>
