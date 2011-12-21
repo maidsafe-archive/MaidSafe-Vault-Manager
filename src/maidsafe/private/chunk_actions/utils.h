@@ -50,7 +50,19 @@ class Chunk;
 unsigned char GetDataType(const std::string &name);
 
 template <typename T>
-bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
+bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
+  try {
+    if (!protobuf_type->ParseFromString(serialised_data)) {
+      DLOG(ERROR) << "Failed to parse";
+      return false;
+    }
+  }
+  catch(const std::exception &e) {
+    DLOG(ERROR) << "Failed to parse: " << e.what();
+    return false;
+  }
+  return true;
+}
 
 template <typename T>
 int DeleteIfOwner(const std::string &name,
