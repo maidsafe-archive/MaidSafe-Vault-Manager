@@ -89,7 +89,7 @@ SOURCE_GROUP("Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TES
 MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
 MS_ADD_EXECUTABLE(TESTprivate Tests ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
 
-TARGET_LINK_LIBRARIES(maidsafe_private_static maidsafe_common_static)
+TARGET_LINK_LIBRARIES(maidsafe_private_static maidsafe_common_static protobuf_static)
 TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
 
 

@@ -50,25 +50,7 @@ class Chunk;
 unsigned char GetDataType(const std::string &name);
 
 template <typename T>
-bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
-  try {
-    if (!protobuf_type->ParseFromString(serialised_data)) {
-      DLOG(ERROR) << "Failed to parse";
-      return false;
-    }
-  }
-  catch(const std::exception &e) {
-    DLOG(ERROR) << "Failed to parse: " << e.what();
-    return false;
-  }
-  return true;
-}
-
-template <typename T>
-int DeleteIfOwner(const std::string &name,
-                  const std::string &version,
-                  const asymm::PublicKey &public_key,
-                  std::shared_ptr<ChunkStore> chunk_store);
+bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
 
 //int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
@@ -89,6 +71,21 @@ int DeleteIfOwner(const std::string &name,
 //                      const asymm::PublicKey &public_key,
 //                      std::shared_ptr<ChunkStore> chunk_store,
 //                      std::string *existing_data);
+
+template <typename T>
+bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
+  try {
+    if (!protobuf_type->ParseFromString(serialised_data)) {
+      DLOG(ERROR) << "Failed to parse";
+      return false;
+    }
+  }
+  catch(const std::exception &e) {
+    DLOG(ERROR) << "Failed to parse: " << e.what();
+    return false;
+  }
+  return true;
+}
 
 }  // namespace chunk_actions
 
