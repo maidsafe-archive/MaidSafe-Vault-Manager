@@ -50,6 +50,9 @@ class Chunk;
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
+std::string GetTigerHash(const std::string &name,
+                         std::shared_ptr<ChunkStore> chunk_store);
+
 
 //int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
 //                      const std::string &name,

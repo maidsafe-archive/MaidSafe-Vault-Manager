@@ -52,6 +52,12 @@ template <>
 bool IsValidChunk<kAppendableByAll>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store);
 
+// Returns Tiger hash of chunk content
+template <>
+std::string GetVersion<kAppendableByAll>(
+    const std::string &name,
+    std::shared_ptr<ChunkStore> chunk_store);
+
 // Any user can Get.  Owner gets all data; non-owner gets only first value
 // which contains owner's public key for encryption of messages.
 // For overall success, the following must be true:

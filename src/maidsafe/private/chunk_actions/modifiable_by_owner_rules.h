@@ -52,6 +52,12 @@ template <>
 bool IsValidChunk<kModifiableByOwner>(const std::string &name,
                                       std::shared_ptr<ChunkStore> chunk_store);
 
+// Returns Tiger hash of chunk content
+template <>
+std::string GetVersion<kModifiableByOwner>(
+    const std::string &name,
+    std::shared_ptr<ChunkStore> chunk_store);
+
 // Any user can Get.
 // For overall success, the following must be true:
 //   * chunk_store.get() succeeds.

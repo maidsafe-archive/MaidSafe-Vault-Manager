@@ -50,6 +50,10 @@ bool IsValidChunk(const std::string &name,
                   std::shared_ptr<ChunkStore> chunk_store);
 
 template <unsigned char DataType>
+std::string GetVersion(const std::string &name,
+                       std::shared_ptr<ChunkStore> chunk_store);
+
+template <unsigned char DataType>
 int ProcessGet(const std::string &name,
                const std::string &version,
                const asymm::PublicKey &public_key,
@@ -90,6 +94,11 @@ bool IsCacheable<kDefaultType>();
 template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store);
+
+// Returns first 24 bytes of name
+template <>
+std::string GetVersion<kDefaultType>(const std::string &name,
+                                     std::shared_ptr<ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:

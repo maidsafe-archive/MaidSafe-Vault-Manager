@@ -14,7 +14,7 @@
 * ============================================================================
 */
 
-// Applies to PKI SignaturePackets
+// Applies to TMID, STMID and PKI SignaturePackets
 
 #ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
 #define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
@@ -52,6 +52,12 @@ bool IsCacheable<kSignaturePacket>();
 template <>
 bool IsValidChunk<kSignaturePacket>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store);
+
+// Returns first 24 bytes of name
+template <>
+std::string GetVersion<kSignaturePacket>(
+    const std::string &name,
+    std::shared_ptr<ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:

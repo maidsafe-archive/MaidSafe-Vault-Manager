@@ -32,6 +32,17 @@ namespace priv {
 
 namespace chunk_actions {
 
+std::string GetTigerHash(const std::string &name,
+                         std::shared_ptr<ChunkStore> chunk_store) {
+  std::string content = chunk_store->Get(name);
+  if (content.empty()) {
+    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+    return "";
+  }
+  return crypto::Hash<crypto::Tiger>(content);
+}
+
+
 //int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
 //                      const std::string &name,
 //                      const std::string &data,

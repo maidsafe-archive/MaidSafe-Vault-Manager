@@ -35,6 +35,31 @@ namespace priv {
 
 namespace chunk_actions {
 
+bool ChunkActionAuthority::Delete(const std::string &name,
+                                  const std::string &version,
+                                  const asymm::PublicKey &public_key) {
+  int result(ValidDelete(name, version, public_key));
+  if (result != kSuccess) {
+    DLOG(ERROR) << "Invalid request to delete " << Base32Substr(name) << ": "
+                << result;
+    return false;
+  }
+
+  if (GetDataType(name) == kSignaturePacket) {
+    if (!chunk_store_->Modify(name, 0)) {
+      DLOG(ERROR) << "Failed to invalidate " << Base32Substr(name);
+      return false;
+    }
+  } else {
+    if (!chunk_store_->Delete(name)) {
+      DLOG(ERROR) << "Failed to delete " << Base32Substr(name);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool ChunkActionAuthority::ValidName(const std::string &name) const {
   return (GetDataType(name) != kUnknownType);
 }
@@ -73,7 +98,22 @@ bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
   }
 }
 
-std::string ChunkActionAuthority::Version(const std::string &/*name*/) const { return ""; }
+std::string ChunkActionAuthority::Version(const std::string &name) const {
+  switch (GetDataType(name)) {
+    case kDefaultType:
+      return GetVersion<kDefaultType>(name, chunk_store_);
+    case kAppendableByAll:
+      return GetVersion<kAppendableByAll>(name, chunk_store_);
+    case kModifiableByOwner:
+      return GetVersion<kModifiableByOwner>(name, chunk_store_);
+    case kSignaturePacket:
+      return GetVersion<kSignaturePacket>(name, chunk_store_);
+    case kUnknownType:
+    default:
+      DLOG(ERROR) << "Unknown type " << static_cast<int>(GetDataType(name));
+      return "";
+  }
+}
 
 std::string ChunkActionAuthority::ApplyTypeToName(
     const std::string &name,

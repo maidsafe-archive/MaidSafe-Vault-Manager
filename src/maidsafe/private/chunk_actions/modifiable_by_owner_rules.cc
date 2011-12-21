@@ -49,6 +49,13 @@ bool IsValidChunk<kModifiableByOwner>(const std::string &name,
 }
 
 template <>
+std::string GetVersion<kModifiableByOwner>(
+    const std::string &name,
+    std::shared_ptr<ChunkStore> chunk_store) {
+  return GetTigerHash(name, chunk_store);
+}
+
+template <>
 int ProcessGet<kModifiableByOwner>(const std::string &name,
                                    const std::string &/*version*/,
                                    const asymm::PublicKey &/*public_key*/,
