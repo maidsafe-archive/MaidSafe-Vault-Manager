@@ -14,8 +14,8 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
-#define MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_
 
 #include "maidsafe/private/version.h"
 
@@ -27,7 +27,7 @@
 namespace maidsafe {
 
 namespace priv {
-  
+
 namespace chunk_actions {
 
 const unsigned char kDefaultType(0);
@@ -42,4 +42,4 @@ const unsigned char kUnknownType(255);
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_TYPES_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_

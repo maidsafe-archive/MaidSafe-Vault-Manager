@@ -32,17 +32,6 @@ namespace priv {
 
 namespace chunk_actions {
 
-unsigned char GetDataType(const std::string &name) {
-  if (name.size() == crypto::SHA512::DIGESTSIZE)
-    return kDefaultType;
-
-  if (name.size() == crypto::SHA512::DIGESTSIZE + 1)
-    return *name.rbegin();
-
-  DLOG(WARNING) << "Unknown data type " << static_cast<int>(*name.rbegin());
-  return kUnknownType;
-}
-
 //int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
 //                      const std::string &name,
 //                      const std::string &data,

@@ -265,7 +265,6 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
   }
 
   return kSuccess;
-
 }
 
 template <>

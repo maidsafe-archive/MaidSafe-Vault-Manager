@@ -47,8 +47,6 @@ namespace chunk_actions {
 
 class Chunk;
 
-unsigned char GetDataType(const std::string &name);
-
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 

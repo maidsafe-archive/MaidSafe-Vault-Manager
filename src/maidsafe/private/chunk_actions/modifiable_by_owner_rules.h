@@ -14,7 +14,7 @@
 * ============================================================================
 */
 
-// Applies to encrypted Directory Listing DataMaps
+// Applies to MID, SMID, encrypted Directory Listing DataMaps
 
 #ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_MODIFIABLE_BY_OWNER_RULES_H_
 #define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_MODIFIABLE_BY_OWNER_RULES_H_

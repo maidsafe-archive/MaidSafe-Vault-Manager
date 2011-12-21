@@ -14,8 +14,8 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTION_AUTHORITY_H_
-#define MAIDSAFE_PRIVATE_CHUNK_ACTION_AUTHORITY_H_
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_ACTION_AUTHORITY_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_ACTION_AUTHORITY_H_
 
 #include <map>
 #include <memory>
@@ -38,7 +38,7 @@ namespace bs2 = boost::signals2;
 namespace maidsafe {
 
 namespace priv {
-  
+
 namespace chunk_actions {
 
 
@@ -53,6 +53,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual std::string Version(const std::string &name) const;
   std::string ApplyTypeToName(const std::string &name,
                               unsigned char chunk_type) const;
+  unsigned char GetDataType(const std::string &name) const;
 
  protected:
   virtual int ValidGet(const std::string &name,
@@ -85,4 +86,4 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTION_AUTHORITY_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_ACTION_AUTHORITY_H_

@@ -172,12 +172,13 @@ int ProcessDelete<kSignaturePacket>(const std::string &name,
 }
 
 template <>
-int ProcessModify<kSignaturePacket>(const std::string &name,
-                                    const std::string &/*content*/,
-                                    const std::string &/*version*/,
-                                    const asymm::PublicKey &/*public_key*/,
-                                    std::string * /*new_content*/,
-                                    std::shared_ptr<ChunkStore> /*chunk_store*/) {
+int ProcessModify<kSignaturePacket>(
+    const std::string &name,
+    const std::string &/*content*/,
+    const std::string &/*version*/,
+    const asymm::PublicKey &/*public_key*/,
+    std::string * /*new_content*/,
+    std::shared_ptr<ChunkStore> /*chunk_store*/) {
   DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
               << ": no modify of SignaturePacket allowed";
   return kInvalidModify;
