@@ -52,6 +52,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   // owner
   virtual bool Delete(const std::string &name,
                       const std::string &version,
+                      const std::string &ownership_proof,
                       const asymm::PublicKey &public_key);
   virtual bool ValidName(const std::string &name) const;
   virtual bool Cacheable(const std::string &name) const;
@@ -71,6 +72,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
                          const asymm::PublicKey &public_key) const;
   virtual int ValidDelete(const std::string &name,
                           const std::string &version,
+                          const std::string &ownership_proof,
                           const asymm::PublicKey &public_key) const;
   virtual int ValidModify(const std::string &name,
                           const std::string &content,

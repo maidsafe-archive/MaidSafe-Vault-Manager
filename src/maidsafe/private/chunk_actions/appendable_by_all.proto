@@ -1,12 +1,33 @@
 import "maidsafe/private/chunk_actions/chunk.proto";
 package maidsafe.priv.chunk_actions;
 
+
 // MaidSafe Contact ID & MaidSafe Message ID
 message AppendableByAll {
   message ControlInfo {
     required bytes encryption_public_key = 1;
     required bool allow_others_to_append = 2;
   }
-  required Chunk control = 1;
-  repeated Chunk appendices = 2;
+  required SignedData control = 1;
+  repeated SignedData appendices = 2;
+}
+
+
+// Message used to send owner's contact info to recipient for acceptance into
+// recipient's contact list
+message Introduction {
+  required bytes mmid_name = 1;
+  required bytes public_username = 2;
+}
+
+// Generic message for use in sending messages/files, sharing folders,
+// annotating files, etc.
+message Message {
+  required int32 type = 1;
+  required bytes id = 2;
+  optional bytes parent_id = 3;
+  required bytes sender_public_username = 4;
+  repeated bytes content = 5;
+  optional bytes timestamp = 6;
+  optional bytes subject = 7;
 }

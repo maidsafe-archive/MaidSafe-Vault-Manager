@@ -39,21 +39,13 @@ bool IsCacheable<kDefaultType>() { return true; }
 template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store) {
-  std::string existing_data;
-  existing_data = chunk_store->Get(name);
-  if (existing_data.empty()) {
+  std::string content(chunk_store->Get(name));
+  if (content.empty()) {
     DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
   }
 
-  Chunk existing_chunk;
-  if (!ParseProtobuf<Chunk>(existing_data, &existing_chunk)) {
-    DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
-                << ": existing data doesn't parse as a chunk";
-    return false;
-  }
-
-  if (crypto::Hash<crypto::SHA512>(existing_chunk.data()) != name) {
+  if (crypto::Hash<crypto::SHA512>(content) != name) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return false;
@@ -88,44 +80,23 @@ int ProcessStore<kDefaultType>(const std::string &name,
                                const std::string &content,
                                const asymm::PublicKey &public_key,
                                std::shared_ptr<ChunkStore> chunk_store) {
-  Chunk new_chunk;
-  if (!ParseProtobuf<Chunk>(content, &new_chunk)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
-                << ": data doesn't parse as a chunk";
-    return kInvalidSignedData;
-  }
-
   if (!asymm::ValidateKey(public_key)) {
     DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                 << ": invalid public key";
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(new_chunk.data(), new_chunk.signature(),
-                            public_key) != kSuccess) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
-                << ": signature verification failed";
-    return kSignatureVerificationFailure;
-  }
-
-  std::string existing_data;
-  existing_data = chunk_store->Get(name);
-  if (existing_data.empty()) {
+  std::string existing_content(chunk_store->Get(name));
+  if (existing_content.empty()) {
     // New chunk on network - check data hashes to name
-    if (crypto::Hash<crypto::SHA512>(new_chunk.data()) != name) {
+    if (crypto::Hash<crypto::SHA512>(content) != name) {
       DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                   << ": default chunk type should be hashable";
       return kNotHashable;
     }
   } else {
     // Pre-existing chunk - ensure data is identical
-    Chunk existing_chunk;
-    if (!ParseProtobuf<Chunk>(existing_data, &existing_chunk)) {
-      DLOG(ERROR) << "Failed to store " << Base32Substr(name)
-                  << ": existing data doesn't parse as a chunk";
-      return kGeneralError;
-    }
-    if (existing_chunk.data() != new_chunk.data()) {
+    if (existing_content != content) {
       DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                   << ": existing data doesn't match new data - can't store";
       return kInvalidSignedData;
@@ -138,6 +109,7 @@ int ProcessStore<kDefaultType>(const std::string &name,
 template <>
 int ProcessDelete<kDefaultType>(const std::string &/*name*/,
                                 const std::string &/*version*/,
+                                const std::string &/*ownership_proof*/,
                                 const asymm::PublicKey &/*public_key*/,
                                 std::shared_ptr<ChunkStore> /*chunk_store*/) {
   return kSuccess;

@@ -39,8 +39,7 @@ template <>
 bool IsValidChunk<kModifiableByOwner>(const std::string &name,
                                       std::shared_ptr<ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
-  std::string existing_data;
-  existing_data = chunk_store->Get(name);
+  std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
     DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
@@ -81,8 +80,8 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
     return kKeyNotUnique;
   }
 
-  Chunk chunk;
-  if (!ParseProtobuf<Chunk>(content, &chunk)) {
+  SignedData chunk;
+  if (!ParseProtobuf<SignedData>(content, &chunk)) {
     DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                 << ": data doesn't parse as a chunk";
     return kInvalidSignedData;
@@ -107,6 +106,7 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
 template <>
 int ProcessDelete<kModifiableByOwner>(const std::string &name,
                                       const std::string &/*version*/,
+                                      const std::string &ownership_proof,
                                       const asymm::PublicKey &public_key,
                                       std::shared_ptr<ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
@@ -115,8 +115,8 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
     return kSuccess;
   }
 
-  Chunk existing_chunk;
-  if (!ParseProtobuf<Chunk>(existing_content, &existing_chunk)) {
+  SignedData existing_chunk;
+  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
     DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kGeneralError;
@@ -135,21 +135,18 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
     return kSignatureVerificationFailure;
   }
 
-  // TODO(Fraser#5#): 2011-12-19 - Add verification that sender owns
-  //                               corresponding private key (uncomment below)
-//  DeletionToken deletion_token;
-//  if (!ParseProtobuf<DeletionToken>(serialised_deletion_token,
-//                                    &deletion_token)) {
-//    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
-//                << ": deletion_token doesn't parse - not owner";
-//    return kNotOwner;
-//  }
-//  if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
-//                            public_key) != kSuccess) {
-//    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
-//                << ": signature verification failed - not owner";
-//    return kNotOwner;
-//  }
+  SignedData deletion_token;
+  if (!ParseProtobuf<SignedData>(ownership_proof, &deletion_token)) {
+    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+                << ": deletion_token doesn't parse - not owner";
+    return kNotOwner;
+  }
+  if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
+                            public_key) != kSuccess) {
+    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+                << ": signature verification failed - not owner";
+    return kNotOwner;
+  }
 
   return kSuccess;
 }
@@ -168,10 +165,10 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
     return kFailedToFindChunk;
   }
 
-  Chunk existing_chunk;
-  if (!ParseProtobuf<Chunk>(existing_content, &existing_chunk)) {
+  SignedData existing_chunk;
+  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
     DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-                << ": existing data doesn't parse as Chunk";
+                << ": existing data doesn't parse as SignedData";
     return kGeneralError;
   }
 
@@ -187,10 +184,10 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
     return kNotOwner;
   }
 
-  Chunk new_chunk;
-  if (!ParseProtobuf<Chunk>(content, &new_chunk)) {
+  SignedData new_chunk;
+  if (!ParseProtobuf<SignedData>(content, &new_chunk)) {
     DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-                << ": new data doesn't parse as Chunk";
+                << ": new data doesn't parse as SignedData";
     return kInvalidSignedData;
   }
 

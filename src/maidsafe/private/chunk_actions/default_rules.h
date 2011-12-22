@@ -69,6 +69,7 @@ int ProcessStore(const std::string &name,
 template <unsigned char DataType>
 int ProcessDelete(const std::string &name,
                   const std::string &version,
+                  const std::string &ownership_proof,
                   const asymm::PublicKey &public_key,
                   std::shared_ptr<ChunkStore> chunk_store);
 
@@ -90,7 +91,7 @@ int ProcessHas(const std::string &name,
 template <>
 bool IsCacheable<kDefaultType>();
 
-// Returns true if the chunk exists, and name == Hash(chunk.data()).
+// Returns true if the chunk exists, and name == Hash(content).
 template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store);
@@ -112,11 +113,9 @@ int ProcessGet<kDefaultType>(const std::string &name,
 
 // Any user can Store.
 // For overall success, the following must be true:
-//   * content parses as a chunk
 //   * public_key is valid
-//   * chunk.signature() validates with public_key
-//   * if the chunk exsist already, chunk.data() must match existing.data()
-//     otherwise name must match Hash(chunk.data()).
+//   * if the chunk exsist already, content must match existing content,
+//     otherwise name must match Hash(content).
 // This assumes that public_key has not been revoked on the network.
 template <>
 int ProcessStore<kDefaultType>(const std::string &name,
@@ -132,6 +131,7 @@ int ProcessStore<kDefaultType>(const std::string &name,
 template <>
 int ProcessDelete<kDefaultType>(const std::string &name,
                                 const std::string &version,
+                                const std::string &ownership_proof,
                                 const asymm::PublicKey &public_key,
                                 std::shared_ptr<ChunkStore> chunk_store);
 

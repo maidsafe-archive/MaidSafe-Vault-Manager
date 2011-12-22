@@ -37,8 +37,9 @@ namespace chunk_actions {
 
 bool ChunkActionAuthority::Delete(const std::string &name,
                                   const std::string &version,
+                                  const std::string &ownership_proof,
                                   const asymm::PublicKey &public_key) {
-  int result(ValidDelete(name, version, public_key));
+  int result(ValidDelete(name, version, ownership_proof, public_key));
   if (result != kSuccess) {
     DLOG(ERROR) << "Invalid request to delete " << Base32Substr(name) << ": "
                 << result;
@@ -196,22 +197,23 @@ int ChunkActionAuthority::ValidStore(const std::string &name,
 }
 
 int ChunkActionAuthority::ValidDelete(
-      const std::string &name,
-      const std::string &version,
-      const asymm::PublicKey &public_key) const {
+    const std::string &name,
+    const std::string &version,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key) const {
   switch (GetDataType(name)) {
     case kDefaultType:
-      return ProcessDelete<kDefaultType>(name, version, public_key,
-                                         chunk_store_);
+      return ProcessDelete<kDefaultType>(name, version, ownership_proof,
+                                         public_key, chunk_store_);
     case kAppendableByAll:
-      return ProcessDelete<kAppendableByAll>(name, version, public_key,
-                                             chunk_store_);
+      return ProcessDelete<kAppendableByAll>(name, version, ownership_proof,
+                                             public_key, chunk_store_);
     case kModifiableByOwner:
-      return ProcessDelete<kModifiableByOwner>(name, version, public_key,
-                                               chunk_store_);
+      return ProcessDelete<kModifiableByOwner>(name, version, ownership_proof,
+                                               public_key, chunk_store_);
     case kSignaturePacket:
-      return ProcessDelete<kSignaturePacket>(name, version, public_key,
-                                             chunk_store_);
+      return ProcessDelete<kSignaturePacket>(name, version, ownership_proof,
+                                             public_key, chunk_store_);
     case kUnknownType:
     default:
       DLOG(ERROR) << "Unknown type " << static_cast<int>(GetDataType(name));

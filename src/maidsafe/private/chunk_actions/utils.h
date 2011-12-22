@@ -45,33 +45,12 @@ namespace priv {
 
 namespace chunk_actions {
 
-class Chunk;
-
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
 std::string GetTigerHash(const std::string &name,
                          std::shared_ptr<ChunkStore> chunk_store);
 
-
-//int ProcessSignedData(const ChunkActionAuthority::OperationType &op_type,
-//                      const std::string &name,
-//                      const std::string &data,
-//                      const asymm::PublicKey &public_key,
-//                      const bool &hashable,
-//                      std::shared_ptr<ChunkStore> chunk_store,
-//                      std::string *new_content);
-//
-//int PreOperationChecks(const ChunkActionAuthority::OperationType &op_type,
-//                       const std::string &name,
-//                       const std::string &data,
-//                       const asymm::PublicKey &public_key,
-//                       const bool &hashable);
-//
-//int VerifyCurrentData(const std::string &name,
-//                      const asymm::PublicKey &public_key,
-//                      std::shared_ptr<ChunkStore> chunk_store,
-//                      std::string *existing_data);
 
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {

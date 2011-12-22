@@ -39,8 +39,7 @@ bool IsCacheable<kSignaturePacket>() { return false; }
 template <>
 bool IsValidChunk<kSignaturePacket>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store) {
-  std::string existing_data;
-  existing_data = chunk_store->Get(name);
+  std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
     DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
@@ -130,6 +129,7 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
 template <>
 int ProcessDelete<kSignaturePacket>(const std::string &name,
                                     const std::string &/*version*/,
+                                    const std::string &ownership_proof,
                                     const asymm::PublicKey &public_key,
                                     std::shared_ptr<ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
@@ -159,21 +159,18 @@ int ProcessDelete<kSignaturePacket>(const std::string &name,
     return kSignatureVerificationFailure;
   }
 
-  // TODO(Fraser#5#): 2011-12-19 - Add verification that sender owns
-  //                               corresponding private key (uncomment below)
-//  DeletionToken deletion_token;
-//  if (!ParseProtobuf<DeletionToken>(serialised_deletion_token,
-//                                    &deletion_token)) {
-//    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
-//                << ": deletion_token doesn't parse - not owner";
-//    return kNotOwner;
-//  }
-//  if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
-//                            public_key) != kSuccess) {
-//    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
-//                << ": signature verification failed - not owner";
-//    return kNotOwner;
-//  }
+  SignedData deletion_token;
+  if (!ParseProtobuf<SignedData>(ownership_proof, &deletion_token)) {
+    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+                << ": deletion_token doesn't parse - not owner";
+    return kNotOwner;
+  }
+  if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
+                            public_key) != kSuccess) {
+    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+                << ": signature verification failed - not owner";
+    return kNotOwner;
+  }
 
   return kSuccess;
 }

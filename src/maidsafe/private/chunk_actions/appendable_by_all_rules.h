@@ -94,10 +94,12 @@ int ProcessStore<kAppendableByAll>(const std::string &name,
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessDelete<kAppendableByAll>(const std::string &name,
-                                    const std::string &version,
-                                    const asymm::PublicKey &public_key,
-                                    std::shared_ptr<ChunkStore> chunk_store);
+int ProcessDelete<kAppendableByAll>(
+    const std::string &name,
+    const std::string &version,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<ChunkStore> chunk_store);
 
 // Any user can Modify.
 // The first value contains owner's public key for encryption of messages, and a
