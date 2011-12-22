@@ -71,7 +71,7 @@ int ProcessGet<kModifiableByOwner>(const std::string &name,
 // Any user can Store.
 // For overall success, the following must be true:
 //   * the chunk doesn't already exist
-//   * content parses as a chunk
+//   * content parses as SignedData
 //   * public_key is valid
 //   * chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
@@ -100,10 +100,10 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 // Only owner can Modify.
 // For overall success, the following must be true:
 //   * chunk_store.get() succeeds.
-//   * retrieved content parses as Chunk
+//   * retrieved content parses as SignedData
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
-//   * content parses as Chunk
+//   * content parses as SignedData
 //   * new chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>

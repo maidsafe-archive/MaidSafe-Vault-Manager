@@ -120,7 +120,7 @@ int ProcessDelete<kAppendableByAll>(
 //   * retrieved content parses as AppendableByAll
 //   * public_key is valid
 //   * owner has set allow_others_to_append to true
-//   * content parses as Chunk
+//   * content parses as AppendableByAll
 //   * chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
