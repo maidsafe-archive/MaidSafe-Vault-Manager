@@ -42,6 +42,10 @@ namespace priv {
 namespace chunk_actions {
 
 
+std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type);
+unsigned char GetDataType(const std::string &name);
+
+
 class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
  public:
   explicit ChunkActionAuthority(std::shared_ptr<ChunkStore> chunk_store)
@@ -58,9 +62,6 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual bool Cacheable(const std::string &name) const;
   virtual bool ValidChunk(const std::string &name) const;
   virtual std::string Version(const std::string &name) const;
-  std::string ApplyTypeToName(const std::string &name,
-                              unsigned char chunk_type) const;
-  unsigned char GetDataType(const std::string &name) const;
 
  protected:
   virtual int ValidGet(const std::string &name,

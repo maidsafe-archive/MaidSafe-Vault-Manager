@@ -35,6 +35,37 @@ namespace priv {
 
 namespace chunk_actions {
 
+std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type) {
+  if (name.size() != crypto::SHA512::DIGESTSIZE) {
+    DLOG(ERROR) << "Name " << Base32Substr(name) << " is " << name.size()
+                << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
+    return "";
+  }
+
+  return chunk_type == kDefaultType ? name :
+                                      name + static_cast<char>(chunk_type);
+}
+
+unsigned char GetDataType(const std::string &name) {
+  if (name.size() == crypto::SHA512::DIGESTSIZE)
+    return kDefaultType;
+
+  if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
+    switch (*name.rbegin()) {
+      case kAppendableByAll:
+        return kAppendableByAll;
+      case kModifiableByOwner:
+        return kModifiableByOwner;
+      case kSignaturePacket:
+        return kSignaturePacket;
+      default:
+        break;
+    }
+  }
+  DLOG(WARNING) << "Unknown data type " << static_cast<int>(*name.rbegin());
+  return kUnknownType;
+}
+
 bool ChunkActionAuthority::Delete(const std::string &name,
                                   const std::string &version,
                                   const std::string &ownership_proof,
@@ -114,39 +145,6 @@ std::string ChunkActionAuthority::Version(const std::string &name) const {
       DLOG(ERROR) << "Unknown type " << static_cast<int>(GetDataType(name));
       return "";
   }
-}
-
-std::string ChunkActionAuthority::ApplyTypeToName(
-    const std::string &name,
-    unsigned char chunk_type) const {
-  if (name.size() != crypto::SHA512::DIGESTSIZE) {
-    DLOG(ERROR) << "Name " << Base32Substr(name) << " is " << name.size()
-                << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
-    return "";
-  }
-
-  return chunk_type == kDefaultType ? name :
-                                      name + static_cast<char>(chunk_type);
-}
-
-unsigned char ChunkActionAuthority::GetDataType(const std::string &name) const {
-  if (name.size() == crypto::SHA512::DIGESTSIZE)
-    return kDefaultType;
-
-  if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
-    switch (*name.rbegin()) {
-      case kAppendableByAll:
-        return kAppendableByAll;
-      case kModifiableByOwner:
-        return kModifiableByOwner;
-      case kSignaturePacket:
-        return kSignaturePacket;
-      default:
-        break;
-    }
-  }
-  DLOG(WARNING) << "Unknown data type " << static_cast<int>(*name.rbegin());
-  return kUnknownType;
 }
 
 int ChunkActionAuthority::ValidGet(const std::string &name,
