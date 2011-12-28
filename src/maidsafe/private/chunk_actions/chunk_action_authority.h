@@ -41,9 +41,10 @@ namespace priv {
 
 namespace chunk_actions {
 
-
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type);
 unsigned char GetDataType(const std::string &name);
+
+}  // namespace chunk_actions
 
 
 class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
@@ -88,8 +89,6 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
   ChunkActionAuthority(const ChunkActionAuthority&);
 };
-
-}  // namespace chunk_actions
 
 }  // namespace priv
 

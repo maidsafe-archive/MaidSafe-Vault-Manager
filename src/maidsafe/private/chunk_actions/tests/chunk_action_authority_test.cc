@@ -43,9 +43,8 @@ class ChunkActionAuthorityTest: public testing::Test {
   ChunkActionAuthorityTest()
       : chunk_store_(),
         chunk_action_authority_() {
-    chunk_action_authority_.reset(
-        new chunk_actions::ChunkActionAuthority(chunk_store_));
-    }
+    chunk_action_authority_.reset(new ChunkActionAuthority(chunk_store_));
+  }
   ~ChunkActionAuthorityTest() {}
 
  protected:
@@ -53,7 +52,7 @@ class ChunkActionAuthorityTest: public testing::Test {
   void TearDown() {}
 
   std::shared_ptr<MemoryChunkStore> chunk_store_;
-  std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority_;
+  std::shared_ptr<ChunkActionAuthority> chunk_action_authority_;
 };
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidName) {
