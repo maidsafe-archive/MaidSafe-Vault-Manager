@@ -36,7 +36,7 @@ namespace priv {
 namespace chunk_actions {
 
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type) {
-  if (name.size() != crypto::SHA512::DIGESTSIZE) {
+  if (name.size() != static_cast<size_t>(crypto::SHA512::DIGESTSIZE)) {
     DLOG(ERROR) << "Name " << Base32Substr(name) << " is " << name.size()
                 << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
     return "";
@@ -50,8 +50,8 @@ std::string RemoveTypeFromName(const std::string &name) {
   return name.substr(0, crypto::SHA512::DIGESTSIZE);
 }
 
-unsigned char chunk_actions::GetDataType(const std::string &name) {
-  if (name.size() == crypto::SHA512::DIGESTSIZE)
+unsigned char GetDataType(const std::string &name) {
+  if (name.size() == static_cast<size_t>(crypto::SHA512::DIGESTSIZE))
     return chunk_actions::kDefaultType;
 
   if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
