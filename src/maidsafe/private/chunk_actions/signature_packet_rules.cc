@@ -20,6 +20,7 @@
 #include "maidsafe/common/chunk_store.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/utils.h"
 #include "maidsafe/private/return_codes.h"
@@ -52,7 +53,8 @@ bool IsValidChunk<kSignaturePacket>(const std::string &name,
   }
 
   if (crypto::Hash<crypto::SHA512>(
-          existing_chunk.data() + existing_chunk.signature()) != name) {
+          existing_chunk.data() + existing_chunk.signature()) !=
+      RemoveTypeFromName(name)) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return false;
@@ -85,9 +87,9 @@ int ProcessGet<kSignaturePacket>(const std::string &name,
 
 template <>
 int ProcessStore<kSignaturePacket>(const std::string &name,
-                             const std::string &content,
-                             const asymm::PublicKey &public_key,
-                             std::shared_ptr<ChunkStore> chunk_store) {
+                                   const std::string &content,
+                                   const asymm::PublicKey &public_key,
+                                   std::shared_ptr<ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
     DLOG(WARNING) << "Failed to store " << Base32Substr(name)
                   << ": chunk already exists";
@@ -114,7 +116,8 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
     return kSignatureVerificationFailure;
   }
 
-  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) != name) {
+  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) !=
+      RemoveTypeFromName(name)) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return kNotHashable;

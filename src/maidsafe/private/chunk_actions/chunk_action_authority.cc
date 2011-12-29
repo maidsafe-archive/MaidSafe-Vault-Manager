@@ -46,6 +46,10 @@ std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type) {
                                       name + static_cast<char>(chunk_type);
 }
 
+std::string RemoveTypeFromName(const std::string &name) {
+  return name.substr(0, crypto::SHA512::DIGESTSIZE);
+}
+
 unsigned char chunk_actions::GetDataType(const std::string &name) {
   if (name.size() == crypto::SHA512::DIGESTSIZE)
     return chunk_actions::kDefaultType;

@@ -21,8 +21,9 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
+#include "maidsafe/private/return_codes.h"
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/utils.h"
 
@@ -45,7 +46,7 @@ bool IsValidChunk<kDefaultType>(const std::string &name,
     return false;
   }
 
-  if (crypto::Hash<crypto::SHA512>(content) != name) {
+  if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return false;
@@ -89,7 +90,7 @@ int ProcessStore<kDefaultType>(const std::string &name,
   std::string existing_content(chunk_store->Get(name));
   if (existing_content.empty()) {
     // New chunk on network - check data hashes to name
-    if (crypto::Hash<crypto::SHA512>(content) != name) {
+    if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
       DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                   << ": default chunk type should be hashable";
       return kNotHashable;

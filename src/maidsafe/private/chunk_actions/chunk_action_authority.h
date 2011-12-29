@@ -42,6 +42,7 @@ namespace priv {
 namespace chunk_actions {
 
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type);
+std::string RemoveTypeFromName(const std::string &name);
 unsigned char GetDataType(const std::string &name);
 
 }  // namespace chunk_actions
