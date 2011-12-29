@@ -1,6 +1,0 @@
-package maidsafe.priv.chunk_actions;
-
-message SignaturePacket {
-  required bytes public_key = 1;
-  required bytes public_key_signature = 2;
-}

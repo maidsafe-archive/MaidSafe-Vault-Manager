@@ -21,7 +21,6 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
-#include "maidsafe/private/chunk_actions/signature_packet_pb.h"
 #include "maidsafe/private/chunk_actions/utils.h"
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
@@ -45,16 +44,15 @@ bool IsValidChunk<kSignaturePacket>(const std::string &name,
     return false;
   }
 
-  SignaturePacket existing_chunk;
-  if (!ParseProtobuf<SignaturePacket>(existing_data, &existing_chunk)) {
+  SignedData existing_chunk;
+  if (!ParseProtobuf<SignedData>(existing_data, &existing_chunk)) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
-                << ": existing data doesn't parse as a SignaturePacket";
+                << ": existing data doesn't parse as a SignedData";
     return false;
   }
 
   if (crypto::Hash<crypto::SHA512>(
-        existing_chunk.public_key() + existing_chunk.public_key_signature()) !=
-      name) {
+          existing_chunk.data() + existing_chunk.signature()) != name) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return false;
@@ -96,10 +94,10 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
     return kKeyNotUnique;
   }
 
-  SignaturePacket chunk;
-  if (!ParseProtobuf<SignaturePacket>(content, &chunk)) {
+  SignedData chunk;
+  if (!ParseProtobuf<SignedData>(content, &chunk)) {
     DLOG(ERROR) << "Failed to store " << Base32Substr(name)
-                << ": data doesn't parse as a SignaturePacket";
+                << ": data doesn't parse as a SignedData";
     return kInvalidSignedData;
   }
 
@@ -109,15 +107,14 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(chunk.public_key(), chunk.public_key_signature(),
-                            public_key) != kSuccess) {
+  if (asymm::CheckSignature(chunk.data(), chunk.signature(), public_key) !=
+      kSuccess) {
     DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                 << ": signature verification failed";
     return kSignatureVerificationFailure;
   }
 
-  if (crypto::Hash<crypto::SHA512>(
-          chunk.public_key() + chunk.public_key_signature()) != name) {
+  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) != name) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return kNotHashable;
@@ -138,8 +135,8 @@ int ProcessDelete<kSignaturePacket>(const std::string &name,
     return kSuccess;
   }
 
-  SignaturePacket existing_chunk;
-  if (!ParseProtobuf<SignaturePacket>(existing_content, &existing_chunk)) {
+  SignedData existing_chunk;
+  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
     DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kGeneralError;
@@ -151,8 +148,8 @@ int ProcessDelete<kSignaturePacket>(const std::string &name,
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(existing_chunk.public_key(),
-                            existing_chunk.public_key_signature(),
+  if (asymm::CheckSignature(existing_chunk.data(),
+                            existing_chunk.signature(),
                             public_key) != kSuccess) {
     DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
                 << ": signature verification failed";
@@ -184,7 +181,7 @@ int ProcessModify<kSignaturePacket>(
     std::string * /*new_content*/,
     std::shared_ptr<ChunkStore> /*chunk_store*/) {
   DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-              << ": no modify of SignaturePacket allowed";
+              << ": no modify of SignedData allowed";
   return kInvalidModify;
 }
 

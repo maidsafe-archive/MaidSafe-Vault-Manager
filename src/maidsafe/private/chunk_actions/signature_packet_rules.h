@@ -72,7 +72,7 @@ int ProcessGet<kSignaturePacket>(const std::string &name,
 // Any user can Store.
 // For overall success, the following must be true:
 //   * the chunk doesn't already exist
-//   * content parses as a SignaturePacket
+//   * content parses as a SignedData
 //   * public_key is valid
 //   * chunk.signature() validates with public_key
 //   * name must match Hash(chunk.data())
