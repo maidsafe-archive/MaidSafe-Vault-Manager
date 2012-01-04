@@ -221,9 +221,11 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
     }
 
     bool allow_others_to_append_empty(
-        chunk.allow_others_to_append() == SignedData());
-    bool identity_key_empty(chunk.identity_key() == SignedData());
+        chunk.allow_others_to_append().data().empty());
+    bool identity_key_empty(chunk.identity_key().data().empty());
 
+    // One and only one new_data of identity_key and allow_others_to_append
+    // shall be provided via content
     if (allow_others_to_append_empty && identity_key_empty) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
                   << ": no new_control_content provided";
@@ -271,7 +273,7 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
         BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
       } else {
         // Replace field only, leave appendices untouched
-        existing_chunk.identity_key()->CopyFrom(chunk.identity_key());
+        existing_chunk.mutable_identity_key()->CopyFrom(chunk.identity_key());
         BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
       }
     }
