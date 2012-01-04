@@ -2,14 +2,16 @@ import "maidsafe/private/chunk_actions/chunk.proto";
 package maidsafe.priv.chunk_actions;
 
 
-// MaidSafe Contact ID & MaidSafe Message ID
+message ModifyAppendableByAll {
+  optional SignedData identity_key = 1;
+  optional SignedData allow_others_to_append = 2;
+}
+
+// MaidSafe Contact ID & MaidSafe Inbox
 message AppendableByAll {
-  message ControlInfo {
-    required bytes encryption_public_key = 1;
-    required bool allow_others_to_append = 2;
-  }
-  required SignedData control = 1;
-  repeated SignedData appendices = 2;
+  required SignedData identity_key = 1;
+  required SignedData allow_others_to_append = 2;
+  repeated SignedData appendices = 3;
 }
 
 
