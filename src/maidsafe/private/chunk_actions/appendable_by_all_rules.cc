@@ -81,8 +81,8 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(existing_chunk.control().data(),
-                            existing_chunk.control().signature(),
+  if (asymm::CheckSignature(existing_chunk.allow_others_to_append().data(),
+                            existing_chunk.allow_others_to_append().signature(),
                             public_key) == kSuccess) {
     // Owner - return all data
     *existing_content = all_existing_content;
@@ -119,7 +119,8 @@ int ProcessStore<kAppendableByAll>(const std::string &name,
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(chunk.control().data(), chunk.control().signature(),
+  if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
+                            chunk.allow_others_to_append().signature(),
                             public_key) != kSuccess) {
     DLOG(ERROR) << "Failed to store " << Base32Substr(name)
                 << ": signature verification failed";
@@ -155,8 +156,8 @@ int ProcessDelete<kAppendableByAll>(
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(existing_chunk.control().data(),
-                            existing_chunk.control().signature(),
+  if (asymm::CheckSignature(existing_chunk.allow_others_to_append().data(),
+                            existing_chunk.allow_others_to_append().signature(),
                             public_key) != kSuccess) {
     DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
                 << ": signature verification failed";
@@ -206,9 +207,10 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
     return kInvalidPublicKey;
   }
 
-  bool is_owner(asymm::CheckSignature(existing_chunk.control().data(),
-                                      existing_chunk.control().signature(),
-                                      public_key) == kSuccess);
+  bool is_owner(asymm::CheckSignature(
+                          existing_chunk.allow_others_to_append().data(),
+                          existing_chunk.allow_others_to_append().signature(),
+                          public_key) == kSuccess);
 
   if (is_owner) {
     AppendableByAll chunk;
@@ -218,33 +220,29 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
       return kInvalidSignedData;
     }
 
-    if (asymm::CheckSignature(chunk.control().data(),
-                              chunk.control().signature(),
+    if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
+                              chunk.allow_others_to_append().signature(),
                               public_key) != kSuccess) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
                   << ": signature verification failed";
       return kSignatureVerificationFailure;
     }
 
-    if (chunk.control().data() == existing_chunk.control().data()) {
+    if (chunk.allow_others_to_append().data() ==
+        existing_chunk.allow_others_to_append().data()) {
       // Remove appendices only
       existing_chunk.clear_appendices();
       BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
     } else {
-      // Replace control chunk only, leave appendices untouched
-      existing_chunk.mutable_control()->CopyFrom(chunk.control());
+      // Replace filed only, leave appendices untouched
+      existing_chunk.mutable_allow_others_to_append()->CopyFrom(
+          chunk.allow_others_to_append());
       BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
     }
   } else {
-    AppendableByAll::ControlInfo control_info;
-    if (!ParseProtobuf<AppendableByAll::ControlInfo>(
-            existing_chunk.control().data(), &control_info)) {
-      DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-                  << ": control_data doesn't parse";
-      return kGeneralError;
-    }
-
-    if (control_info.allow_others_to_append()) {
+    char appendability;
+    appendability = (existing_chunk.allow_others_to_append().data().c_str()[0]);
+    if (appendability == kAppendableByAll) {
       SignedData appendix;
       if (!ParseProtobuf<SignedData>(content, &appendix)) {
         DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
