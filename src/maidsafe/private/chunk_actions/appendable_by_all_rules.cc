@@ -213,31 +213,67 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
                           public_key) == kSuccess);
 
   if (is_owner) {
-    AppendableByAll chunk;
-    if (!ParseProtobuf<AppendableByAll>(content, &chunk)) {
+    ModifyAppendableByAll chunk;
+    if (!ParseProtobuf<ModifyAppendableByAll>(content, &chunk)) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-                  << ": data doesn't parse as AppendableByAll";
-      return kInvalidSignedData;
+                  << ": data doesn't parse as ModifyAppendableByAll";
+      return kParseFailure;
     }
 
-    if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
-                              chunk.allow_others_to_append().signature(),
-                              public_key) != kSuccess) {
+    bool allow_others_to_append_empty(
+        chunk.allow_others_to_append() == SignedData());
+    bool identity_key_empty(chunk.identity_key() == SignedData());
+
+    if (allow_others_to_append_empty && identity_key_empty) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
-                  << ": signature verification failed";
-      return kSignatureVerificationFailure;
+                  << ": no new_control_content provided";
+      return kInvalidModify;
+    }
+    if ((!allow_others_to_append_empty) && (!identity_key_empty)) {
+      DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+                  << ": too much new_control_content provided";
+      return kInvalidModify;
     }
 
-    if (chunk.allow_others_to_append().data() ==
-        existing_chunk.allow_others_to_append().data()) {
-      // Remove appendices only
-      existing_chunk.clear_appendices();
-      BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+    if (!allow_others_to_append_empty) {
+      if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
+                                chunk.allow_others_to_append().signature(),
+                                public_key) != kSuccess) {
+        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+                    << ": signature verification failed";
+        return kSignatureVerificationFailure;
+      }
+
+      if (chunk.allow_others_to_append().data() ==
+          existing_chunk.allow_others_to_append().data()) {
+        // Remove appendices only
+        existing_chunk.clear_appendices();
+        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      } else {
+        // Replace field only, leave appendices untouched
+        existing_chunk.mutable_allow_others_to_append()->CopyFrom(
+            chunk.allow_others_to_append());
+        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      }
     } else {
-      // Replace filed only, leave appendices untouched
-      existing_chunk.mutable_allow_others_to_append()->CopyFrom(
-          chunk.allow_others_to_append());
-      BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      if (asymm::CheckSignature(chunk.identity_key().data(),
+                                chunk.identity_key().signature(),
+                                public_key) != kSuccess) {
+        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+                    << ": signature verification failed";
+        return kSignatureVerificationFailure;
+      }
+
+      if (chunk.identity_key().data() ==
+          existing_chunk.identity_key().data()) {
+        // Remove appendices only
+        existing_chunk.clear_appendices();
+        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      } else {
+        // Replace field only, leave appendices untouched
+        existing_chunk.identity_key()->CopyFrom(chunk.identity_key());
+        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      }
     }
   } else {
     char appendability;
