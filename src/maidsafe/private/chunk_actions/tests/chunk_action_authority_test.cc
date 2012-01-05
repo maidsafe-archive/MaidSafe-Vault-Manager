@@ -85,6 +85,26 @@ class ChunkActionAuthorityTest: public testing::Test {
     return appendable_by_all_chunk.SerializeAsString();
   }
 
+  void ValidStoreTests(const std::string &name, const std::string &content) {
+    EXPECT_EQ(kInvalidSignedData,
+              chunk_action_authority_->ValidStore(name, "",
+                                                  key_.public_key));
+    EXPECT_EQ(kInvalidPublicKey,
+              chunk_action_authority_->ValidStore(name, content,
+                                                  rsa::PublicKey()));
+    EXPECT_EQ(kSignatureVerificationFailure,
+              chunk_action_authority_->ValidStore(name, content,
+                                                  key1_.public_key));
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidStore(name, content,
+                                                  key_.public_key));
+    // tests for the chunk already exists
+    chunk_store_->Store(name, content);
+    EXPECT_EQ(kKeyNotUnique,
+              chunk_action_authority_->ValidStore(name, content,
+                                                  key_.public_key));
+  }
+
   std::shared_ptr<fs::path> test_dir_;
   fs::path chunk_dir_;
   std::shared_ptr<FileChunkStore> chunk_store_;
@@ -132,70 +152,55 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidName_Cacheable) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
-  rsa::PublicKey fake_public_key;
-
+  EXPECT_EQ(kInvalidChunkType,
+            chunk_action_authority_->ValidStore("", content_,
+                                                key_.public_key));
+  EXPECT_EQ(kInvalidChunkType,
+            chunk_action_authority_->ValidStore(RandomString(512), content_,
+                                                key_.public_key));
+  EXPECT_EQ(kInvalidChunkType,
+            chunk_action_authority_->ValidStore(RandomString(513), content_,
+                                                key_.public_key));
   // tests for DefaultTypePacket
-  EXPECT_EQ(kInvalidChunkType, chunk_action_authority_->ValidStore("", content_,
-                                                            key_.public_key));
-  EXPECT_EQ(kNotHashable, chunk_action_authority_->ValidStore(hash_name_, "",
-                                                      key_.public_key));
-  EXPECT_EQ(kNotHashable, chunk_action_authority_->ValidStore(hash_name_,
-                                                      RandomString(100),
-                                                      key_.public_key));
-  EXPECT_EQ(kInvalidPublicKey, chunk_action_authority_->ValidStore(hash_name_,
-                                                            content_,
-                                                            fake_public_key));
-  EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(hash_name_,
-                                                          content_,
-                                                          key_.public_key));
-
+  EXPECT_EQ(kNotHashable,
+            chunk_action_authority_->ValidStore(hash_name_, "",
+                                                key_.public_key));
+  EXPECT_EQ(kNotHashable,
+            chunk_action_authority_->ValidStore(hash_name_, RandomString(50),
+                                                key_.public_key));
+  EXPECT_EQ(kInvalidPublicKey,
+            chunk_action_authority_->ValidStore(hash_name_, content_,
+                                                rsa::PublicKey()));
+  EXPECT_EQ(kSuccess,
+            chunk_action_authority_->ValidStore(hash_name_, content_,
+                                                key_.public_key));
+  chunk_store_->Store(hash_name_, RandomString(50));
+  EXPECT_EQ(kInvalidSignedData,
+            chunk_action_authority_->ValidStore(hash_name_, content_,
+                                                key_.public_key));
   // tests for AppendableByAllPacket
   std::string appendable_by_all_name(hash_name_);
   appendable_by_all_name.append(1, chunk_actions::kAppendableByAll);
   std::string appendable_by_all_content(ComposeAppendableByAllPacketContent());
-
-  EXPECT_EQ(kInvalidSignedData, chunk_action_authority_->ValidStore(
-      appendable_by_all_name, "", key_.public_key));
-  EXPECT_EQ(kInvalidPublicKey, chunk_action_authority_->ValidStore(
-      appendable_by_all_name, appendable_by_all_content, fake_public_key));
-  EXPECT_EQ(kSignatureVerificationFailure, chunk_action_authority_->ValidStore(
-      appendable_by_all_name, appendable_by_all_content, key1_.public_key));
-  EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(
-      appendable_by_all_name, appendable_by_all_content, key_.public_key));
+  ValidStoreTests(appendable_by_all_name, appendable_by_all_content);
 
   // tests for SignaturePacket
   std::string signature_content(signed_data_.SerializeAsString());
   std::string signature_name(crypto::Hash<crypto::SHA512>(signature_content));
   signature_name.append(1, chunk_actions::kSignaturePacket);
 
-  EXPECT_EQ(kInvalidSignedData, chunk_action_authority_->ValidStore(
-      signature_name, "", key_.public_key));
-  EXPECT_EQ(kInvalidPublicKey, chunk_action_authority_->ValidStore(
-      signature_name, signature_content, fake_public_key));
-  EXPECT_EQ(kSignatureVerificationFailure, chunk_action_authority_->ValidStore(
-      signature_name, signature_content, key1_.public_key));
-
   std::string fake_name(crypto::Hash<crypto::SHA512>(RandomString(50)));
   fake_name.append(1, chunk_actions::kSignaturePacket);
   EXPECT_EQ(kNotHashable, chunk_action_authority_->ValidStore(
       fake_name, signature_content, key_.public_key));
-  EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(
-      signature_name, signature_content, key_.public_key));
+
+  ValidStoreTests(signature_name, signature_content);
 
   // tests for ModifiableByOwnerPacket
   std::string modifiable_by_owner_content(signed_data_.SerializeAsString());
   std::string modifiable_by_owner_name(hash_name_);
   modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
-
-  EXPECT_EQ(kInvalidSignedData, chunk_action_authority_->ValidStore(
-      modifiable_by_owner_name, "", key_.public_key));
-  EXPECT_EQ(kInvalidPublicKey, chunk_action_authority_->ValidStore(
-      modifiable_by_owner_name, modifiable_by_owner_content, fake_public_key));
-  EXPECT_EQ(kSignatureVerificationFailure, chunk_action_authority_->ValidStore(
-      modifiable_by_owner_name, modifiable_by_owner_content, key1_.public_key));
-
-  EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(
-      modifiable_by_owner_name, modifiable_by_owner_content, key_.public_key));
+  ValidStoreTests(modifiable_by_owner_name, modifiable_by_owner_content);
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidChunk) {

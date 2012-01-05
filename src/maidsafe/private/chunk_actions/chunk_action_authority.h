@@ -40,7 +40,8 @@ namespace maidsafe {
 namespace priv {
 
 namespace test {
-class ChunkActionAuthorityTest_BEH_ValidStore_Test;
+  class ChunkActionAuthorityTest_BEH_ValidStore_Test;
+  class ChunkActionAuthorityTest;
 }  // namespace test
 
 namespace chunk_actions {
@@ -90,6 +91,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
                        const std::string &version,
                        const asymm::PublicKey &public_key) const;
 
+  friend class test::ChunkActionAuthorityTest;
   friend class test::ChunkActionAuthorityTest_BEH_ValidStore_Test;
 
  private:
