@@ -91,8 +91,10 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
     BOOST_VERIFY(existing_chunk.SerializeToString(existing_content));
   } else {
     // Not owner - return only first value
-    *existing_content = existing_chunk.identity_key().SerializeToString();
-    return kNotOwner;
+    if (existing_chunk.identity_key().SerializeToString(existing_content))
+      return kNotOwner;
+    else
+      return kGeneralError;
   }
 
   return kSuccess;
