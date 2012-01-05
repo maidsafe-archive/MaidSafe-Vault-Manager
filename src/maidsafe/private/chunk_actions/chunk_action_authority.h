@@ -39,6 +39,10 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace test {
+class ChunkActionAuthorityTest_BEH_ValidStore_Test;
+}  // namespace test
+
 namespace chunk_actions {
 
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type);
@@ -85,6 +89,8 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual int ValidHas(const std::string &name,
                        const std::string &version,
                        const asymm::PublicKey &public_key) const;
+
+  friend class test::ChunkActionAuthorityTest_BEH_ValidStore_Test;
 
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
