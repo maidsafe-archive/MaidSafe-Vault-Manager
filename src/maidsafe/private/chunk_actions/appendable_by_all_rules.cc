@@ -86,10 +86,13 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
                             public_key) == kSuccess) {
     // Owner - return all data
     *existing_content = all_existing_content;
-  } else {
-    // Not owner - return only first value
+    // and the content in the chunk shall be cleaned up
     existing_chunk.clear_appendices();
     BOOST_VERIFY(existing_chunk.SerializeToString(existing_content));
+  } else {
+    // Not owner - return only first value
+    *existing_content = existing_chunk.identity_key().SerializeToString();
+    return kNotOwner;
   }
 
   return kSuccess;
