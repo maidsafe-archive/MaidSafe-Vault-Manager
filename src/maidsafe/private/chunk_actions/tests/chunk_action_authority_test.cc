@@ -106,6 +106,13 @@ class ChunkActionAuthorityTest: public testing::Test {
                                                   key_.public_key));
   }
 
+  void ValidChunkTests(const std::string &name, const std::string &content) {
+    EXPECT_FALSE(chunk_action_authority_->ValidChunk(name));
+    // tests for the chunk already exists
+    chunk_store_->Store(name, content);
+    EXPECT_TRUE(chunk_action_authority_->ValidChunk(name));
+  }
+
   void ValidGetTests(const std::string &name, const std::string &content) {
     std::string result_content;
     EXPECT_EQ(kFailedToFindChunk,
@@ -219,6 +226,41 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
   ValidStoreTests(modifiable_by_owner_name, modifiable_by_owner_content);
 }
 
+TEST_F(ChunkActionAuthorityTest, BEH_ValidChunk) {
+  // tests for DefaultTypePacket
+  ValidChunkTests(hash_name_, content_);
+  std::string fake_default_name(hash_name_);
+  fake_default_name.replace(0, 4, "####");
+  chunk_store_->Store(fake_default_name, content_);
+  EXPECT_FALSE(chunk_action_authority_->ValidChunk(fake_default_name));
+
+  // tests for AppendableByAllPacket
+  std::string appendable_by_all_name(hash_name_);
+  appendable_by_all_name.append(1, chunk_actions::kAppendableByAll);
+  std::string appendable_by_all_content(ComposeAppendableByAllPacketContent());
+  ValidChunkTests(appendable_by_all_name, appendable_by_all_content);
+
+  // tests for SignaturePacket
+  std::string signature_content(signed_data_.SerializeAsString());
+  std::string signature_name(crypto::Hash<crypto::SHA512>(
+                              signed_data_.data() + signed_data_.signature()));
+  signature_name.append(1, chunk_actions::kSignaturePacket);
+  ValidChunkTests(signature_name, signature_content);
+  std::string fake_signature_name(signature_name);
+  fake_signature_name.replace(0, 4, "####");
+  chunk_store_->Store(fake_signature_name, content_);
+  EXPECT_FALSE(chunk_action_authority_->ValidChunk(fake_signature_name));
+  fake_signature_name.replace(0, 4, "????");
+  chunk_store_->Store(fake_signature_name, signature_content);
+  EXPECT_FALSE(chunk_action_authority_->ValidChunk(fake_signature_name));
+
+  // tests for ModifiableByOwnerPacket
+  std::string modifiable_by_owner_content(signed_data_.SerializeAsString());
+  std::string modifiable_by_owner_name(hash_name_);
+  modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
+  ValidChunkTests(modifiable_by_owner_name, modifiable_by_owner_content);
+}
+
 TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
   // tests for DefaultTypePacket
   ValidGetTests(hash_name_, content_);
@@ -265,9 +307,6 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
   std::string modifiable_by_owner_name(hash_name_);
   modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
   ValidGetTests(modifiable_by_owner_name, modifiable_by_owner_content);
-}
-
-TEST_F(ChunkActionAuthorityTest, BEH_ValidChunk) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_Version) {
