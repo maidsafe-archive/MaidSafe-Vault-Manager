@@ -185,7 +185,8 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
 
   // tests for SignaturePacket
   std::string signature_content(signed_data_.SerializeAsString());
-  std::string signature_name(crypto::Hash<crypto::SHA512>(signature_content));
+  std::string signature_name(crypto::Hash<crypto::SHA512>(
+                              signed_data_.data() + signed_data_.signature()));
   signature_name.append(1, chunk_actions::kSignaturePacket);
 
   std::string fake_name(crypto::Hash<crypto::SHA512>(RandomString(50)));
