@@ -263,6 +263,8 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
         existing_chunk.mutable_allow_others_to_append()->CopyFrom(
             chunk.allow_others_to_append());
         BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+        if (!chunk_store->Modify(name, *new_content))
+          return kModifyFailure;
       }
     } else {
       if (asymm::CheckSignature(chunk.identity_key().data(),
@@ -275,6 +277,8 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
       // Replace field only, leave appendices untouched
       existing_chunk.mutable_identity_key()->CopyFrom(chunk.identity_key());
       BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      if (!chunk_store->Modify(name, *new_content))
+        return kModifyFailure;
     }
   } else {
     char appendability;
@@ -297,6 +301,8 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
 
       existing_chunk.add_appendices()->CopyFrom(appendix);
       BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+      if (!chunk_store->Modify(name, *new_content))
+        return kModifyFailure;
     } else {
       DLOG(INFO) << "Failed to modify " << Base32Substr(name)
                  << ": appending disallowed by owner";
