@@ -27,6 +27,7 @@
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/appendable_by_all_pb.h"
+#include "maidsafe/private/chunk_actions/utils.h"
 #include "maidsafe/private/return_codes.h"
 
 namespace fs = boost::filesystem;
@@ -103,6 +104,21 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_EQ(kKeyNotUnique,
               chunk_action_authority_->ValidStore(name, content,
                                                   key_.public_key));
+  }
+
+  void ValidGetTests(const std::string &name, const std::string &content) {
+    std::string result_content;
+    EXPECT_EQ(kFailedToFindChunk,
+              chunk_action_authority_->ValidGet(name, "",
+                                                key_.public_key,
+                                                &result_content));
+    // tests for the chunk already exists
+    chunk_store_->Store(name, content);
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidGet(name, "",
+                                                key_.public_key,
+                                                &result_content));
+    EXPECT_EQ(content, result_content);
   }
 
   std::shared_ptr<fs::path> test_dir_;
@@ -203,13 +219,58 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
   ValidStoreTests(modifiable_by_owner_name, modifiable_by_owner_content);
 }
 
+TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
+  // tests for DefaultTypePacket
+  ValidGetTests(hash_name_, content_);
+
+  // tests for AppendableByAllPacket
+  std::string appendable_by_all_name(hash_name_);
+  appendable_by_all_name.append(1, chunk_actions::kAppendableByAll);
+  std::string appendable_by_all_content(ComposeAppendableByAllPacketContent());
+  ValidGetTests(appendable_by_all_name, appendable_by_all_content);
+  // a success ValidGet shall clean-up the appendices field
+  std::string existing_content = chunk_store_->Get(appendable_by_all_name);
+  chunk_actions::AppendableByAll current_chunk;
+  chunk_actions::ParseProtobuf<chunk_actions::AppendableByAll>(
+                        existing_content, &current_chunk);
+  EXPECT_EQ(0, current_chunk.appendices_size());
+
+  std::string fake_name(crypto::Hash<crypto::SHA512>(RandomString(50)));
+  fake_name.append(1, chunk_actions::kAppendableByAll);
+  chunk_store_->Store(fake_name, RandomString(50));
+  std::string result_content;
+  EXPECT_EQ(kGeneralError,
+            chunk_action_authority_->ValidGet(fake_name, "",
+                                              key_.public_key,
+                                              &result_content));
+  EXPECT_EQ(kInvalidPublicKey,
+            chunk_action_authority_->ValidGet(appendable_by_all_name, "",
+                                              rsa::PublicKey(),
+                                              &result_content));
+  EXPECT_EQ(kSuccess,
+            chunk_action_authority_->ValidGet(appendable_by_all_name, "",
+                                              key1_.public_key,
+                                              &result_content));
+  EXPECT_EQ(current_chunk.identity_key().SerializeAsString(), result_content);
+
+  // tests for SignaturePacket
+  std::string signature_content(signed_data_.SerializeAsString());
+  std::string signature_name(crypto::Hash<crypto::SHA512>(
+                              signed_data_.data() + signed_data_.signature()));
+  signature_name.append(1, chunk_actions::kSignaturePacket);
+  ValidGetTests(signature_name, signature_content);
+
+  // tests for ModifiableByOwnerPacket
+  std::string modifiable_by_owner_content(signed_data_.SerializeAsString());
+  std::string modifiable_by_owner_name(hash_name_);
+  modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
+  ValidGetTests(modifiable_by_owner_name, modifiable_by_owner_content);
+}
+
 TEST_F(ChunkActionAuthorityTest, BEH_ValidChunk) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_Version) {
-}
-
-TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidDelete) {
