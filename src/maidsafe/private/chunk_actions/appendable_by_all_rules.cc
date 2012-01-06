@@ -88,12 +88,13 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
     *existing_content = all_existing_content;
     // and the content in the chunk shall be cleaned up
     existing_chunk.clear_appendices();
-    BOOST_VERIFY(existing_chunk.SerializeToString(existing_content));
+    std::string with_empty_appendices;
+    BOOST_VERIFY(existing_chunk.SerializeToString(&with_empty_appendices));
+    if (!chunk_store->Modify(name, with_empty_appendices))
+      return kModifyFailure;
   } else {
     // Not owner - return only first value
-    if (existing_chunk.identity_key().SerializeToString(existing_content))
-      return kSuccess;
-    else
+    if (!existing_chunk.identity_key().SerializeToString(existing_content))
       return kGeneralError;
   }
 
