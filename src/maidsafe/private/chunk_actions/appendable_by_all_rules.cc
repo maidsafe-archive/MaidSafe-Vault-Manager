@@ -92,7 +92,7 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
   } else {
     // Not owner - return only first value
     if (existing_chunk.identity_key().SerializeToString(existing_content))
-      return kNotOwner;
+      return kSuccess;
     else
       return kGeneralError;
   }
@@ -225,24 +225,23 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
       return kParseFailure;
     }
 
-    bool allow_others_to_append_empty(
-        chunk.allow_others_to_append().data().empty());
-    bool identity_key_empty(chunk.identity_key().data().empty());
+    bool has_allow_others_to_append(chunk.has_allow_others_to_append());
+    bool has_identity_key(chunk.has_identity_key());
 
     // One and only one new_data of identity_key and allow_others_to_append
     // shall be provided via content
-    if (allow_others_to_append_empty && identity_key_empty) {
+    if ((!has_allow_others_to_append) && (!has_identity_key)) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
                   << ": no new_control_content provided";
       return kInvalidModify;
     }
-    if ((!allow_others_to_append_empty) && (!identity_key_empty)) {
+    if ((has_allow_others_to_append) && (has_identity_key)) {
       DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
                   << ": too much new_control_content provided";
       return kInvalidModify;
     }
 
-    if (!allow_others_to_append_empty) {
+    if (has_allow_others_to_append) {
       if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
                                 chunk.allow_others_to_append().signature(),
                                 public_key) != kSuccess) {
@@ -272,17 +271,9 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
                     << ": signature verification failed";
         return kSignatureVerificationFailure;
       }
-
-      if (chunk.identity_key().data() ==
-          existing_chunk.identity_key().data()) {
-        // Remove appendices only
-        existing_chunk.clear_appendices();
-        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
-      } else {
-        // Replace field only, leave appendices untouched
-        existing_chunk.mutable_identity_key()->CopyFrom(chunk.identity_key());
-        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
-      }
+      // Replace field only, leave appendices untouched
+      existing_chunk.mutable_identity_key()->CopyFrom(chunk.identity_key());
+      BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
     }
   } else {
     char appendability;
