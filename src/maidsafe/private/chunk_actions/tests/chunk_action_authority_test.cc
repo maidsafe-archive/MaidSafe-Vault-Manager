@@ -118,7 +118,6 @@ class ChunkActionAuthorityTest: public testing::Test {
 };
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidName_Cacheable) {
-
   std::string default_type(hash_name_);
   std::string appendable_by_all(hash_name_);
   std::string modifiable_by_owner(hash_name_);
@@ -132,7 +131,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidName_Cacheable) {
   signature_packet.append(1, chunk_actions::kSignaturePacket);
   next_type.append(1, 4);
   wrong_length_long.append(3, 9);
-  wrong_length_short.erase(0,1);
+  wrong_length_short.erase(0, 1);
 
   EXPECT_TRUE(chunk_action_authority_->ValidName(default_type));
   EXPECT_TRUE(chunk_action_authority_->ValidName(appendable_by_all));

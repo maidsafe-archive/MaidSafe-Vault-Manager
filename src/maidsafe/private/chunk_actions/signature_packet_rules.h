@@ -14,7 +14,7 @@
 * ============================================================================
 */
 
-// Applies to TMID, STMID and PKI SignaturePackets
+// Applies to PKI SignaturePackets
 
 #ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
 #define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
@@ -42,6 +42,8 @@ class ChunkStore;
 namespace priv {
 
 namespace chunk_actions {
+
+extern const std::string kRevokedSignaturePacket;
 
 // Returns false
 template <>

@@ -33,6 +33,8 @@ namespace priv {
 
 namespace chunk_actions {
 
+const std::string kRevokedSignaturePacket("0");
+
 template <>
 bool IsCacheable<kSignaturePacket>() { return false; }
 

@@ -26,6 +26,7 @@
 #include "maidsafe/private/chunk_actions/default_rules.h"
 #include "maidsafe/private/chunk_actions/appendable_by_all_rules.h"
 #include "maidsafe/private/chunk_actions/modifiable_by_owner_rules.h"
+#include "maidsafe/private/chunk_actions/signature_packet_rules.h"
 #include "maidsafe/private/chunk_actions/utils.h"
 
 
@@ -85,8 +86,7 @@ bool ChunkActionAuthority::Delete(const std::string &name,
   }
 
   if (chunk_actions::GetDataType(name) == chunk_actions::kSignaturePacket) {
-    chunk_store_->Has(name);
-    if (!chunk_store_->Modify(name, "0")) {
+    if (!chunk_store_->Modify(name, chunk_actions::kRevokedSignaturePacket)) {
       DLOG(ERROR) << "Failed to invalidate " << Base32Substr(name);
       return false;
     }
