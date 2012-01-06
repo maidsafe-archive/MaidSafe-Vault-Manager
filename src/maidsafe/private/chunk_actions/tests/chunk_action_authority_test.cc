@@ -113,6 +113,15 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_TRUE(chunk_action_authority_->ValidChunk(name));
   }
 
+  void ValidHasTests(const std::string &name, const std::string &content) {
+    EXPECT_EQ(kFailedToFindChunk,
+              chunk_action_authority_->ValidHas(name, "", key_.public_key));
+    // tests for the chunk already exists
+    chunk_store_->Store(name, content);
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidHas(name, "", key_.public_key));
+  }
+
   void ValidGetTests(const std::string &name, const std::string &content) {
     std::string result_content;
     EXPECT_EQ(kFailedToFindChunk,
@@ -319,6 +328,27 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidHas) {
+  // tests for DefaultTypePacket
+  ValidHasTests(hash_name_, content_);
+
+  // tests for AppendableByAllPacket
+  std::string appendable_by_all_name(hash_name_);
+  appendable_by_all_name.append(1, chunk_actions::kAppendableByAll);
+  std::string appendable_by_all_content(ComposeAppendableByAllPacketContent());
+  ValidHasTests(appendable_by_all_name, appendable_by_all_content);
+
+  // tests for SignaturePacket
+  std::string signature_content(signed_data_.SerializeAsString());
+  std::string signature_name(crypto::Hash<crypto::SHA512>(
+                              signed_data_.data() + signed_data_.signature()));
+  signature_name.append(1, chunk_actions::kSignaturePacket);
+  ValidHasTests(signature_name, signature_content);
+
+  // tests for ModifiableByOwnerPacket
+  std::string modifiable_by_owner_content(signed_data_.SerializeAsString());
+  std::string modifiable_by_owner_name(hash_name_);
+  modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
+  ValidHasTests(modifiable_by_owner_name, modifiable_by_owner_content);
 }
 
 }  // namespace test
