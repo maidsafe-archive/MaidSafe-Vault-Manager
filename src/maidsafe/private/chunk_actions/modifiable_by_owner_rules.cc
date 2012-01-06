@@ -199,6 +199,8 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
   }
 
   *new_content = content;
+  if (!chunk_store->Modify(name, *new_content))
+    return kModifyFailure;
   return kSuccess;
 }
 
