@@ -116,7 +116,7 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
     return kSignatureVerificationFailure;
   }
 
-  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) !=
+  if (crypto::Hash<crypto::SHA512>(chunk.SerializeAsString()) !=
       RemoveTypeFromName(name)) {
     DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
