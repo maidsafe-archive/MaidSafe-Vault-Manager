@@ -254,8 +254,10 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
       if (chunk.allow_others_to_append().data() ==
           existing_chunk.allow_others_to_append().data()) {
         // Remove appendices only
-        existing_chunk.clear_appendices();
-        BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
+        // TODO (qi.ma) the following clear is commented out as it already
+        // happened in "processget" (get is guaranteed to happen before modify)
+        // existing_chunk.clear_appendices();
+        // BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
       } else {
         // Replace field only, leave appendices untouched
         existing_chunk.mutable_allow_others_to_append()->CopyFrom(
