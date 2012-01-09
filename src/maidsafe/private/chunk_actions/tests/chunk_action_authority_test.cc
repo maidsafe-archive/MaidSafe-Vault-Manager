@@ -68,16 +68,19 @@ class ChunkActionAuthorityTest: public testing::Test {
   }
   void TearDown() {}
 
-  std::string ComposeAppendableByAllPacketContent() {
-    chunk_actions::SignedData signed_allow_others_to_append;
-    std::string allow_others_to_append_signature;
-    std::string allow_others_to_append(RandomString(1));
-    rsa::Sign(allow_others_to_append, key_.private_key,
-              &allow_others_to_append_signature);
-    signed_allow_others_to_append.set_data(allow_others_to_append);
-    signed_allow_others_to_append.set_signature(
-                                      allow_others_to_append_signature);
+  chunk_actions::SignedData ComposeSignedData(const rsa::Keys &keys) {
+    chunk_actions::SignedData signed_data;
+    std::string signature;
+    std::string data(RandomString(1));
+    rsa::Sign(data, keys.private_key, &signature);
+    signed_data.set_data(data);
+    signed_data.set_signature(signature);
+    return signed_data;
+  }
 
+  std::string ComposeAppendableByAllPacketContent() {
+    chunk_actions::SignedData signed_allow_others_to_append(
+                                                  ComposeSignedData(key_));
     chunk_actions::AppendableByAll appendable_by_all_chunk;
     appendable_by_all_chunk.mutable_identity_key()->CopyFrom(signed_data_);
     appendable_by_all_chunk.mutable_allow_others_to_append()
@@ -135,6 +138,36 @@ class ChunkActionAuthorityTest: public testing::Test {
                                                 key_.public_key,
                                                 &result_content));
     EXPECT_EQ(content, result_content);
+  }
+
+  void ValidDeleteTests(const std::string &name, const std::string &content) {
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidDelete(name, "", "",
+                                                   rsa::PublicKey()));
+    chunk_store_->Store(name, "content");
+    EXPECT_EQ(kGeneralError,
+              chunk_action_authority_->ValidDelete(name, "", "",
+                                                   rsa::PublicKey()));
+    chunk_store_->Modify(name, content);
+    EXPECT_EQ(kInvalidPublicKey,
+              chunk_action_authority_->ValidDelete(name, "", "",
+                                                   rsa::PublicKey()));
+    EXPECT_EQ(kSignatureVerificationFailure,
+              chunk_action_authority_->ValidDelete(name, "", "",
+                                                   key1_.public_key));
+    EXPECT_EQ(kNotOwner,
+              chunk_action_authority_->ValidDelete(name, "", RandomString(50),
+                                                   key_.public_key));
+    chunk_actions::SignedData fake_signed_data(ComposeSignedData(key1_));
+    std::string fake_ownership(fake_signed_data.SerializeAsString());
+    EXPECT_EQ(kNotOwner,
+              chunk_action_authority_->ValidDelete(name, "", fake_ownership,
+                                                   key_.public_key));
+    chunk_actions::SignedData signed_data(ComposeSignedData(key_));
+    std::string ownership(signed_data.SerializeAsString());
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidDelete(name, "", ownership,
+                                                   key_.public_key));
   }
 
   std::shared_ptr<fs::path> test_dir_;
@@ -322,6 +355,29 @@ TEST_F(ChunkActionAuthorityTest, BEH_Version) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidDelete) {
+  // tests for DefaultTypePacket
+  EXPECT_EQ(kSuccess,
+            chunk_action_authority_->ValidDelete(hash_name_, "", "",
+                                                 rsa::PublicKey()));
+
+  // tests for AppendableByAllPacket
+  std::string appendable_by_all_name(hash_name_);
+  appendable_by_all_name.append(1, chunk_actions::kAppendableByAll);
+  std::string appendable_by_all_content(ComposeAppendableByAllPacketContent());
+  ValidDeleteTests(appendable_by_all_name, appendable_by_all_content);
+
+  // tests for SignaturePacket
+  std::string signature_content(signed_data_.SerializeAsString());
+  std::string signature_name(crypto::Hash<crypto::SHA512>(
+                              signed_data_.data() + signed_data_.signature()));
+  signature_name.append(1, chunk_actions::kSignaturePacket);
+  ValidDeleteTests(signature_name, signature_content);
+
+  // tests for ModifiableByOwnerPacket
+  std::string modifiable_by_owner_content(signed_data_.SerializeAsString());
+  std::string modifiable_by_owner_name(hash_name_);
+  modifiable_by_owner_name.append(1, chunk_actions::kModifiableByOwner);
+  ValidDeleteTests(modifiable_by_owner_name, modifiable_by_owner_content);
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
