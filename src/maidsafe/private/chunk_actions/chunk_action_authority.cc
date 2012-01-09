@@ -85,16 +85,9 @@ bool ChunkActionAuthority::Delete(const std::string &name,
     return false;
   }
 
-  if (chunk_actions::GetDataType(name) == chunk_actions::kSignaturePacket) {
-    if (!chunk_store_->Modify(name, chunk_actions::kRevokedSignaturePacket)) {
-      DLOG(ERROR) << "Failed to invalidate " << Base32Substr(name);
-      return false;
-    }
-  } else {
-    if (!chunk_store_->Delete(name)) {
-      DLOG(ERROR) << "Failed to delete " << Base32Substr(name);
-      return false;
-    }
+  if (!chunk_store_->Delete(name)) {
+    DLOG(ERROR) << "Failed to delete " << Base32Substr(name);
+    return false;
   }
 
   return true;
