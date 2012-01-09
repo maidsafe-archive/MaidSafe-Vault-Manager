@@ -66,9 +66,7 @@ class ChunkActionAuthorityTest: public testing::Test {
   void SetUp() {
     ASSERT_EQ(kSuccess, GenerateKeyPair(&key_));
     ASSERT_EQ(kSuccess, GenerateKeyPair(&key1_));
-    rsa::Sign(default_content_, key_.private_key, &signature_);
-    signed_data_.set_data(default_content_);
-    signed_data_.set_signature(signature_);
+    signed_data_ = ComposeSignedData(key_, default_content_);
 
     appendable_by_all_name_.append(1, chunk_actions::kAppendableByAll);
     appendable_by_all_content_ = ComposeAppendableByAllPacketContent();
@@ -205,11 +203,20 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_EQ(kNotOwner,
               chunk_action_authority_->ValidDelete(name, "", fake_ownership,
                                                    key_.public_key));
-    chunk_actions::SignedData signed_data(ComposeSignedData(key_));
-    std::string ownership(signed_data.SerializeAsString());
+    std::string ownership(signed_data_.SerializeAsString());
     EXPECT_EQ(kSuccess,
               chunk_action_authority_->ValidDelete(name, "", ownership,
                                                    key_.public_key));
+  }
+  void DeleteTests(const std::string &name, const std::string &content) {
+    // detailed validation tests have been undertaken in the tests of
+    // ValidDelete, so here we only need to check if chunk_store works well
+    chunk_store_->Store(name, content);
+    std::string ownership(signed_data_.SerializeAsString());
+    EXPECT_TRUE(chunk_action_authority_->Delete(name, "", ownership,
+                                                key_.public_key));
+    std::string result(chunk_store_->Get(name));
+    EXPECT_TRUE(result.empty());
   }
 
   void ValidModifyTests(const std::string &name, const std::string &content) {
@@ -577,6 +584,21 @@ TEST_F(ChunkActionAuthorityTest, BEH_Version) {
 
   // tests for ModifiableByOwnerPacket
   VersionTests(modifiable_by_owner_name_, false);
+}
+
+TEST_F(ChunkActionAuthorityTest, BEH_Delete) {
+  // tests for DefaultTypePacket, will always return success
+  EXPECT_TRUE(chunk_action_authority_->Delete(default_name_, "", "",
+                                              rsa::PublicKey()));
+
+  // tests for AppendableByAllPacket
+  DeleteTests(appendable_by_all_name_, appendable_by_all_content_);
+
+  // tests for SignaturePacket
+  DeleteTests(signature_name_, signature_content_);
+
+  // tests for ModifiableByOwnerPacket
+  DeleteTests(modifiable_by_owner_name_, modifiable_by_owner_content_);
 }
 
 }  // namespace test
