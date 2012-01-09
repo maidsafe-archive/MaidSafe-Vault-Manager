@@ -230,6 +230,21 @@ class ChunkActionAuthorityTest: public testing::Test {
                                                    &new_content));
   }
 
+  void VersionTests(const std::string &name, bool hashable) {
+    std::string result(chunk_action_authority_->Version(name));
+    if (hashable)
+      EXPECT_FALSE(result.empty());
+    else
+      EXPECT_TRUE(result.empty());
+    std::string content(RandomString(20));
+    chunk_store_->Store(name, content);
+    result = chunk_action_authority_->Version(name);
+    if (hashable)
+      EXPECT_EQ(result, name.substr(0, crypto::Tiger::DIGESTSIZE));
+    else
+      EXPECT_EQ(result, crypto::Hash<crypto::Tiger>(content));
+  }
+
   std::shared_ptr<fs::path> test_dir_;
   fs::path chunk_dir_;
   std::shared_ptr<FileChunkStore> chunk_store_;
@@ -379,9 +394,6 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
 
   // tests for ModifiableByOwnerPacket
   ValidGetTests(modifiable_by_owner_name_, modifiable_by_owner_content_);
-}
-
-TEST_F(ChunkActionAuthorityTest, BEH_Version) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidDelete) {
@@ -550,6 +562,21 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidHas) {
 
   // tests for ModifiableByOwnerPacket
   ValidHasTests(modifiable_by_owner_name_, modifiable_by_owner_content_);
+}
+
+TEST_F(ChunkActionAuthorityTest, BEH_Version) {
+  //if hashable, then return the name, otherwise return tigerhash of content
+  // tests for DefaultTypePacket
+  VersionTests(default_name_, true);
+
+  // tests for AppendableByAllPacket
+  VersionTests(appendable_by_all_name_, false);
+
+  // tests for SignaturePacket
+  VersionTests(signature_name_, true);
+
+  // tests for ModifiableByOwnerPacket
+  VersionTests(modifiable_by_owner_name_, false);
 }
 
 }  // namespace test
