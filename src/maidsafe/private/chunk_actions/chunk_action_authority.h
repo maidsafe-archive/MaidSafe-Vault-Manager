@@ -44,6 +44,7 @@ namespace test {
   class ChunkActionAuthorityTest_BEH_ValidStore_Test;
   class ChunkActionAuthorityTest_BEH_ValidGet_Test;
   class ChunkActionAuthorityTest_BEH_ValidDelete_Test;
+  class ChunkActionAuthorityTest_BEH_ValidModify_Test;
 }  // namespace test
 
 namespace chunk_actions {
@@ -97,6 +98,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   friend class test::ChunkActionAuthorityTest_BEH_ValidStore_Test;
   friend class test::ChunkActionAuthorityTest_BEH_ValidGet_Test;
   friend class test::ChunkActionAuthorityTest_BEH_ValidDelete_Test;
+  friend class test::ChunkActionAuthorityTest_BEH_ValidModify_Test;
 
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
