@@ -56,8 +56,9 @@ bool IsValidChunk<kDefaultType>(const std::string &name,
 }
 
 template <>
-std::string GetVersion<kDefaultType>(const std::string &name,
-                                     std::shared_ptr<ChunkStore> chunk_store) {
+std::string GetVersion<kDefaultType>(
+    const std::string &name,
+    std::shared_ptr<ChunkStore> /*chunk_store*/) {
   return name.substr(0, crypto::Tiger::DIGESTSIZE);
 }
 

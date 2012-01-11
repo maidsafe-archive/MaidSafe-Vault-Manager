@@ -61,13 +61,6 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   explicit ChunkActionAuthority(std::shared_ptr<ChunkStore> chunk_store)
       : maidsafe::ChunkActionAuthority(chunk_store) {}
   virtual ~ChunkActionAuthority() {}
-  // Delete is as per base class Delete except for SignaturePackets, which are
-  // replaced with invalid content to avoid them being renewed by a different
-  // owner
-  virtual bool Delete(const std::string &name,
-                      const std::string &version,
-                      const std::string &ownership_proof,
-                      const asymm::PublicKey &public_key);
   virtual bool ValidName(const std::string &name) const;
   virtual bool Cacheable(const std::string &name) const;
   virtual bool ValidChunk(const std::string &name) const;

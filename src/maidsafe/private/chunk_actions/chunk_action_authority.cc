@@ -74,25 +74,6 @@ unsigned char GetDataType(const std::string &name) {
 }  // namespace chunk_actions
 
 
-bool ChunkActionAuthority::Delete(const std::string &name,
-                                  const std::string &version,
-                                  const std::string &ownership_proof,
-                                  const asymm::PublicKey &public_key) {
-  int result(ValidDelete(name, version, ownership_proof, public_key));
-  if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to delete " << Base32Substr(name) << ": "
-                << result;
-    return false;
-  }
-
-  if (!chunk_store_->Delete(name)) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name);
-    return false;
-  }
-
-  return true;
-}
-
 bool ChunkActionAuthority::ValidName(const std::string &name) const {
   return (chunk_actions::GetDataType(name) != chunk_actions::kUnknownType);
 }

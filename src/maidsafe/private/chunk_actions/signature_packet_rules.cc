@@ -68,7 +68,7 @@ bool IsValidChunk<kSignaturePacket>(const std::string &name,
 template <>
 std::string GetVersion<kSignaturePacket>(
     const std::string &name,
-    std::shared_ptr<ChunkStore> chunk_store) {
+    std::shared_ptr<ChunkStore> /*chunk_store*/) {
   return name.substr(0, crypto::Tiger::DIGESTSIZE);
 }
 
