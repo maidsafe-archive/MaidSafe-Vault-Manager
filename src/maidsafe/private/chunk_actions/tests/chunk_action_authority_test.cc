@@ -370,11 +370,11 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
 
   // tests for AppendableByAllPacket
   ValidGetTests(appendable_by_all_name_, appendable_by_all_content_);
-//   std::string existing_content = chunk_store_->Get(appendable_by_all_name);
-//   chunk_actions::AppendableByAll current_chunk;
-//   chunk_actions::ParseProtobuf<chunk_actions::AppendableByAll>(
-//                         existing_content, &current_chunk);
-//   EXPECT_EQ(0, current_chunk.appendices_size());
+  std::string existing_content = chunk_store_->Get(appendable_by_all_name_);
+  chunk_actions::AppendableByAll current_chunk;
+  chunk_actions::ParseProtobuf<chunk_actions::AppendableByAll>(
+                       existing_content, &current_chunk);
+  EXPECT_EQ(0, current_chunk.appendices_size());
   std::string fake_name(crypto::Hash<crypto::SHA512>(RandomString(50)));
   fake_name.append(1, chunk_actions::kAppendableByAll);
   chunk_store_->Store(fake_name, RandomString(50));
@@ -391,7 +391,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
             chunk_action_authority_->ValidGet(appendable_by_all_name_, "",
                                               key1_.public_key,
                                               &result_content));
-  chunk_actions::AppendableByAll current_chunk;
+  current_chunk.Clear();
   chunk_actions::ParseProtobuf<chunk_actions::AppendableByAll>(
                         appendable_by_all_content_, &current_chunk);
   EXPECT_EQ(current_chunk.identity_key().SerializeAsString(), result_content);
