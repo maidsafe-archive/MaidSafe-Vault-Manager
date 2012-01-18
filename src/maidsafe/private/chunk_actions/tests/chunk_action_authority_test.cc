@@ -572,7 +572,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidHas) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_Version) {
-  //if hashable, then return the name, otherwise return tigerhash of content
+  // if hashable, then return the name, otherwise return tigerhash of content
   // tests for DefaultTypePacket
   VersionTests(default_name_, true);
 
