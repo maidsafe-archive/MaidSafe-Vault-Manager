@@ -122,6 +122,7 @@ int ProcessModify<kDefaultType>(const std::string &name,
                                 const std::string &/*content*/,
                                 const std::string &/*version*/,
                                 const asymm::PublicKey &/*public_key*/,
+                                int64_t * /*size_difference*/,
                                 std::string * /*new_content*/,
                                 std::shared_ptr<ChunkStore> /*chunk_store*/) {
   DLOG(ERROR) << "Failed to modify " << Base32Substr(name)

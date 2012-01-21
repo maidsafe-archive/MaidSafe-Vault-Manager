@@ -32,6 +32,7 @@ enum ReturnCode {
   kSuccess = 0,
   kGeneralError = -100001,
   kUnknownFailure = -150001,
+  kNullParameter = -150002,
   kKeyNotUnique = -150002,
   kKeyUnique = -150003,
   kParseFailure = -150004,

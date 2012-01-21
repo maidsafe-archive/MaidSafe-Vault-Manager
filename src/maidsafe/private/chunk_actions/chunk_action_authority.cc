@@ -219,20 +219,35 @@ int ChunkActionAuthority::ValidModify(const std::string &name,
                                       const std::string &content,
                                       const std::string &version,
                                       const asymm::PublicKey &public_key,
+                                      int64_t *size_difference,
                                       std::string *new_content) const {
+  if (!size_difference) {
+    DLOG(ERROR) << "nullptr parameter passed.";
+    return kNullParameter;
+  }
+  *size_difference = 0;
+
+  std::string temp_new_content;
+  if (!new_content)
+    new_content = &temp_new_content;
+
   switch (chunk_actions::GetDataType(name)) {
     case chunk_actions::kDefaultType:
       return chunk_actions::ProcessModify<chunk_actions::kDefaultType>(name,
-                 content, version, public_key, new_content, chunk_store_);
+                 content, version, public_key, size_difference, new_content,
+                 chunk_store_);
     case chunk_actions::kAppendableByAll:
       return chunk_actions::ProcessModify<chunk_actions::kAppendableByAll>(name,
-                 content, version, public_key, new_content, chunk_store_);
+                 content, version, public_key, size_difference, new_content,
+                 chunk_store_);
     case chunk_actions::kModifiableByOwner:
       return chunk_actions::ProcessModify<chunk_actions::kModifiableByOwner>(
-                 name, content, version, public_key, new_content, chunk_store_);
+                 name, content, version, public_key, size_difference,
+                 new_content, chunk_store_);
     case chunk_actions::kSignaturePacket:
       return chunk_actions::ProcessModify<chunk_actions::kSignaturePacket>(name,
-                 content, version, public_key, new_content, chunk_store_);
+                 content, version, public_key, size_difference, new_content,
+                 chunk_store_);
     case chunk_actions::kUnknownType:
     default:
       DLOG(ERROR) << "Unknown type "

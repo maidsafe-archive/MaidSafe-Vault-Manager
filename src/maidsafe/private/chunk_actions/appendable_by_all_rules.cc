@@ -191,6 +191,7 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
                                     const std::string &content,
                                     const std::string &/*version*/,
                                     const asymm::PublicKey &public_key,
+                                    int64_t *size_difference,
                                     std::string *new_content,
                                     std::shared_ptr<ChunkStore> chunk_store) {
   new_content->clear();
@@ -304,6 +305,7 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
     }
   }
 
+  *size_difference = existing_content.size() - new_content->size();
   return kSuccess;
 }
 
