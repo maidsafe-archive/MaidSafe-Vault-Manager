@@ -26,9 +26,10 @@ message Introduction {
 // annotating files, etc.
 message Message {
   enum ContentType {
-    kNormal = 1;
-    kFileTransfer = 2;
-    kSharedDirectory = 3;
+    kNormal = 0;
+    kFileTransfer = 1;
+    kSharedDirectory = 2;
+    kEmail = 3;
   };
 
   required ContentType type = 1;
