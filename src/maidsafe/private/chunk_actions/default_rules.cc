@@ -80,14 +80,8 @@ int ProcessGet<kDefaultType>(const std::string &name,
 template <>
 int ProcessStore<kDefaultType>(const std::string &name,
                                const std::string &content,
-                               const asymm::PublicKey &public_key,
+                               const asymm::PublicKey &/*public_key*/,
                                std::shared_ptr<ChunkStore> chunk_store) {
-  if (!asymm::ValidateKey(public_key)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
-                << ": invalid public key";
-    return kInvalidPublicKey;
-  }
-
   std::string existing_content(chunk_store->Get(name));
   if (existing_content.empty()) {
     // New chunk on network - check data hashes to name

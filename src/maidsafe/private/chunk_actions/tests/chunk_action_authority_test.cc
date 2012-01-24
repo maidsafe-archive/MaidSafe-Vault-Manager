@@ -327,9 +327,9 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
   EXPECT_EQ(kNotHashable,
             chunk_action_authority_->ValidStore(default_name_, RandomString(50),
                                                 key_.public_key));
-  EXPECT_EQ(kInvalidPublicKey,
+  /* EXPECT_EQ(kInvalidPublicKey,
             chunk_action_authority_->ValidStore(default_name_, default_content_,
-                                                rsa::PublicKey()));
+                                                rsa::PublicKey())); */
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidStore(default_name_, default_content_,
                                                 key_.public_key));
