@@ -56,12 +56,12 @@ template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
   try {
     if (!protobuf_type->ParseFromString(serialised_data)) {
-      DLOG(ERROR) << "Failed to parse";
+//      std::cout << "Failed to parse" << std::endl;
       return false;
     }
   }
   catch(const std::exception &e) {
-    DLOG(ERROR) << "Failed to parse: " << e.what();
+//    std::cout << "Failed to parse: " << e.what() << std::endl;
     return false;
   }
   return true;
