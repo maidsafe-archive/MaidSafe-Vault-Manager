@@ -32,11 +32,16 @@ namespace priv {
 
 namespace chunk_actions {
 
+void PrintToLog(const std::string &message) {
+  DLOG(ERROR) << message;
+}
+
 std::string GetTigerHash(const std::string &name,
                          std::shared_ptr<ChunkStore> chunk_store) {
   std::string content = chunk_store->Get(name);
   if (content.empty()) {
-    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+    DLOG(WARNING) << "Failed to get Tiger hash " << Base32Substr(name)
+                  << " (failed to retrieve chunk from ChunkStore)";
     return "";
   }
   return crypto::Hash<crypto::Tiger>(content);

@@ -45,6 +45,9 @@ namespace priv {
 
 namespace chunk_actions {
 
+// Need this helper to avoid #include log.h in this header.
+void PrintToLog(const std::string &message);
+
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
@@ -56,12 +59,12 @@ template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
   try {
     if (!protobuf_type->ParseFromString(serialised_data)) {
-//      std::cout << "Failed to parse" << std::endl;
+      PrintToLog(std::string("ParseProtobuf - Failed to parse."));
       return false;
     }
   }
   catch(const std::exception &e) {
-//    std::cout << "Failed to parse: " << e.what() << std::endl;
+    PrintToLog(std::string("ParseProtobuf - Failed to parse: ") + e.what());
     return false;
   }
   return true;
