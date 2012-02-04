@@ -45,9 +45,13 @@ namespace chunk_actions {
 
 extern const std::string kRevokedSignaturePacket;
 
-// Returns false
+// Returns false.
 template <>
 bool IsCacheable<kSignaturePacket>();
+
+// Returns false.
+template <>
+bool IsModifiable<kSignaturePacket>();
 
 // Returns true if the chunk exists, and
 // name == Hash(chunk.data() + chunk.signature()).
@@ -55,7 +59,7 @@ template <>
 bool IsValidChunk<kSignaturePacket>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store);
 
-// Returns first 24 bytes of name
+// Returns first 24 bytes of name.
 template <>
 std::string GetVersion<kSignaturePacket>(
     const std::string &name,
@@ -63,7 +67,8 @@ std::string GetVersion<kSignaturePacket>(
 
 // Any user can Get.
 // For overall success, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
+// NB - version is not used in this function.
 template <>
 int ProcessGet<kSignaturePacket>(const std::string &name,
                                  const std::string &version,
@@ -89,11 +94,12 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
 // For overall success, the following must be true:
 //   * the chunk doesn't already exsist
 //                OR
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
+// NB - version is not used in this function.
 template <>
 int ProcessDelete<kSignaturePacket>(const std::string &name,
                                     const std::string &version,
@@ -105,7 +111,6 @@ int ProcessDelete<kSignaturePacket>(const std::string &name,
 template <>
 int ProcessModify<kSignaturePacket>(const std::string &name,
                                     const std::string &content,
-                                    const std::string &version,
                                     const asymm::PublicKey &public_key,
                                     int64_t *size_difference,
                                     std::string *new_content,
@@ -113,7 +118,8 @@ int ProcessModify<kSignaturePacket>(const std::string &name,
 
 // Any user can call Has.
 // For overall success, the following must be true:
-//   * chunk_store.has() succeeds.
+//   * chunk_store.has() succeeds
+// NB - version is not used in this function.
 template <>
 int ProcessHas<kSignaturePacket>(const std::string &name,
                                  const std::string &version,

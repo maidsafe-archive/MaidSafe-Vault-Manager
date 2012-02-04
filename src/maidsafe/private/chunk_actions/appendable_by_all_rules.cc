@@ -37,6 +37,9 @@ template <>
 bool IsCacheable<kAppendableByAll>() { return false; }
 
 template <>
+bool IsModifiable<kAppendableByAll>() { return true; }
+
+template <>
 bool IsValidChunk<kAppendableByAll>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
@@ -52,7 +55,9 @@ template <>
 std::string GetVersion<kAppendableByAll>(
     const std::string &name,
     std::shared_ptr<ChunkStore> chunk_store) {
-  return GetTigerHash(name, chunk_store);
+  std::string content, hash;
+  return (GetContentAndTigerHash(name, chunk_store, &content,
+                                 &hash) == kSuccess ? hash : "");
 }
 
 template <>
@@ -189,7 +194,6 @@ int ProcessDelete<kAppendableByAll>(
 template <>
 int ProcessModify<kAppendableByAll>(const std::string &name,
                                     const std::string &content,
-                                    const std::string &/*version*/,
                                     const asymm::PublicKey &public_key,
                                     int64_t *size_difference,
                                     std::string *new_content,

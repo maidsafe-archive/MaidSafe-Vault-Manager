@@ -46,6 +46,9 @@ template <unsigned char DataType>
 bool IsCacheable();
 
 template <unsigned char DataType>
+bool IsModifiable();
+
+template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
                   std::shared_ptr<ChunkStore> chunk_store);
 
@@ -76,7 +79,6 @@ int ProcessDelete(const std::string &name,
 template <unsigned char DataType>
 int ProcessModify(const std::string &name,
                   const std::string &content,
-                  const std::string &version,
                   const asymm::PublicKey &public_key,
                   int64_t *size_difference,
                   std::string *new_content,
@@ -88,23 +90,30 @@ int ProcessHas(const std::string &name,
                const asymm::PublicKey &public_key,
                std::shared_ptr<ChunkStore> chunk_store);
 
-// Returns true
+// Returns true.
 template <>
 bool IsCacheable<kDefaultType>();
+
+
+// Returns false.
+template <>
+bool IsModifiable<kDefaultType>();
+
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store);
 
-// Returns first 24 bytes of name
+// Returns first 24 bytes of name.
 template <>
 std::string GetVersion<kDefaultType>(const std::string &name,
                                      std::shared_ptr<ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
+// NB - version is not used in this function.
 template <>
 int ProcessGet<kDefaultType>(const std::string &name,
                              const std::string &version,
@@ -116,7 +125,7 @@ int ProcessGet<kDefaultType>(const std::string &name,
 // For overall success, the following must be true:
 //   * public_key is valid
 //   * if the chunk exsist already, content must match existing content,
-//     otherwise name must match Hash(content).
+//     otherwise name must match Hash(content)
 // This assumes that public_key has not been revoked on the network.
 template <>
 int ProcessStore<kDefaultType>(const std::string &name,
@@ -129,6 +138,7 @@ int ProcessStore<kDefaultType>(const std::string &name,
 // This assumes that owner of public_key has already been confirmed as being
 // a valid Chunk Info Holder, and that public_key has not been revoked on the
 // network.
+// NB - version is not used in this function.
 template <>
 int ProcessDelete<kDefaultType>(const std::string &name,
                                 const std::string &version,
@@ -140,7 +150,6 @@ int ProcessDelete<kDefaultType>(const std::string &name,
 template <>
 int ProcessModify<kDefaultType>(const std::string &name,
                                 const std::string &content,
-                                const std::string &version,
                                 const asymm::PublicKey &public_key,
                                 int64_t *size_difference,
                                 std::string *new_content,
@@ -148,7 +157,8 @@ int ProcessModify<kDefaultType>(const std::string &name,
 
 // Any user can call Has.
 // For overall success, the following must be true:
-//   * chunk_store.has() succeeds.
+//   * chunk_store.has() succeeds
+// NB - version is not used in this function.
 template <>
 int ProcessHas<kDefaultType>(const std::string &name,
                              const std::string &version,

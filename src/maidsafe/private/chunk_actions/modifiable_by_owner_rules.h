@@ -43,16 +43,20 @@ namespace priv {
 
 namespace chunk_actions {
 
-// Returns false
+// Returns false.
 template <>
 bool IsCacheable<kModifiableByOwner>();
+
+// Returns true.
+template <>
+bool IsModifiable<kModifiableByOwner>();
 
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kModifiableByOwner>(const std::string &name,
                                       std::shared_ptr<ChunkStore> chunk_store);
 
-// Returns Tiger hash of chunk content
+// Returns Tiger hash of chunk content.
 template <>
 std::string GetVersion<kModifiableByOwner>(
     const std::string &name,
@@ -60,7 +64,9 @@ std::string GetVersion<kModifiableByOwner>(
 
 // Any user can Get.
 // For overall success, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
+//   * if version is not an empty string, retrieved chunk's version must be
+//     identical to this
 template <>
 int ProcessGet<kModifiableByOwner>(const std::string &name,
                                    const std::string &version,
@@ -85,7 +91,11 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
 // For overall success, the following must be true:
 //   * the chunk doesn't already exsist
 //                OR
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
+//   * retrieved chunk's version is different from version input in function
+//                OR
+//   * chunk_store.get() succeeds
+//   * retrieved chunk's version is identical to version input in function
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
@@ -99,7 +109,7 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 
 // Only owner can Modify.
 // For overall success, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * retrieved content parses as SignedData
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
@@ -109,7 +119,6 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 template <>
 int ProcessModify<kModifiableByOwner>(const std::string &name,
                                       const std::string &content,
-                                      const std::string &version,
                                       const asymm::PublicKey &public_key,
                                       int64_t *size_difference,
                                       std::string *new_content,
@@ -117,7 +126,9 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
 
 // Any user can call Has.
 // For overall success, the following must be true:
-//   * chunk_store.has() succeeds.
+//   * chunk_store.has() succeeds
+//   * if version is not an empty string, retrieved chunk's version must be
+//     identical to this
 template <>
 int ProcessHas<kModifiableByOwner>(const std::string &name,
                                    const std::string &version,

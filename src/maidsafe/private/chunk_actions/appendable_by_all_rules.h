@@ -43,16 +43,20 @@ namespace priv {
 
 namespace chunk_actions {
 
-// Returns false
+// Returns false.
 template <>
 bool IsCacheable<kAppendableByAll>();
+
+// Returns true.
+template <>
+bool IsModifiable<kAppendableByAll>();
 
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kAppendableByAll>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store);
 
-// Returns Tiger hash of chunk content
+// Returns Tiger hash of chunk content.
 template <>
 std::string GetVersion<kAppendableByAll>(
     const std::string &name,
@@ -61,9 +65,10 @@ std::string GetVersion<kAppendableByAll>(
 // Any user can Get.  Owner gets all data; non-owner gets only first value
 // which contains owner's public key for encryption of messages.
 // For overall success, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * public_key is valid
 // This assumes that public_key has not been revoked on the network.
+// NB - version is currently ignored for this function.
 template <>
 int ProcessGet<kAppendableByAll>(const std::string &name,
                                  const std::string &version,
@@ -88,11 +93,12 @@ int ProcessStore<kAppendableByAll>(const std::string &name,
 // For overall success, the following must be true:
 //   * the chunk doesn't already exsist
 //                OR
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
+// NB - version is currently ignored for this function.
 template <>
 int ProcessDelete<kAppendableByAll>(
     const std::string &name,
@@ -107,7 +113,7 @@ int ProcessDelete<kAppendableByAll>(
 // Owner can either replace only first value (by sending a modified first value)
 // or can remove all appended values (by sending an unmodified first value).
 // For overall success as owner, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * retrieved content parses as AppendableByAll
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
@@ -116,7 +122,7 @@ int ProcessDelete<kAppendableByAll>(
 // This assumes that public_key has not been revoked on the network.
 // Non-owner can only append a value iff the bool in the first value is true.
 // For overall success as non-owner, the following must be true:
-//   * chunk_store.get() succeeds.
+//   * chunk_store.get() succeeds
 //   * retrieved content parses as AppendableByAll
 //   * public_key is valid
 //   * owner has set allow_others_to_append to true
@@ -126,7 +132,6 @@ int ProcessDelete<kAppendableByAll>(
 template <>
 int ProcessModify<kAppendableByAll>(const std::string &name,
                                     const std::string &content,
-                                    const std::string &version,
                                     const asymm::PublicKey &public_key,
                                     int64_t *size_difference,
                                     std::string *new_content,
@@ -134,7 +139,8 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
 
 // Any user can call Has.
 // For overall success, the following must be true:
-//   * chunk_store.has() succeeds.
+//   * chunk_store.has() succeeds
+// NB - version is currently ignored for this function.
 template <>
 int ProcessHas<kAppendableByAll>(const std::string &name,
                                  const std::string &version,

@@ -181,28 +181,35 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_EQ(kSuccess,
               chunk_action_authority_->ValidDelete(name, "", "",
                                                    rsa::PublicKey()));
+    EXPECT_EQ(kSuccess,
+              chunk_action_authority_->ValidDelete(name, "other version", "",
+                                                   rsa::PublicKey()));
     chunk_store_->Store(name, "content");
+    std::string tiger_hash(crypto::Hash<crypto::Tiger>("content"));
     EXPECT_EQ(kGeneralError,
-              chunk_action_authority_->ValidDelete(name, "", "",
+              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
                                                    rsa::PublicKey()));
     chunk_store_->Modify(name, content);
+    tiger_hash = crypto::Hash<crypto::Tiger>(content);
     EXPECT_EQ(kInvalidPublicKey,
-              chunk_action_authority_->ValidDelete(name, "", "",
+              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
                                                    rsa::PublicKey()));
     EXPECT_EQ(kSignatureVerificationFailure,
-              chunk_action_authority_->ValidDelete(name, "", "",
+              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
                                                    key1_.public_key));
     EXPECT_EQ(kNotOwner,
-              chunk_action_authority_->ValidDelete(name, "", RandomString(50),
+              chunk_action_authority_->ValidDelete(name, tiger_hash,
+                                                   RandomString(50),
                                                    key_.public_key));
     chunk_actions::SignedData fake_signed_data(ComposeSignedData(key1_));
     std::string fake_ownership(fake_signed_data.SerializeAsString());
     EXPECT_EQ(kNotOwner,
-              chunk_action_authority_->ValidDelete(name, "", fake_ownership,
+              chunk_action_authority_->ValidDelete(name, tiger_hash,
+                                                   fake_ownership,
                                                    key_.public_key));
     std::string ownership(signed_data_.SerializeAsString());
     EXPECT_EQ(kSuccess,
-              chunk_action_authority_->ValidDelete(name, "", ownership,
+              chunk_action_authority_->ValidDelete(name, tiger_hash, ownership,
                                                    key_.public_key));
   }
 
@@ -221,10 +228,10 @@ class ChunkActionAuthorityTest: public testing::Test {
     int64_t size_difference(10);
     std::string new_content;
     EXPECT_EQ(kNullParameter,
-              chunk_action_authority_->ValidModify(name, "", "",
+              chunk_action_authority_->ValidModify(name, "",
                                                    rsa::PublicKey(), nullptr));
     EXPECT_EQ(kFailedToFindChunk,
-              chunk_action_authority_->ValidModify(name, "", "",
+              chunk_action_authority_->ValidModify(name, "",
                                                    rsa::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
@@ -233,7 +240,7 @@ class ChunkActionAuthorityTest: public testing::Test {
     std::string original_data("content");
     EXPECT_TRUE(chunk_store_->Store(name, original_data));
     EXPECT_EQ(kGeneralError,
-              chunk_action_authority_->ValidModify(name, "", "",
+              chunk_action_authority_->ValidModify(name, "",
                                                    rsa::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
@@ -241,7 +248,7 @@ class ChunkActionAuthorityTest: public testing::Test {
     size_difference = 10;
     EXPECT_TRUE(chunk_store_->Modify(name, content));
     EXPECT_EQ(kInvalidPublicKey,
-              chunk_action_authority_->ValidModify(name, "", "",
+              chunk_action_authority_->ValidModify(name, "",
                                                    rsa::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
@@ -283,29 +290,46 @@ class ChunkActionAuthorityTest: public testing::Test {
   std::shared_ptr<ChunkActionAuthority> chunk_action_authority_;
 };
 
-TEST_F(ChunkActionAuthorityTest, BEH_ValidName_Cacheable) {
-  std::string next_type(default_name_);
-  std::string wrong_length_long(default_name_);
-  std::string wrong_length_short(default_name_);
-  next_type.append(1, 4);
-  wrong_length_long.append(3, 9);
-  wrong_length_short.erase(0, 1);
+TEST_F(ChunkActionAuthorityTest, BEH_ValidName) {
+  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string wrong_length_long(default_name_ + "aa");
+  std::string wrong_length_short(default_name_.substr(1));
 
   EXPECT_TRUE(chunk_action_authority_->ValidName(default_name_));
   EXPECT_TRUE(chunk_action_authority_->ValidName(appendable_by_all_name_));
   EXPECT_TRUE(chunk_action_authority_->ValidName(modifiable_by_owner_name_));
   EXPECT_TRUE(chunk_action_authority_->ValidName(signature_name_));
-  EXPECT_FALSE(chunk_action_authority_->ValidName(next_type));
+  EXPECT_FALSE(chunk_action_authority_->ValidName(invalid_type));
   EXPECT_FALSE(chunk_action_authority_->ValidName(wrong_length_long));
   EXPECT_FALSE(chunk_action_authority_->ValidName(wrong_length_short));
+}
+
+TEST_F(ChunkActionAuthorityTest, BEH_Cacheable) {
+  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string wrong_length_long(default_name_ + "aa");
+  std::string wrong_length_short(default_name_.substr(1));
 
   EXPECT_TRUE(chunk_action_authority_->Cacheable(default_name_));
   EXPECT_FALSE(chunk_action_authority_->Cacheable(appendable_by_all_name_));
   EXPECT_FALSE(chunk_action_authority_->Cacheable(modifiable_by_owner_name_));
   EXPECT_FALSE(chunk_action_authority_->Cacheable(signature_name_));
-  EXPECT_FALSE(chunk_action_authority_->Cacheable(next_type));
+  EXPECT_FALSE(chunk_action_authority_->Cacheable(invalid_type));
   EXPECT_FALSE(chunk_action_authority_->Cacheable(wrong_length_long));
   EXPECT_FALSE(chunk_action_authority_->Cacheable(wrong_length_short));
+}
+
+TEST_F(ChunkActionAuthorityTest, BEH_Modifiable) {
+  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string wrong_length_long(default_name_ + "aa");
+  std::string wrong_length_short(default_name_.substr(1));
+
+  EXPECT_FALSE(chunk_action_authority_->Modifiable(default_name_));
+  EXPECT_TRUE(chunk_action_authority_->Modifiable(appendable_by_all_name_));
+  EXPECT_TRUE(chunk_action_authority_->Modifiable(modifiable_by_owner_name_));
+  EXPECT_FALSE(chunk_action_authority_->Modifiable(signature_name_));
+  EXPECT_FALSE(chunk_action_authority_->Modifiable(invalid_type));
+  EXPECT_FALSE(chunk_action_authority_->Modifiable(wrong_length_long));
+  EXPECT_FALSE(chunk_action_authority_->Modifiable(wrong_length_short));
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
@@ -436,7 +460,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   // tests for DefaultTypePacket
   int64_t size_difference;
   EXPECT_EQ(kInvalidModify,
-            chunk_action_authority_->ValidModify(default_name_, "", "",
+            chunk_action_authority_->ValidModify(default_name_, "",
                                                  rsa::PublicKey(),
                                                  &size_difference));
 
@@ -447,7 +471,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   // being owner
   EXPECT_EQ(kParseFailure,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 RandomString(10), "",
+                                                 RandomString(10),
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -461,7 +485,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           false, identity_key, identity));
   EXPECT_EQ(kInvalidModify,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 non_control_content, "",
+                                                 non_control_content,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -470,7 +494,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           true, identity_key, identity));
   EXPECT_EQ(kInvalidModify,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 both_control_content, "",
+                                                 both_control_content,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -479,7 +503,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           false, identity_key, identity));
   EXPECT_EQ(kSignatureVerificationFailure,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 fake_appendability_only, "",
+                                                 fake_appendability_only,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -488,7 +512,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           true, identity_key, identity));
   EXPECT_EQ(kSignatureVerificationFailure,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 fake_identity_only, "",
+                                                 fake_identity_only,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -497,7 +521,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           false, key_, identity));
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 appendability_only, "",
+                                                 appendability_only,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -514,7 +538,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
           true, key_, identity));
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 identity_only, "",
+                                                 identity_only,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -528,13 +552,13 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   // being non-owner
   EXPECT_EQ(kSignatureVerificationFailure,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                    signed_data_.SerializeAsString(), "",
+                    signed_data_.SerializeAsString(),
                     key1_.public_key, &size_difference, &response_content));
   chunk_actions::SignedData new_signed_data(ComposeSignedData(key1_));
   std::string new_data(new_signed_data.SerializeAsString());
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 new_data, "",
+                                                 new_data,
                                                  key1_.public_key,
                                                  &size_difference,
                                                  &response_content));
@@ -551,15 +575,14 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
                        diallowed_appendable_by_all_content);
   previous_size = diallowed_appendable_by_all_content.size();
   EXPECT_EQ(kAppendDisallowed,
-            chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 "", "",
+            chunk_action_authority_->ValidModify(appendable_by_all_name_, "",
                                                  key1_.public_key,
                                                  &size_difference,
                                                  &response_content));
 
   // tests for SignaturePacket
   EXPECT_EQ(kInvalidModify,
-            chunk_action_authority_->ValidModify(signature_name_, "", "",
+            chunk_action_authority_->ValidModify(signature_name_, "",
                                                  rsa::PublicKey(),
                                                  &size_difference));
   // tests for ModifiableByOwnerPacket
@@ -567,28 +590,27 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
                                    modifiable_by_owner_content_);
   std::string new_content;
   EXPECT_EQ(kNotOwner,
-            chunk_action_authority_->ValidModify(modifiable_by_owner_name_,
-                                                 "", "",
+            chunk_action_authority_->ValidModify(modifiable_by_owner_name_, "",
                                                  key1_.public_key,
                                                  &size_difference,
                                                  &new_content));
   EXPECT_EQ(kInvalidSignedData,
             chunk_action_authority_->ValidModify(modifiable_by_owner_name_,
-                                                 RandomString(50), "",
+                                                 RandomString(50),
                                                  key_.public_key,
                                                  &size_difference,
                                                  &new_content));
   std::string fake_signed_data(ComposeSignedData(key1_).SerializeAsString());
   EXPECT_EQ(kSignatureVerificationFailure,
             chunk_action_authority_->ValidModify(modifiable_by_owner_name_,
-                                                 fake_signed_data, "",
+                                                 fake_signed_data,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &new_content));
   std::string signed_data(ComposeSignedData(key_).SerializeAsString());
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidModify(modifiable_by_owner_name_,
-                                                 signed_data, "",
+                                                 signed_data,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &new_content));

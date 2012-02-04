@@ -55,20 +55,24 @@ unsigned char GetDataType(const std::string &name) {
   if (name.size() == static_cast<size_t>(crypto::SHA512::DIGESTSIZE))
     return chunk_actions::kDefaultType;
 
-  if (name.size() == crypto::SHA512::DIGESTSIZE + 1) {
-    switch (*name.rbegin()) {
-      case chunk_actions::kAppendableByAll:
-        return chunk_actions::kAppendableByAll;
-      case chunk_actions::kModifiableByOwner:
-        return chunk_actions::kModifiableByOwner;
-      case chunk_actions::kSignaturePacket:
-        return chunk_actions::kSignaturePacket;
-      default:
-        break;
-    }
+  if (name.size() != crypto::SHA512::DIGESTSIZE + 1) {
+    DLOG(WARNING) << "Unknown data type (invalid name size of " << name.size()
+                  << ")";
+    return chunk_actions::kUnknownType;
   }
-  DLOG(WARNING) << "Unknown data type " << static_cast<int>(*name.rbegin());
-  return chunk_actions::kUnknownType;
+
+  switch (*name.rbegin()) {
+    case chunk_actions::kAppendableByAll:
+      return chunk_actions::kAppendableByAll;
+    case chunk_actions::kModifiableByOwner:
+      return chunk_actions::kModifiableByOwner;
+    case chunk_actions::kSignaturePacket:
+      return chunk_actions::kSignaturePacket;
+    default:
+      DLOG(WARNING) << "Unknown data type "
+                    << static_cast<int>(*name.rbegin());
+      return chunk_actions::kUnknownType;
+  }
 }
 
 }  // namespace chunk_actions
@@ -88,6 +92,24 @@ bool ChunkActionAuthority::Cacheable(const std::string &name) const {
       return chunk_actions::IsCacheable<chunk_actions::kModifiableByOwner>();
     case chunk_actions::kSignaturePacket:
       return chunk_actions::IsCacheable<chunk_actions::kSignaturePacket>();
+    case chunk_actions::kUnknownType:
+    default:
+      DLOG(ERROR) << "Unknown type "
+                  << static_cast<int>(chunk_actions::GetDataType(name));
+      return false;
+  }
+}
+
+bool ChunkActionAuthority::Modifiable(const std::string &name) const {
+  switch (chunk_actions::GetDataType(name)) {
+    case chunk_actions::kDefaultType:
+      return chunk_actions::IsModifiable<chunk_actions::kDefaultType>();
+    case chunk_actions::kAppendableByAll:
+      return chunk_actions::IsModifiable<chunk_actions::kAppendableByAll>();
+    case chunk_actions::kModifiableByOwner:
+      return chunk_actions::IsModifiable<chunk_actions::kModifiableByOwner>();
+    case chunk_actions::kSignaturePacket:
+      return chunk_actions::IsModifiable<chunk_actions::kSignaturePacket>();
     case chunk_actions::kUnknownType:
     default:
       DLOG(ERROR) << "Unknown type "
@@ -217,7 +239,6 @@ int ChunkActionAuthority::ValidDelete(
 
 int ChunkActionAuthority::ValidModify(const std::string &name,
                                       const std::string &content,
-                                      const std::string &version,
                                       const asymm::PublicKey &public_key,
                                       int64_t *size_difference,
                                       std::string *new_content) const {
@@ -234,19 +255,19 @@ int ChunkActionAuthority::ValidModify(const std::string &name,
   switch (chunk_actions::GetDataType(name)) {
     case chunk_actions::kDefaultType:
       return chunk_actions::ProcessModify<chunk_actions::kDefaultType>(name,
-                 content, version, public_key, size_difference, new_content,
+                 content, public_key, size_difference, new_content,
                  chunk_store_);
     case chunk_actions::kAppendableByAll:
       return chunk_actions::ProcessModify<chunk_actions::kAppendableByAll>(name,
-                 content, version, public_key, size_difference, new_content,
+                 content, public_key, size_difference, new_content,
                  chunk_store_);
     case chunk_actions::kModifiableByOwner:
       return chunk_actions::ProcessModify<chunk_actions::kModifiableByOwner>(
-                 name, content, version, public_key, size_difference,
-                 new_content, chunk_store_);
+                 name, content, public_key, size_difference, new_content,
+                 chunk_store_);
     case chunk_actions::kSignaturePacket:
       return chunk_actions::ProcessModify<chunk_actions::kSignaturePacket>(name,
-                 content, version, public_key, size_difference, new_content,
+                 content, public_key, size_difference, new_content,
                  chunk_store_);
     case chunk_actions::kUnknownType:
     default:

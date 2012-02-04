@@ -36,15 +36,23 @@ void PrintToLog(const std::string &message) {
   DLOG(ERROR) << message;
 }
 
-std::string GetTigerHash(const std::string &name,
-                         std::shared_ptr<ChunkStore> chunk_store) {
-  std::string content = chunk_store->Get(name);
-  if (content.empty()) {
+int GetContentAndTigerHash(const std::string &name,
+                           std::shared_ptr<ChunkStore> chunk_store,
+                           std::string *chunk_content,
+                           std::string *hash) {
+  *chunk_content = chunk_store->Get(name);
+  if (chunk_content->empty()) {
     DLOG(WARNING) << "Failed to get Tiger hash " << Base32Substr(name)
                   << " (failed to retrieve chunk from ChunkStore)";
-    return "";
+    hash->clear();
+    return kFailedToFindChunk;
   }
-  return crypto::Hash<crypto::Tiger>(content);
+  *hash = crypto::Hash<crypto::Tiger>(*chunk_content);
+  if (hash->empty()) {
+    DLOG(ERROR) << "Failed to create Tiger hash for " << Base32Substr(name);
+    return kHashFailure;
+  }
+  return kSuccess;
 }
 
 }  // namespace chunk_actions

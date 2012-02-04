@@ -39,6 +39,9 @@ template <>
 bool IsCacheable<kSignaturePacket>() { return false; }
 
 template <>
+bool IsModifiable<kSignaturePacket>() { return false; }
+
+template <>
 bool IsValidChunk<kSignaturePacket>(const std::string &name,
                                     std::shared_ptr<ChunkStore> chunk_store) {
   std::string existing_data(chunk_store->Get(name));
@@ -181,7 +184,6 @@ template <>
 int ProcessModify<kSignaturePacket>(
     const std::string &name,
     const std::string &/*content*/,
-    const std::string &/*version*/,
     const asymm::PublicKey &/*public_key*/,
     int64_t * /*size_difference*/,
     std::string * /*new_content*/,

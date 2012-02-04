@@ -36,6 +36,9 @@ template <>
 bool IsCacheable<kModifiableByOwner>() { return false; }
 
 template <>
+bool IsModifiable<kModifiableByOwner>() { return true; }
+
+template <>
 bool IsValidChunk<kModifiableByOwner>(const std::string &name,
                                       std::shared_ptr<ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
@@ -51,19 +54,36 @@ template <>
 std::string GetVersion<kModifiableByOwner>(
     const std::string &name,
     std::shared_ptr<ChunkStore> chunk_store) {
-  return GetTigerHash(name, chunk_store);
+  std::string content, hash;
+  return (GetContentAndTigerHash(name, chunk_store, &content,
+                                 &hash) == kSuccess ? hash : "");
 }
 
 template <>
 int ProcessGet<kModifiableByOwner>(const std::string &name,
-                                   const std::string &/*version*/,
+                                   const std::string &version,
                                    const asymm::PublicKey &/*public_key*/,
                                    std::string *existing_content,
                                    std::shared_ptr<ChunkStore> chunk_store) {
-  *existing_content = chunk_store->Get(name);
-  if (existing_content->empty()) {
-    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
-    return kFailedToFindChunk;
+  if (version.empty()) {
+    *existing_content = chunk_store->Get(name);
+    if (existing_content->empty()) {
+      DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+      return kFailedToFindChunk;
+    }
+  } else {
+    std::string existing_version;
+    int result(GetContentAndTigerHash(name, chunk_store, existing_content,
+                                      &existing_version));
+    if (result != kSuccess) {
+      DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+      return result;
+    }
+    if (version != existing_version) {
+      DLOG(WARNING) << "Failed to get requested version of "
+                    << Base32Substr(name);
+      return kDifferentVersion;
+    }
   }
 
   return kSuccess;
@@ -105,14 +125,20 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
 
 template <>
 int ProcessDelete<kModifiableByOwner>(const std::string &name,
-                                      const std::string &/*version*/,
+                                      const std::string &version,
                                       const std::string &ownership_proof,
                                       const asymm::PublicKey &public_key,
                                       std::shared_ptr<ChunkStore> chunk_store) {
-  std::string existing_content = chunk_store->Get(name);
-  if (existing_content.empty()) {
+  std::string existing_content, existing_version;
+  int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
+                                    &existing_version));
+  if (result == kFailedToFindChunk || version != existing_version) {
     DLOG(INFO) << Base32Substr(name) << " already deleted";
     return kSuccess;
+  } else if (result != kSuccess) {
+    DLOG(ERROR) << "Error getting existing " << Base32Substr(name)
+                << " - failed to delete.";
+    return result;
   }
 
   SignedData existing_chunk;
@@ -154,7 +180,6 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 template <>
 int ProcessModify<kModifiableByOwner>(const std::string &name,
                                       const std::string &content,
-                                      const std::string &/*version*/,
                                       const asymm::PublicKey &public_key,
                                       int64_t *size_difference,
                                       std::string *new_content,
@@ -206,12 +231,27 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
 
 template <>
 int ProcessHas<kModifiableByOwner>(const std::string &name,
-                                   const std::string &/*version*/,
+                                   const std::string &version,
                                    const asymm::PublicKey &/*public_key*/,
                                    std::shared_ptr<ChunkStore> chunk_store) {
-  if (!chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to find " << Base32Substr(name);
-    return kFailedToFindChunk;
+  if (version.empty()) {
+    if (!chunk_store->Has(name)) {
+      DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+      return kFailedToFindChunk;
+    }
+  } else {
+    std::string existing_content, existing_version;
+    int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
+                                      &existing_version));
+    if (result != kSuccess) {
+      DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+      return result;
+    }
+    if (version != existing_version) {
+      DLOG(WARNING) << "Failed to find requested version of "
+                    << Base32Substr(name);
+      return kDifferentVersion;
+    }
   }
 
   return kSuccess;

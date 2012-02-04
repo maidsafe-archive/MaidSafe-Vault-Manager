@@ -38,6 +38,9 @@ template <>
 bool IsCacheable<kDefaultType>() { return true; }
 
 template <>
+bool IsModifiable<kDefaultType>() { return false; }
+
+template <>
 bool IsValidChunk<kDefaultType>(const std::string &name,
                                 std::shared_ptr<ChunkStore> chunk_store) {
   std::string content(chunk_store->Get(name));
@@ -114,7 +117,6 @@ int ProcessDelete<kDefaultType>(const std::string &/*name*/,
 template <>
 int ProcessModify<kDefaultType>(const std::string &name,
                                 const std::string &/*content*/,
-                                const std::string &/*version*/,
                                 const asymm::PublicKey &/*public_key*/,
                                 int64_t * /*size_difference*/,
                                 std::string * /*new_content*/,

@@ -51,8 +51,10 @@ void PrintToLog(const std::string &message);
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
-std::string GetTigerHash(const std::string &name,
-                         std::shared_ptr<ChunkStore> chunk_store);
+int GetContentAndTigerHash(const std::string &name,
+                           std::shared_ptr<ChunkStore> chunk_store,
+                           std::string *chunk_content,
+                           std::string *hash);
 
 
 template <typename T>

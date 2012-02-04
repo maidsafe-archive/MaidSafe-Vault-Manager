@@ -40,11 +40,11 @@ namespace maidsafe {
 namespace priv {
 
 namespace test {
-  class ChunkActionAuthorityTest;
-  class ChunkActionAuthorityTest_BEH_ValidStore_Test;
-  class ChunkActionAuthorityTest_BEH_ValidGet_Test;
-  class ChunkActionAuthorityTest_BEH_ValidDelete_Test;
-  class ChunkActionAuthorityTest_BEH_ValidModify_Test;
+class ChunkActionAuthorityTest;
+class ChunkActionAuthorityTest_BEH_ValidStore_Test;
+class ChunkActionAuthorityTest_BEH_ValidGet_Test;
+class ChunkActionAuthorityTest_BEH_ValidDelete_Test;
+class ChunkActionAuthorityTest_BEH_ValidModify_Test;
 }  // namespace test
 
 namespace chunk_actions {
@@ -63,6 +63,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual ~ChunkActionAuthority() {}
   virtual bool ValidName(const std::string &name) const;
   virtual bool Cacheable(const std::string &name) const;
+  virtual bool Modifiable(const std::string &name) const;
   virtual bool ValidChunk(const std::string &name) const;
   virtual std::string Version(const std::string &name) const;
 
@@ -80,7 +81,6 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
                           const asymm::PublicKey &public_key) const;
   virtual int ValidModify(const std::string &name,
                           const std::string &content,
-                          const std::string &version,
                           const asymm::PublicKey &public_key,
                           int64_t *size_difference,
                           std::string *new_content = NULL) const;
