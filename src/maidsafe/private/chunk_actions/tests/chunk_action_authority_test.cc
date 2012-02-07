@@ -562,7 +562,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
                                                  key1_.public_key,
                                                  &size_difference,
                                                  &response_content));
-  EXPECT_EQ(static_cast<int64_t>(previous_size - response_content.size()),
+  EXPECT_EQ(static_cast<int64_t>(previous_size) - response_content.size(),
             size_difference);
   chunk_actions::AppendableByAll new_chunk;
   chunk_actions::ParseProtobuf<chunk_actions::AppendableByAll>(
