@@ -309,7 +309,8 @@ int ProcessModify<kAppendableByAll>(const std::string &name,
     }
   }
 
-  *size_difference = existing_content.size() - new_content->size();
+  *size_difference = static_cast<int64_t>(existing_content.size()) -
+                     new_content->size();
   return kSuccess;
 }
 

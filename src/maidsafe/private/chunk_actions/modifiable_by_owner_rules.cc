@@ -224,7 +224,8 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
     return kSignatureVerificationFailure;
   }
 
-  *size_difference = existing_content.size() - content.size();
+  *size_difference = static_cast<int64_t>(existing_content.size()) -
+                     content.size();
   *new_content = content;
   return kSuccess;
 }
