@@ -28,7 +28,7 @@
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/version.h"
 
-#if MAIDSAFE_PRIVATE_VERSION != 100
+#if MAIDSAFE_PRIVATE_VERSION != 200
 #  error This API is not compatible with the installed library.\
     Please update the library.
 #endif
