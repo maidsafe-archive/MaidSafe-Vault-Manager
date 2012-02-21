@@ -22,13 +22,13 @@
 
 int main(int argc, char **argv) {
   // Initialise logging
-  google::InitGoogleLogging(argv[0]);
+  maidsafe::InitLogging(argv[0]);
   // Choose to direct output to stderr or not.
   FLAGS_logtostderr = true;
   // If Google logging is linked in, log messages at or above this level.
   // Severity levels are INFO, WARNING, ERROR, and FATAL (0 to 3 respectively).
-  FLAGS_ms_logging_common = google::INFO;
-  FLAGS_ms_logging_private = google::INFO;
+  FLAGS_ms_logging_common = google::FATAL;
+  FLAGS_ms_logging_private = google::FATAL;
 
   testing::InitGoogleTest(&argc, argv);
 

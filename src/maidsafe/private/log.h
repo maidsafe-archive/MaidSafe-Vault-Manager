@@ -20,6 +20,6 @@
 #include "maidsafe/common/log.h"
 
 #undef LOG
-#define LOG(severity) COMPACT_GOOGLE_LOG_ ## severity(private, :).stream()
+#define LOG(severity) MAIDSAFE_LOG(private, severity)
 
 #endif  // MAIDSAFE_PRIVATE_LOG_H_

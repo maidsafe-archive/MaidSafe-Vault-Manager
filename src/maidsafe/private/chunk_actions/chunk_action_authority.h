@@ -71,7 +71,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
   virtual int ValidGet(const std::string &name,
                        const std::string &version,
                        const asymm::PublicKey &public_key,
-                       std::string *existing_content = NULL) const;
+                       std::string *existing_content = nullptr) const;
   virtual int ValidStore(const std::string &name,
                          const std::string &content,
                          const asymm::PublicKey &public_key) const;
@@ -83,7 +83,7 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
                           const std::string &content,
                           const asymm::PublicKey &public_key,
                           int64_t *size_difference,
-                          std::string *new_content = NULL) const;
+                          std::string *new_content = nullptr) const;
   virtual int ValidHas(const std::string &name,
                        const std::string &version,
                        const asymm::PublicKey &public_key) const;
