@@ -16,16 +16,15 @@
 
 #include "maidsafe/private/chunk_actions/signature_packet_rules.h"
 
-#include "maidsafe/common/chunk_action_authority.h"
-#include "maidsafe/common/chunk_store.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/log.h"
+#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/utils.h"
-#include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/log.h"
 
+#include "maidsafe/private/chunk_store/chunk_store.h"
 
 namespace maidsafe {
 
@@ -42,8 +41,9 @@ template <>
 bool IsModifiable<kSignaturePacket>() { return false; }
 
 template <>
-bool IsValidChunk<kSignaturePacket>(const std::string &name,
-                                    std::shared_ptr<ChunkStore> chunk_store) {
+bool IsValidChunk<kSignaturePacket>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
     DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
@@ -71,16 +71,17 @@ bool IsValidChunk<kSignaturePacket>(const std::string &name,
 template <>
 std::string GetVersion<kSignaturePacket>(
     const std::string &name,
-    std::shared_ptr<ChunkStore> /*chunk_store*/) {
+    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   return name.substr(0, crypto::Tiger::DIGESTSIZE);
 }
 
 template <>
-int ProcessGet<kSignaturePacket>(const std::string &name,
-                                 const std::string &/*version*/,
-                                 const asymm::PublicKey &/*public_key*/,
-                                 std::string *existing_content,
-                                 std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessGet<kSignaturePacket>(
+    const std::string &name,
+    const std::string &/*version*/,
+    const asymm::PublicKey &/*public_key*/,
+    std::string *existing_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   *existing_content = chunk_store->Get(name);
   if (existing_content->empty()) {
     DLOG(WARNING) << "Failed to get " << Base32Substr(name);
@@ -91,10 +92,11 @@ int ProcessGet<kSignaturePacket>(const std::string &name,
 }
 
 template <>
-int ProcessStore<kSignaturePacket>(const std::string &name,
-                                   const std::string &content,
-                                   const asymm::PublicKey &public_key,
-                                   std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessStore<kSignaturePacket>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
     DLOG(WARNING) << "Failed to store " << Base32Substr(name)
                   << ": chunk already exists";
@@ -132,11 +134,12 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
 }
 
 template <>
-int ProcessDelete<kSignaturePacket>(const std::string &name,
-                                    const std::string &/*version*/,
-                                    const std::string &ownership_proof,
-                                    const asymm::PublicKey &public_key,
-                                    std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessDelete<kSignaturePacket>(
+    const std::string &name,
+    const std::string &/*version*/,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
     DLOG(INFO) << Base32Substr(name) << " already deleted";
@@ -187,17 +190,18 @@ int ProcessModify<kSignaturePacket>(
     const asymm::PublicKey &/*public_key*/,
     int64_t * /*size_difference*/,
     std::string * /*new_content*/,
-    std::shared_ptr<ChunkStore> /*chunk_store*/) {
+    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
               << ": no modify of SignedData allowed";
   return kInvalidModify;
 }
 
 template <>
-int ProcessHas<kSignaturePacket>(const std::string &name,
-                                 const std::string &/*version*/,
-                                 const asymm::PublicKey &/*public_key*/,
-                                 std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessHas<kSignaturePacket>(
+    const std::string &name,
+    const std::string &/*version*/,
+    const asymm::PublicKey &/*public_key*/,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
     DLOG(WARNING) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;

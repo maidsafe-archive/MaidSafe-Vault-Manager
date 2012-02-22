@@ -21,10 +21,10 @@
 #include <memory>
 #include <string>
 
+#include "boost/filesystem.hpp"
 #include "boost/signals2/signal.hpp"
 
-#include "maidsafe/common/chunk_action_authority.h"
-
+#include "maidsafe/common/rsa.h"
 #include "maidsafe/private/version.h"
 
 #if MAIDSAFE_PRIVATE_VERSION != 200
@@ -33,11 +33,16 @@
 #endif
 
 namespace bs2 = boost::signals2;
+namespace fs = boost::filesystem;
 
 
 namespace maidsafe {
 
 namespace priv {
+
+namespace chunk_store { class ChunkStore; }
+
+namespace chunk_actions {
 
 namespace test {
 class ChunkActionAuthorityTest;
@@ -47,46 +52,55 @@ class ChunkActionAuthorityTest_BEH_ValidDelete_Test;
 class ChunkActionAuthorityTest_BEH_ValidModify_Test;
 }  // namespace test
 
-namespace chunk_actions {
-
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type);
 std::string RemoveTypeFromName(const std::string &name);
 unsigned char GetDataType(const std::string &name);
 
-}  // namespace chunk_actions
-
-
-class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
+class ChunkActionAuthority {
  public:
-  explicit ChunkActionAuthority(std::shared_ptr<ChunkStore> chunk_store)
-      : maidsafe::ChunkActionAuthority(chunk_store) {}
-  virtual ~ChunkActionAuthority() {}
-  virtual bool ValidName(const std::string &name) const;
-  virtual bool Cacheable(const std::string &name) const;
-  virtual bool Modifiable(const std::string &name) const;
-  virtual bool ValidChunk(const std::string &name) const;
-  virtual std::string Version(const std::string &name) const;
+  explicit ChunkActionAuthority(
+      std::shared_ptr<chunk_store::ChunkStore> chunk_store);
+  virtual ~ChunkActionAuthority();
 
- protected:
-  virtual int ValidGet(const std::string &name,
-                       const std::string &version,
-                       const asymm::PublicKey &public_key,
-                       std::string *existing_content = NULL) const;
-  virtual int ValidStore(const std::string &name,
-                         const std::string &content,
-                         const asymm::PublicKey &public_key) const;
-  virtual int ValidDelete(const std::string &name,
-                          const std::string &version,
-                          const std::string &ownership_proof,
-                          const asymm::PublicKey &public_key) const;
-  virtual int ValidModify(const std::string &name,
-                          const std::string &content,
-                          const asymm::PublicKey &public_key,
-                          int64_t *size_difference,
-                          std::string *new_content = NULL) const;
-  virtual int ValidHas(const std::string &name,
-                       const std::string &version,
-                       const asymm::PublicKey &public_key) const;
+  std::string Get(const std::string &name,
+                  const std::string &version,
+                  const asymm::PublicKey &public_key) const;
+  // Retrieves a chunk's content as a file, potentially overwriting an existing
+  // file of the same name.
+  bool Get(const std::string &name,
+           const fs::path &sink_file_name,
+           const std::string &version,
+           const asymm::PublicKey &public_key) const;
+  bool Store(const std::string &name,
+             const std::string &content,
+             const asymm::PublicKey &public_key);
+  bool Store(const std::string &name,
+             const fs::path &source_file_name,
+             bool delete_source_file,
+             const asymm::PublicKey &public_key);
+  // Returns true if chunk deleted or non-existant
+  bool Delete(const std::string &name,
+              const std::string &version,
+              const std::string &ownership_proof,
+              const asymm::PublicKey &public_key);
+  bool Modify(const std::string &name,
+              const std::string &content,
+              const asymm::PublicKey &public_key,
+              int64_t *size_difference);
+  bool Modify(const std::string &name,
+              const fs::path &source_file_name,
+              bool delete_source_file,
+              const asymm::PublicKey &public_key,
+              int64_t *size_difference);
+  bool Has(const std::string &name,
+           const std::string &version,
+           const asymm::PublicKey &public_key) const;
+
+  bool ValidName(const std::string &name) const;
+  bool Cacheable(const std::string &name) const;
+  bool Modifiable(const std::string &name) const;
+  bool ValidChunk(const std::string &name) const;
+  std::string Version(const std::string &name) const;
 
   friend class test::ChunkActionAuthorityTest;
   friend class test::ChunkActionAuthorityTest_BEH_ValidStore_Test;
@@ -97,7 +111,31 @@ class ChunkActionAuthority : public maidsafe::ChunkActionAuthority {
  private:
   ChunkActionAuthority &operator=(const ChunkActionAuthority&);
   ChunkActionAuthority(const ChunkActionAuthority&);
+
+  int ValidGet(const std::string &name,
+               const std::string &version,
+               const asymm::PublicKey &public_key,
+               std::string *existing_content = NULL) const;
+  int ValidStore(const std::string &name,
+                 const std::string &content,
+                 const asymm::PublicKey &public_key) const;
+  int ValidDelete(const std::string &name,
+                  const std::string &version,
+                  const std::string &ownership_proof,
+                  const asymm::PublicKey &public_key) const;
+  int ValidModify(const std::string &name,
+                  const std::string &content,
+                  const asymm::PublicKey &public_key,
+                  int64_t *size_difference,
+                  std::string *new_content = NULL) const;
+  virtual int ValidHas(const std::string &name,
+                       const std::string &version,
+                       const asymm::PublicKey &public_key) const;
+
+  std::shared_ptr<chunk_store::ChunkStore> chunk_store_;
 };
+
+}  // namespace chunk_actions
 
 }  // namespace priv
 

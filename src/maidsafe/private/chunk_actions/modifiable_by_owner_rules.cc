@@ -16,15 +16,16 @@
 
 #include "maidsafe/private/chunk_actions/modifiable_by_owner_rules.h"
 
-#include "maidsafe/common/chunk_action_authority.h"
-#include "maidsafe/common/chunk_store.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/chunk_actions/chunk_pb.h"
-#include "maidsafe/private/chunk_actions/utils.h"
-#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/log.h"
+#include "maidsafe/private/return_codes.h"
 
+#include "maidsafe/private/chunk_actions/chunk_pb.h"
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
+#include "maidsafe/private/chunk_actions/utils.h"
+
+#include "maidsafe/private/chunk_store/chunk_store.h"
 
 namespace maidsafe {
 
@@ -39,8 +40,9 @@ template <>
 bool IsModifiable<kModifiableByOwner>() { return true; }
 
 template <>
-bool IsValidChunk<kModifiableByOwner>(const std::string &name,
-                                      std::shared_ptr<ChunkStore> chunk_store) {
+bool IsValidChunk<kModifiableByOwner>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
   std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
@@ -53,18 +55,19 @@ bool IsValidChunk<kModifiableByOwner>(const std::string &name,
 template <>
 std::string GetVersion<kModifiableByOwner>(
     const std::string &name,
-    std::shared_ptr<ChunkStore> chunk_store) {
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string content, hash;
   return (GetContentAndTigerHash(name, chunk_store, &content,
                                  &hash) == kSuccess ? hash : "");
 }
 
 template <>
-int ProcessGet<kModifiableByOwner>(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &/*public_key*/,
-                                   std::string *existing_content,
-                                   std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessGet<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &/*public_key*/,
+    std::string *existing_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (version.empty()) {
     *existing_content = chunk_store->Get(name);
     if (existing_content->empty()) {
@@ -90,10 +93,11 @@ int ProcessGet<kModifiableByOwner>(const std::string &name,
 }
 
 template <>
-int ProcessStore<kModifiableByOwner>(const std::string &name,
-                                     const std::string &content,
-                                     const asymm::PublicKey &public_key,
-                                     std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessStore<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
     DLOG(WARNING) << "Failed to store " << Base32Substr(name)
                   << ": chunk already exists";
@@ -124,11 +128,12 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
 }
 
 template <>
-int ProcessDelete<kModifiableByOwner>(const std::string &name,
-                                      const std::string &version,
-                                      const std::string &ownership_proof,
-                                      const asymm::PublicKey &public_key,
-                                      std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessDelete<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content, existing_version;
   int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
                                     &existing_version));
@@ -178,12 +183,13 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 }
 
 template <>
-int ProcessModify<kModifiableByOwner>(const std::string &name,
-                                      const std::string &content,
-                                      const asymm::PublicKey &public_key,
-                                      int64_t *size_difference,
-                                      std::string *new_content,
-                                      std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessModify<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    int64_t *size_difference,
+    std::string *new_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   new_content->clear();
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
@@ -231,10 +237,11 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
 }
 
 template <>
-int ProcessHas<kModifiableByOwner>(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &/*public_key*/,
-                                   std::shared_ptr<ChunkStore> chunk_store) {
+int ProcessHas<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &/*public_key*/,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (version.empty()) {
     if (!chunk_store->Has(name)) {
       DLOG(WARNING) << "Failed to find " << Base32Substr(name);

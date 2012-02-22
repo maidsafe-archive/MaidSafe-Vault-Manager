@@ -16,7 +16,6 @@
 
 #include "maidsafe/private/chunk_actions/utils.h"
 
-#include "maidsafe/common/chunk_store.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/utils.h"
 
@@ -25,6 +24,7 @@
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
 
+#include "maidsafe/private/chunk_store/chunk_store.h"
 
 namespace maidsafe {
 
@@ -37,7 +37,7 @@ void PrintToLog(const std::string &message) {
 }
 
 int GetContentAndTigerHash(const std::string &name,
-                           std::shared_ptr<ChunkStore> chunk_store,
+                           std::shared_ptr<chunk_store::ChunkStore> chunk_store,
                            std::string *chunk_content,
                            std::string *hash) {
   *chunk_content = chunk_store->Get(name);

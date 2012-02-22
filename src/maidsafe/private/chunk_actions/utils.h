@@ -22,7 +22,6 @@
 
 #include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/chunk_action_authority.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_types.h"
@@ -38,10 +37,9 @@ namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-class ChunkStore;
-
-
 namespace priv {
+
+namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
@@ -52,7 +50,7 @@ template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
 int GetContentAndTigerHash(const std::string &name,
-                           std::shared_ptr<ChunkStore> chunk_store,
+                           std::shared_ptr<chunk_store::ChunkStore> chunk_store,
                            std::string *chunk_content,
                            std::string *hash);
 

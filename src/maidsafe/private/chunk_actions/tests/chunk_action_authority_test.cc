@@ -16,25 +16,26 @@
 
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 
-#include "boost/asio/io_service.hpp"
-
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/chunk_store.h"
-#include "maidsafe/common/file_chunk_store.h"
-#include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/test.h"
+#include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/chunk_actions/chunk_types.h"
-#include "maidsafe/private/chunk_actions/chunk_pb.h"
-#include "maidsafe/private/chunk_actions/appendable_by_all_pb.h"
-#include "maidsafe/private/chunk_actions/utils.h"
 #include "maidsafe/private/return_codes.h"
+
+#include "maidsafe/private/chunk_actions/appendable_by_all_pb.h"
+#include "maidsafe/private/chunk_actions/chunk_pb.h"
+#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/utils.h"
+
+#include "maidsafe/private/chunk_store/file_chunk_store.h"
 
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
 namespace priv {
+
+namespace chunk_actions {
 
 namespace test {
 
@@ -43,7 +44,7 @@ class ChunkActionAuthorityTest: public testing::Test {
   ChunkActionAuthorityTest()
       : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_TestCAA")),
         chunk_dir_(*test_dir_ / "chunks"),
-        chunk_store_(new FileChunkStore),
+        chunk_store_(new chunk_store::FileChunkStore),
         default_content_(RandomString(100)),
         default_name_(crypto::Hash<crypto::SHA512>(default_content_)),
         appendable_by_all_name_(default_name_),
@@ -274,7 +275,7 @@ class ChunkActionAuthorityTest: public testing::Test {
 
   std::shared_ptr<fs::path> test_dir_;
   fs::path chunk_dir_;
-  std::shared_ptr<FileChunkStore> chunk_store_;
+  std::shared_ptr<chunk_store::FileChunkStore> chunk_store_;
   std::string default_content_;
   std::string default_name_;
   std::string appendable_by_all_name_;
@@ -664,6 +665,8 @@ TEST_F(ChunkActionAuthorityTest, BEH_Delete) {
 }
 
 }  // namespace test
+
+}  // namespace chunk_actions
 
 }  // namespace priv
 

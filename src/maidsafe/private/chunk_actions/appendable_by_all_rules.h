@@ -26,8 +26,8 @@
 
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
-#include "maidsafe/private/version.h"
 
+#include "maidsafe/private/version.h"
 #if MAIDSAFE_PRIVATE_VERSION != 200
 #  error This API is not compatible with the installed library.\
     Please update the library.
@@ -36,10 +36,9 @@
 
 namespace maidsafe {
 
-class ChunkStore;
-
-
 namespace priv {
+
+namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
@@ -53,14 +52,15 @@ bool IsModifiable<kAppendableByAll>();
 
 // Returns true if the chunk exists.
 template <>
-bool IsValidChunk<kAppendableByAll>(const std::string &name,
-                                    std::shared_ptr<ChunkStore> chunk_store);
+bool IsValidChunk<kAppendableByAll>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Returns Tiger hash of chunk content.
 template <>
 std::string GetVersion<kAppendableByAll>(
     const std::string &name,
-    std::shared_ptr<ChunkStore> chunk_store);
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Get.  Owner gets all data; non-owner gets only first value
 // which contains owner's public key for encryption of messages.
@@ -70,11 +70,12 @@ std::string GetVersion<kAppendableByAll>(
 // This assumes that public_key has not been revoked on the network.
 // NB - version is currently ignored for this function.
 template <>
-int ProcessGet<kAppendableByAll>(const std::string &name,
-                                 const std::string &version,
-                                 const asymm::PublicKey &public_key,
-                                 std::string *existing_content,
-                                 std::shared_ptr<ChunkStore> chunk_store);
+int ProcessGet<kAppendableByAll>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::string *existing_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Store.
 // For overall success, the following must be true:
@@ -84,10 +85,11 @@ int ProcessGet<kAppendableByAll>(const std::string &name,
 //   * chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessStore<kAppendableByAll>(const std::string &name,
-                                   const std::string &content,
-                                   const asymm::PublicKey &public_key,
-                                   std::shared_ptr<ChunkStore> chunk_store);
+int ProcessStore<kAppendableByAll>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Only owner can Delete.
 // For overall success, the following must be true:
@@ -105,7 +107,7 @@ int ProcessDelete<kAppendableByAll>(
     const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
-    std::shared_ptr<ChunkStore> chunk_store);
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Modify.
 // The first value contains owner's public key for encryption of messages, and a
@@ -130,22 +132,24 @@ int ProcessDelete<kAppendableByAll>(
 //   * chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessModify<kAppendableByAll>(const std::string &name,
-                                    const std::string &content,
-                                    const asymm::PublicKey &public_key,
-                                    int64_t *size_difference,
-                                    std::string *new_content,
-                                    std::shared_ptr<ChunkStore> chunk_store);
+int ProcessModify<kAppendableByAll>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    int64_t *size_difference,
+    std::string *new_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can call Has.
 // For overall success, the following must be true:
 //   * chunk_store.has() succeeds
 // NB - version is currently ignored for this function.
 template <>
-int ProcessHas<kAppendableByAll>(const std::string &name,
-                                 const std::string &version,
-                                 const asymm::PublicKey &public_key,
-                                 std::shared_ptr<ChunkStore> chunk_store);
+int ProcessHas<kAppendableByAll>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 }  // namespace chunk_actions
 

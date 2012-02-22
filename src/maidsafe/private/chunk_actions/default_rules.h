@@ -35,10 +35,9 @@
 
 namespace maidsafe {
 
-class ChunkStore;
-
-
 namespace priv {
+
+namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
@@ -50,31 +49,31 @@ bool IsModifiable();
 
 template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
-                  std::shared_ptr<ChunkStore> chunk_store);
+                  std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 std::string GetVersion(const std::string &name,
-                       std::shared_ptr<ChunkStore> chunk_store);
+                       std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 int ProcessGet(const std::string &name,
                const std::string &version,
                const asymm::PublicKey &public_key,
                std::string *existing_content,
-               std::shared_ptr<ChunkStore> chunk_store);
+               std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 int ProcessStore(const std::string &name,
                  const std::string &content,
                  const asymm::PublicKey &public_key,
-                 std::shared_ptr<ChunkStore> chunk_store);
+                 std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 int ProcessDelete(const std::string &name,
                   const std::string &version,
                   const std::string &ownership_proof,
                   const asymm::PublicKey &public_key,
-                  std::shared_ptr<ChunkStore> chunk_store);
+                  std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 int ProcessModify(const std::string &name,
@@ -82,13 +81,13 @@ int ProcessModify(const std::string &name,
                   const asymm::PublicKey &public_key,
                   int64_t *size_difference,
                   std::string *new_content,
-                  std::shared_ptr<ChunkStore> chunk_store);
+                  std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <unsigned char DataType>
 int ProcessHas(const std::string &name,
                const std::string &version,
                const asymm::PublicKey &public_key,
-               std::shared_ptr<ChunkStore> chunk_store);
+               std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Returns true.
 template <>
@@ -102,24 +101,27 @@ bool IsModifiable<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>
-bool IsValidChunk<kDefaultType>(const std::string &name,
-                                std::shared_ptr<ChunkStore> chunk_store);
+bool IsValidChunk<kDefaultType>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Returns first 24 bytes of name.
 template <>
-std::string GetVersion<kDefaultType>(const std::string &name,
-                                     std::shared_ptr<ChunkStore> chunk_store);
+std::string GetVersion<kDefaultType>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:
 //   * chunk_store.get() succeeds
 // NB - version is not used in this function.
 template <>
-int ProcessGet<kDefaultType>(const std::string &name,
-                             const std::string &version,
-                             const asymm::PublicKey &public_key,
-                             std::string *existing_content,
-                             std::shared_ptr<ChunkStore> chunk_store);
+int ProcessGet<kDefaultType>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::string *existing_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Store.
 // For overall success, the following must be true:
@@ -128,10 +130,11 @@ int ProcessGet<kDefaultType>(const std::string &name,
 //     otherwise name must match Hash(content)
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessStore<kDefaultType>(const std::string &name,
-                               const std::string &content,
-                               const asymm::PublicKey &public_key,
-                               std::shared_ptr<ChunkStore> chunk_store);
+int ProcessStore<kDefaultType>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Delete.
 // Always returns kSuccess.
@@ -140,30 +143,33 @@ int ProcessStore<kDefaultType>(const std::string &name,
 // network.
 // NB - version is not used in this function.
 template <>
-int ProcessDelete<kDefaultType>(const std::string &name,
-                                const std::string &version,
-                                const std::string &ownership_proof,
-                                const asymm::PublicKey &public_key,
-                                std::shared_ptr<ChunkStore> chunk_store);
+int ProcessDelete<kDefaultType>(
+    const std::string &name,
+    const std::string &version,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Modify is an invalid operation for all users.
 template <>
-int ProcessModify<kDefaultType>(const std::string &name,
-                                const std::string &content,
-                                const asymm::PublicKey &public_key,
-                                int64_t *size_difference,
-                                std::string *new_content,
-                                std::shared_ptr<ChunkStore> chunk_store);
+int ProcessModify<kDefaultType>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    int64_t *size_difference,
+    std::string *new_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can call Has.
 // For overall success, the following must be true:
 //   * chunk_store.has() succeeds
 // NB - version is not used in this function.
 template <>
-int ProcessHas<kDefaultType>(const std::string &name,
-                             const std::string &version,
-                             const asymm::PublicKey &public_key,
-                             std::shared_ptr<ChunkStore> chunk_store);
+int ProcessHas<kDefaultType>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 }  // namespace chunk_actions
 

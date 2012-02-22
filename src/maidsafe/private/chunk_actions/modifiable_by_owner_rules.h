@@ -36,10 +36,9 @@
 
 namespace maidsafe {
 
-class ChunkStore;
-
-
 namespace priv {
+
+namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
@@ -53,14 +52,15 @@ bool IsModifiable<kModifiableByOwner>();
 
 // Returns true if the chunk exists.
 template <>
-bool IsValidChunk<kModifiableByOwner>(const std::string &name,
-                                      std::shared_ptr<ChunkStore> chunk_store);
+bool IsValidChunk<kModifiableByOwner>(
+    const std::string &name,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Returns Tiger hash of chunk content.
 template <>
 std::string GetVersion<kModifiableByOwner>(
     const std::string &name,
-    std::shared_ptr<ChunkStore> chunk_store);
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:
@@ -68,11 +68,12 @@ std::string GetVersion<kModifiableByOwner>(
 //   * if version is not an empty string, retrieved chunk's version must be
 //     identical to this
 template <>
-int ProcessGet<kModifiableByOwner>(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &public_key,
-                                   std::string *existing_content,
-                                   std::shared_ptr<ChunkStore> chunk_store);
+int ProcessGet<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::string *existing_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Store.
 // For overall success, the following must be true:
@@ -82,10 +83,11 @@ int ProcessGet<kModifiableByOwner>(const std::string &name,
 //   * chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessStore<kModifiableByOwner>(const std::string &name,
-                                     const std::string &content,
-                                     const asymm::PublicKey &public_key,
-                                     std::shared_ptr<ChunkStore> chunk_store);
+int ProcessStore<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Only owner can Delete.
 // For overall success, the following must be true:
@@ -101,11 +103,12 @@ int ProcessStore<kModifiableByOwner>(const std::string &name,
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessDelete<kModifiableByOwner>(const std::string &name,
-                                      const std::string &version,
-                                      const std::string &ownership_proof,
-                                      const asymm::PublicKey &public_key,
-                                      std::shared_ptr<ChunkStore> chunk_store);
+int ProcessDelete<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const std::string &ownership_proof,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Only owner can Modify.
 // For overall success, the following must be true:
@@ -117,12 +120,13 @@ int ProcessDelete<kModifiableByOwner>(const std::string &name,
 //   * new chunk.signature() validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessModify<kModifiableByOwner>(const std::string &name,
-                                      const std::string &content,
-                                      const asymm::PublicKey &public_key,
-                                      int64_t *size_difference,
-                                      std::string *new_content,
-                                      std::shared_ptr<ChunkStore> chunk_store);
+int ProcessModify<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &content,
+    const asymm::PublicKey &public_key,
+    int64_t *size_difference,
+    std::string *new_content,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can call Has.
 // For overall success, the following must be true:
@@ -130,10 +134,11 @@ int ProcessModify<kModifiableByOwner>(const std::string &name,
 //   * if version is not an empty string, retrieved chunk's version must be
 //     identical to this
 template <>
-int ProcessHas<kModifiableByOwner>(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &public_key,
-                                   std::shared_ptr<ChunkStore> chunk_store);
+int ProcessHas<kModifiableByOwner>(
+    const std::string &name,
+    const std::string &version,
+    const asymm::PublicKey &public_key,
+    std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 }  // namespace chunk_actions
 

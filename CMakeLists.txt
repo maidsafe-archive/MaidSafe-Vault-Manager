@@ -75,19 +75,31 @@ SET(ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR
 SOURCE_GROUP("Chunk Actions Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
 SOURCE_GROUP("Chunk Actions Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
 
+FILE(GLOB SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/*.cc")
+FILE(GLOB HEADER_FILES_PRIVATE_CHUNK_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/*.h")
+SET(ALL_FILES_PRIVATE_CHUNK_STORE_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR} ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR})
+SOURCE_GROUP("Chunk Store Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR})
+SOURCE_GROUP("Chunk Store Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR})
+
 ####    TESTS    ####
 FILE(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
 FILE(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.h")
 SET(ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-SOURCE_GROUP("Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-SOURCE_GROUP("Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
+SOURCE_GROUP("Chunk Actions Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
+SOURCE_GROUP("Chunk Actions Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
+
+FILE(GLOB SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.cc")
+FILE(GLOB HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.h")
+SET(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
+SOURCE_GROUP("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
+SOURCE_GROUP("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
 
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-MS_ADD_EXECUTABLE(TESTprivate Tests ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
+MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
+MS_ADD_EXECUTABLE(TESTprivate Tests ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
 TARGET_LINK_LIBRARIES(maidsafe_private_static maidsafe_common_static protobuf_static)
 TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
@@ -99,6 +111,7 @@ TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
 INCLUDE(maidsafe_standard_flags)
 
 FILE(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
+FILE(GLOB_RECURSE PROTO_HEADER_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.h")
 IF(MSVC)
   SET_SOURCE_FILES_PROPERTIES(${PROTO_SOURCE_FILES} PROPERTIES COMPILE_FLAGS "/W0")
 ELSEIF(UNIX)
@@ -109,7 +122,9 @@ ENDIF()
 ###################################################################################################
 # Tests                                                                                           #
 ###################################################################################################
-ADD_STYLE_TEST(${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_TESTS_DIR})
+SET(ALL_PRIVATE_STYLE ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
+LIST(REMOVE_ITEM ALL_PRIVATE_STYLE ${PROTO_SOURCE_FILES} ${PROTO_HEADER_FILES})
+ADD_STYLE_TEST(${ALL_PRIVATE_STYLE})
 ADD_GTESTS(TESTprivate)
 TEST_SUMMARY_OUTPUT()
 
@@ -133,7 +148,15 @@ SET(MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_pb.h
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_rules.h
       ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/modifiable_by_owner_rules.h)
+SET(MAIDSAFE_PRIVATE_CHUNK_STORE_INSTALL_FILES
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/buffered_chunk_store.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/chunk_manager.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/chunk_store.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/local_chunk_manager.h
+      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/remote_chunk_store.h)
+
 MS_INSTALL_LIBS(maidsafe_private_static)
 MS_INSTALL_HEADERS(private ${MAIDSAFE_PRIVATE_INSTALL_FILES})
 MS_INSTALL_HEADERS(private/chunk_actions ${MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES})
+MS_INSTALL_HEADERS(private/chunk_store ${MAIDSAFE_PRIVATE_CHUNK_STORE_INSTALL_FILES})
 MS_INSTALL_EXPORT()
