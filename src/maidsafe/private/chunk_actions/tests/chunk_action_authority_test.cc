@@ -80,11 +80,11 @@ class ChunkActionAuthorityTest: public testing::Test {
   }
   void TearDown() {}
 
-  chunk_actions::SignedData ComposeSignedData(const rsa::Keys &keys,
+  chunk_actions::SignedData ComposeSignedData(const asymm::Keys &keys,
                                     std::string data = RandomString(50)) {
     chunk_actions::SignedData signed_data;
     std::string signature;
-    rsa::Sign(data, keys.private_key, &signature);
+    asymm::Sign(data, keys.private_key, &signature);
     signed_data.set_data(data);
     signed_data.set_signature(signature);
     return signed_data;
@@ -105,10 +105,10 @@ class ChunkActionAuthorityTest: public testing::Test {
 
   std::string ComposeModifyAppendableByAllPacket(
                              bool has_appendability,
-                             const rsa::Keys &appendability_keys,
+                             const asymm::Keys &appendability_keys,
                              char appendability,
                              bool has_identity,
-                             const rsa::Keys &identity_keys,
+                             const asymm::Keys &identity_keys,
                              const std::string &indentity) {
     chunk_actions::ModifyAppendableByAll modify_appendable_by_all_chunk;
     if (has_appendability) {
@@ -133,7 +133,7 @@ class ChunkActionAuthorityTest: public testing::Test {
                                                   key_.public_key));
     EXPECT_EQ(kInvalidPublicKey,
               chunk_action_authority_->ValidStore(name, content,
-                                                  rsa::PublicKey()));
+                                                  asymm::PublicKey()));
     EXPECT_EQ(kSignatureVerificationFailure,
               chunk_action_authority_->ValidStore(name, content,
                                                   key1_.public_key));
@@ -181,20 +181,20 @@ class ChunkActionAuthorityTest: public testing::Test {
   void ValidDeleteTests(const std::string &name, const std::string &content) {
     EXPECT_EQ(kSuccess,
               chunk_action_authority_->ValidDelete(name, "", "",
-                                                   rsa::PublicKey()));
+                                                   asymm::PublicKey()));
     EXPECT_EQ(kSuccess,
               chunk_action_authority_->ValidDelete(name, "other version", "",
-                                                   rsa::PublicKey()));
+                                                   asymm::PublicKey()));
     chunk_store_->Store(name, "content");
     std::string tiger_hash(crypto::Hash<crypto::Tiger>("content"));
     EXPECT_EQ(kGeneralError,
               chunk_action_authority_->ValidDelete(name, tiger_hash, "",
-                                                   rsa::PublicKey()));
+                                                   asymm::PublicKey()));
     chunk_store_->Modify(name, content);
     tiger_hash = crypto::Hash<crypto::Tiger>(content);
     EXPECT_EQ(kInvalidPublicKey,
               chunk_action_authority_->ValidDelete(name, tiger_hash, "",
-                                                   rsa::PublicKey()));
+                                                   asymm::PublicKey()));
     EXPECT_EQ(kSignatureVerificationFailure,
               chunk_action_authority_->ValidDelete(name, tiger_hash, "",
                                                    key1_.public_key));
@@ -230,10 +230,10 @@ class ChunkActionAuthorityTest: public testing::Test {
     std::string new_content;
     EXPECT_EQ(kNullParameter,
               chunk_action_authority_->ValidModify(name, "",
-                                                   rsa::PublicKey(), nullptr));
+                                                   asymm::PublicKey(), nullptr));
     EXPECT_EQ(kFailedToFindChunk,
               chunk_action_authority_->ValidModify(name, "",
-                                                   rsa::PublicKey(),
+                                                   asymm::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
     EXPECT_EQ(0, size_difference);
@@ -242,7 +242,7 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_TRUE(chunk_store_->Store(name, original_data));
     EXPECT_EQ(kGeneralError,
               chunk_action_authority_->ValidModify(name, "",
-                                                   rsa::PublicKey(),
+                                                   asymm::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
     EXPECT_EQ(0, size_difference);
@@ -250,7 +250,7 @@ class ChunkActionAuthorityTest: public testing::Test {
     EXPECT_TRUE(chunk_store_->Modify(name, content));
     EXPECT_EQ(kInvalidPublicKey,
               chunk_action_authority_->ValidModify(name, "",
-                                                   rsa::PublicKey(),
+                                                   asymm::PublicKey(),
                                                    &size_difference,
                                                    &new_content));
     EXPECT_EQ(0, size_difference);
@@ -284,8 +284,8 @@ class ChunkActionAuthorityTest: public testing::Test {
   std::string signature_content_;
   std::string modifiable_by_owner_name_;
   std::string modifiable_by_owner_content_;
-  rsa::Keys key_;
-  rsa::Keys key1_;
+  asymm::Keys key_;
+  asymm::Keys key1_;
   std::string signature_;
   chunk_actions::SignedData signed_data_;
   std::shared_ptr<ChunkActionAuthority> chunk_action_authority_;
@@ -354,7 +354,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
                                                 key_.public_key));
   /* EXPECT_EQ(kInvalidPublicKey,
             chunk_action_authority_->ValidStore(default_name_, default_content_,
-                                                rsa::PublicKey())); */
+                                                asymm::PublicKey())); */
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidStore(default_name_, default_content_,
                                                 key_.public_key));
@@ -423,7 +423,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
                                               &result_content));
   EXPECT_EQ(kInvalidPublicKey,
             chunk_action_authority_->ValidGet(appendable_by_all_name_, "",
-                                              rsa::PublicKey(),
+                                              asymm::PublicKey(),
                                               &result_content));
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidGet(appendable_by_all_name_, "",
@@ -445,7 +445,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidDelete) {
   // tests for DefaultTypePacket
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidDelete(default_name_, "", "",
-                                                 rsa::PublicKey()));
+                                                 asymm::PublicKey()));
 
   // tests for AppendableByAllPacket
   ValidDeleteTests(appendable_by_all_name_, appendable_by_all_content_);
@@ -462,7 +462,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   int64_t size_difference;
   EXPECT_EQ(kInvalidModify,
             chunk_action_authority_->ValidModify(default_name_, "",
-                                                 rsa::PublicKey(),
+                                                 asymm::PublicKey(),
                                                  &size_difference));
 
   // tests for AppendableByAllPacket
@@ -476,9 +476,9 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
-  rsa::Keys appendability_key;
+  asymm::Keys appendability_key;
   GenerateKeyPair(&appendability_key);
-  rsa::Keys identity_key;
+  asymm::Keys identity_key;
   GenerateKeyPair(&identity_key);
   std::string identity(RandomString(50));
   std::string non_control_content(ComposeModifyAppendableByAllPacket(
@@ -584,7 +584,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   // tests for SignaturePacket
   EXPECT_EQ(kInvalidModify,
             chunk_action_authority_->ValidModify(signature_name_, "",
-                                                 rsa::PublicKey(),
+                                                 asymm::PublicKey(),
                                                  &size_difference));
   // tests for ModifiableByOwnerPacket
   previous_size = ValidModifyTests(modifiable_by_owner_name_,
@@ -652,7 +652,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_Version) {
 TEST_F(ChunkActionAuthorityTest, BEH_Delete) {
   // tests for DefaultTypePacket, will always return success
   EXPECT_TRUE(chunk_action_authority_->Delete(default_name_, "", "",
-                                              rsa::PublicKey()));
+                                              asymm::PublicKey()));
 
   // tests for AppendableByAllPacket
   DeleteTests(appendable_by_all_name_, appendable_by_all_content_);
