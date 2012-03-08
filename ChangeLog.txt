@@ -1,6 +1,11 @@
-v0.02.00 (WIP)
+v0.03.00 (WIP)
 --------------
 
+v0.02.00
+--------
+* Latest code from common and pd of buffered and remote chunk stores.
+* Brought chunk stores from common, remote cs from PD, local chunk manager from lifestuff.
+* Added function to create a remote chunkstore with a local chunk manager.
 
 v0.01.00
 --------
