@@ -191,8 +191,12 @@ bool RemoteChunkStore::Store(const std::string &name,
   DLOG(INFO) << "Store - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  while (active_get_ops_.count(name) + active_mod_ops_.count(name) > 0)
-    cond_var_.wait(lock);
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]() {
+                                        return active_get_ops_.count(name)
+                                            + active_mod_ops_.count(name) == 0;
+                                    }));
 
   // TODO(Steve) wait for or replace pending ops as well
 
@@ -213,10 +217,14 @@ bool RemoteChunkStore::Store(const std::string &name,
   DLOG(INFO) << "Store - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  while (active_get_ops_.count(name) + active_mod_ops_.count(name) > 0)
-    cond_var_.wait(lock);
-
-  if (!chunk_action_authority_->Store(name, source_file_name,
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]() {
+                                        return active_get_ops_.count(name)
+                                            + active_mod_ops_.count(name) == 0;
+                                    }));
+  if (!chunk_action_authority_->Store(name,
+                                      source_file_name,
                                       delete_source_file,
                                       validation_data.key_pair.public_key)) {
     DLOG(ERROR) << "Store - Could not store " << HexSubstr(name) << " locally.";
@@ -232,8 +240,12 @@ bool RemoteChunkStore::Delete(const std::string &name,
   DLOG(INFO) << "Delete - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  while (active_get_ops_.count(name) + active_mod_ops_.count(name) > 0)
-    cond_var_.wait(lock);
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]() {
+                                        return active_get_ops_.count(name)
+                                            + active_mod_ops_.count(name) == 0;
+                                    }));
 
   if (!chunk_action_authority_->Delete(name,
                                        chunk_action_authority_->Version(name),
@@ -254,8 +266,12 @@ bool RemoteChunkStore::Modify(const std::string &name,
   DLOG(INFO) << "Modify - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  while (active_get_ops_.count(name) + active_mod_ops_.count(name) > 0)
-    cond_var_.wait(lock);
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]() {
+                                        return active_get_ops_.count(name)
+                                            + active_mod_ops_.count(name) == 0;
+                                    }));
 
   // TODO(Steve) wait for or replace pending ops as well
 
@@ -430,8 +446,11 @@ std::string RemoteChunkStore::DoGet(
   }
 
   boost::mutex::scoped_lock lock(mutex_);
-  while (active_mod_ops_.count(name) > 0)
-    cond_var_.wait(lock);
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]()->bool {
+                                      return active_mod_ops_.count(name) == 0;
+                                    }));
 
   waiting_getters_.insert(name);
 
@@ -440,8 +459,12 @@ std::string RemoteChunkStore::DoGet(
     active_get_ops_.insert(name);
     ++get_op_count_;
 
-    while (active_ops_count_ >= max_active_ops_)
-      cond_var_.wait(lock);
+    BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                      bptime::seconds(60),
+                                      [&]()->bool {
+                                        return active_ops_count_ <
+                                               max_active_ops_;
+                                      }));
 
     ++active_ops_count_;
     lock.unlock();
@@ -453,8 +476,11 @@ std::string RemoteChunkStore::DoGet(
   }
 
   // wait for retrieval
-  while (active_get_ops_.count(name) > 0)
-    cond_var_.wait(lock);
+  BOOST_VERIFY(cond_var_.timed_wait(lock,
+                                    bptime::seconds(60),
+                                    [&]()->bool {
+                                      return active_get_ops_.count(name) == 0;
+                                    }));
 
   waiting_getters_.erase(name);
 
