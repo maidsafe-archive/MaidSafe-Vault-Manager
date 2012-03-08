@@ -17,7 +17,7 @@
 #ifndef MAIDSAFE_PRIVATE_VERSION_H_
 #define MAIDSAFE_PRIVATE_VERSION_H_
 
-#define MAIDSAFE_PRIVATE_VERSION 200
+#define MAIDSAFE_PRIVATE_VERSION 300
 
 #if defined CMAKE_MAIDSAFE_PRIVATE_VERSION &&\
             MAIDSAFE_PRIVATE_VERSION != CMAKE_MAIDSAFE_PRIVATE_VERSION
@@ -25,7 +25,7 @@
 #endif
 
 #include "maidsafe/common/version.h"
-#define THIS_NEEDS_MAIDSAFE_COMMON_VERSION 1100
+#define THIS_NEEDS_MAIDSAFE_COMMON_VERSION 1200
 #if MAIDSAFE_COMMON_VERSION < THIS_NEEDS_MAIDSAFE_COMMON_VERSION
 #  error This API is not compatible with the installed library.\
     Please update the maidsafe-common library.
