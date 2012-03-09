@@ -469,10 +469,15 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   size_t previous_size(ValidModifyTests(appendable_by_all_name_,
                                         appendable_by_all_content_));
   std::string response_content;
+  // ensure random data doesn't happen to parse as an AppendableByAll chunk
+  std::string random_data(RandomString(10));
+  ModifyAppendableByAll chunk;
+  while (ParseProtobuf<ModifyAppendableByAll>(random_data, &chunk))
+    random_data = RandomString(10);
   // being owner
   EXPECT_EQ(kParseFailure,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,
-                                                 RandomString(10),
+                                                 random_data,
                                                  key_.public_key,
                                                  &size_difference,
                                                  &response_content));
