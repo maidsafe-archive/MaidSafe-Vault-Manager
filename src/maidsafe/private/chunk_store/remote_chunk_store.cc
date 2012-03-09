@@ -16,15 +16,12 @@
 
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
 
-#include <algorithm>
-
-#include "boost/asio/deadline_timer.hpp"
-#include "boost/archive/text_oarchive.hpp"
-#include "boost/archive/text_iarchive.hpp"
-#include "boost/serialization/set.hpp"
-#include "boost/serialization/list.hpp"
-#include "boost/serialization/utility.hpp"
-#include "boost/tuple/tuple.hpp"
+// #include "boost/archive/text_oarchive.hpp"
+// #include "boost/archive/text_iarchive.hpp"
+// #include "boost/serialization/set.hpp"
+// #include "boost/serialization/list.hpp"
+// #include "boost/serialization/utility.hpp"
+// #include "boost/asio/deadline_timer.hpp"
 
 #include "maidsafe/common/utils.h"
 
@@ -34,13 +31,16 @@
 #include "maidsafe/private/chunk_store/local_chunk_manager.h"
 
 namespace args = std::placeholders;
-namespace bptime = boost::posix_time;
 
 namespace maidsafe {
 
 namespace priv {
 
-namespace chunk_store {
+enum RcsReturnCode {
+  kWaitSuccess = 0,
+  kWaitCancelled = -1,
+  kWaitTimeout = -2
+};
 
 /// Default maximum number of operations to be processed in parallel.
 const int kMaxActiveOps(4);
@@ -69,25 +69,20 @@ RemoteChunkStore::RemoteChunkStore(
       mutex_(),
       cond_var_(),
       max_active_ops_(kMaxActiveOps),
-      active_ops_count_(0),
-      active_get_ops_(),
-      active_mod_ops_(),
-      waiting_getters_(),
-      pending_mod_ops_(),
-      failed_hashable_ops_(),
-      failed_non_hashable_store_ops_(),
-      get_op_count_(0),
-      store_op_count_(0),
-      modify_op_count_(0),
-      delete_op_count_(0),
-      get_success_count_(0),
-      store_success_count_(0),
-      modify_success_count_(0),
-      delete_success_count_(0),
-      get_total_size_(0),
-      store_total_size_(0),
-      modify_total_size_(0) {
-  Init();
+      active_ops_(),
+      pending_ops_(),
+      failed_ops_() /*,
+      op_count_({0, 0, 0, 0}),
+      op_success_count_({0, 0, 0, 0}),
+      op_size_({0, 0, 0, 0})*/ {
+  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
+  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpStore, args::_1, args::_2));
+  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(std::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpModify, args::_1, args::_2));
+  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(std::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpDelete, args::_1, args::_2));
 }
 
 RemoteChunkStore::~RemoteChunkStore() {
@@ -97,7 +92,7 @@ RemoteChunkStore::~RemoteChunkStore() {
   cm_delete_conn_.disconnect();
 
   boost::mutex::scoped_lock lock(mutex_);
-
+/*
   DLOG(INFO) << "~RemoteChunkStore() - Retrieved " << get_success_count_
              << " of " << get_op_count_ << " chunks ("
              << BytesToBinarySiUnits(get_total_size_) << ").";
@@ -145,23 +140,12 @@ RemoteChunkStore::~RemoteChunkStore() {
   if (!output.empty())
     DLOG(WARNING) << "~RemoteChunkStore() - " << active_ops_count_
                   << " active operations:" << output;
-
-  active_ops_count_ = 0;
-  active_get_ops_.clear();
-  active_mod_ops_.clear();
-  pending_mod_ops_.clear();
+*/
+  active_ops_.clear();
+  pending_ops_.clear();
+  failed_ops_.clear();
 }
 
-void RemoteChunkStore::Init() {
-  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
-  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpStore, args::_1, args::_2));
-  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpModify, args::_1, args::_2));
-  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpDelete, args::_1, args::_2));
-}
 
 std::string RemoteChunkStore::Get(
     const std::string &name,
@@ -185,27 +169,33 @@ bool RemoteChunkStore::Get(const std::string &name,
   return WriteFile(sink_file_name, result);
 }
 
+void RemoteChunkStore::Get(const std::string &name,
+                           const ValidationData &validation_data,
+                           GetFunctor callback) {
+  // TODO(Steve) ..........
+}
+
 bool RemoteChunkStore::Store(const std::string &name,
                              const std::string &content,
                              const ValidationData &validation_data) {
   DLOG(INFO) << "Store - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]() {
-                                        return active_get_ops_.count(name)
-                                            + active_mod_ops_.count(name) == 0;
-                                    }));
+  uint32_t id(EnqueueOp(name, OperationData(kOpStore, validation_data)));
+  int result(WaitForConflictingOps(name, kOpStore, id, &lock));
+  if (result != kWaitSuccess) {
+    DLOG(WARNING) << "Store - Terminated early for " << HexSubstr(name);
+    // TODO(Steve) remove pending entry !!!
+    return result == kWaitCancelled;
+  }
 
-  // TODO(Steve) wait for or replace pending ops as well
-
-  if (!chunk_action_authority_->Store(name, content,
+  if (!chunk_action_authority_->Store(name,
+                                      content,
                                       validation_data.key_pair.public_key)) {
     DLOG(ERROR) << "Store - Could not store " << HexSubstr(name) << " locally.";
     return false;
   }
-  EnqueueModOp(name, OperationData(kOpStore, validation_data));
+
   ProcessPendingOps(&lock);
   return true;
 }
@@ -217,12 +207,13 @@ bool RemoteChunkStore::Store(const std::string &name,
   DLOG(INFO) << "Store - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]() {
-                                        return active_get_ops_.count(name)
-                                            + active_mod_ops_.count(name) == 0;
-                                    }));
+  uint32_t id(EnqueueOp(name, OperationData(kOpStore, validation_data)));
+  int result(WaitForConflictingOps(name, kOpStore, id, &lock));
+  if (result != kWaitSuccess) {
+    DLOG(WARNING) << "Store - Terminated early for " << HexSubstr(name);
+    return result == kWaitCancelled;
+  }
+
   if (!chunk_action_authority_->Store(name,
                                       source_file_name,
                                       delete_source_file,
@@ -230,7 +221,7 @@ bool RemoteChunkStore::Store(const std::string &name,
     DLOG(ERROR) << "Store - Could not store " << HexSubstr(name) << " locally.";
     return false;
   }
-  EnqueueModOp(name, OperationData(kOpStore, validation_data));
+
   ProcessPendingOps(&lock);
   return true;
 }
@@ -240,12 +231,12 @@ bool RemoteChunkStore::Delete(const std::string &name,
   DLOG(INFO) << "Delete - " << HexSubstr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]() {
-                                        return active_get_ops_.count(name)
-                                            + active_mod_ops_.count(name) == 0;
-                                    }));
+  uint32_t id(EnqueueOp(name, OperationData(kOpDelete, validation_data)));
+  int result(WaitForConflictingOps(name, kOpDelete, id, &lock));
+  if (result != kWaitSuccess) {
+    DLOG(WARNING) << "Delete - Terminated early for " << HexSubstr(name);
+    return result == kWaitCancelled;
+  }
 
   if (!chunk_action_authority_->Delete(name,
                                        chunk_action_authority_->Version(name),
@@ -255,8 +246,8 @@ bool RemoteChunkStore::Delete(const std::string &name,
                 << " locally.";
     return false;
   }
-  EnqueueModOp(name, OperationData(kOpDelete, validation_data));
-  ProcessPendingOps(&lock);
+
+  ProcessPendingOps(lock);
   return true;
 }
 
@@ -265,24 +256,22 @@ bool RemoteChunkStore::Modify(const std::string &name,
                               const ValidationData &validation_data) {
   DLOG(INFO) << "Modify - " << HexSubstr(name);
 
-  boost::mutex::scoped_lock lock(mutex_);
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]() {
-                                        return active_get_ops_.count(name)
-                                            + active_mod_ops_.count(name) == 0;
-                                    }));
-
-  // TODO(Steve) wait for or replace pending ops as well
-
   if (!chunk_action_authority_->Modifiable(name)) {
     DLOG(ERROR) << "Store - Type of chunk " << HexSubstr(name)
                 << " not supported.";
     return false;
   }
+
+  boost::mutex::scoped_lock lock(mutex_);
   OperationData op_data(kOpModify, validation_data);
   op_data.content = content;
-  EnqueueModOp(name, op_data);
+  uint32_t id(EnqueueOp(name, op_data));
+  int result(WaitForConflictingOps(name, kOpModify, id, &lock));
+  if (result != kWaitSuccess) {
+    DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
+    return result == kWaitCancelled;
+  }
+
   ProcessPendingOps(&lock);
   return true;
 }
@@ -309,14 +298,14 @@ bool RemoteChunkStore::Modify(const std::string &name,
 
 bool RemoteChunkStore::WaitForCompletion() {
   boost::mutex::scoped_lock lock(mutex_);
-  while (!pending_mod_ops_.empty() || active_ops_count_ > 0) {
-    DLOG(INFO) << "WaitForCompletion - " << pending_mod_ops_.size()
-               << " pending and " << active_ops_count_
+  while (!pending_ops_.empty() && !active_ops_.empty()) {
+    DLOG(INFO) << "WaitForCompletion - " << pending_ops_.size()
+               << " pending and " << active_ops_.size()
                << " active operations...";
     if (!cond_var_.timed_wait(lock, KCompletionWaitTimeout)) {
       DLOG(ERROR) << "WaitForCompletion - Timed out with "
-                  << pending_mod_ops_.size() << " pending and "
-                  << active_ops_count_ << " active operations.";
+                  << pending_ops_.size() << " pending and "
+                  << active_ops_.size() << " active operations.";
       return false;
     }
   }
@@ -439,18 +428,17 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 std::string RemoteChunkStore::DoGet(
     const std::string &name,
     const ValidationData &validation_data) const {
+  ScopedLockPtr lock(new boost::mutex::scoped_lock(mutex_));
+  if (!WaitForConflictingOp(name, kOpGet, lock))
+    return "";
+
+  // TODO(Steve) ...... callbacks
+
   if (chunk_action_authority_->Cacheable(name)) {
     std::string content(chunk_store_->Get(name));
     if (!content.empty())
       return content;
   }
-
-  boost::mutex::scoped_lock lock(mutex_);
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]()->bool {
-                                      return active_mod_ops_.count(name) == 0;
-                                    }));
 
   waiting_getters_.insert(name);
 
@@ -459,12 +447,8 @@ std::string RemoteChunkStore::DoGet(
     active_get_ops_.insert(name);
     ++get_op_count_;
 
-    BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                      bptime::seconds(60),
-                                      [&]()->bool {
-                                        return active_ops_count_ <
-                                               max_active_ops_;
-                                      }));
+    while (active_ops_count_ >= max_active_ops_)
+      cond_var_.wait(lock);
 
     ++active_ops_count_;
     lock.unlock();
@@ -476,11 +460,8 @@ std::string RemoteChunkStore::DoGet(
   }
 
   // wait for retrieval
-  BOOST_VERIFY(cond_var_.timed_wait(lock,
-                                    bptime::seconds(60),
-                                    [&]()->bool {
-                                      return active_get_ops_.count(name) == 0;
-                                    }));
+  while (active_get_ops_.count(name) > 0)
+    cond_var_.wait(lock);
 
   waiting_getters_.erase(name);
 
@@ -495,23 +476,53 @@ std::string RemoteChunkStore::DoGet(
   return content;
 }
 
-void RemoteChunkStore::EnqueueModOp(const std::string &name,
-                                    const OperationData &op_data) {
-  switch (op_data.op_type) {
-    case kOpStore:
-      ++store_op_count_;
-      break;
-    case kOpModify:
-      ++modify_op_count_;
-      break;
-    case kOpDelete:
-      ++delete_op_count_;
-      break;
-    default:
-      break;
+int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
+                                            const OperationType &op_type,
+                                            const uint32_t &transaction_id,
+                                            boost::mutex::scoped_lock *lock) {
+  while (active_ops_.count(name) > 0 && pending_ops_.left.count(name) > 1) {
+    if (!cond_var_.timed_wait(*lock, KCompletionWaitTimeout)) {
+      DLOG(ERROR) << "WaitForConflictingOp - Timed out trying to "
+                  << kOpName[op_type] << " " << HexSubstr(name) << " with "
+                  << pending_ops_.left.count(name) << " pending and "
+                  << active_ops_.count(name) << " active operations.";
+      return kWaitTimeout;
+    }
+    if (pending_ops_.right.count(transaction_id) == 0) {
+      DLOG(WARNING) << "WaitForConflictingOp - Operation to "
+                    << kOpName[op_type] << " " << HexSubstr(name)
+                    << " with transaction ID " << transaction_id
+                    << " was cancelled.";
+      return kWaitCancelled;
+    }
   }
+  return kWaitSuccess;
+}
 
-  pending_mod_ops_.push_back(std::make_pair(name, op_data));
+uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
+                                     const OperationData &op_data) {
+  ++op_count_[op_data.op_type];
+
+  // TODO(Steve) cancel redundant pending ops, trigger cond var
+
+//       // delete cancels out previous store for this chunk
+//       for (auto rit = pending_mod_ops_.rbegin();
+//             rit != pending_mod_ops_.rend(); ++rit) {
+//         if (rit->first == name && rit->second.op_type == kOpStore) {
+//           pending_mod_ops_.erase(--rit.base());
+//           --store_op_count_;
+//           DLOG(INFO) << "EnqueueModOp - Ignored delete and removed pending "
+//                       << "store for " << HexSubstr(name);
+//           return;
+//         }
+//       }
+
+  uint32_t id;
+  do {
+    id = RandomUint32();
+  } while (pending_ops_.right.count(id) > 0);
+  pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
+  return id;
 }
 
 void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
