@@ -141,17 +141,27 @@ class RemoteChunkStore {
 
   bool Store(const std::string &name,
              const std::string &content,
-             const OpFunctor &callback = nullptr,
+             const OpFunctor &callback,
              const ValidationData &validation_data = ValidationData());
 
   bool Delete(const std::string &name,
-              const OpFunctor &callback = nullptr,
+              const OpFunctor &callback,
               const ValidationData &validation_data = ValidationData());
 
   bool Modify(const std::string &name,
               const std::string &content,
-              const OpFunctor &callback = nullptr,
+              const OpFunctor &callback,
               const ValidationData &validation_data = ValidationData());
+
+  uintmax_t Size() const {
+    // TODO(Steve) get from account
+    return 0;  // chunk_store_->Size();
+  }
+
+  uintmax_t Capacity() const {
+    // TODO(Steve) get from account
+    return 0;  // chunk_store_->Capacity();
+  }
 
   bool Empty() const {
     return chunk_store_->Empty();
@@ -187,8 +197,6 @@ class RemoteChunkStore {
  private:
   RemoteChunkStore(const RemoteChunkStore&);
   RemoteChunkStore& operator=(const RemoteChunkStore&);
-
-  void SetCapacity(const std::uintmax_t&) {}
 
   void OnOpResult(const OperationType &op_type,
                   const std::string &name,
