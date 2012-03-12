@@ -273,7 +273,9 @@ int Deserialize(std::stringstream *input_stream,
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path &base_dir,
-    boost::asio::io_service &asio_service);  // NOLINT (Dan)
+    boost::asio::io_service &asio_service,  // NOLINT (Dan)
+    const boost::posix_time::time_duration &millisecs =
+        boost::posix_time::milliseconds(0));
 
 }  // namespace chunk_store
 
