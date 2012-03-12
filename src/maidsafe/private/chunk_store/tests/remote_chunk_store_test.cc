@@ -128,7 +128,7 @@ class RemoteChunkStoreTest: public testing::Test {
     ofs.close();
     return file_path;
   }
-   testing::AssertionResult EqualChunks(const std::string &chunk1,
+  testing::AssertionResult EqualChunks(const std::string &chunk1,
                                        const std::string &chunk2) {
     if (chunk1 == chunk2)
       return testing::AssertionSuccess();
