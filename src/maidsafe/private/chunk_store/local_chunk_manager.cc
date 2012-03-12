@@ -36,10 +36,13 @@ namespace chunk_store {
 
 LocalChunkManager::LocalChunkManager(
     std::shared_ptr<ChunkStore> normal_local_chunk_store,
-    const fs::path &simulation_directory)
+    const fs::path &simulation_directory,
+    const boost::posix_time::time_duration &millisecs)
     : ChunkManager(normal_local_chunk_store),
       simulation_chunk_store_(),
-      simulation_chunk_action_authority_() {
+      simulation_chunk_action_authority_(),
+      get_wait_(millisecs),
+      action_wait_(millisecs * 3) {
   std::shared_ptr<FileChunkStore> file_chunk_store(new FileChunkStore);
   fs::path local_version_directory;
   if (simulation_directory.empty()) {
@@ -70,6 +73,9 @@ void LocalChunkManager::GetChunk(const std::string &name,
                                  const asymm::Identity &/*owner_key_id*/,
                                  const asymm::PublicKey &owner_public_key,
                                  const std::string &/*ownership_proof*/) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(get_wait_);
+  }
   // TODO(Team): Add check of ID on network
   unsigned char chunk_type(pca::GetDataType(name));
   bool chunk_exists(chunk_store_->Has(name));
@@ -103,6 +109,10 @@ void LocalChunkManager::GetChunk(const std::string &name,
 void LocalChunkManager::StoreChunk(const std::string &name,
                                    const asymm::Identity &/*owner_key_id*/,
                                    const asymm::PublicKey &owner_public_key) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   // TODO(Team): Add check of ID on network
   unsigned char chunk_type(pca::GetDataType(name));
   std::string content(chunk_store_->Get(name));
@@ -130,6 +140,10 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
                                     const asymm::Identity &/*owner_key_id*/,
                                     const asymm::PublicKey &owner_public_key,
                                     const std::string &ownership_proof) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   // TODO(Team): Add check of ID on network
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   "",
@@ -147,6 +161,10 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
                                     const std::string &content,
                                     const asymm::Identity &/*owner_key_id*/,
                                     const asymm::PublicKey &owner_public_key) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
