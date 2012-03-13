@@ -52,6 +52,10 @@ bool IsCacheable<kSignaturePacket>();
 template <>
 bool IsModifiable<kSignaturePacket>();
 
+// Returns false.
+template <>
+bool ModifyReplaces<kSignaturePacket>();
+
 // Returns true if the chunk exists, and
 // name == Hash(chunk.data() + chunk.signature()).
 template <>

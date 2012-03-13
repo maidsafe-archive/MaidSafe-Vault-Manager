@@ -50,6 +50,10 @@ bool IsCacheable<kModifiableByOwner>();
 template <>
 bool IsModifiable<kModifiableByOwner>();
 
+// Returns true.
+template <>
+bool ModifyReplaces<kModifiableByOwner>();
+
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kModifiableByOwner>(

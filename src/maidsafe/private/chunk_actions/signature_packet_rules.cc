@@ -41,6 +41,9 @@ template <>
 bool IsModifiable<kSignaturePacket>() { return false; }
 
 template <>
+bool ModifyReplaces<kSignaturePacket>() { return false; }
+
+template <>
 bool IsValidChunk<kSignaturePacket>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
