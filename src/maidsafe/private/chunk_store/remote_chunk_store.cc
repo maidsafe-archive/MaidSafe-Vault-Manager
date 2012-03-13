@@ -75,9 +75,9 @@ RemoteChunkStore::RemoteChunkStore(
       active_ops_count_(0),
       pending_ops_(),
       failed_ops_(),
-      op_count_({0, 0, 0, 0}),
-      op_success_count_({0, 0, 0, 0}),
-      op_size_({0, 0, 0, 0}) {
+      op_count_(),
+      op_success_count_(),
+      op_size_() {
   cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
       &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
   cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
