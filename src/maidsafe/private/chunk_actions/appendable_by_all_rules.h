@@ -50,6 +50,10 @@ bool IsCacheable<kAppendableByAll>();
 template <>
 bool IsModifiable<kAppendableByAll>();
 
+// Returns false.
+template <>
+bool ModifyReplaces<kAppendableByAll>();
+
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kAppendableByAll>(

@@ -307,6 +307,24 @@ bool ChunkActionAuthority::Modifiable(const std::string &name) const {
   }
 }
 
+bool ChunkActionAuthority::ModifyReplaces(const std::string &name) const {
+  switch (chunk_actions::GetDataType(name)) {
+    case chunk_actions::kDefaultType:
+      return chunk_actions::ModifyReplaces<chunk_actions::kDefaultType>();
+    case chunk_actions::kAppendableByAll:
+      return chunk_actions::ModifyReplaces<chunk_actions::kAppendableByAll>();
+    case chunk_actions::kModifiableByOwner:
+      return chunk_actions::ModifyReplaces<chunk_actions::kModifiableByOwner>();
+    case chunk_actions::kSignaturePacket:
+      return chunk_actions::ModifyReplaces<chunk_actions::kSignaturePacket>();
+    case chunk_actions::kUnknownType:
+    default:
+      DLOG(ERROR) << "Unknown type "
+                  << static_cast<int>(chunk_actions::GetDataType(name));
+      return false;
+  }
+}
+
 bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
   switch (chunk_actions::GetDataType(name)) {
     case chunk_actions::kDefaultType:

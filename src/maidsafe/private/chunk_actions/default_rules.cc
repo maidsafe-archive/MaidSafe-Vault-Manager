@@ -40,6 +40,9 @@ template <>
 bool IsModifiable<kDefaultType>() { return false; }
 
 template <>
+bool ModifyReplaces<kDefaultType>() { return false; }
+
+template <>
 bool IsValidChunk<kDefaultType>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

@@ -48,6 +48,9 @@ template <unsigned char DataType>
 bool IsModifiable();
 
 template <unsigned char DataType>
+bool ModifyReplaces();
+
+template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -93,11 +96,13 @@ int ProcessHas(const std::string &name,
 template <>
 bool IsCacheable<kDefaultType>();
 
-
 // Returns false.
 template <>
 bool IsModifiable<kDefaultType>();
 
+// Returns false.
+template <>
+bool ModifyReplaces<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>

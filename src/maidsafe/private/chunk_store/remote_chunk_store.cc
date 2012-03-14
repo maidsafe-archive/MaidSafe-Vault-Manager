@@ -75,9 +75,10 @@ RemoteChunkStore::RemoteChunkStore(
       active_ops_count_(0),
       pending_ops_(),
       failed_ops_(),
-      op_count_({0, 0, 0, 0}),
-      op_success_count_({0, 0, 0, 0}),
-      op_size_({0, 0, 0, 0}) {
+      op_count_(),
+      op_success_count_(),
+      op_skip_count_(),
+      op_size_() {
   cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
       &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
   cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
@@ -97,8 +98,9 @@ RemoteChunkStore::~RemoteChunkStore() {
   boost::mutex::scoped_lock lock(mutex_);
   for (int op = kOpGet; op <= kOpDelete; ++op)
     DLOG(INFO) << "~RemoteChunkStore() - Could " << kOpName[op] << " "
-               << op_success_count_[op] << " of " << op_count_[op]
-               << " chunks (" << BytesToBinarySiUnits(op_size_[op]) << ").";
+               << op_success_count_[op] << " and skip " << op_skip_count_[op]
+               << " of " << op_count_[op] << " chunks ("
+               << BytesToBinarySiUnits(op_size_[op]) << ").";
 
   std::string output;
   for (auto it = pending_ops_.begin(); it != pending_ops_.end(); ++it)
@@ -321,6 +323,9 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
                                             const OperationType &op_type,
                                             const uint32_t &transaction_id,
                                             boost::mutex::scoped_lock *lock) {
+  if (transaction_id == 0)  // our op is redundant
+    return kWaitCancelled;
+
   while (pending_ops_.left.count(name) > 1) {
     if (!cond_var_.timed_wait(*lock, kOperationWaitTimeout)) {
       DLOG(ERROR) << "WaitForConflictingOps - Timed out trying to "
@@ -361,24 +366,48 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
                                      const OperationData &op_data) {
   ++op_count_[op_data.op_type];
 
-  // TODO(Steve) cancel redundant pending ops, trigger cond var
+  // Are we able to cancel a previous op for this chunk?
+  auto it = pending_ops_.left.upper_bound(name);
+  if (pending_ops_.left.lower_bound(name) != it) {
+    --it;
+//     DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
+//                << "', found prev '" << kOpName[it->info.op_type]
+//                << "', chunk " << HexSubstr(name) << ", "
+//                << (it->info.active ? "active" : "inactive");
+    if (!it->info.active) {
+      bool cancel_prev(false), cancel_curr(false);
+      if (op_data.op_type == kOpModify &&
+          it->info.op_type == kOpModify &&
+          chunk_action_authority_->ModifyReplaces(name)) {
+        cancel_prev = true;
+      } else if (op_data.op_type == kOpDelete &&
+                 (it->info.op_type == kOpModify ||
+                  it->info.op_type == kOpStore)) {
+        // NOTE has potential side effects (multiple stores, unauth. delete)
+        cancel_prev = true;
+        cancel_curr= true;
+      }
 
-//       // delete cancels out previous store for this chunk
-//       for (auto rit = pending_mod_ops_.rbegin();
-//             rit != pending_mod_ops_.rend(); ++rit) {
-//         if (rit->first == name && rit->second.op_type == kOpStore) {
-//           pending_mod_ops_.erase(--rit.base());
-//           --store_op_count_;
-//           DLOG(INFO) << "EnqueueModOp - Ignored delete and removed pending "
-//                       << "store for " << HexSubstr(name);
-//           return;
-//         }
-//       }
+      if (cancel_prev) {
+//         DLOG(INFO) << "EnqueueOp - Cancel previous '"
+//                    << kOpName[it->info.op_type] << "' due to '"
+//                    << kOpName[op_data.op_type] << "' for "
+//                    << HexSubstr(name);
+        ++op_skip_count_[it->info.op_type];
+        pending_ops_.left.erase(it);
+        cond_var_.notify_all();
+      }
+      if (cancel_curr) {
+        ++op_skip_count_[op_data.op_type];
+        return 0;
+      }
+    }
+  }
 
   uint32_t id;
   do {
     id = RandomUint32();
-  } while (pending_ops_.right.count(id) > 0);
+  } while (id == 0 || pending_ops_.right.count(id) > 0);
   pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
   return id;
 }

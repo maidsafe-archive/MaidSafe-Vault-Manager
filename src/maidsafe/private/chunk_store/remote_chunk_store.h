@@ -224,7 +224,10 @@ class RemoteChunkStore {
   int max_active_ops_, active_ops_count_;
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
-  std::uintmax_t op_count_[4], op_success_count_[4], op_size_[4];
+  std::uintmax_t op_count_[4],
+                 op_success_count_[4],
+                 op_skip_count_[4],
+                 op_size_[4];
 };
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
