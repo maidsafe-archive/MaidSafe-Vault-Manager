@@ -34,8 +34,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"
 
+#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
 
 namespace fs = boost::filesystem;
@@ -53,40 +56,54 @@ class RemoteChunkStoreTest: public testing::Test {
   RemoteChunkStoreTest()
       : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_TestRChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
-        alt_chunk_dir_(*test_dir_ / "chunks_alt"),
-        tiger_chunk_dir_(*test_dir_ / "chunks_tiger"),
         asio_service_(),
         chunk_store_(),
-        alt_chunk_store_(),
-        tiger_chunk_store_(),
         mutex_(),
         cond_var_(),
-        parallel_tasks_(0) {}
+        parallel_tasks_(0),
+        keys_(),
+        data_(),
+        signed_data_(),
+        failed_callback_(),
+        success_callback_() {}
 
   void DoGet(std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
              const std::string &chunk_name,
              const std::string &chunk_content) {
-    EXPECT_TRUE(EqualChunks(chunk_content, chunk_store->Get(chunk_name)));
-    DLOG(INFO) << "DoGet - before lock, parallel_tasks_ = " << parallel_tasks_;
+    EXPECT_TRUE(EqualChunks(chunk_content,
+                            chunk_store->Get(chunk_name, data_)));
+    DLOG(ERROR) << "DoGet - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoGet - end, parallel_tasks_ = " << parallel_tasks_;
+    DLOG(ERROR) << "DoGet - end, parallel_tasks_ = " << parallel_tasks_;
+  }
+
+  void SuccessfulCallback(bool success) {
+    EXPECT_TRUE(success);
+  }
+
+  void FailedCallback(bool success) {
+    EXPECT_FALSE(success);
   }
 
   ~RemoteChunkStoreTest() {}
 
  protected:
   void SetUp() {
-    asio_service_.Start(3);
+    asio_service_.Start(10);
     fs::create_directories(chunk_dir_);
-    fs::create_directories(alt_chunk_dir_);
-    fs::create_directories(tiger_chunk_dir_);
     InitChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
-    InitChunkStore(&alt_chunk_store_, alt_chunk_dir_, asio_service_.service());
-    InitChunkStore(&tiger_chunk_store_,
-                   tiger_chunk_dir_,
-                   asio_service_.service());
+    maidsafe::rsa::GenerateKeyPair(&keys_);
+    signed_data_.set_data(RandomString(50));
+    asymm::Sign(signed_data_.data(), keys_.private_key,
+            signed_data_.mutable_signature());
+    data_ = priv::chunk_store::RemoteChunkStore::ValidationData(keys_,
+                signed_data_.SerializeAsString());
+    failed_callback_ = std::bind(&RemoteChunkStoreTest::FailedCallback,
+                                 this, args::_1);
+    success_callback_ = std::bind(&RemoteChunkStoreTest::SuccessfulCallback,
+                                  this, args::_1);
   }
 
   void TearDown() {
@@ -100,34 +117,32 @@ class RemoteChunkStoreTest: public testing::Test {
   *chunk_store = CreateLocalChunkStore(chunk_dir, asio_service);
 }
 
-  fs::path CreateRandomFile(const fs::path &file_path,
-                            const uint64_t &file_size) {
-    fs::ofstream ofs(file_path, std::ios::binary | std::ios::out |
-                                std::ios::trunc);
-    if (file_size != 0) {
-      size_t string_size = (file_size > 100000) ? 100000 :
-                          static_cast<size_t>(file_size);
-      uint64_t remaining_size = file_size;
-      std::string rand_str = RandomString(2 * string_size);
-      std::string file_content;
-      uint64_t start_pos = 0;
-      while (remaining_size) {
-        srand(17);
-        start_pos = rand() % string_size;  // NOLINT (Fraser)
-        if (remaining_size < string_size) {
-          string_size = static_cast<size_t>(remaining_size);
-          file_content = rand_str.substr(0, string_size);
-        } else {
-          file_content = rand_str.substr(static_cast<size_t>(start_pos),
-                                        string_size);
+  void GenerateChunk(unsigned char chunk_type,
+                     const size_t &chunk_size,
+                     const asymm::PrivateKey &private_key,
+                     std::string *chunk_name,
+                     std::string *chunk_contents) {
+    switch (chunk_type) {
+      case priv::chunk_actions::kDefaultType:
+        *chunk_contents = RandomString(chunk_size);
+        *chunk_name = crypto::Hash<crypto::SHA512>(*chunk_contents);
+        break;
+      case priv::chunk_actions::kModifiableByOwner:
+        {
+          priv::chunk_actions::SignedData chunk;
+          chunk.set_data(RandomString(chunk_size));
+          asymm::Sign(chunk.data(), private_key, chunk.mutable_signature());
+          *chunk_name = priv::chunk_actions::ApplyTypeToName(
+              RandomString(64), priv::chunk_actions::kModifiableByOwner);
+          chunk.SerializeToString(chunk_contents);
         }
-        ofs.write(file_content.c_str(), file_content.size());
-        remaining_size -= string_size;
-      }
+        break;
+      default:
+        LOG(ERROR) << "GenerateChunk - Unsupported type "
+                   << static_cast<int>(chunk_type);
     }
-    ofs.close();
-    return file_path;
   }
+
   testing::AssertionResult EqualChunks(const std::string &chunk1,
                                        const std::string &chunk2) {
     if (chunk1 == chunk2)
@@ -139,148 +154,153 @@ class RemoteChunkStoreTest: public testing::Test {
   }
 
   maidsafe::test::TestPath test_dir_;
-  fs::path chunk_dir_, alt_chunk_dir_, tiger_chunk_dir_;
+  fs::path chunk_dir_;
   AsioService asio_service_;
-  std::shared_ptr<RemoteChunkStore> chunk_store_,
-                              alt_chunk_store_,
-                              tiger_chunk_store_;
+  std::shared_ptr<RemoteChunkStore> chunk_store_;
 
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
 
   size_t parallel_tasks_;
+
+  maidsafe::rsa::Keys keys_;
+  priv::chunk_store::RemoteChunkStore::ValidationData data_;
+  priv::chunk_actions::SignedData signed_data_;
+  std::function<void(bool)> failed_callback_;  // NOLINT (Philip)
+  std::function<void(bool)> success_callback_;  // NOLINT (Philip)
 };
 
 TEST_F(RemoteChunkStoreTest, BEH_Get) {
   std::string content(RandomString(100));
   std::string name(crypto::Hash<crypto::SHA512>(content));
-  fs::path path(*this->test_dir_ / "chunk.dat");
-  ASSERT_FALSE(fs::exists(path));
 
-  // non-existant chunk, should fail
+  // invalid chunks, should fail
   EXPECT_TRUE(this->chunk_store_->Get("").empty());
   EXPECT_TRUE(this->chunk_store_->Get(name).empty());
-  EXPECT_FALSE(this->chunk_store_->Get(name, path));
-  EXPECT_FALSE(fs::exists(path));
-
-  ASSERT_TRUE(this->chunk_store_->Store(name, content));
+  ASSERT_TRUE(this->chunk_store_->Store(name, content, success_callback_));
   // existing chunk
   EXPECT_EQ(content, this->chunk_store_->Get(name));
-  EXPECT_TRUE(this->chunk_store_->Get(name, path));
-  EXPECT_TRUE(fs::exists(path));
-  EXPECT_EQ(name, crypto::HashFile<crypto::SHA512>(path));
-
-  EXPECT_FALSE(this->chunk_store_->Empty());
-  // existing output file, should overwrite
-  this->CreateRandomFile(path, 99);
-  EXPECT_NE(name, crypto::HashFile<crypto::SHA512>(path));
-  EXPECT_TRUE(this->chunk_store_->Get(name, path));
-  EXPECT_EQ(name, crypto::HashFile<crypto::SHA512>(path));
-  // invalid file name
-  EXPECT_FALSE(this->chunk_store_->Get(name, fs::path("")));
 }
 
 
 
 TEST_F(RemoteChunkStoreTest, BEH_Store) {
   std::string content(RandomString(123));
-  std::string name_mem(crypto::Hash<crypto::SHA512>(content));
-  fs::path path(*this->test_dir_ / "chunk.dat");
-  this->CreateRandomFile(path, 456);
-  fs::path path_empty(*this->test_dir_ / "empty.dat");
-  this->CreateRandomFile(path_empty, 0);
-  std::string name_file(crypto::HashFile<crypto::SHA512>(path));
-  ASSERT_NE(name_mem, name_file);
-
+  std::string name(crypto::Hash<crypto::SHA512>(content));
   // invalid input
-  EXPECT_FALSE(this->chunk_store_->Store(name_mem, ""));
-  EXPECT_FALSE(this->chunk_store_->Store("", content));
-  EXPECT_FALSE(this->chunk_store_->Store(name_file, "", false));
-  EXPECT_FALSE(this->chunk_store_->Store(name_file, *this->test_dir_ / "fail",
-                                         false));
-  EXPECT_FALSE(this->chunk_store_->Store("", path, false));
-  EXPECT_FALSE(this->chunk_store_->Store(name_file, path_empty, false));
+  EXPECT_FALSE(this->chunk_store_->Store(name, "", failed_callback_));
+  EXPECT_FALSE(this->chunk_store_->Store("", content, failed_callback_));
+
   EXPECT_TRUE(this->chunk_store_->Empty());
-  EXPECT_EQ(0, this->chunk_store_->Count());
+  // EXPECT_EQ(0, this->chunk_store_->Count());
   EXPECT_EQ(0, this->chunk_store_->Size());
-  EXPECT_FALSE(this->chunk_store_->Has(name_mem));
-  EXPECT_EQ(0, this->chunk_store_->Count(name_mem));
-  EXPECT_EQ(0, this->chunk_store_->Size(name_mem));
-  EXPECT_FALSE(this->chunk_store_->Has(name_file));
-  EXPECT_EQ(0, this->chunk_store_->Count(name_file));
-  EXPECT_EQ(0, this->chunk_store_->Size(name_file));
+  // EXPECT_FALSE(this->chunk_store_->Has(name));
+  // EXPECT_EQ(0, this->chunk_store_->Count(name));
+  // EXPECT_EQ(0, this->chunk_store_->Size(name));
 
-  // store from string
-  ASSERT_TRUE(this->chunk_store_->Store(name_mem, content));
+//  valid store
+  ASSERT_TRUE(this->chunk_store_->Store(name, content, success_callback_));
+  // EXPECT_FALSE(this->chunk_store_->Empty());
+  // EXPECT_EQ(123, this->chunk_store_->Size());
+  // EXPECT_EQ(1, this->chunk_store_->Count());
+  // EXPECT_TRUE(this->chunk_store_->Has(name));
+  // EXPECT_EQ(1, this->chunk_store_->Count(name));
+  // EXPECT_EQ(123, this->chunk_store_->Size(name));
+  ASSERT_EQ(name,
+            crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(name)));
+}
+
+TEST_F(RemoteChunkStoreTest, BEH_Delete) {
+  std::string content(RandomString(123));
+  std::string name(crypto::Hash<crypto::SHA512>(content));
+  EXPECT_TRUE(this->chunk_store_->Get(name).empty());
+  EXPECT_TRUE(this->chunk_store_->Empty());
+  // EXPECT_FALSE(this->chunk_store_->Has(name));
+  // EXPECT_EQ(0, this->chunk_store_->Count(name));
+  // EXPECT_EQ(0, this->chunk_store_->Size(name));
+  EXPECT_EQ(0, this->chunk_store_->Size());
+
+  ASSERT_TRUE(this->chunk_store_->Store(name, content, success_callback_));
   EXPECT_FALSE(this->chunk_store_->Empty());
-  /*EXPECT_EQ(1, this->chunk_store_->Count());
-  EXPECT_EQ(123, this->chunk_store_->Size());*/
-  EXPECT_TRUE(this->chunk_store_->Has(name_mem));
-  /*EXPECT_EQ(1, this->chunk_store_->Count(name_mem));
-  EXPECT_EQ(123, this->chunk_store_->Size(name_mem));*/
-  EXPECT_FALSE(this->chunk_store_->Has(name_file));
-  EXPECT_EQ(0, this->chunk_store_->Count(name_file));
-  EXPECT_EQ(0, this->chunk_store_->Size(name_file));
+  // EXPECT_TRUE(this->chunk_store_->Has(name));
+  // EXPECT_EQ(1, this->chunk_store_->Count(name));
+  // EXPECT_EQ(123, this->chunk_store_->Size(name));
+  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  ASSERT_TRUE(this->chunk_store_->Delete(name, success_callback_));
+  EXPECT_TRUE(this->chunk_store_->Get(name).empty());
+}
 
-  ASSERT_EQ(name_mem,
-            crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(name_mem)));
+TEST_F(RemoteChunkStoreTest, BEH_Modify) {
+  std::string content, name, new_content, dummy;
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                  keys_.private_key, &dummy, &new_content);
 
-  // store from file
-  ASSERT_TRUE(this->chunk_store_->Store(name_file, path, false));
-  EXPECT_FALSE(this->chunk_store_->Empty());
-  /*EXPECT_EQ(2, this->chunk_store_->Count());
-  EXPECT_EQ(579, this->chunk_store_->Size());*/
-  EXPECT_TRUE(this->chunk_store_->Has(name_mem));
-  /*EXPECT_EQ(1, this->chunk_store_->Count(name_mem));
-  EXPECT_EQ(123, this->chunk_store_->Size(name_mem));*/
-  EXPECT_TRUE(this->chunk_store_->Has(name_file));
-  /*EXPECT_EQ(1, this->chunk_store_->Count(name_file));
-  EXPECT_EQ(456, this->chunk_store_->Size(name_file));*/
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  EXPECT_EQ(content, this->chunk_store_->Get(name));
 
-  ASSERT_EQ(name_file,
-            crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(name_file)));
+  // modify without correct validation data should fail
+  this->chunk_store_->Modify(name, new_content, failed_callback_);
+  EXPECT_EQ(content, this->chunk_store_->Get(name));
 
-  fs::path new_path(*this->test_dir_ / "chunk2.dat");
-  this->CreateRandomFile(new_path, 333);
-  std::string new_name(crypto::HashFile<crypto::SHA512>(new_path));
+  // modify with correct validation data should succeed
+  ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
+                                         success_callback_, data_));
+  EXPECT_EQ(new_content, this->chunk_store_->Get(name));
 }
 
 TEST_F(RemoteChunkStoreTest, BEH_ConcurrentGets) {
-  std::string content(RandomString(123));
-  std::string name_mem(crypto::Hash<crypto::SHA512>(content));
-  std::string new_content(RandomString(123));
-  ASSERT_TRUE(this->chunk_store_->Store(name_mem, content));
-  EXPECT_FALSE(this->chunk_store_->Empty());
+  std::string content, name, new_content, dummy;
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &dummy, &new_content);
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  // EXPECT_FALSE(this->chunk_store_->Empty());
+  // EXPECT_EQ(123, this->chunk_store_->Size());
   {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
-          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name_mem,
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
           content));
     }
     BOOST_VERIFY(cond_var_.timed_wait(
-                      lock, boost::posix_time::seconds(10),
-                      [&]()->bool {
-                          return parallel_tasks_ > 0; }));  // NOLINT (Philip)
+                        lock, boost::posix_time::seconds(60),
+                        [&]()->bool {
+                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
-
-  ASSERT_TRUE(this->chunk_store_->Modify(name_mem, new_content));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
+                                         success_callback_, data_));
   {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
-          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name_mem,
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
           new_content));
     }
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),
                         [&]()->bool {
-                            return parallel_tasks_ > 0; }));  // NOLINT (Philip)
+                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
 }
 
+TEST_F(RemoteChunkStoreTest, BEH_RedundantModifies) {
+}
 
 }  // namespace test
 
