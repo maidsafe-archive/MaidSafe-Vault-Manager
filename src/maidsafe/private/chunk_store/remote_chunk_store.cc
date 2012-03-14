@@ -184,6 +184,8 @@ bool RemoteChunkStore::Store(const std::string &name,
                                       content,
                                       validation_data.key_pair.public_key)) {
     DLOG(ERROR) << "Store - Could not store " << HexSubstr(name) << " locally.";
+    pending_ops_.right.erase(id);
+    cond_var_.notify_all();
     return false;
   }
 
@@ -211,6 +213,8 @@ bool RemoteChunkStore::Delete(const std::string &name,
                                        validation_data.key_pair.public_key)) {
     DLOG(ERROR) << "Delete - Could not delete " << HexSubstr(name)
                 << " locally.";
+    pending_ops_.right.erase(id);
+    cond_var_.notify_all();
     return false;
   }
 
@@ -405,7 +409,6 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
           callback(true);
           lock->lock();
         }
-
       }
       if (cancel_curr) {
         ++op_skip_count_[op_data.op_type];
