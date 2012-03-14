@@ -233,11 +233,11 @@ bool RemoteChunkStore::Modify(const std::string &name,
   OperationData op_data(kOpModify, callback, validation_data);
   op_data.content = content;
   uint32_t id(EnqueueOp(name, op_data));
-  int result(WaitForConflictingOps(name, kOpModify, id, &lock));
-  if (result != kWaitSuccess) {
-    DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
-    return result == kWaitCancelled;
-  }
+//   int result(WaitForConflictingOps(name, kOpModify, id, &lock));
+//   if (result != kWaitSuccess) {
+//     DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
+//     return result == kWaitCancelled;
+//   }
 
   ProcessPendingOps(&lock);
   return true;
@@ -389,10 +389,10 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
       }
 
       if (cancel_prev) {
-//         DLOG(INFO) << "EnqueueOp - Cancel previous '"
-//                    << kOpName[it->info.op_type] << "' due to '"
-//                    << kOpName[op_data.op_type] << "' for "
-//                    << HexSubstr(name);
+        DLOG(INFO) << "EnqueueOp - Cancel previous '"
+                   << kOpName[it->info.op_type] << "' due to '"
+                   << kOpName[op_data.op_type] << "' for "
+                   << HexSubstr(name);
         ++op_skip_count_[it->info.op_type];
         pending_ops_.left.erase(it);
         cond_var_.notify_all();
