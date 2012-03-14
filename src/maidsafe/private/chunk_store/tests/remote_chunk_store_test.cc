@@ -79,6 +79,47 @@ class RemoteChunkStoreTest: public testing::Test {
     DLOG(ERROR) << "DoGet - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
+  void DoStore(std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
+               const std::string &chunk_name,
+               const std::string &chunk_content) {
+    EXPECT_TRUE(chunk_store->Store(chunk_name, chunk_content,
+                                   success_callback_, data_));
+    DLOG(INFO) << "DoStore - before lock, parallel_tasks_ = "
+               << parallel_tasks_;
+    boost::mutex::scoped_lock lock(mutex_);
+    --parallel_tasks_;
+    cond_var_.notify_all();
+    DLOG(INFO) << "DoStore - end, parallel_tasks_ = " << parallel_tasks_;
+  }
+
+  void DoModify(
+             std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
+             const std::string &chunk_name,
+             const std::string &chunk_content) {
+    EXPECT_TRUE(chunk_store->Modify(chunk_name, chunk_content,
+                                         success_callback_, data_));
+    DLOG(ERROR) << "DoModify - before lock, parallel_tasks_ = "
+                << parallel_tasks_;
+    boost::mutex::scoped_lock lock(mutex_);
+    --parallel_tasks_;
+    cond_var_.notify_all();
+    DLOG(ERROR) << "DoModify - end, parallel_tasks_ = " << parallel_tasks_;
+  }
+
+  void DoDelete(
+      std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
+      const std::string &chunk_name,
+      const bool &expected_result) {
+    EXPECT_EQ(expected_result, chunk_store->Delete(chunk_name,
+                                                   success_callback_, data_));
+    DLOG(INFO) << "DoDelete - before lock, parallel_tasks_ = "
+               << parallel_tasks_;
+    boost::mutex::scoped_lock lock(mutex_);
+    --parallel_tasks_;
+    cond_var_.notify_all();
+    DLOG(INFO) << "DoDelete - end, parallel_tasks_ = " << parallel_tasks_;
+  }
+
   void SuccessfulCallback(bool success) {
     EXPECT_TRUE(success);
   }
@@ -253,7 +294,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
   EXPECT_EQ(new_content, this->chunk_store_->Get(name));
 }
 
-TEST_F(RemoteChunkStoreTest, BEH_ConcurrentGets) {
+TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_ConcurrentGets) {
   std::string content, name, new_content, dummy;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &name, &content);
@@ -299,7 +340,186 @@ TEST_F(RemoteChunkStoreTest, BEH_ConcurrentGets) {
   }
 }
 
-TEST_F(RemoteChunkStoreTest, BEH_RedundantModifies) {
+TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
+  int kNumModifies(10);
+  std::string content, name, new_content, dummy;
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  EXPECT_EQ(content, this->chunk_store_->Get(name));
+
+  std::vector<std::string*> new_content_vector;
+  for (int i(0); i < kNumModifies; ++i) {
+    std::string* new_content = new std::string;
+    GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &dummy, new_content);
+    new_content_vector.push_back(new_content);
+  }
+  // test sequential modifies
+  for (int i(0); i < kNumModifies; ++i) {
+    EXPECT_TRUE(chunk_store_->Modify(name, *(new_content_vector.at(i)),
+                                     success_callback_, data_));
+    EXPECT_EQ(*(new_content_vector.at(i)), this->chunk_store_->Get(name));
+  }
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name));
+
+  // test concurrent modifies
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    for (int i(0); i < kNumModifies; ++i) {
+      ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
+          *(new_content_vector.at(i))));
+    }
+    BOOST_VERIFY(cond_var_.timed_wait(
+                        lock, boost::posix_time::seconds(10),
+                        [&]()->bool {
+                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
+  }
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  // EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name));
+}
+
+TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_MultiThreads) {
+  const size_t kNumChunks(static_cast<size_t>(5));
+  {
+    // Store kNumChunks of chunks
+    // and
+    // Get kNumChunks of chunks
+    // and
+    // Delete kNumChunks of chunks
+    // at the same time
+    std::map<std::string, std::string> chunks;
+    while (chunks.size() < kNumChunks) {
+      std::string chunk_content(RandomString(123));
+      std::string chunk_name(crypto::Hash<crypto::SHA512>(chunk_content));
+      chunks[chunk_name] = chunk_content;
+    }
+
+    boost::mutex::scoped_lock lock(mutex_);
+    for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+      ++parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoStore, this, this->chunk_store_, it->first,
+          it->second));
+    }
+    for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+      ++parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoGet, this, this->chunk_store_, it->first,
+          it->second));
+    }
+    for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+      ++parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoDelete, this, this->chunk_store_, it->first,
+          true));
+    }
+    BOOST_VERIFY(cond_var_.timed_wait(lock, boost::posix_time::seconds(60),
+                    [&]()->bool { return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
+  }
+
+  ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+}
+
+TEST_F(RemoteChunkStoreTest, FUNC_Order) {
+  const size_t kNumChunks(static_cast<size_t>(20));
+  const size_t kRepeatTimes(7);
+
+  std::map<std::string, std::string> chunks;
+  while (chunks.size() < kNumChunks) {
+    std::string chunk_name, chunk_contents;
+    if (chunks.size() < kNumChunks / 2)
+      GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+                    asymm::PrivateKey(), &chunk_name, &chunk_contents);
+    else
+      GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                    keys_.private_key, &chunk_name,
+                    &chunk_contents);
+    chunks[chunk_name] = chunk_contents;
+  }
+
+  // check ops are executed in order
+  for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+    EXPECT_TRUE(this->chunk_store_->Delete(it->first, success_callback_,
+                                           data_));
+    EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second,
+                                          success_callback_, data_));
+    EXPECT_TRUE(this->chunk_store_->Delete(it->first, success_callback_,
+                                           data_));
+    EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second,
+                                          success_callback_, data_));
+    EXPECT_TRUE(EqualChunks(it->second,
+                            this->chunk_store_->Get(it->first, data_)));
+
+    ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+
+    this->chunk_store_->Clear();
+    ASSERT_TRUE(EqualChunks(it->second, this->chunk_store_->Get(it->first,
+                                                                data_)));
+
+    EXPECT_TRUE(this->chunk_store_->Delete(it->first,
+                                           success_callback_,
+                                           data_));
+    EXPECT_TRUE(this->chunk_store_->Get(it->first, data_).empty());
+
+    ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+
+    this->chunk_store_->Clear();
+    ASSERT_TRUE(this->chunk_store_->Get(it->first, data_).empty());
+  }
+
+  // Repeatedly store a chunk, then repeatedly delete it
+  {
+    std::string chunk_content(RandomString(123));
+    std::string chunk_name(crypto::Hash<crypto::SHA512>(chunk_content));
+    for (size_t i = 0; i < kRepeatTimes; ++i)
+      EXPECT_TRUE(this->chunk_store_->Store(
+          chunk_name, chunk_content, success_callback_, data_));
+
+    ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+
+    EXPECT_TRUE(EqualChunks(chunk_content,
+                            this->chunk_store_->Get(chunk_name, data_)));
+
+    for (size_t i = 0; i < kRepeatTimes - 1; ++i)
+      EXPECT_TRUE(this->chunk_store_->Delete(
+          chunk_name, success_callback_, data_));
+
+    ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+
+    this->chunk_store_->Clear();
+    EXPECT_TRUE(EqualChunks(chunk_content,
+                            this->chunk_store_->Get(chunk_name, data_)));
+
+    EXPECT_TRUE(this->chunk_store_->Delete(
+        chunk_name, success_callback_, data_));
+
+    ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+
+    this->chunk_store_->Clear();
+    EXPECT_TRUE(this->chunk_store_->Get(chunk_name, data_).empty());
+  }
 }
 
 }  // namespace test
