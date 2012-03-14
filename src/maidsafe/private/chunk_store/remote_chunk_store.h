@@ -209,7 +209,8 @@ class RemoteChunkStore {
                      const uint32_t &transaction_id,
                      boost::mutex::scoped_lock *lock);
   uint32_t EnqueueOp(const std::string &name,
-                     const OperationData &op_data);
+                     const OperationData &op_data,
+                     boost::mutex::scoped_lock *lock);
   void ProcessPendingOps(boost::mutex::scoped_lock *lock);
 
   std::shared_ptr<BufferedChunkStore> chunk_store_;

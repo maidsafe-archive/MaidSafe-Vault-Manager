@@ -136,7 +136,8 @@ std::string RemoteChunkStore::Get(const std::string &name,
       return content;
   }
 
-  uint32_t id(EnqueueOp(name, OperationData(kOpGet, nullptr, validation_data)));
+  uint32_t id(EnqueueOp(name, OperationData(kOpGet, nullptr, validation_data),
+                        &lock));
   ProcessPendingOps(&lock);
   if (!WaitForGetOps(name, id, &lock)) {
     DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name);
@@ -172,7 +173,7 @@ bool RemoteChunkStore::Store(const std::string &name,
 
   boost::mutex::scoped_lock lock(mutex_);
   uint32_t id(EnqueueOp(name, OperationData(kOpStore, callback,
-                                            validation_data)));
+                                            validation_data), &lock));
   int result(WaitForConflictingOps(name, kOpStore, id, &lock));
   if (result != kWaitSuccess) {
     DLOG(WARNING) << "Store - Terminated early for " << HexSubstr(name);
@@ -197,7 +198,7 @@ bool RemoteChunkStore::Delete(const std::string &name,
 
   boost::mutex::scoped_lock lock(mutex_);
   uint32_t id(EnqueueOp(name, OperationData(kOpDelete, callback,
-                                            validation_data)));
+                                            validation_data), &lock));
   int result(WaitForConflictingOps(name, kOpDelete, id, &lock));
   if (result != kWaitSuccess) {
     DLOG(WARNING) << "Delete - Terminated early for " << HexSubstr(name);
@@ -232,7 +233,7 @@ bool RemoteChunkStore::Modify(const std::string &name,
   boost::mutex::scoped_lock lock(mutex_);
   OperationData op_data(kOpModify, callback, validation_data);
   op_data.content = content;
-  uint32_t id(EnqueueOp(name, op_data));
+  uint32_t id(EnqueueOp(name, op_data, &lock));
 //   int result(WaitForConflictingOps(name, kOpModify, id, &lock));
 //   if (result != kWaitSuccess) {
 //     DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
@@ -363,7 +364,8 @@ bool RemoteChunkStore::WaitForGetOps(const std::string &name,
 }
 
 uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
-                                     const OperationData &op_data) {
+                                     const OperationData &op_data,
+                                     boost::mutex::scoped_lock *lock) {
   ++op_count_[op_data.op_type];
 
   // Are we able to cancel a previous op for this chunk?
@@ -393,9 +395,17 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
                    << kOpName[it->info.op_type] << "' due to '"
                    << kOpName[op_data.op_type] << "' for "
                    << HexSubstr(name);
+        OpFunctor callback(it->info.callback);
         ++op_skip_count_[it->info.op_type];
         pending_ops_.left.erase(it);
         cond_var_.notify_all();
+        if (it->info.op_type == kOpModify && callback) {
+          // run callback, because Modify doesn't block
+          lock->unlock();
+          callback(true);
+          lock->lock();
+        }
+
       }
       if (cancel_curr) {
         ++op_skip_count_[op_data.op_type];
