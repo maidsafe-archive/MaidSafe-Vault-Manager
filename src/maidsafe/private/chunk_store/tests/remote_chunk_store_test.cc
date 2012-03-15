@@ -294,7 +294,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
   EXPECT_EQ(new_content, this->chunk_store_->Get(name));
 }
 
-TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_ConcurrentGets) {
+TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   std::string content, name, new_content, dummy;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &name, &content);
@@ -395,7 +395,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   // EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name));
 }
 
-TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_MultiThreads) {
+TEST_F(RemoteChunkStoreTest, FUNC_MultiThreads) {
   const size_t kNumChunks(static_cast<size_t>(5));
   {
     // Store kNumChunks of chunks
@@ -464,13 +464,10 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
                                            data_));
     EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second,
                                           success_callback_, data_));
-    EXPECT_TRUE(EqualChunks(it->second,
-                            this->chunk_store_->Get(it->first, data_)));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
 
-    this->chunk_store_->Clear();
     ASSERT_TRUE(EqualChunks(it->second, this->chunk_store_->Get(it->first,
                                                                 data_)));
 
@@ -481,16 +478,13 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
-
-    this->chunk_store_->Clear();
-    ASSERT_TRUE(this->chunk_store_->Get(it->first, data_).empty());
   }
 
   // Repeatedly store a chunk, then repeatedly delete it
   {
     std::string chunk_content(RandomString(123));
     std::string chunk_name(crypto::Hash<crypto::SHA512>(chunk_content));
-    for (size_t i = 0; i < kRepeatTimes; ++i)
+    for (size_t i(0); i < kRepeatTimes; ++i)
       EXPECT_TRUE(this->chunk_store_->Store(
           chunk_name, chunk_content, success_callback_, data_));
 
@@ -500,14 +494,13 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
     EXPECT_TRUE(EqualChunks(chunk_content,
                             this->chunk_store_->Get(chunk_name, data_)));
 
-    for (size_t i = 0; i < kRepeatTimes - 1; ++i)
+    for (size_t i(0); i < kRepeatTimes - 1; ++i)
       EXPECT_TRUE(this->chunk_store_->Delete(
           chunk_name, success_callback_, data_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
 
-    this->chunk_store_->Clear();
     EXPECT_TRUE(EqualChunks(chunk_content,
                             this->chunk_store_->Get(chunk_name, data_)));
 
