@@ -178,6 +178,15 @@ class RemoteChunkStoreTest: public testing::Test {
           chunk.SerializeToString(chunk_contents);
         }
         break;
+      case priv::chunk_actions::kUnknownType:
+        {
+          priv::chunk_actions::SignedData chunk;
+          chunk.set_data(RandomString(chunk_size));
+          asymm::Sign(chunk.data(), private_key, chunk.mutable_signature());
+          *chunk_name = priv::chunk_actions::ApplyTypeToName(
+              RandomString(64), priv::chunk_actions::kUnknownType);
+          chunk.SerializeToString(chunk_contents);
+        }
       default:
         LOG(ERROR) << "GenerateChunk - Unsupported type "
                    << static_cast<int>(chunk_type);
@@ -252,10 +261,19 @@ TEST_F(RemoteChunkStoreTest, BEH_Store) {
 }
 
 TEST_F(RemoteChunkStoreTest, BEH_Delete) {
-  std::string content(RandomString(123));
-  std::string name(crypto::Hash<crypto::SHA512>(content));
+  std::string content;
+  std::string name;
+
+  GenerateChunk(priv::chunk_actions::kUnknownType, 123,
+                keys_.private_key, &name, &content);
+  // Deleting chunk of unknown type should fail
+  ASSERT_FALSE(this->chunk_store_->Delete(name, failed_callback_));
+
+  GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+                keys_.private_key, &name, &content);
   EXPECT_TRUE(this->chunk_store_->Get(name).empty());
   EXPECT_TRUE(this->chunk_store_->Empty());
+
   // EXPECT_FALSE(this->chunk_store_->Has(name));
   // EXPECT_EQ(0, this->chunk_store_->Count(name));
   // EXPECT_EQ(0, this->chunk_store_->Size(name));
@@ -273,25 +291,47 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
 
 TEST_F(RemoteChunkStoreTest, BEH_Modify) {
   std::string content, name, new_content, dummy;
-  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
-  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                  keys_.private_key, &dummy, &new_content);
 
-  ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        success_callback_, data_));
-  ASSERT_TRUE(chunk_store_->WaitForCompletion());
-  Sleep(boost::posix_time::seconds(1));
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  // test that modifying of chunk of default type fails
+  {
+    GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+                  keys_.private_key, &name, &content);
+    GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                    keys_.private_key, &dummy, &new_content);
 
-  // modify without correct validation data should fail
-  this->chunk_store_->Modify(name, new_content, failed_callback_);
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
+    ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                          success_callback_, data_));
+    ASSERT_TRUE(chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+    EXPECT_EQ(content, this->chunk_store_->Get(name));
 
-  // modify with correct validation data should succeed
-  ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
-                                         success_callback_, data_));
-  EXPECT_EQ(new_content, this->chunk_store_->Get(name));
+    ASSERT_FALSE(this->chunk_store_->Modify(name, new_content,
+                                           failed_callback_, data_));
+    EXPECT_EQ(content, this->chunk_store_->Get(name));
+  }
+
+  // test modifying of chunk of modifiable by owner type
+  {
+    GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                  keys_.private_key, &name, &content);
+    GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                    keys_.private_key, &dummy, &new_content);
+
+    ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                          success_callback_, data_));
+    ASSERT_TRUE(chunk_store_->WaitForCompletion());
+    Sleep(boost::posix_time::seconds(1));
+    EXPECT_EQ(content, this->chunk_store_->Get(name));
+
+    // modify without correct validation data should fail
+    this->chunk_store_->Modify(name, new_content, failed_callback_);
+    EXPECT_EQ(content, this->chunk_store_->Get(name));
+
+    // modify with correct validation data should succeed
+    ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
+                                           success_callback_, data_));
+    EXPECT_EQ(new_content, this->chunk_store_->Get(name));
+  }
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
