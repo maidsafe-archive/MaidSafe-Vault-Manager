@@ -380,6 +380,32 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   }
 }
 
+TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
+  std::string content, name, new_content, dummy;
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    for (int i(0); i < 5; ++i) {
+      ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoDelete, this, chunk_store_, name,
+          true));
+    }
+    BOOST_VERIFY(cond_var_.timed_wait(
+                        lock, boost::posix_time::seconds(60),
+                        [&]()->bool {
+                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
+  }
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+}
+
 TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   int kNumModifies(10);
   std::string content, name, new_content, dummy;
