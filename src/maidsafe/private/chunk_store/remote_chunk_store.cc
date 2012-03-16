@@ -237,8 +237,8 @@ bool RemoteChunkStore::Modify(const std::string &name,
   boost::mutex::scoped_lock lock(mutex_);
   OperationData op_data(kOpModify, callback, validation_data);
   op_data.content = content;
-//   uint32_t id(EnqueueOp(name, op_data, &lock));
   EnqueueOp(name, op_data, &lock);
+//   uint32_t id(EnqueueOp(name, op_data, &lock));
 //   int result(WaitForConflictingOps(name, kOpModify, id, &lock));
 //   if (result != kWaitSuccess) {
 //     DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
