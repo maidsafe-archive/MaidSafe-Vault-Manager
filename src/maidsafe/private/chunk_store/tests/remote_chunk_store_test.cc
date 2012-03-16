@@ -31,6 +31,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "boost/filesystem/fstream.hpp"
 #include "boost/thread.hpp"
 
+#include "gmock/gmock.h"
+
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -40,6 +42,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
+#include "maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
 
 namespace fs = boost::filesystem;
 
@@ -58,6 +61,8 @@ class RemoteChunkStoreTest: public testing::Test {
         chunk_dir_(*test_dir_ / "chunks"),
         asio_service_(),
         chunk_store_(),
+        mock_manager_chunk_store_(),
+        mock_chunk_manager_(),
         mutex_(),
         cond_var_(),
         parallel_tasks_(0),
@@ -134,7 +139,10 @@ class RemoteChunkStoreTest: public testing::Test {
   void SetUp() {
     asio_service_.Start(10);
     fs::create_directories(chunk_dir_);
-    InitChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
+    InitLocalChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
+    InitMockManagerChunkStore(&mock_manager_chunk_store_,
+                              chunk_dir_,
+                              asio_service_.service());
     maidsafe::rsa::GenerateKeyPair(&keys_);
     signed_data_.set_data(RandomString(50));
     asymm::Sign(signed_data_.data(), keys_.private_key,
@@ -151,12 +159,36 @@ class RemoteChunkStoreTest: public testing::Test {
     asio_service_.Stop();
   }
 
-  void InitChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
+  std::shared_ptr<RemoteChunkStore> CreateMockManagerChunkStore(
+      const fs::path &base_dir,
+      boost::asio::io_service &asio_service) {
+    std::shared_ptr<BufferedChunkStore> buffered_chunk_store(
+        new BufferedChunkStore(asio_service));
+    std::string buffered_chunk_store_dir("buffered_chunk_store" +
+                                       RandomAlphaNumericString(8));
+    buffered_chunk_store->Init(base_dir / buffered_chunk_store_dir);
+    std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority(
+        new chunk_actions::ChunkActionAuthority(buffered_chunk_store));
+    mock_chunk_manager_ =
+        std::make_shared<MockChunkManager>(buffered_chunk_store);
+
+    return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
+                                            mock_chunk_manager_,
+                                            chunk_action_authority);
+  }
+
+  void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                       const fs::path &chunk_dir,
                       boost::asio::io_service &asio_service) {
-  chunk_store->reset();
-  *chunk_store = CreateLocalChunkStore(chunk_dir, asio_service);
-}
+    chunk_store->reset();
+    *chunk_store = CreateLocalChunkStore(chunk_dir, asio_service);
+  }
+  void InitMockManagerChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
+                      const fs::path &chunk_dir,
+                      boost::asio::io_service &asio_service) {
+    chunk_store->reset();
+    *chunk_store = CreateMockManagerChunkStore(chunk_dir, asio_service);
+  }
 
   void GenerateChunk(unsigned char chunk_type,
                      const size_t &chunk_size,
@@ -207,6 +239,8 @@ class RemoteChunkStoreTest: public testing::Test {
   fs::path chunk_dir_;
   AsioService asio_service_;
   std::shared_ptr<RemoteChunkStore> chunk_store_;
+  std::shared_ptr<RemoteChunkStore> mock_manager_chunk_store_;
+  std::shared_ptr<MockChunkManager> mock_chunk_manager_;
 
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
@@ -579,6 +613,25 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
     this->chunk_store_->Clear();
     EXPECT_TRUE(this->chunk_store_->Get(chunk_name, data_).empty());
   }
+}
+
+TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
+  std::string content(RandomString(100));
+  std::string name(crypto::Hash<crypto::SHA512>(content));
+  for (int i(0); i < 3; ++i) {
+    ++parallel_tasks_;
+    DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+    asio_service_.service().post(std::bind(
+      &RemoteChunkStore::Get, mock_manager_chunk_store_, name, data_));
+  }
+  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_,
+                                        testing::_,
+                                        testing::_,
+                                        testing::_))
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+          &MockChunkManager::GetChunkTimeout, mock_chunk_manager_.get()))));
+  Sleep(boost::posix_time::seconds(1));
+  ASSERT_FALSE(this->mock_manager_chunk_store_->WaitForCompletion());
 }
 
 }  // namespace test
