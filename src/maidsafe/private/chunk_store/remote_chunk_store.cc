@@ -73,6 +73,8 @@ RemoteChunkStore::RemoteChunkStore(
       cond_var_(),
       max_active_ops_(kMaxActiveOps),
       active_ops_count_(0),
+      completion_wait_timeout_(kCompletionWaitTimeout),
+      operation_wait_timeout_(kOperationWaitTimeout),
       pending_ops_(),
       failed_ops_(),
       op_count_(),
@@ -255,7 +257,7 @@ bool RemoteChunkStore::WaitForCompletion() {
     DLOG(INFO) << "WaitForCompletion - " << pending_ops_.size()
                << " pending operations, " << active_ops_count_
                << " of them active...";
-    if (!cond_var_.timed_wait(lock, kCompletionWaitTimeout)) {
+    if (!cond_var_.timed_wait(lock, completion_wait_timeout_)) {
       DLOG(ERROR) << "WaitForCompletion - Timed out with "
                   << pending_ops_.size() << " pending operations, "
                   << active_ops_count_ << " of them active.";
@@ -333,7 +335,7 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
     return kWaitCancelled;
 
   while (pending_ops_.left.count(name) > 1) {
-    if (!cond_var_.timed_wait(*lock, kOperationWaitTimeout)) {
+    if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForConflictingOps - Timed out trying to "
                   << kOpName[op_type] << " " << HexSubstr(name) << " with "
                   << pending_ops_.left.count(name) << " pending operations.";

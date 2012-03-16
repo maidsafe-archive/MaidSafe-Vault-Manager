@@ -182,12 +182,16 @@ class RemoteChunkStoreTest: public testing::Test {
                       boost::asio::io_service &asio_service) {
     chunk_store->reset();
     *chunk_store = CreateLocalChunkStore(chunk_dir, asio_service);
+    (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
+    (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
   void InitMockManagerChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                       const fs::path &chunk_dir,
                       boost::asio::io_service &asio_service) {
     chunk_store->reset();
     *chunk_store = CreateMockManagerChunkStore(chunk_dir, asio_service);
+    (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
+    (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
 
   void GenerateChunk(unsigned char chunk_type,

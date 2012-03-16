@@ -182,6 +182,15 @@ class RemoteChunkStore {
       max_active_ops_ = 1;
   }
 
+  /// Sets the time to wait in WaitForCompletion before failing.
+  void SetCompletionWaitTimeout(const boost::posix_time::time_duration &value) {
+    completion_wait_timeout_ = value;
+  }
+  /// Sets the time to wait in WaitForConflictingOps before failing.
+  void SetOperationWaitTimeout(const boost::posix_time::time_duration &value) {
+    completion_wait_timeout_ = value;
+  }
+
 //   friend class boost::serialization::access;
 //   template<class Archive>
 //   void serialize(Archive &archive, const unsigned int version);  // NOLINT
@@ -223,6 +232,8 @@ class RemoteChunkStore {
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
   int max_active_ops_, active_ops_count_;
+  boost::posix_time::time_duration completion_wait_timeout_;
+  boost::posix_time::time_duration operation_wait_timeout_;
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
   std::uintmax_t op_count_[4],
