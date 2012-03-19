@@ -24,7 +24,11 @@
 #include "gmock/gmock.h"
 #include "boost/thread.hpp"
 
+#include "maidsafe/common/utils.h"
+
+#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_store/chunk_manager.h"
+
 
 namespace maidsafe {
 
@@ -59,8 +63,12 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
                                  const asymm::PublicKey &owner_public_key,
                                  const std::string &ownership_proof));
 
-  void GetChunkTimeout() {
+  void Timeout() {
     // do nothing, causing an eventual timeout
+  }
+  void StoreChunkPass(const std::string &chunk_name) {
+    chunk_store()->Store(chunk_name, RandomString(128));
+    (*sig_chunk_stored_)(chunk_name, kSuccess);
   }
 
  private:

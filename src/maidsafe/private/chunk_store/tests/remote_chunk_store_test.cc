@@ -66,11 +66,13 @@ class RemoteChunkStoreTest: public testing::Test {
         mutex_(),
         cond_var_(),
         parallel_tasks_(0),
+        num_successes_(0),
         keys_(),
         data_(),
         signed_data_(),
         failed_callback_(),
-        success_callback_() {}
+        success_callback_(),
+        empty_callback_() {}
 
   void DoGet(std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
              const std::string &chunk_name,
@@ -125,6 +127,20 @@ class RemoteChunkStoreTest: public testing::Test {
     DLOG(INFO) << "DoDelete - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
+  void DoDeleteWithoutTest(
+      std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
+      const std::string &chunk_name) {
+    if (chunk_store->Delete(chunk_name, failed_callback_, data_))
+      ++num_successes_;
+    DLOG(INFO) << "DoDeleteWithoutTest - before lock, parallel_tasks_ = "
+               << parallel_tasks_;
+    boost::mutex::scoped_lock lock(mutex_);
+    --parallel_tasks_;
+    cond_var_.notify_all();
+    DLOG(INFO) << "DoDeleteWithoutTest - end, parallel_tasks_ = "
+               << parallel_tasks_;
+  }
+
   void SuccessfulCallback(bool success) {
     EXPECT_TRUE(success);
   }
@@ -132,6 +148,8 @@ class RemoteChunkStoreTest: public testing::Test {
   void FailedCallback(bool success) {
     EXPECT_FALSE(success);
   }
+
+  void EmptyCallback(bool /*success*/) {}
 
   ~RemoteChunkStoreTest() {}
 
@@ -152,6 +170,8 @@ class RemoteChunkStoreTest: public testing::Test {
     failed_callback_ = std::bind(&RemoteChunkStoreTest::FailedCallback,
                                  this, args::_1);
     success_callback_ = std::bind(&RemoteChunkStoreTest::SuccessfulCallback,
+                                  this, args::_1);
+    empty_callback_ = std::bind(&RemoteChunkStoreTest::EmptyCallback,
                                   this, args::_1);
   }
 
@@ -185,6 +205,7 @@ class RemoteChunkStoreTest: public testing::Test {
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
     (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
+
   void InitMockManagerChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                       const fs::path &chunk_dir,
                       boost::asio::io_service &asio_service) {
@@ -250,12 +271,14 @@ class RemoteChunkStoreTest: public testing::Test {
   boost::condition_variable cond_var_;
 
   size_t parallel_tasks_;
+  int num_successes_;
 
   maidsafe::rsa::Keys keys_;
   priv::chunk_store::RemoteChunkStore::ValidationData data_;
   priv::chunk_actions::SignedData signed_data_;
   std::function<void(bool)> failed_callback_;  // NOLINT (Philip)
   std::function<void(bool)> success_callback_;  // NOLINT (Philip)
+  std::function<void(bool)> empty_callback_;  // NOLINT (Philip)
 };
 
 TEST_F(RemoteChunkStoreTest, BEH_Get) {
@@ -622,7 +645,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
 TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
   std::string content(RandomString(100));
   std::string name(crypto::Hash<crypto::SHA512>(content));
-  for (int i(0); i < 3; ++i) {
+  for (int i(0); i < 10; ++i) {
     ++parallel_tasks_;
     DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
     asio_service_.service().post(std::bind(
@@ -633,9 +656,44 @@ TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
                                         testing::_,
                                         testing::_))
       .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
-          &MockChunkManager::GetChunkTimeout, mock_chunk_manager_.get()))));
+          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   Sleep(boost::posix_time::seconds(1));
   ASSERT_FALSE(this->mock_manager_chunk_store_->WaitForCompletion());
+}
+
+TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
+  std::string content, name, new_content, dummy;
+  num_successes_ = 0;
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_,
+                                      testing::_,
+                                      testing::_))
+      .WillOnce(testing::WithArgs<0>(testing::Invoke(std::bind(
+          &MockChunkManager::StoreChunkPass, mock_chunk_manager_.get(),
+                                                               name))));
+  EXPECT_TRUE(this->mock_manager_chunk_store_->Store(name, content,
+                                        success_callback_, data_));
+  Sleep(boost::posix_time::seconds(1));
+  ASSERT_TRUE(mock_manager_chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  for (int i(0); i < 5; ++i) {
+    ++parallel_tasks_;
+    DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+    asio_service_.service().post(std::bind(
+        &RemoteChunkStoreTest::DoDeleteWithoutTest, this,
+        mock_manager_chunk_store_, name));
+  }
+  EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_,
+                                      testing::_,
+                                      testing::_,
+                                      testing::_))
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
+  Sleep(boost::posix_time::seconds(1));
+  ASSERT_FALSE(mock_manager_chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  ASSERT_EQ(1, num_successes_);
 }
 
 }  // namespace test
