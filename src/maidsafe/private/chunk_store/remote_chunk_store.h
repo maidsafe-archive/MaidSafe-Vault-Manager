@@ -188,7 +188,7 @@ class RemoteChunkStore {
   }
   /// Sets the time to wait in WaitForConflictingOps before failing.
   void SetOperationWaitTimeout(const boost::posix_time::time_duration &value) {
-    completion_wait_timeout_ = value;
+    operation_wait_timeout_ = value;
   }
 
 //   friend class boost::serialization::access;

@@ -47,6 +47,7 @@ enum RcsReturnCode {
 /// Default maximum number of operations to be processed in parallel.
 const int kMaxActiveOps(4);
 /// Time to wait in WaitForCompletion before failing.
+
 const boost::posix_time::time_duration kCompletionWaitTimeout(
     boost::posix_time::seconds(90));
 /// Time to wait in WaitForConflictingOps before failing.
@@ -358,7 +359,7 @@ bool RemoteChunkStore::WaitForGetOps(const std::string &name,
                                      const uint32_t &transaction_id,
                                      boost::mutex::scoped_lock *lock) {
   while (pending_ops_.right.count(transaction_id) > 0) {
-    if (!cond_var_.timed_wait(*lock, kOperationWaitTimeout)) {
+    if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForGetOps - Timed out for " << HexSubstr(name)
                   << " with " << pending_ops_.left.count(name)
                   << " pending operations.";
