@@ -12,22 +12,3 @@ message AppendableByAll {
   required SignedData allow_others_to_append = 2;
   repeated SignedData appendices = 3;
 }
-
-// Generic message for use in sending messages/files, sharing folders,
-// annotating files, etc.
-message Message {
-  enum ContentType {
-    kNormal = 0;
-    kFileTransfer = 1;
-    kSharedDirectory = 2;
-    kEmail = 3;
-  };
-
-  required ContentType type = 1;
-  required bytes id = 2;
-  optional bytes parent_id = 3;
-  required bytes sender_public_username = 4;
-  repeated bytes content = 6;
-  optional bytes timestamp = 7;
-  optional bytes subject = 8;
-}
