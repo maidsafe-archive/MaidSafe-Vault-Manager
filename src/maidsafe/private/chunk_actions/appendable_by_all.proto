@@ -1,7 +1,6 @@
 import "maidsafe/private/chunk_actions/chunk.proto";
 package maidsafe.priv.chunk_actions;
 
-
 message ModifyAppendableByAll {
   optional SignedData identity_key = 1;
   optional SignedData allow_others_to_append = 2;
@@ -12,14 +11,6 @@ message AppendableByAll {
   required SignedData identity_key = 1;
   required SignedData allow_others_to_append = 2;
   repeated SignedData appendices = 3;
-}
-
-
-// Message used to send owner's contact info to recipient for acceptance into
-// recipient's contact list
-message Introduction {
-  required bytes mmid_name = 1;
-  required bytes public_username = 2;
 }
 
 // Generic message for use in sending messages/files, sharing folders,
