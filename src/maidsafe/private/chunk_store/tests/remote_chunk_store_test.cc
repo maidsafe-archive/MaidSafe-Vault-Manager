@@ -184,6 +184,28 @@ class RemoteChunkStoreTest: public testing::Test {
                << parallel_tasks_;
   }
 
+  void DoModifyWithoutTest(
+             std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
+             const std::string &chunk_name,
+             const std::string &chunk_content, int task_num) {
+    {
+      boost::mutex::scoped_lock lock(mutex_);
+      while (task_number_ < task_num)
+        cond_var_.wait(lock);
+    }
+    chunk_store->Modify(chunk_name, chunk_content,
+                                         empty_callback_, data_);
+        DLOG(INFO) << "DoModifyWithoutTest - " << HexSubstr(chunk_name)
+               << " - before lock, parallel_tasks_ = "
+               << parallel_tasks_;
+    boost::mutex::scoped_lock lock(mutex_);
+    --parallel_tasks_;
+    ++task_number_;
+    cond_var_.notify_all();
+    DLOG(INFO) << "DoModifyWithoutTest - " << HexSubstr(chunk_name)
+                << " - end, parallel_tasks_ = " << parallel_tasks_;
+  }
+
   void StoreSuccessfulCallback(bool success) {
     EXPECT_TRUE(success);
   }
@@ -538,6 +560,45 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoDelete, this, chunk_store_, name,
           true, task_number_));
+    }
+    BOOST_VERIFY(cond_var_.timed_wait(
+                        lock, boost::posix_time::seconds(10),
+                        [&]()->bool {
+                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
+  }
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+}
+
+TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesAndModifies) {
+  std::string content, name, new_content, dummy;
+  task_number_ = 0;
+  int task_number_initialiser(0);
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &name, &content);
+  GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
+                keys_.private_key, &dummy, &new_content);
+  ASSERT_TRUE(this->chunk_store_->Store(name, content,
+                                        store_success_callback_, data_));
+  ASSERT_TRUE(chunk_store_->WaitForCompletion());
+  Sleep(boost::posix_time::seconds(1));
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    for (int i(0); i < 10; ++i) {
+      ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoModifyWithoutTest, this, chunk_store_, name,
+          new_content, 0));
+      ++task_number_initialiser;
+    }
+    for (int i(0); i < 10; ++i) {
+      ++parallel_tasks_;
+      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      asio_service_.service().post(std::bind(
+          &RemoteChunkStoreTest::DoDelete, this, chunk_store_, name,
+          true, 0));
+      ++task_number_initialiser;
     }
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),
