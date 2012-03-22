@@ -89,13 +89,13 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(EqualChunks(chunk_content,
                             chunk_store->Get(chunk_name, data_)));
-    DLOG(ERROR) << "DoGet - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoGet - " << HexSubstr(chunk_name)
                 << " - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     ++task_number_;
     cond_var_.notify_all();
-    DLOG(ERROR) << "DoGet - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoGet - " << HexSubstr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -117,7 +117,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(ERROR) << "DoStore - " << HexSubstr(chunk_name)
+      DLOG(INFO) << "DoStore - " << HexSubstr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -142,7 +142,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(ERROR) << "DoDelete - " << HexSubstr(chunk_name)
+      DLOG(INFO) << "DoDelete - " << HexSubstr(chunk_name)
                   << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -150,7 +150,12 @@ class RemoteChunkStoreTest: public testing::Test {
   void DoModify(
              std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
              const std::string &chunk_name,
-             const std::string &chunk_content) {
+             const std::string &chunk_content, int task_num) {
+    {
+      boost::mutex::scoped_lock lock(mutex_);
+      while (task_number_ < task_num)
+        cond_var_.wait(lock);
+    }
     EXPECT_TRUE(chunk_store->Modify(chunk_name, chunk_content,
                                          modify_success_callback_, data_));
         DLOG(INFO) << "DoModify - " << HexSubstr(chunk_name)
@@ -158,8 +163,9 @@ class RemoteChunkStoreTest: public testing::Test {
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
+    ++task_number_;
     cond_var_.notify_all();
-    DLOG(ERROR) << "DoModify - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoModify - " << HexSubstr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -207,7 +213,7 @@ class RemoteChunkStoreTest: public testing::Test {
 
  protected:
   void SetUp() {
-    asio_service_.Start(10);
+    asio_service_.Start(11);
     fs::create_directories(chunk_dir_);
     InitLocalChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
     InitMockManagerChunkStore(&mock_manager_chunk_store_,
@@ -493,13 +499,12 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
                         [&]()->bool {
                             return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
-  Sleep(boost::posix_time::seconds(1));
-  ASSERT_TRUE(chunk_store_->WaitForCompletion());
-  Sleep(boost::posix_time::seconds(1));
+
   ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
                                          modify_success_callback_, data_));
+  task_num_initialiser = 0;
+  task_number_ = 0;
   {
-    boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
@@ -508,6 +513,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
           new_content, task_num_initialiser));
       ++task_num_initialiser;
     }
+    boost::mutex::scoped_lock lock(mutex_);
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),
                         [&]()->bool {
@@ -526,7 +532,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
   Sleep(boost::posix_time::seconds(1));
   {
     boost::mutex::scoped_lock lock(mutex_);
-    for (int i(0); i < 5; ++i) {
+    for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
@@ -578,6 +584,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
   EXPECT_EQ(content, this->chunk_store_->Get(name));
+  // int task_num_initialiser(0);
+  // task_number_ = 0;
   {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < kNumModifies; ++i) {
@@ -585,7 +593,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
-          *(new_content_vector.at(i))));
+          *(new_content_vector.at(i)), 0));
+      // ++task_num_initialiser;
     }
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),
