@@ -143,27 +143,33 @@ std::string RemoteChunkStore::Get(const std::string &name,
                         &lock));
   ProcessPendingOps(&lock);
   if (!WaitForGetOps(name, id, &lock)) {
-    DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name);
+    DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name) << ", id - " << id;
     return "";
   }
 
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "Get - Failed retrieving " << HexSubstr(name);
+    DLOG(ERROR) << "Get - Failed retrieving " << HexSubstr(name)
+                << ", id - " << id;
     return "";
   }
 
   // check if there is a get op for this chunk following
-  auto it = pending_ops_.left.begin();
+  auto it = pending_ops_.left.find(name);
   if (it != pending_ops_.left.end() && it->info.op_type == kOpGet) {
     pending_ops_.left.erase(it);  // trigger next one
+    cond_var_.notify_all();
+    // DLOG(INFO) << "Get - Done, found other get op "
+    //            << HexSubstr(name) << ", id - " << id;
   } else {
-    DLOG(INFO) << "Get - Done, deleting " << HexSubstr(name);
+    // DLOG(INFO) << "Get - Done, not deleting " << HexSubstr(name);
+    DLOG(INFO) << "Get - Done, deleting " << HexSubstr(name) << ", id - " << id;
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
       chunk_store_->Delete(name);
   }
+  ProcessPendingOps(&lock);
 
   return content;
 }
@@ -275,12 +281,25 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
   boost::mutex::scoped_lock lock(mutex_);
 
   // find first matching and active op
-  auto it = pending_ops_.left.find(name);
-  if (it == pending_ops_.left.end() || it->info.op_type != op_type ||
+//  auto it = pending_ops_.left.find(name);
+  OperationBimap::iterator it = pending_ops_.begin();
+
+  for (; it != pending_ops_.end(); ++it) {
+    if (it->left == name && it->info.op_type == op_type)
+      break;
+  }
+//  if (it == pending_ops_.left.end() || it->info.op_type != op_type ||
+  if (it == pending_ops_.end() || it->info.op_type != op_type ||
       !it->info.active) {
     DLOG(WARNING) << "OnOpResult - Unrecognised result for op '"
                   << kOpName[op_type] << "' and chunk " << HexSubstr(name)
                   << " received. (" << result << ")";
+//    if (it == pending_ops_.end())
+//      DLOG(WARNING) << "it == pending_ops_.end()";
+//    if (it->info.op_type != op_type)
+//      DLOG(WARNING) << "it->info.op_type != op_type";
+//    if (!it->info.active)
+//      DLOG(WARNING) << "!it->info.active";
     return;
   }
 
@@ -316,7 +335,8 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 
   OpFunctor callback(it->info.callback);
   --active_ops_count_;
-  pending_ops_.left.erase(it);
+//  pending_ops_.left.erase(it);
+  pending_ops_.erase(it);
   cond_var_.notify_all();
 
   if (callback) {
@@ -324,8 +344,10 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
     callback(result == kSuccess);
     lock.lock();
   }
-
-  ProcessPendingOps(&lock);
+  if (op_type != kOpGet) {
+    DLOG(INFO) << "ProcessPendingOps - OnOpResult";
+    ProcessPendingOps(&lock);
+  }
 }
 
 int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
@@ -341,6 +363,7 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
                   << kOpName[op_type] << " " << HexSubstr(name) << " with "
                   << pending_ops_.left.count(name) << " pending operations.";
       pending_ops_.right.erase(transaction_id);
+      cond_var_.notify_all();
       failed_ops_.insert(std::make_pair(name, op_type));
       return kWaitTimeout;
     }
@@ -364,6 +387,7 @@ bool RemoteChunkStore::WaitForGetOps(const std::string &name,
                   << " with " << pending_ops_.left.count(name)
                   << " pending operations.";
       pending_ops_.right.erase(transaction_id);
+      cond_var_.notify_all();
       failed_ops_.insert(std::make_pair(name, kOpGet));
       return false;
     }
@@ -380,10 +404,10 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
   auto it = pending_ops_.left.upper_bound(name);
   if (pending_ops_.left.lower_bound(name) != it) {
     --it;
-//     DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
-//                << "', found prev '" << kOpName[it->info.op_type]
-//                << "', chunk " << HexSubstr(name) << ", "
-//                << (it->info.active ? "active" : "inactive");
+     DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
+                << "', found prev '" << kOpName[it->info.op_type]
+                << "', chunk " << HexSubstr(name) << ", "
+                << (it->info.active ? "active" : "inactive");
     if (!it->info.active) {
       bool cancel_prev(false), cancel_curr(false);
       if (op_data.op_type == kOpModify &&
@@ -426,6 +450,8 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
     id = RandomUint32();
   } while (id == 0 || pending_ops_.right.count(id) > 0);
   pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
+  DLOG(INFO) << "EnqueueOp - enqueueing name - " << HexSubstr(name)
+             << ", id - " << id << ", type - " << kOpName[op_data.op_type];
   return id;
 }
 
@@ -446,9 +472,9 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
         ++it;
       }
       if (it == pending_ops_.end()) {
-//         if (!pending_ops_.empty())
-//           DLOG(INFO) << "ProcessPendingOps - " << pending_ops_.size()
-//                     << " ops active or waiting for dependencies...";
+         if (!pending_ops_.empty())
+           DLOG(INFO) << "ProcessPendingOps - " << pending_ops_.size()
+                      << " ops active or waiting for dependencies...";
         return;  // no op found that an currently be processed
       }
 

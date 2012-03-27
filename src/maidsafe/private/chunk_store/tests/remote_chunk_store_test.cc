@@ -86,6 +86,7 @@ class RemoteChunkStoreTest: public testing::Test {
       boost::mutex::scoped_lock lock(mutex_);
       while (task_number_ < task_num)
         cond_var_.wait(lock);
+      ++task_number_;
     }
     EXPECT_TRUE(EqualChunks(chunk_content,
                             chunk_store->Get(chunk_name, data_)));
@@ -93,7 +94,6 @@ class RemoteChunkStoreTest: public testing::Test {
                 << " - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
-    ++task_number_;
     cond_var_.notify_all();
     DLOG(INFO) << "DoGet - " << HexSubstr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
@@ -208,6 +208,7 @@ class RemoteChunkStoreTest: public testing::Test {
 
   void StoreSuccessfulCallback(bool success) {
     EXPECT_TRUE(success);
+    DLOG(INFO) << "StoreSuccessfulCallback reached";
   }
 
   void StoreFailedCallback(bool success) {
@@ -235,7 +236,7 @@ class RemoteChunkStoreTest: public testing::Test {
 
  protected:
   void SetUp() {
-    asio_service_.Start(11);
+    asio_service_.Start(21);
     fs::create_directories(chunk_dir_);
     InitLocalChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
     InitMockManagerChunkStore(&mock_manager_chunk_store_,
@@ -492,28 +493,37 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
+// asio_service_.Stop();
+// int task_num_initialiser(0);
   std::string content, name, new_content, dummy;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &name, &content);
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &dummy, &new_content);
-  ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
-
-  Sleep(boost::posix_time::seconds(1));
-  ASSERT_TRUE(chunk_store_->WaitForCompletion());
-  Sleep(boost::posix_time::seconds(1));
+  ++parallel_tasks_;
+  DLOG(INFO) << "Before Posting Store: Parallel tasks: " << parallel_tasks_;
+  boost::thread_group thread_group_;
+  thread_group_.create_thread(
+          std::bind(&RemoteChunkStoreTest::DoStore, this, chunk_store_, name,
+                    content, 0));
+  /*asio_service_.service().post(std::bind(
+      &RemoteChunkStoreTest::DoStore, this, chunk_store_, name, content,
+      0));*/
+  // ++task_num_initialiser;
   // EXPECT_FALSE(this->chunk_store_->Empty());
   // EXPECT_EQ(123, this->chunk_store_->Size());
-  int task_num_initialiser(0);
   {
-    for (int i(0); i < 10; ++i) {
+    for (int i(0); i < 3; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      asio_service_.service().post(std::bind(
+      DLOG(INFO) << "Before Posting Get: Parallel tasks: " << parallel_tasks_;
+      /*asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
-          content, task_num_initialiser));
-      ++task_num_initialiser;
+          content, 0));*/
+      thread_group_.create_thread(
+          std::bind(
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
+          content, 0));
+      // ++task_num_initialiser;
     }
     boost::mutex::scoped_lock lock(mutex_);
     BOOST_VERIFY(cond_var_.timed_wait(
@@ -521,20 +531,31 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
                         [&]()->bool {
                             return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
-
-  ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
-                                         modify_success_callback_, data_));
-  task_num_initialiser = 0;
-  task_number_ = 0;
+  ++parallel_tasks_;
+  DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+  /*asio_service_.service().post(std::bind(
+      &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
+      new_content, 0));*/
+  thread_group_.create_thread(
+      std::bind(
+      &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
+      new_content, 0));
+  //  ++task_num_initialiser;
   {
-    for (int i(0); i < 10; ++i) {
+    for (int i(0); i < 3; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      asio_service_.service().post(std::bind(
+      /*asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
-          new_content, task_num_initialiser));
-      ++task_num_initialiser;
+          new_content, 0));*/
+      thread_group_.create_thread(
+          std::bind(
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
+          new_content, 0));
+    //  ++task_num_initialiser;
     }
+    /*DLOG(INFO) << "Reached asio service Start(22)";
+    asio_service_.Start(22);*/
     boost::mutex::scoped_lock lock(mutex_);
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),
