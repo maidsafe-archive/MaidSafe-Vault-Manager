@@ -40,6 +40,9 @@ template <>
 bool IsModifiable<kModifiableByOwner>() { return true; }
 
 template <>
+bool ModifyReplaces<kModifiableByOwner>() { return true; }
+
+template <>
 bool IsValidChunk<kModifiableByOwner>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

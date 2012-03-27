@@ -117,7 +117,7 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   unsigned char chunk_type(pca::GetDataType(name));
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "No chunk in local chunk store" << Base32Substr(name);
+    DLOG(ERROR) << "No chunk in local chunk store " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }

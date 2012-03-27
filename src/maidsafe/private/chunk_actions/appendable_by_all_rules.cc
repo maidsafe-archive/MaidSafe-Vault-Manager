@@ -41,6 +41,9 @@ template <>
 bool IsModifiable<kAppendableByAll>() { return true; }
 
 template <>
+bool ModifyReplaces<kAppendableByAll>() { return false; }
+
+template <>
 bool IsValidChunk<kAppendableByAll>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

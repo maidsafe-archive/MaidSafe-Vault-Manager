@@ -102,7 +102,7 @@ MS_ADD_STATIC_LIBRARY(${MS_PROJECT_NAME} ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PR
 MS_ADD_EXECUTABLE(TESTprivate Tests ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
 TARGET_LINK_LIBRARIES(maidsafe_private_static maidsafe_common_static protobuf_static)
-TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static)
+TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private_static gtest_static gmock_static)
 
 
 ###################################################################################################
@@ -115,6 +115,9 @@ FILE(GLOB_RECURSE PROTO_HEADER_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.h")
 IF(MSVC)
   SET_SOURCE_FILES_PROPERTIES(${PROTO_SOURCE_FILES} PROPERTIES COMPILE_FLAGS "/W0")
 ELSEIF(UNIX)
+  SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
+                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
+                               PROPERTIES COMPILE_FLAGS "-Wno-effc++")
   SET_SOURCE_FILES_PROPERTIES(${PROTO_SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-w")
   SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc
                                 PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")

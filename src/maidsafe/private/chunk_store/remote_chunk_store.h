@@ -19,25 +19,21 @@
 
 #include <functional>
 #include <list>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 
-#include "boost/multi_index_container.hpp"
-#include "boost/multi_index/ordered_index.hpp"
-#include "boost/multi_index/composite_key.hpp"
-#include "boost/multi_index/member.hpp"
-#include "boost/multi_index/identity.hpp"
-#include "boost/multi_index/mem_fun.hpp"
-
+#include "boost/bimap.hpp"
+#include "boost/bimap/list_of.hpp"
+#include "boost/bimap/multiset_of.hpp"
+// #include "boost/serialization/access.hpp"
 #include "boost/thread/condition_variable.hpp"
 #include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
-#include "boost/thread/shared_mutex.hpp"
 
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
-
 #include "maidsafe/private/chunk_store/buffered_chunk_store.h"
 #include "maidsafe/private/chunk_store/chunk_manager.h"
 
@@ -68,6 +64,9 @@ class RemoteChunkStore {
 
   static const std::string kOpName[];  // see implementation
 
+  // typedef std::function<void(std::string)> GetFunctor;  // NOLINT
+  typedef std::function<void(bool)> OpFunctor;  // NOLINT
+
   struct ValidationData {
     ValidationData(const asymm::Keys &key_pair_in,
                    const std::string &ownership_proof_in)
@@ -81,98 +80,87 @@ class RemoteChunkStore {
   struct OperationData {
     OperationData()
         : op_type(),
+          active(false),
           owner_key_id(),
           owner_public_key(),
           ownership_proof(),
-          content() {}
+          content(),
+          callback() {}
     explicit OperationData(const OperationType &op_type)
         : op_type(op_type),
+          active(false),
           owner_key_id(),
           owner_public_key(),
           ownership_proof(),
-          content() {}
+          content(),
+          callback() {}
     OperationData(const OperationType &op_type,
+                  const OpFunctor &callback,
                   const ValidationData &validation_data)
         : op_type(op_type),
+          active(false),
           owner_key_id(validation_data.key_pair.identity),
           owner_public_key(validation_data.key_pair.public_key),
           ownership_proof(validation_data.ownership_proof),
-          content() {}
+          content(),
+          callback(callback) {}
     OperationType op_type;
+    bool active;
     asymm::Identity owner_key_id;
     asymm::PublicKey owner_public_key;
     std::string ownership_proof;
     std::string content;
+    OpFunctor callback;
   };
 
-  typedef std::pair<std::string, OperationData> Operation;
+  // typedef std::map<std::string, OperationData> OperationMap;
+  typedef std::multimap<std::string, OperationType> OperationMultiMap;
+  /**
+   * The OperationBimap is used to keep pending operations. The left index
+   * is for non-unique chunk names, the right index for unique transaction IDs,
+   * the relation index reflects the sequence of adding operations, and the info
+   * is additional data of the operation.
+   */
+  typedef boost::bimaps::bimap<boost::bimaps::multiset_of<std::string>,
+                               boost::bimaps::set_of<uint32_t>,
+                               boost::bimaps::list_of_relation,
+                               boost::bimaps::with_info<OperationData> >
+      OperationBimap;
 
   RemoteChunkStore(
       std::shared_ptr<BufferedChunkStore> chunk_store,
       std::shared_ptr<ChunkManager> chunk_manager,
-      std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority);  // NOLINT (Dan)
+      std::shared_ptr<chunk_actions::ChunkActionAuthority>
+          chunk_action_authority);
 
   ~RemoteChunkStore();
-  void Init();
+
   std::string Get(
       const std::string &name,
-      const ValidationData &validation_data = ValidationData()) const;
-
-  bool Get(const std::string &name,
-           const fs::path &sink_file_name,
-           const ValidationData &validation_data = ValidationData()) const;
+      const ValidationData &validation_data = ValidationData());
 
   bool Store(const std::string &name,
              const std::string &content,
-             const ValidationData &validation_data = ValidationData());
-
-  bool Store(const std::string &name,
-             const fs::path &source_file_name,
-             bool delete_source_file,
+             const OpFunctor &callback,
              const ValidationData &validation_data = ValidationData());
 
   bool Delete(const std::string &name,
+              const OpFunctor &callback,
               const ValidationData &validation_data = ValidationData());
 
   bool Modify(const std::string &name,
               const std::string &content,
+              const OpFunctor &callback,
               const ValidationData &validation_data = ValidationData());
 
-  bool Modify(const std::string &name,
-              const fs::path &source_file_name,
-              bool delete_source_file,
-              const ValidationData &validation_data = ValidationData());
-
-  bool MoveTo(const std::string&, ChunkStore*) {
-    return false;
-  }
-
-  bool Has(const std::string &name) const { return chunk_store_->Has(name); }
-
-  std::uintmax_t Size(const std::string &name) const {
-    return chunk_store_->Size(name);
-  }
-
-  std::uintmax_t Size() const {
+  uintmax_t Size() const {
     // TODO(Steve) get from account
     return 0;  // chunk_store_->Size();
   }
 
-  std::uintmax_t Capacity() const {
+  uintmax_t Capacity() const {
     // TODO(Steve) get from account
     return 0;  // chunk_store_->Capacity();
-  }
-
-  bool Vacant(const std::uintmax_t&) const {
-    return true;  // return chunk_store_->Vacant(size);
-  }
-
-  std::uintmax_t Count(const std::string &name) const {
-    return chunk_store_->Count(name);
-  }
-
-  std::uintmax_t Count() const {
-    return 0;  // return chunk_store_->Count();
   }
 
   bool Empty() const {
@@ -187,20 +175,20 @@ class RemoteChunkStore {
   bool WaitForCompletion();
 
   /// Sets the maximum number of operations to be processed in parallel.
-  void SetMaxActiveOps(int max_active_ops) {
+  void SetMaxActiveOps(const int &max_active_ops) {
+    boost::mutex::scoped_lock lock(mutex_);
     max_active_ops_ = max_active_ops;
     if (max_active_ops_ < 1)
       max_active_ops_ = 1;
   }
 
-  ChunkManager::ChunkStoredSigPtr sig_chunk_stored() {
-    return sig_chunk_stored_;
+  /// Sets the time to wait in WaitForCompletion before failing.
+  void SetCompletionWaitTimeout(const boost::posix_time::time_duration &value) {
+    completion_wait_timeout_ = value;
   }
-  ChunkManager::ChunkModifiedSigPtr sig_chunk_modified() {
-    return sig_chunk_modified_;
-  }
-  ChunkManager::ChunkDeletedSigPtr sig_chunk_deleted() {
-    return sig_chunk_deleted_;
+  /// Sets the time to wait in WaitForConflictingOps before failing.
+  void SetOperationWaitTimeout(const boost::posix_time::time_duration &value) {
+    operation_wait_timeout_ = value;
   }
 
 //   friend class boost::serialization::access;
@@ -219,20 +207,21 @@ class RemoteChunkStore {
   RemoteChunkStore(const RemoteChunkStore&);
   RemoteChunkStore& operator=(const RemoteChunkStore&);
 
-  void SetCapacity(const std::uintmax_t&) {}
-
   void OnOpResult(const OperationType &op_type,
                   const std::string &name,
                   const int &result);
-  std::string DoGet(const std::string &name,
-                    const ValidationData &validation_data) const;
-  void EnqueueModOp(const std::string &name,
-                    const OperationData &op_data);
+  int WaitForConflictingOps(const std::string &name,
+                            const OperationType &op_type,
+                            const uint32_t &transaction_id,
+                            boost::mutex::scoped_lock *lock);
+  bool WaitForGetOps(const std::string &name,
+                     const uint32_t &transaction_id,
+                     boost::mutex::scoped_lock *lock);
+  uint32_t EnqueueOp(const std::string &name,
+                     const OperationData &op_data,
+                     boost::mutex::scoped_lock *lock);
   void ProcessPendingOps(boost::mutex::scoped_lock *lock);
 
-  ChunkManager::ChunkStoredSigPtr sig_chunk_stored_;
-  ChunkManager::ChunkModifiedSigPtr sig_chunk_modified_;
-  ChunkManager::ChunkDeletedSigPtr sig_chunk_deleted_;
   std::shared_ptr<BufferedChunkStore> chunk_store_;
   std::shared_ptr<ChunkManager> chunk_manager_;
   std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority_;
@@ -240,36 +229,18 @@ class RemoteChunkStore {
                   cm_store_conn_,
                   cm_modify_conn_,
                   cm_delete_conn_;
-  mutable boost::mutex mutex_;
-  mutable boost::condition_variable cond_var_;
-  mutable int max_active_ops_, active_ops_count_;
-  mutable std::set<std::string> active_get_ops_, active_mod_ops_;
-  mutable std::multiset<std::string> waiting_getters_;
-  mutable std::list<Operation> pending_mod_ops_, failed_hashable_ops_;
-  mutable std::set<std::string> failed_non_hashable_store_ops_;
-  mutable std::uintmax_t get_op_count_,
-                         store_op_count_,
-                         modify_op_count_,
-                         delete_op_count_;
-  std::uintmax_t get_success_count_,
-                 store_success_count_,
-                 modify_success_count_,
-                 delete_success_count_;
-  std::uintmax_t get_total_size_, store_total_size_, modify_total_size_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
+  int max_active_ops_, active_ops_count_;
+  boost::posix_time::time_duration completion_wait_timeout_;
+  boost::posix_time::time_duration operation_wait_timeout_;
+  OperationBimap pending_ops_;
+  OperationMultiMap failed_ops_;
+  std::uintmax_t op_count_[4],
+                 op_success_count_[4],
+                 op_skip_count_[4],
+                 op_size_[4];
 };
-
-/*
-
-namespace op_archiving {
-
-int Serialize(const maidsafe::pd::RemoteChunkStore &remote_chunk_store,
-              std::stringstream *output_stream);
-int Deserialize(std::stringstream *input_stream,
-                maidsafe::pd::RemoteChunkStore &remote_chunk_store);
-
-}  // namespace op_archiving
-
-*/
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path &base_dir,

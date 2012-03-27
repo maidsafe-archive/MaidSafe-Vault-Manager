@@ -333,6 +333,22 @@ TEST_F(ChunkActionAuthorityTest, BEH_Modifiable) {
   EXPECT_FALSE(chunk_action_authority_->Modifiable(wrong_length_short));
 }
 
+TEST_F(ChunkActionAuthorityTest, BEH_ModifyReplaces) {
+  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string wrong_length_long(default_name_ + "aa");
+  std::string wrong_length_short(default_name_.substr(1));
+
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(default_name_));
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(
+      appendable_by_all_name_));
+  EXPECT_TRUE(chunk_action_authority_->ModifyReplaces(
+      modifiable_by_owner_name_));
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(signature_name_));
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(invalid_type));
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(wrong_length_long));
+  EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(wrong_length_short));
+}
+
 TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
   EXPECT_EQ(kInvalidChunkType,
             chunk_action_authority_->ValidStore("", default_content_,
