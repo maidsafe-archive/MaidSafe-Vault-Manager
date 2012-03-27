@@ -495,6 +495,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
 // asio_service_.Stop();
 // int task_num_initialiser(0);
+  int kNumConcurrentGets(3);
   std::string content, name, new_content, dummy;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &name, &content);
@@ -513,7 +514,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   // EXPECT_FALSE(this->chunk_store_->Empty());
   // EXPECT_EQ(123, this->chunk_store_->Size());
   {
-    for (int i(0); i < 3; ++i) {
+    for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting Get: Parallel tasks: " << parallel_tasks_;
       /*asio_service_.service().post(std::bind(
@@ -522,7 +523,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
       thread_group_.create_thread(
           std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
-          content, 0));
+          content, 1));
       // ++task_num_initialiser;
     }
     boost::mutex::scoped_lock lock(mutex_);
@@ -539,10 +540,10 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   thread_group_.create_thread(
       std::bind(
       &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
-      new_content, 0));
+      new_content, kNumConcurrentGets + 1));
   //  ++task_num_initialiser;
   {
-    for (int i(0); i < 3; ++i) {
+    for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       /*asio_service_.service().post(std::bind(
@@ -551,7 +552,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
       thread_group_.create_thread(
           std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
-          new_content, 0));
+          new_content, kNumConcurrentGets + 2));
     //  ++task_num_initialiser;
     }
     /*DLOG(INFO) << "Reached asio service Start(22)";
