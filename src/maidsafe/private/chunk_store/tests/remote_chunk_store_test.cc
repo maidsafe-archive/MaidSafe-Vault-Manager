@@ -767,7 +767,6 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
                                           store_success_callback_, data_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
-    Sleep(boost::posix_time::seconds(1));
 
     ASSERT_TRUE(EqualChunks(it->second, this->chunk_store_->Get(it->first,
                                                                 data_)));
@@ -778,7 +777,6 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
     EXPECT_TRUE(this->chunk_store_->Get(it->first, data_).empty());
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
-    Sleep(boost::posix_time::seconds(1));
   }
 
   // Repeatedly store a chunk, then repeatedly delete it
