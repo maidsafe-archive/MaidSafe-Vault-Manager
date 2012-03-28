@@ -236,6 +236,7 @@ class RemoteChunkStore {
   boost::posix_time::time_duration operation_wait_timeout_;
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
+  std::multiset<std::string> waiting_gets_;
   std::uintmax_t op_count_[4],
                  op_success_count_[4],
                  op_skip_count_[4],

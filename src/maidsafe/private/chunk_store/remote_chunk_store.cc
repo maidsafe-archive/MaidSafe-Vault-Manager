@@ -49,10 +49,10 @@ const int kMaxActiveOps(4);
 /// Time to wait in WaitForCompletion before failing.
 
 const boost::posix_time::time_duration kCompletionWaitTimeout(
-    boost::posix_time::seconds(90));
+    boost::posix_time::seconds(60));
 /// Time to wait in WaitForConflictingOps before failing.
 const boost::posix_time::time_duration kOperationWaitTimeout(
-    boost::posix_time::seconds(60));
+    boost::posix_time::seconds(50));
 
 const std::string RemoteChunkStore::kOpName[] = { "get",
                                                   "store",
@@ -78,6 +78,7 @@ RemoteChunkStore::RemoteChunkStore(
       operation_wait_timeout_(kOperationWaitTimeout),
       pending_ops_(),
       failed_ops_(),
+      waiting_gets_(),
       op_count_(),
       op_success_count_(),
       op_skip_count_(),
@@ -143,32 +144,45 @@ std::string RemoteChunkStore::Get(const std::string &name,
                         &lock));
   ProcessPendingOps(&lock);
   if (!WaitForGetOps(name, id, &lock)) {
-    DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name) << ", id - " << id;
+    DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name) << " - ID " << id;
     return "";
   }
 
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
     DLOG(ERROR) << "Get - Failed retrieving " << HexSubstr(name)
-                << ", id - " << id;
+                 << " - ID " << id;
     return "";
   }
 
   // check if there is a get op for this chunk following
-  auto it = pending_ops_.left.find(name);
-  if (it != pending_ops_.left.end() && it->info.op_type == kOpGet) {
-    pending_ops_.left.erase(it);  // trigger next one
-    cond_var_.notify_all();
-    // DLOG(INFO) << "Get - Done, found other get op "
-    //            << HexSubstr(name) << ", id - " << id;
-  } else {
-    // DLOG(INFO) << "Get - Done, not deleting " << HexSubstr(name);
-    DLOG(INFO) << "Get - Done, deleting " << HexSubstr(name) << ", id - " << id;
+  auto it = pending_ops_.begin();
+  while (it != pending_ops_.end()) {
+    if (it->left == name) {
+      if (it->info.op_type == kOpGet) {
+        // DLOG(INFO) << "Get - Done, found other get op "
+        //            << HexSubstr(name) << ", id - " << id;
+//         pending_ops_.erase(it);  // trigger next one
+//         cond_var_.notify_all();
+      } else {
+        it = pending_ops_.end();
+      }
+      break;
+    }
+    ++it;
+  }
+
+  waiting_gets_.erase(name);
+
+  if (it == pending_ops_.end() &&
+      waiting_gets_.find(name) == waiting_gets_.end()) {
+    DLOG(INFO) << "Get - Done, deleting " << HexSubstr(name) << " - ID " << id;
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
       chunk_store_->Delete(name);
   }
+
   ProcessPendingOps(&lock);
 
   return content;
@@ -281,16 +295,13 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
   boost::mutex::scoped_lock lock(mutex_);
 
   // find first matching and active op
-//  auto it = pending_ops_.left.find(name);
-  OperationBimap::iterator it = pending_ops_.begin();
-
+  auto it = pending_ops_.begin();
   for (; it != pending_ops_.end(); ++it) {
     if (it->left == name && it->info.op_type == op_type)
       break;
   }
-//  if (it == pending_ops_.left.end() || it->info.op_type != op_type ||
-  if (it == pending_ops_.end() || it->info.op_type != op_type ||
-      !it->info.active) {
+
+  if (it == pending_ops_.end() || !it->info.active) {
     DLOG(WARNING) << "OnOpResult - Unrecognised result for op '"
                   << kOpName[op_type] << "' and chunk " << HexSubstr(name)
                   << " received. (" << result << ")";
@@ -302,6 +313,9 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 //      DLOG(WARNING) << "!it->info.active";
     return;
   }
+
+//   DLOG(INFO) << "OnOpResult - Success for op '" << kOpName[op_type]
+//              << "' and chunk " << HexSubstr(name) << " - ID " << it->right;
 
   // statistics
   if (result == kSuccess) {
@@ -335,7 +349,8 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 
   OpFunctor callback(it->info.callback);
   --active_ops_count_;
-//  pending_ops_.left.erase(it);
+  if (op_type == kOpGet)
+    waiting_gets_.insert(name);
   pending_ops_.erase(it);
   cond_var_.notify_all();
 
@@ -344,10 +359,9 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
     callback(result == kSuccess);
     lock.lock();
   }
-  if (op_type != kOpGet) {
-    DLOG(INFO) << "ProcessPendingOps - OnOpResult";
+
+  if (op_type != kOpGet)
     ProcessPendingOps(&lock);
-  }
 }
 
 int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
@@ -361,13 +375,14 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForConflictingOps - Timed out trying to "
                   << kOpName[op_type] << " " << HexSubstr(name) << " with "
-                  << pending_ops_.left.count(name) << " pending operations.";
+                  << pending_ops_.left.count(name)
+                  << " pending operations. - ID " << transaction_id;
       pending_ops_.right.erase(transaction_id);
       cond_var_.notify_all();
       failed_ops_.insert(std::make_pair(name, op_type));
       return kWaitTimeout;
     }
-    if (pending_ops_.right.count(transaction_id) == 0) {
+    if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
       DLOG(WARNING) << "WaitForConflictingOps - Operation to "
                     << kOpName[op_type] << " " << HexSubstr(name)
                     << " with transaction ID " << transaction_id
@@ -381,11 +396,11 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
 bool RemoteChunkStore::WaitForGetOps(const std::string &name,
                                      const uint32_t &transaction_id,
                                      boost::mutex::scoped_lock *lock) {
-  while (pending_ops_.right.count(transaction_id) > 0) {
+  while (pending_ops_.right.find(transaction_id) != pending_ops_.right.end()) {
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForGetOps - Timed out for " << HexSubstr(name)
                   << " with " << pending_ops_.left.count(name)
-                  << " pending operations.";
+                  << " pending operations. - ID " << transaction_id;
       pending_ops_.right.erase(transaction_id);
       cond_var_.notify_all();
       failed_ops_.insert(std::make_pair(name, kOpGet));
@@ -404,10 +419,10 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
   auto it = pending_ops_.left.upper_bound(name);
   if (pending_ops_.left.lower_bound(name) != it) {
     --it;
-     DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
-                << "', found prev '" << kOpName[it->info.op_type]
-                << "', chunk " << HexSubstr(name) << ", "
-                << (it->info.active ? "active" : "inactive");
+    DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
+               << "', found prev '" << kOpName[it->info.op_type]
+               << "', chunk " << HexSubstr(name) << ", "
+               << (it->info.active ? "active" : "inactive");
     if (!it->info.active) {
       bool cancel_prev(false), cancel_curr(false);
       if (op_data.op_type == kOpModify &&
@@ -448,16 +463,17 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
   uint32_t id;
   do {
     id = RandomUint32();
-  } while (id == 0 || pending_ops_.right.count(id) > 0);
+  } while (id == 0 || pending_ops_.right.find(id) != pending_ops_.right.end());
   pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
-  DLOG(INFO) << "EnqueueOp - enqueueing name - " << HexSubstr(name)
-             << ", id - " << id << ", type - " << kOpName[op_data.op_type];
+  DLOG(INFO) << "EnqueueOp - Enqueueing op '" << kOpName[op_data.op_type]
+             << "' for " << HexSubstr(name) << " with ID " << id;
   return id;
 }
 
 void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
 //   DLOG(INFO) << "ProcessPendingOps - " << active_ops_count_ << " of max "
 //              << max_active_ops_ << " ops active.";
+  std::set<std::string> processed_gets_;
   while (active_ops_count_ < max_active_ops_) {
     std::string name;
     OperationData op_data;
@@ -465,21 +481,39 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
       std::set<std::string> active_ops_;
       auto it = pending_ops_.begin();  // always (re-)start from beginning!
       while (it != pending_ops_.end()) {
-        if (it->info.active)
+        if (it->info.active) {
           active_ops_.insert(it->left);
-        else if (active_ops_.count(it->left) == 0)
+        } else if (active_ops_.find(it->left) == active_ops_.end() &&
+                   (it->info.op_type != kOpGet ||
+                    processed_gets_.find(it->left) == processed_gets_.end())) {
           break;
+        }
         ++it;
       }
+
       if (it == pending_ops_.end()) {
-         if (!pending_ops_.empty())
-           DLOG(INFO) << "ProcessPendingOps - " << pending_ops_.size()
-                      << " ops active or waiting for dependencies...";
+        if (!pending_ops_.empty())
+          DLOG(INFO) << "ProcessPendingOps - " << pending_ops_.size()
+                    << " ops active or waiting for dependencies...";
         return;  // no op found that an currently be processed
       }
 
-      DLOG(INFO) << "ProcessPendingOps - About to " << kOpName[it->info.op_type]
-                << " chunk " << HexSubstr(it->left);
+      if (it->info.op_type == kOpGet) {
+        if (chunk_store_->Has(it->left)) {
+          DLOG(INFO) << "ProcessPendingOps - Already have chunk "
+                     << HexSubstr(it->left) << " - ID " << it->right;
+          waiting_gets_.insert(it->left);
+          pending_ops_.erase(it);
+          cond_var_.notify_all();
+          return;
+        } else {
+          processed_gets_.insert(it->left);
+        }
+      }
+
+//       DLOG(INFO) << "ProcessPendingOps - About to "
+//                 << kOpName[it->info.op_type]
+//                 << " chunk " << HexSubstr(it->left) << " - ID " << it->right;
 
       it->info.active = true;
       name = it->left;
