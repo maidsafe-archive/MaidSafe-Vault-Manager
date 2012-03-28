@@ -77,7 +77,6 @@ void LocalChunkManager::GetChunk(const std::string &name,
     Sleep(get_wait_);
   }
   // TODO(Team): Add check of ID on network
-  unsigned char chunk_type(pca::GetDataType(name));
   if (chunk_store_->Has(name)) {
     (*sig_chunk_got_)(name, kSuccess);
     return;
@@ -106,7 +105,6 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   }
 
   // TODO(Team): Add check of ID on network
-  unsigned char chunk_type(pca::GetDataType(name));
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
     DLOG(ERROR) << "No chunk in local chunk store " << Base32Substr(name);

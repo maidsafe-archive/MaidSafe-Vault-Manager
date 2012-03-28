@@ -819,20 +819,18 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
 TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
   std::string content(RandomString(100));
   std::string name(crypto::Hash<crypto::SHA512>(content));
+  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_, testing::_,
+                                             testing::_))
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 10; ++i) {
     ++parallel_tasks_;
     DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
     asio_service_.service().post(std::bind(
       &RemoteChunkStore::Get, mock_manager_chunk_store_, name, data_));
   }
-  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_,
-                                        testing::_,
-                                        testing::_,
-                                        testing::_))
-      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
-          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   Sleep(boost::posix_time::seconds(1));
-  ASSERT_FALSE(this->mock_manager_chunk_store_->WaitForCompletion());
+  this->mock_manager_chunk_store_->WaitForCompletion();
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
@@ -840,17 +838,19 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
   num_successes_ = 0;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &name, &content);
-  EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_,
-                                      testing::_,
-                                      testing::_))
+  EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_, testing::_,
+                                               testing::_))
       .WillOnce(testing::WithArgs<0>(testing::Invoke(std::bind(
           &MockChunkManager::StoreChunkPass, mock_chunk_manager_.get(),
-                                                               name))));
+          name))));
   EXPECT_TRUE(this->mock_manager_chunk_store_->Store(name, content,
                                         store_success_callback_, data_));
   Sleep(boost::posix_time::seconds(1));
-  ASSERT_TRUE(mock_manager_chunk_store_->WaitForCompletion());
-  Sleep(boost::posix_time::seconds(1));
+  mock_manager_chunk_store_->WaitForCompletion();
+  EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_, testing::_,
+                                                testing::_, testing::_))
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 5; ++i) {
     ++parallel_tasks_;
     DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
@@ -858,15 +858,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
         &RemoteChunkStoreTest::DoDeleteWithoutTest, this,
         mock_manager_chunk_store_, name));
   }
-  EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_,
-                                      testing::_,
-                                      testing::_,
-                                      testing::_))
-      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
-          &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   Sleep(boost::posix_time::seconds(1));
-  ASSERT_FALSE(mock_manager_chunk_store_->WaitForCompletion());
-  Sleep(boost::posix_time::seconds(1));
+  mock_manager_chunk_store_->WaitForCompletion();
   ASSERT_EQ(1, num_successes_);
 }
 
