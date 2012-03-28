@@ -493,6 +493,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
+//   FLAGS_ms_logging_private = google::INFO;
 // asio_service_.Stop();
 // int task_num_initialiser(0);
   std::string content, name, new_content, dummy;
@@ -500,12 +501,13 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
                 keys_.private_key, &name, &content);
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                 keys_.private_key, &dummy, &new_content);
-  ++parallel_tasks_;
-  DLOG(INFO) << "Before Posting Store: Parallel tasks: " << parallel_tasks_;
+  ASSERT_TRUE(chunk_store_->Store(name, content, nullptr, data_));
+//   ++parallel_tasks_;
+
   boost::thread_group thread_group_;
-  thread_group_.create_thread(
-          std::bind(&RemoteChunkStoreTest::DoStore, this, chunk_store_, name,
-                    content, 0));
+//   thread_group_.create_thread(
+//           std::bind(&RemoteChunkStoreTest::DoStore, this, chunk_store_, name,
+//                     content, 0));
   /*asio_service_.service().post(std::bind(
       &RemoteChunkStoreTest::DoStore, this, chunk_store_, name, content,
       0));*/
@@ -515,7 +517,6 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   {
     for (int i(0); i < 3; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting Get: Parallel tasks: " << parallel_tasks_;
       /*asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
           content, 0));*/
@@ -531,15 +532,15 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
                         [&]()->bool {
                             return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
-  ++parallel_tasks_;
-  DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+  // ++parallel_tasks_;
   /*asio_service_.service().post(std::bind(
       &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
       new_content, 0));*/
-  thread_group_.create_thread(
-      std::bind(
-      &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
-      new_content, 0));
+//   thread_group_.create_thread(
+//       std::bind(
+//       &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
+//       new_content, 0));
+  ASSERT_TRUE(chunk_store_->Modify(name, new_content, nullptr, data_));
   //  ++task_num_initialiser;
   {
     for (int i(0); i < 3; ++i) {
