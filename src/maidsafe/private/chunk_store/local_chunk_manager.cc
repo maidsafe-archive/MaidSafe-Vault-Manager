@@ -78,8 +78,7 @@ void LocalChunkManager::GetChunk(const std::string &name,
   }
   // TODO(Team): Add check of ID on network
   unsigned char chunk_type(pca::GetDataType(name));
-  bool chunk_exists(chunk_store_->Has(name));
-  if (chunk_type == pca::kDefaultType && chunk_exists) {
+  if (chunk_store_->Has(name)) {
     (*sig_chunk_got_)(name, kSuccess);
     return;
   }
@@ -91,16 +90,9 @@ void LocalChunkManager::GetChunk(const std::string &name,
     (*sig_chunk_got_)(name, kGetFailure);
   }
 
-  if (chunk_exists) {
-    if (!chunk_store_->Modify(name, content)) {
-      DLOG(ERROR) << "Failed to modify locally " << Base32Substr(name);
-      (*sig_chunk_got_)(name, kGetFailure);
-    }
-  } else {
-    if (!chunk_store_->Store(name, content)) {
-      DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
-      (*sig_chunk_got_)(name, kGetFailure);
-    }
+  if (!chunk_store_->Store(name, content)) {
+    DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
+    (*sig_chunk_got_)(name, kGetFailure);
   }
 
   (*sig_chunk_got_)(name, kSuccess);
@@ -129,9 +121,6 @@ void LocalChunkManager::StoreChunk(const std::string &name,
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }
-
-  if (chunk_type != pca::kDefaultType)
-    chunk_store_->Delete(name);
 
   (*sig_chunk_stored_)(name, kSuccess);
 }
