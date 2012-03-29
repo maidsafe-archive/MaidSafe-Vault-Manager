@@ -67,6 +67,9 @@ class RemoteChunkStore {
   // typedef std::function<void(std::string)> GetFunctor;  // NOLINT
   typedef std::function<void(bool)> OpFunctor;  // NOLINT
 
+  typedef bs2::signal<void(size_t)> NumPendingOpsSig;
+  typedef std::shared_ptr<NumPendingOpsSig> NumPendingOpsSigPtr;
+
   struct ValidationData {
     ValidationData(const asymm::Keys &key_pair_in,
                    const std::string &ownership_proof_in)
@@ -163,6 +166,10 @@ class RemoteChunkStore {
     return 0;  // chunk_store_->Capacity();
   }
 
+  uintmax_t NumPendingOps() const {
+    return pending_ops_.size();
+  }
+
   bool Empty() const {
     return chunk_store_->Empty();
   }
@@ -191,6 +198,8 @@ class RemoteChunkStore {
     operation_wait_timeout_ = value;
   }
 
+  NumPendingOpsSigPtr sig_num_pending_ops() { return sig_num_pending_ops_; }
+
 //   friend class boost::serialization::access;
 //   template<class Archive>
 //   void serialize(Archive &archive, const unsigned int version);  // NOLINT
@@ -202,6 +211,9 @@ class RemoteChunkStore {
 //                    std::shared_ptr<boost::asio::deadline_timer> timer);
 //   void RetriveOpBackups();
 //   void StopOpBackups();
+
+ protected:
+  NumPendingOpsSigPtr sig_num_pending_ops_;
 
  private:
   RemoteChunkStore(const RemoteChunkStore&);

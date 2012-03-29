@@ -34,7 +34,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gmock/gmock.h"
 
 #include "maidsafe/common/test.h"
-#include "maidsafe/common/log.h"
+#include "maidsafe/private/log.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"
@@ -59,6 +59,7 @@ class RemoteChunkStoreTest: public testing::Test {
   RemoteChunkStoreTest()
       : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_TestRChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
+
         asio_service_(),
         chunk_store_(),
         mock_manager_chunk_store_(),
@@ -68,6 +69,7 @@ class RemoteChunkStoreTest: public testing::Test {
         parallel_tasks_(0),
         task_number_(0),
         num_successes_(0),
+        rcs_pending_ops_conn_(),
         keys_(),
         data_(),
         signed_data_(),
@@ -232,6 +234,13 @@ class RemoteChunkStoreTest: public testing::Test {
 
   void EmptyCallback(bool /*success*/) {}
 
+  void PrintPendingOps(size_t num_pending_ops) {
+    DLOG(INFO) << "Number of pending ops according to signal: "
+               << num_pending_ops;
+    DLOG(INFO) << "Number of pending ops according to getter: "
+               << chunk_store_->NumPendingOps();
+  }
+
   ~RemoteChunkStoreTest() {}
 
  protected:
@@ -262,9 +271,12 @@ class RemoteChunkStoreTest: public testing::Test {
         &RemoteChunkStoreTest::DeleteSuccessfulCallback, this, args::_1);
     empty_callback_ = std::bind(&RemoteChunkStoreTest::EmptyCallback,
                                   this, args::_1);
+    rcs_pending_ops_conn_ = this->chunk_store_->sig_num_pending_ops()->connect(
+            std::bind(&RemoteChunkStoreTest::PrintPendingOps, this, args::_1));
   }
 
   void TearDown() {
+    rcs_pending_ops_conn_.disconnect();
     asio_service_.Stop();
   }
 
@@ -362,6 +374,8 @@ class RemoteChunkStoreTest: public testing::Test {
   size_t parallel_tasks_;
   int task_number_;
   int num_successes_;
+
+  bs2::connection rcs_pending_ops_conn_;
 
   maidsafe::rsa::Keys keys_;
   priv::chunk_store::RemoteChunkStore::ValidationData data_;
@@ -526,11 +540,12 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     }
   }
   {
-    boost::mutex::scoped_lock lock(mutex_);
-    BOOST_VERIFY(cond_var_.timed_wait(
-                        lock, boost::posix_time::seconds(10),
-                        [&]()->bool {
-                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
+    this->chunk_store_->WaitForCompletion();
+//    boost::mutex::scoped_lock lock(mutex_);
+//    BOOST_VERIFY(cond_var_.timed_wait(
+//                        lock, boost::posix_time::seconds(10),
+//                        [&]()->bool {
+//                            return parallel_tasks_ <= 0; }));  // NOLINT (Philip)
   }
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     ASSERT_TRUE(chunk_store_->Modify(it->first, it->second.second,
@@ -547,6 +562,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     }
   }
   {
+    chunk_store_->WaitForCompletion();
     boost::mutex::scoped_lock lock(mutex_);
     BOOST_VERIFY(cond_var_.timed_wait(
                         lock, boost::posix_time::seconds(10),

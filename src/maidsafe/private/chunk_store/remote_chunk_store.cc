@@ -63,7 +63,8 @@ RemoteChunkStore::RemoteChunkStore(
     std::shared_ptr<BufferedChunkStore> chunk_store,
     std::shared_ptr<ChunkManager> chunk_manager,
     std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority)
-    : chunk_store_(chunk_store),
+    : sig_num_pending_ops_(new NumPendingOpsSig),
+      chunk_store_(chunk_store),
       chunk_manager_(chunk_manager),
       chunk_action_authority_(chunk_action_authority),
       cm_get_conn_(),
@@ -285,6 +286,7 @@ bool RemoteChunkStore::WaitForCompletion() {
     DLOG(INFO) << "WaitForCompletion - " << pending_ops_.size()
                << " pending operations, " << active_ops_count_
                << " of them active...";
+    (*sig_num_pending_ops_)(pending_ops_.size());
     if (!cond_var_.timed_wait(lock, completion_wait_timeout_)) {
       DLOG(ERROR) << "WaitForCompletion - Timed out with "
                   << pending_ops_.size() << " pending operations, "
