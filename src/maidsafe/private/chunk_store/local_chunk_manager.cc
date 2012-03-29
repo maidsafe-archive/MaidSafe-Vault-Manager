@@ -87,11 +87,13 @@ void LocalChunkManager::GetChunk(const std::string &name,
   if (content.empty()) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
+    return;
   }
 
   if (!chunk_store_->Store(name, content)) {
     DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
+    return;
   }
 
   (*sig_chunk_got_)(name, kSuccess);
