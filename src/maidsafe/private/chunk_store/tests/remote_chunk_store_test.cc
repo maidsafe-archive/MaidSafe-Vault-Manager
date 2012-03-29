@@ -493,7 +493,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
-  FLAGS_ms_logging_private = google::INFO;
+//  FLAGS_ms_logging_private = google::INFO;
   size_t kNumChunks(5);
   int kNumConcurrentGets(5);
   std::map<std::string, std::pair<std::string, std::string>> chunks;
