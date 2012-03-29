@@ -515,7 +515,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   // EXPECT_FALSE(this->chunk_store_->Empty());
   // EXPECT_EQ(123, this->chunk_store_->Size());
   {
-    for (int i(0); i < 3; ++i) {
+    for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
       /*asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoGet, this, chunk_store_, name,
@@ -543,7 +543,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   ASSERT_TRUE(chunk_store_->Modify(name, new_content, nullptr, data_));
   //  ++task_num_initialiser;
   {
-    for (int i(0); i < 3; ++i) {
+    for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       /*asio_service_.service().post(std::bind(

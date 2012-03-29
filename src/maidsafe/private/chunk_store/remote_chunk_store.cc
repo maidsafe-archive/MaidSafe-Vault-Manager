@@ -157,11 +157,14 @@ std::string RemoteChunkStore::Get(const std::string &name,
 
   // check if there is a get op for this chunk following
   auto it = pending_ops_.begin();
+//  bool found_other(false);
   while (it != pending_ops_.end()) {
     if (it->left == name) {
       if (it->info.op_type == kOpGet) {
-        // DLOG(INFO) << "Get - Done, found other get op "
-        //            << HexSubstr(name) << ", id - " << id;
+//         DLOG(INFO) << "Get - Done, found other get op "
+//                    << HexSubstr(name) << ", id - " << id;
+//        found_other = true;
+
 //         pending_ops_.erase(it);  // trigger next one
 //         cond_var_.notify_all();
       } else {
@@ -171,8 +174,8 @@ std::string RemoteChunkStore::Get(const std::string &name,
     }
     ++it;
   }
-
-  waiting_gets_.erase(name);
+//  if (waiting_gets_.find(name) != waiting_gets_.end())
+    waiting_gets_.erase(waiting_gets_.lower_bound(name));
 
   if (it == pending_ops_.end() &&
       waiting_gets_.find(name) == waiting_gets_.end()) {
@@ -181,6 +184,10 @@ std::string RemoteChunkStore::Get(const std::string &name,
       chunk_store_->MarkForDeletion(name);
     else
       chunk_store_->Delete(name);
+  } else {
+//    if (!found_other)
+//      DLOG(INFO) << "Get - Done, found other get op "
+//                    << HexSubstr(name) << ", id - " << id;
   }
 
   ProcessPendingOps(&lock);
