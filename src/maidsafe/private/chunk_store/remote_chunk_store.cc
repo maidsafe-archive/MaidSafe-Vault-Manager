@@ -162,7 +162,7 @@ std::string RemoteChunkStore::Get(const std::string &name,
     if (it->left == name) {
       if (it->info.op_type == kOpGet) {
 //         DLOG(INFO) << "Get - Done, found other get op "
-//                    << HexSubstr(name) << ", id - " << id;
+//                    << HexSubstr(name) << " - ID " << id;
 //        found_other = true;
 
 //         pending_ops_.erase(it);  // trigger next one
@@ -187,7 +187,7 @@ std::string RemoteChunkStore::Get(const std::string &name,
   } else {
 //    if (!found_other)
 //      DLOG(INFO) << "Get - Done, found other get op "
-//                    << HexSubstr(name) << ", id - " << id;
+//                    << HexSubstr(name) << " - ID " << id;
   }
 
   ProcessPendingOps(&lock);
