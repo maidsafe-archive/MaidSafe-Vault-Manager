@@ -97,7 +97,7 @@ std::string BufferedChunkStore::Get(const std::string &name) const {
   } else {
     upgrade_lock.unlock();
     std::string content(perm_chunk_store_->Get(name));
-    if (DoCacheStore(name, content))
+    if (!content.empty() && DoCacheStore(name, content))
       AddCachedChunksEntry(name);
     return content;
   }
@@ -122,7 +122,7 @@ bool BufferedChunkStore::Get(const std::string &name,
   } else {
     upgrade_lock.unlock();
     std::string content(perm_chunk_store_->Get(name));
-    if (DoCacheStore(name, content))
+    if (!content.empty() && DoCacheStore(name, content))
       AddCachedChunksEntry(name);
     return !content.empty() && WriteFile(sink_file_name, content);
   }
