@@ -92,12 +92,12 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(EqualChunks(chunk_content,
                             chunk_store->Get(chunk_name, data_)));
-    DLOG(INFO) << "DoGet - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoGet - " << Base32Substr(chunk_name)
                 << " - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoGet - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoGet - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -111,7 +111,7 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(chunk_store->Store(chunk_name, chunk_content,
                                    store_success_callback_, data_));
-    DLOG(INFO) << "DoStore - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoStore - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     {
@@ -119,7 +119,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(INFO) << "DoStore - " << HexSubstr(chunk_name)
+      DLOG(INFO) << "DoStore - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -136,7 +136,7 @@ class RemoteChunkStoreTest: public testing::Test {
     EXPECT_EQ(expected_result, chunk_store->Delete(chunk_name,
                                                    delete_success_callback_,
                                                    data_));
-    DLOG(INFO) << "DoDelete - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoDelete - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     {
@@ -144,7 +144,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(INFO) << "DoDelete - " << HexSubstr(chunk_name)
+      DLOG(INFO) << "DoDelete - " << Base32Substr(chunk_name)
                   << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -160,14 +160,14 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(chunk_store->Modify(chunk_name, chunk_content,
                                          modify_success_callback_, data_));
-        DLOG(INFO) << "DoModify - " << HexSubstr(chunk_name)
+        DLOG(INFO) << "DoModify - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     ++task_number_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoModify - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoModify - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -176,7 +176,7 @@ class RemoteChunkStoreTest: public testing::Test {
       const std::string &chunk_name) {
     if (chunk_store->Delete(chunk_name, delete_failed_callback_, data_))
       ++num_successes_;
-    DLOG(INFO) << "DoDeleteWithoutTest - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoDeleteWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
@@ -197,14 +197,14 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     chunk_store->Modify(chunk_name, chunk_content,
                                          empty_callback_, data_);
-        DLOG(INFO) << "DoModifyWithoutTest - " << HexSubstr(chunk_name)
+        DLOG(INFO) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     ++task_number_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoModifyWithoutTest - " << HexSubstr(chunk_name)
+    DLOG(INFO) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 

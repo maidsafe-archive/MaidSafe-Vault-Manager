@@ -110,7 +110,7 @@ RemoteChunkStore::~RemoteChunkStore() {
 
   std::string output;
   for (auto it = pending_ops_.begin(); it != pending_ops_.end(); ++it)
-    output += "\n\t" + HexSubstr(it->left) + " (" + kOpName[it->info.op_type]
+    output += "\n\t" + Base32Substr(it->left) + " (" + kOpName[it->info.op_type]
             + (it->info.active ? ", active" : "") + ")";
   if (!output.empty())
     DLOG(WARNING) << "~RemoteChunkStore() - " << pending_ops_.size()
@@ -119,7 +119,8 @@ RemoteChunkStore::~RemoteChunkStore() {
 
   output.clear();
   for (auto it = failed_ops_.begin(); it != failed_ops_.end(); ++it)
-    output += "\n\t" + HexSubstr(it->first) + " (" + kOpName[it->second] + ")";
+    output += "\n\t" + Base32Substr(it->first) + " (" + kOpName[it->second]
+            + ")";
   if (!output.empty())
     DLOG(WARNING) << "~RemoteChunkStore() - " << failed_ops_.size()
                   << " failed operations:" << output;
@@ -131,7 +132,7 @@ RemoteChunkStore::~RemoteChunkStore() {
 
 std::string RemoteChunkStore::Get(const std::string &name,
                                   const ValidationData &validation_data) {
-  DLOG(INFO) << "Get - " << HexSubstr(name);
+  DLOG(INFO) << "Get - " << Base32Substr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
 
@@ -151,13 +152,14 @@ std::string RemoteChunkStore::Get(const std::string &name,
                         &lock));
   ProcessPendingOps(&lock);
   if (!WaitForGetOps(name, id, &lock)) {
-    DLOG(ERROR) << "Get - Timed out for " << HexSubstr(name) << " - ID " << id;
+    DLOG(ERROR) << "Get - Timed out for " << Base32Substr(name) << " - ID "
+                << id;
     return "";
   }
 
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "Get - Failed retrieving " << HexSubstr(name)
+    DLOG(ERROR) << "Get - Failed retrieving " << Base32Substr(name)
                  << " - ID " << id;
     return "";
   }
@@ -185,7 +187,8 @@ std::string RemoteChunkStore::Get(const std::string &name,
 
   if (it == pending_ops_.end() &&
       waiting_gets_.find(name) == waiting_gets_.end()) {
-    DLOG(INFO) << "Get - Done, deleting " << HexSubstr(name) << " - ID " << id;
+    DLOG(INFO) << "Get - Done, deleting " << Base32Substr(name) << " - ID "
+               << id;
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
@@ -201,21 +204,22 @@ bool RemoteChunkStore::Store(const std::string &name,
                              const std::string &content,
                              const OpFunctor &callback,
                              const ValidationData &validation_data) {
-  DLOG(INFO) << "Store - " << HexSubstr(name);
+  DLOG(INFO) << "Store - " << Base32Substr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
   uint32_t id(EnqueueOp(name, OperationData(kOpStore, callback,
                                             validation_data), &lock));
   int result(WaitForConflictingOps(name, kOpStore, id, &lock));
   if (result != kWaitSuccess) {
-    DLOG(WARNING) << "Store - Terminated early for " << HexSubstr(name);
+    DLOG(WARNING) << "Store - Terminated early for " << Base32Substr(name);
     return result == kWaitCancelled;
   }
 
   if (!chunk_action_authority_->Store(name,
                                       content,
                                       validation_data.key_pair.public_key)) {
-    DLOG(ERROR) << "Store - Could not store " << HexSubstr(name) << " locally.";
+    DLOG(ERROR) << "Store - Could not store " << Base32Substr(name)
+                << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
     return false;
@@ -228,14 +232,14 @@ bool RemoteChunkStore::Store(const std::string &name,
 bool RemoteChunkStore::Delete(const std::string &name,
                               const OpFunctor &callback,
                               const ValidationData &validation_data) {
-  DLOG(INFO) << "Delete - " << HexSubstr(name);
+  DLOG(INFO) << "Delete - " << Base32Substr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
   uint32_t id(EnqueueOp(name, OperationData(kOpDelete, callback,
                                             validation_data), &lock));
   int result(WaitForConflictingOps(name, kOpDelete, id, &lock));
   if (result != kWaitSuccess) {
-    DLOG(WARNING) << "Delete - Terminated early for " << HexSubstr(name);
+    DLOG(WARNING) << "Delete - Terminated early for " << Base32Substr(name);
     return result == kWaitCancelled;
   }
 
@@ -243,7 +247,7 @@ bool RemoteChunkStore::Delete(const std::string &name,
                                        chunk_action_authority_->Version(name),
                                        validation_data.ownership_proof,
                                        validation_data.key_pair.public_key)) {
-    DLOG(ERROR) << "Delete - Could not delete " << HexSubstr(name)
+    DLOG(ERROR) << "Delete - Could not delete " << Base32Substr(name)
                 << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -258,10 +262,10 @@ bool RemoteChunkStore::Modify(const std::string &name,
                               const std::string &content,
                               const OpFunctor &callback,
                               const ValidationData &validation_data) {
-  DLOG(INFO) << "Modify - " << HexSubstr(name);
+  DLOG(INFO) << "Modify - " << Base32Substr(name);
 
   if (!chunk_action_authority_->Modifiable(name)) {
-    DLOG(ERROR) << "Modify - Type of chunk " << HexSubstr(name)
+    DLOG(ERROR) << "Modify - Type of chunk " << Base32Substr(name)
                 << " not supported.";
     return false;
   }
@@ -273,7 +277,7 @@ bool RemoteChunkStore::Modify(const std::string &name,
 //   uint32_t id(EnqueueOp(name, op_data, &lock));
 //   int result(WaitForConflictingOps(name, kOpModify, id, &lock));
 //   if (result != kWaitSuccess) {
-//     DLOG(WARNING) << "Modify - Terminated early for " << HexSubstr(name);
+//     DLOG(WARNING) << "Modify - Terminated early for " << Base32Substr(name);
 //     return result == kWaitCancelled;
 //   }
 
@@ -312,7 +316,7 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
   }
   if (it == pending_ops_.end()) {
     DLOG(WARNING) << "OnOpResult - Unrecognised result for op '"
-                  << kOpName[op_type] << "' and chunk " << HexSubstr(name)
+                  << kOpName[op_type] << "' and chunk " << Base32Substr(name)
                   << " received. (" << result << ")";
 //    if (it == pending_ops_.end())
 //      DLOG(WARNING) << "it == pending_ops_.end()";
@@ -324,7 +328,8 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
   }
 
 //   DLOG(INFO) << "OnOpResult - Got result for op '" << kOpName[op_type]
-//              << "' and chunk " << HexSubstr(name) << " - ID " << it->right;
+//              << "' and chunk " << Base32Substr(name) << " - ID "
+//              << it->right;
 
   // statistics
   if (result == kSuccess) {
@@ -345,7 +350,7 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
       waiting_gets_.insert(name);
   } else {
     DLOG(ERROR) << "OnOpResult - Failed to " << kOpName[op_type] << " "
-                << HexSubstr(name) << " (" << result << ")";
+                << Base32Substr(name) << " (" << result << ")";
     if (op_type == kOpGet) {
       failed_gets_[name] = bptime::microsec_clock::universal_time();
     } else {
@@ -355,7 +360,7 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 
   if (op_type == kOpStore) {
     // don't keep non-cacheable chunks locally
-    DLOG(INFO) << "OnOpResult - Store done, deleting " << HexSubstr(name);
+    DLOG(INFO) << "OnOpResult - Store done, deleting " << Base32Substr(name);
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
@@ -388,7 +393,7 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
   while (pending_ops_.left.count(name) > 1) {
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForConflictingOps - Timed out trying to "
-                  << kOpName[op_type] << " " << HexSubstr(name) << " with "
+                  << kOpName[op_type] << " " << Base32Substr(name) << " with "
                   << pending_ops_.left.count(name)
                   << " pending operations. - ID " << transaction_id;
       pending_ops_.right.erase(transaction_id);
@@ -398,7 +403,7 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
     }
     if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
       DLOG(WARNING) << "WaitForConflictingOps - Operation to "
-                    << kOpName[op_type] << " " << HexSubstr(name)
+                    << kOpName[op_type] << " " << Base32Substr(name)
                     << " with transaction ID " << transaction_id
                     << " was cancelled.";
       return kWaitCancelled;
@@ -412,7 +417,7 @@ bool RemoteChunkStore::WaitForGetOps(const std::string &name,
                                      boost::mutex::scoped_lock *lock) {
   while (pending_ops_.right.find(transaction_id) != pending_ops_.right.end()) {
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
-      DLOG(ERROR) << "WaitForGetOps - Timed out for " << HexSubstr(name)
+      DLOG(ERROR) << "WaitForGetOps - Timed out for " << Base32Substr(name)
                   << " with " << pending_ops_.left.count(name)
                   << " pending operations. - ID " << transaction_id;
       pending_ops_.right.erase(transaction_id);
@@ -435,7 +440,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
     --it;
 //     DLOG(INFO) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
 //                << "', found prev '" << kOpName[it->info.op_type]
-//                << "', chunk " << HexSubstr(name) << ", "
+//                << "', chunk " << Base32Substr(name) << ", "
 //                << (it->info.active ? "active" : "inactive");
     if (!it->info.active) {
       bool cancel_prev(false), cancel_curr(false);
@@ -455,7 +460,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
         DLOG(INFO) << "EnqueueOp - Cancel previous '"
                    << kOpName[it->info.op_type] << "' due to '"
                    << kOpName[op_data.op_type] << "' for "
-                   << HexSubstr(name);
+                   << Base32Substr(name);
         OpFunctor callback(it->info.callback);
         ++op_skip_count_[it->info.op_type];
         pending_ops_.left.erase(it);
@@ -480,7 +485,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
   } while (id == 0 || pending_ops_.right.find(id) != pending_ops_.right.end());
   pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
 //   DLOG(INFO) << "EnqueueOp - Enqueueing op '" << kOpName[op_data.op_type]
-//              << "' for " << HexSubstr(name) << " with ID " << id;
+//              << "' for " << Base32Substr(name) << " with ID " << id;
   return id;
 }
 
@@ -530,14 +535,14 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
       if (op_data.op_type == kOpGet) {
         if (chunk_store_->Has(name)) {
           DLOG(INFO) << "ProcessPendingOps - Already have chunk "
-                     << HexSubstr(name) << " - ID " << it->right;
+                     << Base32Substr(name) << " - ID " << it->right;
           waiting_gets_.insert(name);
           pending_ops_.erase(it);
           cond_var_.notify_all();
           return;
         } else if (failed_gets_.find(name) != failed_gets_.end()) {
           DLOG(WARNING) << "ProcessPendingOps - Retrieving "
-                        << HexSubstr(name)
+                        << Base32Substr(name)
                         << " failed previously, not trying again. - ID "
                         << it->right;
           pending_ops_.erase(it);
@@ -550,7 +555,7 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
 
 //       DLOG(INFO) << "ProcessPendingOps - About to "
 //                 << kOpName[op_data.op_type]
-//                 << " chunk " << HexSubstr(name) << " - ID " << it->right;
+//                 << " chunk " << Base32Substr(name) << " - ID " << it->right;
 
       it->info.active = true;
     }
