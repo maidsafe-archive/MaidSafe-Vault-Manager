@@ -508,14 +508,17 @@ uintmax_t FileChunkStore::GetChunkReferenceCount(
   if (!fs::exists(chunk_path.parent_path(), ec))
     return 0;
 
+  // heuristic to prevent iteration for the most common case
+  if (fs::exists(fs::path(chunk_path.string() + ".1"), ec))
+    return 1;
+
   try {
+    std::string file_name(chunk_path.filename().string());
     for (fs::directory_iterator it(chunk_path.parent_path());
          it != fs::directory_iterator(); ++it) {
-      if (fs::is_regular_file(it->status())) {
-        std::string ext(it->path().extension().string());
-        if (it->path().stem() == chunk_path.filename())
-          return GetNumFromString(ext.substr(1));
-      }
+      if (it->path().stem().string() == file_name &&
+          fs::is_regular_file(it->status()))
+        return GetNumFromString(it->path().extension().string().substr(1));
     }
   }
   catch(const std::exception &e) {
