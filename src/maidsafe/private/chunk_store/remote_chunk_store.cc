@@ -669,12 +669,14 @@ int Deserialize(std::stringstream *input_stream,
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path &base_dir,
     boost::asio::io_service &asio_service,  // NOLINT (Dan)
+    fs::path *buffered_chunk_store_path,
     const boost::posix_time::time_duration &millisecs) {
   std::shared_ptr<BufferedChunkStore> buffered_chunk_store(
       new BufferedChunkStore(asio_service));
-  std::string buffered_chunk_store_dir("buffered_chunk_store" +
+  std::string buffered_chunk_store_dir("buffered_chunk_store_" +
                                        RandomAlphaNumericString(8));
-  buffered_chunk_store->Init(base_dir / buffered_chunk_store_dir);
+  *buffered_chunk_store_path = base_dir / buffered_chunk_store_dir;
+  buffered_chunk_store->Init(*buffered_chunk_store_path);
   std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority(
       new chunk_actions::ChunkActionAuthority(buffered_chunk_store));
   std::shared_ptr<LocalChunkManager> local_chunk_manager(

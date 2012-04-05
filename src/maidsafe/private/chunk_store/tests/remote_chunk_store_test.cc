@@ -286,7 +286,7 @@ class RemoteChunkStoreTest: public testing::Test {
     std::shared_ptr<BufferedChunkStore> buffered_chunk_store(
         new BufferedChunkStore(asio_service));
     std::string buffered_chunk_store_dir("buffered_chunk_store" +
-                                       RandomAlphaNumericString(8));
+                                         RandomAlphaNumericString(8));
     buffered_chunk_store->Init(base_dir / buffered_chunk_store_dir);
     std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority(
         new chunk_actions::ChunkActionAuthority(buffered_chunk_store));
@@ -299,10 +299,13 @@ class RemoteChunkStoreTest: public testing::Test {
   }
 
   void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
-                      const fs::path &chunk_dir,
-                      boost::asio::io_service &asio_service) {
+                           const fs::path &chunk_dir,
+                           boost::asio::io_service &asio_service) {
     chunk_store->reset();
-    *chunk_store = CreateLocalChunkStore(chunk_dir, asio_service);
+    fs::path buffered_chunk_store_path;
+    *chunk_store = CreateLocalChunkStore(chunk_dir,
+                                         asio_service,
+                                         &buffered_chunk_store_path);
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
     (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
