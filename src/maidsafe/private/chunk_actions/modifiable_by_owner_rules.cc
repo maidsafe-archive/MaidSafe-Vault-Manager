@@ -74,7 +74,7 @@ int ProcessGet<kModifiableByOwner>(
   if (version.empty()) {
     *existing_content = chunk_store->Get(name);
     if (existing_content->empty()) {
-      DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+      DLOG(ERROR) << "Failed to get " << Base32Substr(name);
       return kFailedToFindChunk;
     }
   } else {
@@ -82,12 +82,12 @@ int ProcessGet<kModifiableByOwner>(
     int result(GetContentAndTigerHash(name, chunk_store, existing_content,
                                       &existing_version));
     if (result != kSuccess) {
-      DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+      DLOG(ERROR) << "Failed to get " << Base32Substr(name);
       return result;
     }
     if (version != existing_version) {
-      DLOG(WARNING) << "Failed to get requested version of "
-                    << Base32Substr(name);
+      DLOG(ERROR) << "Failed to get requested version of "
+                  << Base32Substr(name);
       return kDifferentVersion;
     }
   }
@@ -247,7 +247,7 @@ int ProcessHas<kModifiableByOwner>(
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (version.empty()) {
     if (!chunk_store->Has(name)) {
-      DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+      DLOG(ERROR) << "Failed to find " << Base32Substr(name);
       return kFailedToFindChunk;
     }
   } else {
@@ -255,12 +255,12 @@ int ProcessHas<kModifiableByOwner>(
     int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
                                       &existing_version));
     if (result != kSuccess) {
-      DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+      DLOG(ERROR) << "Failed to find " << Base32Substr(name);
       return result;
     }
     if (version != existing_version) {
-      DLOG(WARNING) << "Failed to find requested version of "
-                    << Base32Substr(name);
+      DLOG(ERROR) << "Failed to find requested version of "
+                  << Base32Substr(name);
       return kDifferentVersion;
     }
   }

@@ -73,9 +73,9 @@ int ProcessGet<kAppendableByAll>(
     std::string *existing_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   existing_content->clear();
-  std::string all_existing_content = chunk_store->Get(name);
+  std::string all_existing_content(chunk_store->Get(name));
   if (all_existing_content.empty()) {
-    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+    DLOG(ERROR) << "Failed to get " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 
@@ -101,12 +101,16 @@ int ProcessGet<kAppendableByAll>(
     existing_chunk.clear_appendices();
     std::string with_empty_appendices;
     BOOST_VERIFY(existing_chunk.SerializeToString(&with_empty_appendices));
-    if (!chunk_store->Modify(name, with_empty_appendices))
+    if (!chunk_store->Modify(name, with_empty_appendices)) {
+      DLOG(ERROR) << "Failed to modify chunk: " << Base32Substr(name);
       return kModifyFailure;
+    }
   } else {
     // Not owner - return only first value
-    if (!existing_chunk.identity_key().SerializeToString(existing_content))
+    if (!existing_chunk.identity_key().SerializeToString(existing_content)) {
+      DLOG(ERROR) << "Failed to serialise: " << Base32Substr(name);
       return kGeneralError;
+    }
   }
 
   return kSuccess;

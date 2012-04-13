@@ -42,8 +42,8 @@ int GetContentAndTigerHash(const std::string &name,
                            std::string *hash) {
   *chunk_content = chunk_store->Get(name);
   if (chunk_content->empty()) {
-    DLOG(WARNING) << "Failed to get Tiger hash " << Base32Substr(name)
-                  << " (failed to retrieve chunk from ChunkStore)";
+    DLOG(ERROR) << "Failed to get Tiger hash " << Base32Substr(name)
+                << " (failed to retrieve chunk from ChunkStore)";
     hash->clear();
     return kFailedToFindChunk;
   }
