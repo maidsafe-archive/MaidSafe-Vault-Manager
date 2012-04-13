@@ -44,7 +44,7 @@ MemoryChunkStore::~MemoryChunkStore() {}
 std::string MemoryChunkStore::Get(const std::string &name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-//     DLOG(WARNING) << "Get - Can't get chunk " << Base32Substr(name);
+    DLOG(ERROR) << "Get - Can't get chunk " << Base32Substr(name);
     return "";
   }
 
@@ -55,7 +55,7 @@ bool MemoryChunkStore::Get(const std::string &name,
                            const fs::path &sink_file_name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-//     DLOG(WARNING) << "Get - Can't get chunk " << Base32Substr(name);
+    DLOG(ERROR) << "Get - Can't get chunk " << Base32Substr(name);
     return false;
   }
 
@@ -176,7 +176,7 @@ bool MemoryChunkStore::Delete(const std::string &name) {
     DecreaseSize((*it).second.second.size());
     chunks_.erase(it);
 //     DLOG(INFO) << "Delete - Deleted chunk " << Base32Substr(name);
-  } else {
+//   } else {
 //     DLOG(INFO) << "Delete - Decreased count of chunk " << Base32Substr(name)
 //                << " to " << (*it).second.first << " via deletion";
   }
@@ -202,8 +202,12 @@ bool MemoryChunkStore::Modify(const std::string &name,
   if (!AssessSpaceRequirement(current_content.size(),
                               content.size(),
                               &increase_size,
-                              &content_size_difference))
+                              &content_size_difference)) {
+    DLOG(ERROR) << "Size differential unacceptable - increase_size: "
+                << increase_size << ", name: " << Base32Substr(name);
     return false;
+  }
+
   chunks_[name] = ChunkEntry((*it).second.first, content);
 
   AdjustChunkStoreStats(content_size_difference, increase_size);
@@ -213,13 +217,23 @@ bool MemoryChunkStore::Modify(const std::string &name,
 bool MemoryChunkStore::Modify(const std::string &name,
                               const fs::path &source_file_name,
                               bool delete_source_file) {
-  if (source_file_name.empty())
+  if (source_file_name.empty()) {
+    DLOG(ERROR) << "source_file_name empty: " << Base32Substr(name);
     return false;
+  }
+
   std::string content;
-  if (!ReadFile(source_file_name, &content))
+  if (!ReadFile(source_file_name, &content)) {
+    DLOG(ERROR) << "Error reading file: " << Base32Substr(name)
+                << ", path: " << source_file_name;
     return false;
-  if (!Modify(name, content))
+  }
+
+  if (!Modify(name, content)) {
+    DLOG(ERROR) << "Failed to modify: " << Base32Substr(name);
     return false;
+  }
+
   boost::system::error_code ec;
   if (delete_source_file)
     fs::remove(source_file_name, ec);
@@ -266,16 +280,20 @@ bool MemoryChunkStore::MoveTo(const std::string &name,
 
 uintmax_t MemoryChunkStore::Size(const std::string &name) const {
   auto it = chunks_.find(name);
-  if (it == chunks_.end())
+  if (it == chunks_.end()) {
+    DLOG(ERROR) << "Chunk not found: " << Base32Substr(name);
     return 0;
+  }
 
   return (*it).second.second.size();
 }
 
 uintmax_t MemoryChunkStore::Count(const std::string &name) const {
   auto it = chunks_.find(name);
-  if (it == chunks_.end())
+  if (it == chunks_.end()) {
+    DLOG(ERROR) << "Chunk not found: " << Base32Substr(name);
     return 0;
+  }
 
   return (*it).second.first;
 }
