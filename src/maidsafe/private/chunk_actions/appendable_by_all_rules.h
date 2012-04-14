@@ -52,7 +52,7 @@ bool IsModifiable<kAppendableByAll>();
 
 // Returns false.
 template <>
-bool ModifyReplaces<kAppendableByAll>();
+bool DoesModifyReplace<kAppendableByAll>();
 
 // Returns true if the chunk exists.
 template <>

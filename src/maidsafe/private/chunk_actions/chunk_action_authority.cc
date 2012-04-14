@@ -297,13 +297,13 @@ bool ChunkActionAuthority::ModifyReplaces(const std::string &name) const {
   // TODO(Team): Review why removing the chunk_actions namespace breaks this.
   switch (GetDataType(name)) {
     case kDefaultType:
-      return chunk_actions::ModifyReplaces<kDefaultType>();
+      return DoesModifyReplace<kDefaultType>();
     case kAppendableByAll:
-      return chunk_actions::ModifyReplaces<kAppendableByAll>();
+      return DoesModifyReplace<kAppendableByAll>();
     case kModifiableByOwner:
-      return chunk_actions::ModifyReplaces<kModifiableByOwner>();
+      return DoesModifyReplace<kModifiableByOwner>();
     case kSignaturePacket:
-      return chunk_actions::ModifyReplaces<kSignaturePacket>();
+      return DoesModifyReplace<kSignaturePacket>();
     case kUnknownType:
     default: DLOG(ERROR) << "Unknown type "
                          << static_cast<int>(GetDataType(name));

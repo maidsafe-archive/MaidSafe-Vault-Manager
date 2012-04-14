@@ -40,7 +40,7 @@ template <>
 bool IsModifiable<kModifiableByOwner>() { return true; }
 
 template <>
-bool ModifyReplaces<kModifiableByOwner>() { return true; }
+bool DoesModifyReplace<kModifiableByOwner>() { return true; }
 
 template <>
 bool IsValidChunk<kModifiableByOwner>(

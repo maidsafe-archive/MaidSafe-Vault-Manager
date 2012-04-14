@@ -40,7 +40,7 @@ template <>
 bool IsModifiable<kDefaultType>() { return false; }
 
 template <>
-bool ModifyReplaces<kDefaultType>() { return false; }
+bool DoesModifyReplace<kDefaultType>() { return false; }
 
 template <>
 bool IsValidChunk<kDefaultType>(

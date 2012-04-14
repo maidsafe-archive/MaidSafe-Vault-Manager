@@ -41,7 +41,7 @@ template <>
 bool IsModifiable<kAppendableByAll>() { return true; }
 
 template <>
-bool ModifyReplaces<kAppendableByAll>() { return false; }
+bool DoesModifyReplace<kAppendableByAll>() { return false; }
 
 template <>
 bool IsValidChunk<kAppendableByAll>(

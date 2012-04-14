@@ -52,7 +52,7 @@ bool IsModifiable<kModifiableByOwner>();
 
 // Returns true.
 template <>
-bool ModifyReplaces<kModifiableByOwner>();
+bool DoesModifyReplace<kModifiableByOwner>();
 
 // Returns true if the chunk exists.
 template <>

@@ -41,7 +41,7 @@ template <>
 bool IsModifiable<kSignaturePacket>() { return false; }
 
 template <>
-bool ModifyReplaces<kSignaturePacket>() { return false; }
+bool DoesModifyReplace<kSignaturePacket>() { return false; }
 
 template <>
 bool IsValidChunk<kSignaturePacket>(
