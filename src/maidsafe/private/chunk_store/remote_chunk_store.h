@@ -259,11 +259,10 @@ class RemoteChunkStore {
 };
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
-    const fs::path &base_dir,
+    const fs::path &buffered_chunk_store_path,
+    const fs::path &local_chunk_manager_path,
     boost::asio::io_service &asio_service,  // NOLINT (Dan)
-    fs::path *buffered_chunk_store_path,
-    const boost::posix_time::time_duration &millisecs =
-        boost::posix_time::milliseconds(0));
+    const bptime::time_duration &millisecs = bptime::milliseconds(0));
 
 }  // namespace chunk_store
 
