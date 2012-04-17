@@ -35,7 +35,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef __MSVC__
 #  pragma warning(push, 1)
-#  pragma warning(disable: 4127)
+#  pragma warning(disable: 4127 4250)
 #endif
 
 #include "boost/filesystem.hpp"

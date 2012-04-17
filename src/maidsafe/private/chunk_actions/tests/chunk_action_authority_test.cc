@@ -230,7 +230,8 @@ class ChunkActionAuthorityTest: public testing::Test {
     std::string new_content;
     EXPECT_EQ(kNullParameter,
               chunk_action_authority_->ValidModify(name, "",
-                                                   asymm::PublicKey(), nullptr));
+                                                   asymm::PublicKey(),
+                                                   nullptr));
     EXPECT_EQ(kFailedToFindChunk,
               chunk_action_authority_->ValidModify(name, "",
                                                    asymm::PublicKey(),
@@ -292,7 +293,7 @@ class ChunkActionAuthorityTest: public testing::Test {
 };
 
 TEST_F(ChunkActionAuthorityTest, BEH_ValidName) {
-  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string invalid_type(default_name_ + std::string(1, -127));
   std::string wrong_length_long(default_name_ + "aa");
   std::string wrong_length_short(default_name_.substr(1));
 
@@ -306,7 +307,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidName) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_Cacheable) {
-  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string invalid_type(default_name_ + std::string(1, -127));
   std::string wrong_length_long(default_name_ + "aa");
   std::string wrong_length_short(default_name_.substr(1));
 
@@ -320,7 +321,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_Cacheable) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_Modifiable) {
-  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string invalid_type(default_name_ + std::string(1, -127));
   std::string wrong_length_long(default_name_ + "aa");
   std::string wrong_length_short(default_name_.substr(1));
 
@@ -334,7 +335,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_Modifiable) {
 }
 
 TEST_F(ChunkActionAuthorityTest, BEH_ModifyReplaces) {
-  std::string invalid_type(default_name_ + std::string(1, 255));
+  std::string invalid_type(default_name_ + std::string(1, -127));
   std::string wrong_length_long(default_name_ + "aa");
   std::string wrong_length_short(default_name_.substr(1));
 
