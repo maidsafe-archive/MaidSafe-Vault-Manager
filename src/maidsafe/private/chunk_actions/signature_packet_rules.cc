@@ -41,7 +41,7 @@ template <>
 bool IsModifiable<kSignaturePacket>() { return false; }
 
 template <>
-bool ModifyReplaces<kSignaturePacket>() { return false; }
+bool DoesModifyReplace<kSignaturePacket>() { return false; }
 
 template <>
 bool IsValidChunk<kSignaturePacket>(
@@ -87,7 +87,7 @@ int ProcessGet<kSignaturePacket>(
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   *existing_content = chunk_store->Get(name);
   if (existing_content->empty()) {
-    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+    DLOG(ERROR) << "Failed to get " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 
@@ -101,8 +101,8 @@ int ProcessStore<kSignaturePacket>(
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to store " << Base32Substr(name)
-                  << ": chunk already exists";
+    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+                << ": chunk already exists";
     return kKeyNotUnique;
   }
 
@@ -206,7 +206,7 @@ int ProcessHas<kSignaturePacket>(
     const asymm::PublicKey &/*public_key*/,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+    DLOG(ERROR) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 

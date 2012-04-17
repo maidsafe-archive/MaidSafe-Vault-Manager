@@ -57,9 +57,8 @@ namespace test {
 class RemoteChunkStoreTest: public testing::Test {
  public:
   RemoteChunkStoreTest()
-      : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_TestRChunkStore")),
+      : test_dir_(maidsafe::test::CreateTestPath("TestRemoteChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
-
         asio_service_(),
         chunk_store_(),
         mock_manager_chunk_store_(),
@@ -294,25 +293,26 @@ class RemoteChunkStoreTest: public testing::Test {
         std::make_shared<MockChunkManager>(buffered_chunk_store);
 
     return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
-                                            mock_chunk_manager_,
-                                            chunk_action_authority);
+                                              mock_chunk_manager_,
+                                              chunk_action_authority);
   }
 
   void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                            const fs::path &chunk_dir,
                            boost::asio::io_service &asio_service) {
     chunk_store->reset();
-    fs::path buffered_chunk_store_path;
-    *chunk_store = CreateLocalChunkStore(chunk_dir,
-                                         asio_service,
-                                         &buffered_chunk_store_path);
+    fs::path buffered_chunk_store_path(chunk_dir / RandomAlphaNumericString(8));
+    fs::path local_repository(chunk_dir / "local_repository");
+    *chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,
+                                         local_repository,
+                                         asio_service);
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
     (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
 
   void InitMockManagerChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
-                      const fs::path &chunk_dir,
-                      boost::asio::io_service &asio_service) {
+                                 const fs::path &chunk_dir,
+                                 boost::asio::io_service &asio_service) {
     chunk_store->reset();
     *chunk_store = CreateMockManagerChunkStore(chunk_dir, asio_service);
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));

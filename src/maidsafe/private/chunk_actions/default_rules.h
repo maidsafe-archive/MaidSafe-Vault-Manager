@@ -48,7 +48,7 @@ template <unsigned char DataType>
 bool IsModifiable();
 
 template <unsigned char DataType>
-bool ModifyReplaces();
+bool DoesModifyReplace();
 
 template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
@@ -102,7 +102,7 @@ bool IsModifiable<kDefaultType>();
 
 // Returns false.
 template <>
-bool ModifyReplaces<kDefaultType>();
+bool DoesModifyReplace<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>

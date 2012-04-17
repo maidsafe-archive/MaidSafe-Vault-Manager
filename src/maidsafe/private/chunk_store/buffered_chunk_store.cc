@@ -70,8 +70,11 @@ bool BufferedChunkStore::Init(const fs::path &storage_location,
                               std::list<std::string> removable_chunks,
                               unsigned int dir_depth) {
   if (!reinterpret_cast<FileChunkStore*>(
-        internal_perm_chunk_store_.get())->Init(storage_location, dir_depth))
+        internal_perm_chunk_store_.get())->Init(storage_location, dir_depth)) {
+    DLOG(ERROR) << "Failed to initialise internal permanent chunk store.";
     return false;
+  }
+
   perm_capacity_ = internal_perm_chunk_store_->Capacity();
   perm_size_ = internal_perm_chunk_store_->Size();
   removable_chunks_ = removable_chunks;
@@ -135,13 +138,16 @@ bool BufferedChunkStore::Store(const std::string &name,
     return false;
   }
 
-  if (!DoCacheStore(name, content))
+  if (!DoCacheStore(name, content)) {
+    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
     return false;
+  }
 
   if (!MakeChunkPermanent(name, content.size())) {
     // AddCachedChunksEntry(name);
     UniqueLock lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
+    DLOG(ERROR) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
   }
 
@@ -159,13 +165,16 @@ bool BufferedChunkStore::Store(const std::string &name,
   boost::system::error_code ec;
   uintmax_t size(fs::file_size(source_file_name, ec));
 
-  if (!DoCacheStore(name, size, source_file_name, false))
+  if (!DoCacheStore(name, size, source_file_name, false)) {
+    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
     return false;
+  }
 
   if (!MakeChunkPermanent(name, size)) {
     // AddCachedChunksEntry(name);
     UniqueLock lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
+    DLOG(ERROR) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
   }
 
@@ -182,8 +191,10 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
     return false;
   }
 
-  if (!DoCacheStore(name, content))
+  if (!DoCacheStore(name, content)) {
+    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
     return false;
+  }
 
   AddCachedChunksEntry(name);
   return true;
@@ -200,8 +211,10 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
   boost::system::error_code ec;
   uintmax_t size(fs::file_size(source_file_name, ec));
 
-  if (!DoCacheStore(name, size, source_file_name, false))
+  if (!DoCacheStore(name, size, source_file_name, false)) {
+    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
     return false;
+  }
 
   AddCachedChunksEntry(name);
   if (delete_source_file)
@@ -383,8 +396,11 @@ bool BufferedChunkStore::Modify(const std::string &name,
     return false;
   }
 
-  if (!Modify(name, content))
+  if (!Modify(name, content)) {
+    DLOG(ERROR) << "Modify - Couldn't modify " << Base32Substr(name);
     return false;
+  }
+
   boost::system::error_code ec;
   if (delete_source_file)
     fs::remove(source_file_name, ec);
