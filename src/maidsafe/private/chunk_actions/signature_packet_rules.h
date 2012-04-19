@@ -105,11 +105,9 @@ int ProcessStore<kSignaturePacket>(
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
-// NB - version is not used in this function.
 template <>
 int ProcessDelete<kSignaturePacket>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);

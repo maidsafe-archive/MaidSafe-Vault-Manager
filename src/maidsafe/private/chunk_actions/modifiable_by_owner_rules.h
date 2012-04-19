@@ -95,13 +95,9 @@ int ProcessStore<kModifiableByOwner>(
 
 // Only owner can Delete.
 // For overall success, the following must be true:
-//   * the chunk doesn't already exsist
+//   * the chunk doesn't already exist
 //                OR
 //   * chunk_store.get() succeeds
-//   * retrieved chunk's version is different from version input in function
-//                OR
-//   * chunk_store.get() succeeds
-//   * retrieved chunk's version is identical to version input in function
 //   * public_key is valid
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
@@ -109,7 +105,6 @@ int ProcessStore<kModifiableByOwner>(
 template <>
 int ProcessDelete<kModifiableByOwner>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);

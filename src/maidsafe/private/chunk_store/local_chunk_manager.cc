@@ -135,7 +135,6 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
 
   // TODO(Team): Add check of ID on network
   if (!simulation_chunk_action_authority_->Delete(name,
-                                                  "",
                                                   ownership_proof,
                                                   owner_public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);

@@ -59,8 +59,8 @@ template <>
 std::string GetVersion<kModifiableByOwner>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
-  std::string content, hash;
-  return (GetContentAndTigerHash(name, chunk_store, &content,
+  std::string hash;
+  return (GetContentAndTigerHash(name, chunk_store, nullptr,
                                  &hash) == kSuccess ? hash : "");
 }
 
@@ -133,20 +133,13 @@ int ProcessStore<kModifiableByOwner>(
 template <>
 int ProcessDelete<kModifiableByOwner>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
-  std::string existing_content, existing_version;
-  int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
-                                    &existing_version));
-  if (result == kFailedToFindChunk || version != existing_version) {
+  std::string existing_content = chunk_store->Get(name);
+  if (existing_content.empty()) {
     DLOG(INFO) << Base32Substr(name) << " already deleted";
     return kSuccess;
-  } else if (result != kSuccess) {
-    DLOG(ERROR) << "Error getting existing " << Base32Substr(name)
-                << " - failed to delete.";
-    return result;
   }
 
   SignedData existing_chunk;
@@ -251,8 +244,8 @@ int ProcessHas<kModifiableByOwner>(
       return kFailedToFindChunk;
     }
   } else {
-    std::string existing_content, existing_version;
-    int result(GetContentAndTigerHash(name, chunk_store, &existing_content,
+    std::string existing_version;
+    int result(GetContentAndTigerHash(name, chunk_store, nullptr,
                                       &existing_version));
     if (result != kSuccess) {
       DLOG(ERROR) << "Failed to find " << Base32Substr(name);

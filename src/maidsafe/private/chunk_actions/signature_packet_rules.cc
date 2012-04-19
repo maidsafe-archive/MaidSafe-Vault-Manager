@@ -139,7 +139,6 @@ int ProcessStore<kSignaturePacket>(
 template <>
 int ProcessDelete<kSignaturePacket>(
     const std::string &name,
-    const std::string &/*version*/,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

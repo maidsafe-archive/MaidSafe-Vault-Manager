@@ -245,7 +245,6 @@ bool RemoteChunkStore::Delete(const std::string &name,
   }
 
   if (!chunk_action_authority_->Delete(name,
-                                       chunk_action_authority_->Version(name),
                                        validation_data.ownership_proof,
                                        validation_data.key_pair.public_key)) {
     DLOG(ERROR) << "Delete - Could not delete " << Base32Substr(name)

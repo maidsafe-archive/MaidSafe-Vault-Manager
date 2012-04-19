@@ -180,37 +180,29 @@ class ChunkActionAuthorityTest: public testing::Test {
 
   void ValidDeleteTests(const std::string &name, const std::string &content) {
     EXPECT_EQ(kSuccess,
-              chunk_action_authority_->ValidDelete(name, "", "",
-                                                   asymm::PublicKey()));
-    EXPECT_EQ(kSuccess,
-              chunk_action_authority_->ValidDelete(name, "other version", "",
+              chunk_action_authority_->ValidDelete(name, "",
                                                    asymm::PublicKey()));
     chunk_store_->Store(name, "content");
-    std::string tiger_hash(crypto::Hash<crypto::Tiger>("content"));
     EXPECT_EQ(kGeneralError,
-              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
+              chunk_action_authority_->ValidDelete(name, "",
                                                    asymm::PublicKey()));
     chunk_store_->Modify(name, content);
-    tiger_hash = crypto::Hash<crypto::Tiger>(content);
     EXPECT_EQ(kInvalidPublicKey,
-              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
+              chunk_action_authority_->ValidDelete(name, "",
                                                    asymm::PublicKey()));
     EXPECT_EQ(kSignatureVerificationFailure,
-              chunk_action_authority_->ValidDelete(name, tiger_hash, "",
-                                                   key1_.public_key));
+              chunk_action_authority_->ValidDelete(name, "", key1_.public_key));
     EXPECT_EQ(kNotOwner,
-              chunk_action_authority_->ValidDelete(name, tiger_hash,
-                                                   RandomString(50),
+              chunk_action_authority_->ValidDelete(name, RandomString(50),
                                                    key_.public_key));
     chunk_actions::SignedData fake_signed_data(ComposeSignedData(key1_));
     std::string fake_ownership(fake_signed_data.SerializeAsString());
     EXPECT_EQ(kNotOwner,
-              chunk_action_authority_->ValidDelete(name, tiger_hash,
-                                                   fake_ownership,
+              chunk_action_authority_->ValidDelete(name, fake_ownership,
                                                    key_.public_key));
     std::string ownership(signed_data_.SerializeAsString());
     EXPECT_EQ(kSuccess,
-              chunk_action_authority_->ValidDelete(name, tiger_hash, ownership,
+              chunk_action_authority_->ValidDelete(name, ownership,
                                                    key_.public_key));
   }
 
@@ -219,7 +211,7 @@ class ChunkActionAuthorityTest: public testing::Test {
     // ValidDelete, so here we only need to check if chunk_store works well
     chunk_store_->Store(name, content);
     std::string ownership(signed_data_.SerializeAsString());
-    EXPECT_TRUE(chunk_action_authority_->Delete(name, "", ownership,
+    EXPECT_TRUE(chunk_action_authority_->Delete(name, ownership,
                                                 key_.public_key));
     std::string result(chunk_store_->Get(name));
     EXPECT_TRUE(result.empty());
@@ -461,7 +453,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
 TEST_F(ChunkActionAuthorityTest, BEH_ValidDelete) {
   // tests for DefaultTypePacket
   EXPECT_EQ(kSuccess,
-            chunk_action_authority_->ValidDelete(default_name_, "", "",
+            chunk_action_authority_->ValidDelete(default_name_, "",
                                                  asymm::PublicKey()));
 
   // tests for AppendableByAllPacket
@@ -673,7 +665,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_Version) {
 
 TEST_F(ChunkActionAuthorityTest, BEH_Delete) {
   // tests for DefaultTypePacket, will always return success
-  EXPECT_TRUE(chunk_action_authority_->Delete(default_name_, "", "",
+  EXPECT_TRUE(chunk_action_authority_->Delete(default_name_, "",
                                               asymm::PublicKey()));
 
   // tests for AppendableByAllPacket

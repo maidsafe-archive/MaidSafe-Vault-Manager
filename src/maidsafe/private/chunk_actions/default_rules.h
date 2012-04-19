@@ -73,7 +73,6 @@ int ProcessStore(const std::string &name,
 
 template <unsigned char DataType>
 int ProcessDelete(const std::string &name,
-                  const std::string &version,
                   const std::string &ownership_proof,
                   const asymm::PublicKey &public_key,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -146,11 +145,9 @@ int ProcessStore<kDefaultType>(
 // This assumes that owner of public_key has already been confirmed as being
 // a valid Chunk Info Holder, and that public_key has not been revoked on the
 // network.
-// NB - version is not used in this function.
 template <>
 int ProcessDelete<kDefaultType>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);

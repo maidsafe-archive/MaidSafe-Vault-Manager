@@ -170,10 +170,9 @@ bool ChunkActionAuthority::Store(const std::string &name,
 }
 
 bool ChunkActionAuthority::Delete(const std::string &name,
-                                  const std::string &version,
                                   const std::string &ownership_proof,
                                   const asymm::PublicKey &public_key) {
-  int result(ValidDelete(name, version, ownership_proof, public_key));
+  int result(ValidDelete(name, ownership_proof, public_key));
   if (result != kSuccess) {
     DLOG(ERROR) << "Invalid request to delete " << Base32Substr(name) << ": "
                 << result;
@@ -406,30 +405,25 @@ int ChunkActionAuthority::ValidStore(const std::string &name,
 
 int ChunkActionAuthority::ValidDelete(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key) const {
   switch (GetDataType(name)) {
     case kDefaultType: return ProcessDelete<kDefaultType>(name,
-                                                          version,
                                                           ownership_proof,
                                                           public_key,
                                                           chunk_store_);
     case kAppendableByAll:
         return ProcessDelete<kAppendableByAll>(name,
-                                               version,
                                                ownership_proof,
                                                public_key,
                                                chunk_store_);
     case kModifiableByOwner:
         return ProcessDelete<kModifiableByOwner>(name,
-                                                 version,
                                                  ownership_proof,
                                                  public_key,
                                                  chunk_store_);
     case kSignaturePacket:
         return ProcessDelete<kSignaturePacket>(name,
-                                               version,
                                                ownership_proof,
                                                public_key,
                                                chunk_store_);

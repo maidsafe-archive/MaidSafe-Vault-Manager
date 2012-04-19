@@ -60,8 +60,8 @@ template <>
 std::string GetVersion<kAppendableByAll>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
-  std::string content, hash;
-  return (GetContentAndTigerHash(name, chunk_store, &content,
+  std::string hash;
+  return (GetContentAndTigerHash(name, chunk_store, nullptr,
                                  &hash) == kSuccess ? hash : "");
 }
 
@@ -155,7 +155,6 @@ int ProcessStore<kAppendableByAll>(
 template <>
 int ProcessDelete<kAppendableByAll>(
     const std::string &name,
-    const std::string &/*version*/,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
