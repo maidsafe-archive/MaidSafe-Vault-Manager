@@ -237,9 +237,6 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   content = RandomString(500);
   name = crypto::Hash<crypto::SHA512>(content);
   EXPECT_TRUE(chunk_store->Store(name, content));
-
-  //  chunk store does not validate content & name
-  EXPECT_TRUE(chunk_store->Store(content, name));
 }
 
 TEST_F(FileChunkStoreTest, BEH_Capacity) {
