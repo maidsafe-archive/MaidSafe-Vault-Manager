@@ -22,6 +22,7 @@
 #include <string>
 
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "boost/filesystem/path.hpp"
 
 #include "maidsafe/private/chunk_store/chunk_manager.h"
 
@@ -31,6 +32,7 @@
     Please update the library.
 #endif
 
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
 

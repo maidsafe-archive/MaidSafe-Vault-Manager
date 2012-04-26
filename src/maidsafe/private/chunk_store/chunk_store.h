@@ -28,12 +28,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_CHUNK_STORE_H_
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_CHUNK_STORE_H_
 
-#include <cstdint>
 #include <string>
 
-#include "boost/filesystem.hpp"
-
-#include "maidsafe/common/rsa.h"
+#include "boost/filesystem/path.hpp"
 
 #include "maidsafe/private/version.h"
 #if MAIDSAFE_PRIVATE_VERSION != 300

@@ -28,7 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_BUFFERED_CHUNK_STORE_H_
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_BUFFERED_CHUNK_STORE_H_
 
-#include <cstdint>
 #include <functional>
 #include <list>
 #include <set>
@@ -40,20 +39,14 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #  pragma warning(disable: 4127)
 #endif
 
-#include "boost/asio.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
-#include "boost/filesystem.hpp"
-#include "boost/token_functions.hpp"
+#include "boost/asio/io_service.hpp"
+#include "boost/filesystem/path.hpp"
 #include "boost/thread/mutex.hpp"
-#include "boost/thread/shared_mutex.hpp"
-#include "boost/thread/locks.hpp"
 #include "boost/thread/condition_variable.hpp"
 
 #ifdef __MSVC__
 #  pragma warning(pop)
 #endif
-
-#include "maidsafe/common/crypto.h"
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
@@ -65,7 +58,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 namespace fs = boost::filesystem;
-namespace args = std::placeholders;
 
 namespace maidsafe {
 
@@ -209,13 +201,7 @@ class BufferedChunkStore : public ChunkStore {
   void DoMakeChunkPermanent(const std::string &name);
   void RemoveDeletionMarks(const std::string &name);
 
-  typedef boost::shared_lock<boost::shared_mutex> SharedLock;
-  typedef boost::upgrade_lock<boost::shared_mutex> UpgradeLock;
-  typedef boost::unique_lock<boost::shared_mutex> UniqueLock;
-  typedef boost::upgrade_to_unique_lock<boost::shared_mutex>
-          UpgradeToUniqueLock;
-  mutable boost::shared_mutex cache_mutex_;
-  mutable boost::mutex xfer_mutex_;
+  mutable boost::mutex cache_mutex_, xfer_mutex_;
   mutable boost::condition_variable xfer_cond_var_;
   boost::asio::io_service &asio_service_;
   std::shared_ptr<FileChunkStore> internal_perm_chunk_store_;

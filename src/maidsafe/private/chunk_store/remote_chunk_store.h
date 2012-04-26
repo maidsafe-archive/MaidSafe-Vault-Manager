@@ -25,17 +25,17 @@
 #include <string>
 #include <utility>
 
+#include "boost/asio/io_service.hpp"
 #include "boost/bimap.hpp"
 #include "boost/bimap/list_of.hpp"
 #include "boost/bimap/multiset_of.hpp"
+#include "boost/filesystem/path.hpp"
 // #include "boost/serialization/access.hpp"
+#include "boost/signals2/signal.hpp"
 #include "boost/thread/condition_variable.hpp"
-#include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
 
-#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
-#include "maidsafe/private/chunk_store/buffered_chunk_store.h"
-#include "maidsafe/private/chunk_store/chunk_manager.h"
+#include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/version.h"
 #if MAIDSAFE_PRIVATE_VERSION != 300
@@ -44,6 +44,8 @@
 #endif
 
 namespace bptime = boost::posix_time;
+namespace bs2 = boost::signals2;
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
@@ -54,6 +56,7 @@ namespace chunk_actions { class ChunkActionAuthority; }
 namespace chunk_store {
 
 class BufferedChunkStore;
+class ChunkManager;
 
 class RemoteChunkStore {
  public:
@@ -172,13 +175,9 @@ class RemoteChunkStore {
     return pending_ops_.size();
   }
 
-  bool Empty() const {
-    return chunk_store_->Empty();
-  }
+  bool Empty() const;
 
-  void Clear() {
-    chunk_store_->Clear();
-  }
+  void Clear();
 
   /// Waits for pending operations, returns false if it times out.
   bool WaitForCompletion();

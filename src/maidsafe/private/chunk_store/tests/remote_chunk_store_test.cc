@@ -39,12 +39,15 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"
 
-#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
+#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_store/buffered_chunk_store.h"
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
 #include "maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
 
 namespace fs = boost::filesystem;
+namespace args = std::placeholders;
 
 namespace maidsafe {
 

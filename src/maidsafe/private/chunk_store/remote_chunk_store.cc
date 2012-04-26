@@ -25,10 +25,12 @@
 
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
+#include "maidsafe/private/chunk_store/buffered_chunk_store.h"
+#include "maidsafe/private/chunk_store/chunk_manager.h"
+#include "maidsafe/private/chunk_store/local_chunk_manager.h"
 #include "maidsafe/private/log.h"
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/chunk_actions/chunk_action_authority.h"
-#include "maidsafe/private/chunk_store/local_chunk_manager.h"
 
 namespace args = std::placeholders;
 namespace pca = maidsafe::priv::chunk_actions;
@@ -301,6 +303,14 @@ bool RemoteChunkStore::WaitForCompletion() {
   }
   DLOG(INFO) << "WaitForCompletion - Done.";
   return true;
+}
+
+bool RemoteChunkStore::Empty() const {
+  return chunk_store_->Empty();
+}
+
+void RemoteChunkStore::Clear() {
+  chunk_store_->Clear();
 }
 
 void RemoteChunkStore::OnOpResult(const OperationType &op_type,
