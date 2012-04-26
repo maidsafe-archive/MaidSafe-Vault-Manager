@@ -251,10 +251,10 @@ class RemoteChunkStore {
   OperationMultiMap failed_ops_;
   std::multiset<std::string> waiting_gets_;
   std::map<std::string, bptime::ptime> failed_gets_;
-  std::uintmax_t op_count_[4],
-                 op_success_count_[4],
-                 op_skip_count_[4],
-                 op_size_[4];
+  uintmax_t op_count_[4],
+            op_success_count_[4],
+            op_skip_count_[4],
+            op_size_[4];
 };
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
