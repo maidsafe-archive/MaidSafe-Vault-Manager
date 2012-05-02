@@ -472,10 +472,11 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
                    << kOpName[op_data.op_type] << "' for "
                    << Base32Substr(name);
         OpFunctor callback(it->info.callback);
-        ++op_skip_count_[it->info.op_type];
+        OperationType prev_op_type(it->info.op_type);
+        ++op_skip_count_[prev_op_type];
         pending_ops_.left.erase(it);
         cond_var_.notify_all();
-        if (it->info.op_type == kOpModify && callback) {
+        if (prev_op_type == kOpModify && callback) {
           // run callback, because Modify doesn't block
           lock->unlock();
           callback(true);
