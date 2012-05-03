@@ -27,6 +27,14 @@ ELSEIF(CMAKE_BUILD_TYPE_DIR MATCHES "kdev")
   SET(CMAKE_BUILD_TYPE_DIR Debug)
   SET(KDEV 1)
 ENDIF()
+include_directories("${PROJECT_SOURCE_DIR}/include")
+include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${CMAKE_SOURCE_DIR}/src/common/include")
+include_directories("${CMAKE_SOURCE_DIR}/src/third_party_libs/")  # cryptopp
+include_directories("${CMAKE_SOURCE_DIR}/src/third_party_libs/protobuf/src")  # protobuf
+include_directories("${CMAKE_SOURCE_DIR}/src/third_party_libs/googlemock/gtest/include")
+include_directories("${CMAKE_SOURCE_DIR}/src/third_party_libs/googlemock/include")
+include_directories("${CMAKE_SOURCE_DIR}/src/third_party_libs/glog/src")
 
 IF(NOT ${CMAKE_C_COMPILER_WORKS})
   MESSAGE(FATAL_ERROR "No generator previously specified.\nTo see a full list of generators, run:\n\tcmake --help\n")
