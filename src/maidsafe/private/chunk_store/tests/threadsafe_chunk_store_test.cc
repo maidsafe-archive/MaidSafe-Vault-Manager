@@ -85,8 +85,8 @@ class ThreadsafeChunkStoreTest : public testing::Test {
     StoreContents(17, false);
     StoreFromSourceFile(13, false);
     for (uint8_t i = 0; i < 30U; ++i) {
-      thread_group_.create_thread(
-          std::bind(&ThreadsafeChunkStoreTest::RunThread, this));
+      thread_group_.create_thread([this]
+          { ThreadsafeChunkStoreTest::RunThread(); } );
     }
   }
 

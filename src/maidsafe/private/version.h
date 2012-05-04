@@ -13,7 +13,7 @@
 *
 * ============================================================================
 */
-
+/*
 #ifndef MAIDSAFE_PRIVATE_VERSION_H_
 #define MAIDSAFE_PRIVATE_VERSION_H_
 
@@ -35,3 +35,4 @@
 #endif
 
 #endif  // MAIDSAFE_PRIVATE_VERSION_H_
+*/

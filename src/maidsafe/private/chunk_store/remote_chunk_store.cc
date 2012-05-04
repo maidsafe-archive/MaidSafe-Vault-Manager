@@ -153,14 +153,21 @@ RemoteChunkStore::~RemoteChunkStore() {
 }
 
 void RemoteChunkStore::Init() {
-  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
-  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpStore, args::_1, args::_2));
-  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpModify, args::_1, args::_2));
-  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpDelete, args::_1, args::_2));
+  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect([this]
+      (const std::string &name ,const int &result  )
+      { RemoteChunkStore::OnOpResult(kOpGet, name, result); });
+  
+  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect([this]
+      (const std::string &name ,const int &result  )
+      { RemoteChunkStore::OnOpResult(kOpGet, name, result); });
+  
+  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect([this]
+      (const std::string &name ,const int &result  )
+      { RemoteChunkStore::OnOpResult(kOpGet, name, result); });
+  
+  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect([this]
+      (const std::string &name ,const int &result  )
+      { RemoteChunkStore::OnOpResult(kOpGet, name, result); });
 }
 
 std::string RemoteChunkStore::Get(
