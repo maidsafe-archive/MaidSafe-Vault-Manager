@@ -1,7 +1,6 @@
 package maidsafe.priv.chunk_actions;
 
-
-message SignedData {
+message  SignedData {
   required bytes data = 1;
   required bytes signature = 2;
 }
