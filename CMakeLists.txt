@@ -17,9 +17,8 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
-message("================================================================================\n")
-
 project(private)
+
 set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
@@ -31,6 +30,7 @@ if(RAN_PROTOC)
 endif()
 
 include_directories(${common_SOURCE_DIR}/include)
+
 
 ###################################################################################################
 # Set up all files as GLOBs                                                                       #
@@ -77,6 +77,7 @@ ms_add_executable(TESTprivate Tests ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR}
 TARGET_LINK_LIBRARIES(maidsafe_private maidsafe_common)
 TARGET_LINK_LIBRARIES(TESTprivate maidsafe_private)
 
+rename_outdated_built_exes()
 
 ###################################################################################################
 # Set compiler and linker flags                                                                   #
@@ -96,36 +97,3 @@ LIST(REMOVE_ITEM ALL_PRIVATE_STYLE ${PROTO_SOURCE_FILES} ${PROTO_HEADER_FILES})
 add_style_test(${ALL_PRIVATE_STYLE})
 add_gtests(TESTprivate)
 test_summary_output()
-
-
-###################################################################################################
-# Install details                                                                                 #
-###################################################################################################
-rename_outdated_built_exes()
-
-#SET(MAIDSAFE_PRIVATE_INSTALL_FILES
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/return_codes.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/version.h)
-#SET(MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_action_authority.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_pb.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk_types.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/default_rules.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_pb.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all_rules.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/modifiable_by_owner_rules.h)
-#SET(MAIDSAFE_PRIVATE_CHUNK_STORE_INSTALL_FILES
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/buffered_chunk_store.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/chunk_manager.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/chunk_store.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/local_chunk_manager.h
-#      ${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/remote_chunk_store.h)
-
-#ms_install_libs(maidsafe_private_static)
-#ms_install_headers(private ${MAIDSAFE_PRIVATE_INSTALL_FILES})
-#ms_install_headers(private/chunk_actions ${MAIDSAFE_PRIVATE_CHUNK_ACTIONS_INSTALL_FILES})
-#ms_install_headers(private/chunk_store ${MAIDSAFE_PRIVATE_CHUNK_STORE_INSTALL_FILES})
-#ms_install_export()
-
