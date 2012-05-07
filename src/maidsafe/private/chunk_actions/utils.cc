@@ -40,18 +40,29 @@ int GetContentAndTigerHash(const std::string &name,
                            std::shared_ptr<chunk_store::ChunkStore> chunk_store,
                            std::string *chunk_content,
                            std::string *hash) {
-  *chunk_content = chunk_store->Get(name);
-  if (chunk_content->empty()) {
-    DLOG(WARNING) << "Failed to get Tiger hash " << Base32Substr(name)
-                  << " (failed to retrieve chunk from ChunkStore)";
-    hash->clear();
+  std::string content(chunk_store->Get(name));
+  if (content.empty()) {
+    DLOG(ERROR) << "GetContentAndTigerHash - Failed to retrieve "
+                << Base32Substr(name);
+    if (chunk_content)
+      chunk_content->clear();
+    if (hash)
+      hash->clear();
     return kFailedToFindChunk;
   }
-  *hash = crypto::Hash<crypto::Tiger>(*chunk_content);
-  if (hash->empty()) {
-    DLOG(ERROR) << "Failed to create Tiger hash for " << Base32Substr(name);
-    return kHashFailure;
+
+  if (hash) {
+    *hash = crypto::Hash<crypto::Tiger>(content);
+    if (hash->empty()) {
+      DLOG(ERROR) << "GetContentAndTigerHash - Failed to hash "
+                  << Base32Substr(name);
+      return kHashFailure;
+    }
   }
+
+  if (chunk_content)
+    *chunk_content = content;
+
   return kSuccess;
 }
 

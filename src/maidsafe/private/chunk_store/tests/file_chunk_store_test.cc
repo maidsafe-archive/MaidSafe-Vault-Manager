@@ -28,7 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory>
 
 #include "boost/filesystem.hpp"
-#include "boost/filesystem/fstream.hpp"
 
 #include "maidsafe/common/utils.h"
 
@@ -238,9 +237,6 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   content = RandomString(500);
   name = crypto::Hash<crypto::SHA512>(content);
   EXPECT_TRUE(chunk_store->Store(name, content));
-
-  //  chunk store does not validate content & name
-  EXPECT_TRUE(chunk_store->Store(content, name));
 }
 
 TEST_F(FileChunkStoreTest, BEH_Capacity) {

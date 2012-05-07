@@ -25,8 +25,6 @@
 
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/chunk_store/chunk_store.h"
-
 namespace bs2 = boost::signals2;
 
 namespace maidsafe {

@@ -28,7 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory>
 
 #include "boost/filesystem.hpp"
-#include "boost/filesystem/fstream.hpp"
 #include "boost/thread.hpp"
 
 #include "maidsafe/common/asio_service.h"

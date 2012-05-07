@@ -28,13 +28,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_THREADSAFE_CHUNK_STORE_H_
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_THREADSAFE_CHUNK_STORE_H_
 
-#include <cstdint>
+#include <memory>
 #include <string>
-#include <utility>
 
-#include "boost/filesystem.hpp"
-#include "boost/thread/shared_mutex.hpp"
-#include "boost/thread/locks.hpp"
+#include "boost/filesystem/path.hpp"
+#include "boost/thread/mutex.hpp"
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
@@ -79,11 +77,8 @@ class ThreadsafeChunkStore : public ChunkStore {
   ThreadsafeChunkStore(const ThreadsafeChunkStore&);
   ThreadsafeChunkStore& operator=(const ThreadsafeChunkStore&);
 
-  typedef boost::shared_lock<boost::shared_mutex> SharedLock;
-  typedef boost::unique_lock<boost::shared_mutex> UniqueLock;
-
   std::shared_ptr<ChunkStore> chunk_store_;
-  mutable boost::shared_mutex shared_mutex_;
+  mutable boost::mutex mutex_;
 };
 
 }  // namespace chunk_store

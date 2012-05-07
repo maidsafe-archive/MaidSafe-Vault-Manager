@@ -36,10 +36,13 @@ namespace chunk_store {
 
 LocalChunkManager::LocalChunkManager(
     std::shared_ptr<ChunkStore> normal_local_chunk_store,
-    const fs::path &simulation_directory)
+    const fs::path &simulation_directory,
+    const boost::posix_time::time_duration &millisecs)
     : ChunkManager(normal_local_chunk_store),
       simulation_chunk_store_(),
-      simulation_chunk_action_authority_() {
+      simulation_chunk_action_authority_(),
+      get_wait_(millisecs),
+      action_wait_(millisecs * 3) {
   std::shared_ptr<FileChunkStore> file_chunk_store(new FileChunkStore);
   fs::path local_version_directory;
   if (simulation_directory.empty()) {
@@ -70,10 +73,11 @@ void LocalChunkManager::GetChunk(const std::string &name,
                                  const asymm::Identity &/*owner_key_id*/,
                                  const asymm::PublicKey &owner_public_key,
                                  const std::string &/*ownership_proof*/) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(get_wait_);
+  }
   // TODO(Team): Add check of ID on network
-  unsigned char chunk_type(pca::GetDataType(name));
-  bool chunk_exists(chunk_store_->Has(name));
-  if (chunk_type == pca::kDefaultType && chunk_exists) {
+  if (chunk_store_->Has(name)) {
     (*sig_chunk_got_)(name, kSuccess);
     return;
   }
@@ -83,18 +87,13 @@ void LocalChunkManager::GetChunk(const std::string &name,
   if (content.empty()) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
+    return;
   }
 
-  if (chunk_exists) {
-    if (!chunk_store_->Modify(name, content)) {
-      DLOG(ERROR) << "Failed to modify locally " << Base32Substr(name);
-      (*sig_chunk_got_)(name, kGetFailure);
-    }
-  } else {
-    if (!chunk_store_->Store(name, content)) {
-      DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
-      (*sig_chunk_got_)(name, kGetFailure);
-    }
+  if (!chunk_store_->Store(name, content)) {
+    DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
+    (*sig_chunk_got_)(name, kGetFailure);
+    return;
   }
 
   (*sig_chunk_got_)(name, kSuccess);
@@ -103,11 +102,14 @@ void LocalChunkManager::GetChunk(const std::string &name,
 void LocalChunkManager::StoreChunk(const std::string &name,
                                    const asymm::Identity &/*owner_key_id*/,
                                    const asymm::PublicKey &owner_public_key) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   // TODO(Team): Add check of ID on network
-  unsigned char chunk_type(pca::GetDataType(name));
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "No chunk in local chunk store" << Base32Substr(name);
+    DLOG(ERROR) << "No chunk in local chunk store " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }
@@ -120,9 +122,6 @@ void LocalChunkManager::StoreChunk(const std::string &name,
     return;
   }
 
-  if (chunk_type != pca::kDefaultType)
-    chunk_store_->Delete(name);
-
   (*sig_chunk_stored_)(name, kSuccess);
 }
 
@@ -130,9 +129,12 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
                                     const asymm::Identity &/*owner_key_id*/,
                                     const asymm::PublicKey &owner_public_key,
                                     const std::string &ownership_proof) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   // TODO(Team): Add check of ID on network
   if (!simulation_chunk_action_authority_->Delete(name,
-                                                  "",
                                                   ownership_proof,
                                                   owner_public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
@@ -147,6 +149,10 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
                                     const std::string &content,
                                     const asymm::Identity &/*owner_key_id*/,
                                     const asymm::PublicKey &owner_public_key) {
+  if (get_wait_.total_milliseconds() != 0) {
+    Sleep(action_wait_);
+  }
+
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,

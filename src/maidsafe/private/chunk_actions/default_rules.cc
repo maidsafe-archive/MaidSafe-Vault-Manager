@@ -40,6 +40,9 @@ template <>
 bool IsModifiable<kDefaultType>() { return false; }
 
 template <>
+bool DoesModifyReplace<kDefaultType>() { return false; }
+
+template <>
 bool IsValidChunk<kDefaultType>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
@@ -110,7 +113,6 @@ int ProcessStore<kDefaultType>(
 template <>
 int ProcessDelete<kDefaultType>(
     const std::string &/*name*/,
-    const std::string &/*version*/,
     const std::string &/*ownership_proof*/,
     const asymm::PublicKey &/*public_key*/,
     std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {

@@ -44,6 +44,10 @@ bool IsCacheable<kAppendableByAll>();
 template <>
 bool IsModifiable<kAppendableByAll>();
 
+// Returns false.
+template <>
+bool DoesModifyReplace<kAppendableByAll>();
+
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kAppendableByAll>(
@@ -94,11 +98,9 @@ int ProcessStore<kAppendableByAll>(
 //   * retrieved chunk.signature() validates with public_key
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
-// NB - version is currently ignored for this function.
 template <>
 int ProcessDelete<kAppendableByAll>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);

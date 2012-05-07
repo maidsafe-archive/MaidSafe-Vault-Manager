@@ -27,8 +27,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/chunk_store/threadsafe_chunk_store.h"
 
-#include "maidsafe/common/utils.h"
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -41,105 +39,105 @@ ThreadsafeChunkStore::ThreadsafeChunkStore(
     std::shared_ptr<ChunkStore> chunk_store)
         : ChunkStore(),
           chunk_store_(chunk_store),
-          shared_mutex_() {}
+          mutex_() {}
 
 ThreadsafeChunkStore::~ThreadsafeChunkStore() {}
 
 std::string ThreadsafeChunkStore::Get(const std::string &name) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Get(name);
 }
 
 bool ThreadsafeChunkStore::Get(const std::string &name,
                                const fs::path &sink_file_name) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Get(name, sink_file_name);
 }
 
 bool ThreadsafeChunkStore::Store(const std::string &name,
                                  const std::string &content) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Store(name, content);
 }
 
 bool ThreadsafeChunkStore::Store(const std::string &name,
                                  const fs::path &source_file_name,
                                  bool delete_source_file) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Store(name, source_file_name, delete_source_file);
 }
 
 bool ThreadsafeChunkStore::Delete(const std::string &name) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Delete(name);
 }
 
 bool ThreadsafeChunkStore::Modify(const std::string &name,
                                   const std::string &content) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Modify(name, content);
 }
 
 bool ThreadsafeChunkStore::Modify(const std::string &name,
                                   const fs::path &source_file_name,
                                   bool delete_source_file) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Modify(name, source_file_name, delete_source_file);
 }
 
 bool ThreadsafeChunkStore::Has(const std::string &name) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Has(name);
 }
 
 bool ThreadsafeChunkStore::MoveTo(const std::string &name,
                                   ChunkStore *sink_chunk_store) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->MoveTo(name, sink_chunk_store);
 }
 
 uintmax_t ThreadsafeChunkStore::Size(const std::string &name) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Size(name);
 }
 
 uintmax_t ThreadsafeChunkStore::Size() const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Size();
 }
 
 uintmax_t ThreadsafeChunkStore::Capacity() const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Capacity();
 }
 
 void ThreadsafeChunkStore::SetCapacity(const uintmax_t &capacity) {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   chunk_store_->SetCapacity(capacity);
 }
 
 bool ThreadsafeChunkStore::Vacant(const uintmax_t &required_size) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Vacant(required_size);
 }
 
 uintmax_t ThreadsafeChunkStore::Count(const std::string &name) const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Count(name);
 }
 
 uintmax_t ThreadsafeChunkStore::Count() const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Count();
 }
 
 bool ThreadsafeChunkStore::Empty() const {
-  SharedLock shared_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Empty();
 }
 
 void ThreadsafeChunkStore::Clear() {
-  UniqueLock unique_lock(shared_mutex_);
+  boost::lock_guard<boost::mutex> lock(mutex_);
   chunk_store_->Clear();
 }
 

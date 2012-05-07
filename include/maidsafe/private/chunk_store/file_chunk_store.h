@@ -28,19 +28,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_FILE_CHUNK_STORE_H_
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_FILE_CHUNK_STORE_H_
 
-#include <cstdint>
-#include <memory>
 #include <string>
 #include <utility>
 
 #ifdef __MSVC__
 #  pragma warning(push, 1)
-#  pragma warning(disable: 4127)
+#  pragma warning(disable: 4127 4250)
 #endif
 
-#include "boost/filesystem.hpp"
+#include "boost/filesystem/path.hpp"
 #include "boost/filesystem/fstream.hpp"
-#include "boost/token_functions.hpp"
 
 #ifdef __MSVC__
 #  pragma warning(pop)

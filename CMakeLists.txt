@@ -88,6 +88,13 @@ include(maidsafe_standard_flags)
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
 ms_disable_warnings(${PROTO_SOURCE_FILES})
+if(UNIX)
+  SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
+                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
+                               PROPERTIES COMPILE_FLAGS "-Wno-effc++")
+  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc
+                                PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
+endif()
 
 
 ###################################################################################################

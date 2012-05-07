@@ -41,6 +41,9 @@ template <unsigned char DataType>
 bool IsModifiable();
 
 template <unsigned char DataType>
+bool DoesModifyReplace();
+
+template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -63,7 +66,6 @@ int ProcessStore(const std::string &name,
 
 template <unsigned char DataType>
 int ProcessDelete(const std::string &name,
-                  const std::string &version,
                   const std::string &ownership_proof,
                   const asymm::PublicKey &public_key,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -86,11 +88,13 @@ int ProcessHas(const std::string &name,
 template <>
 bool IsCacheable<kDefaultType>();
 
-
 // Returns false.
 template <>
 bool IsModifiable<kDefaultType>();
 
+// Returns false.
+template <>
+bool DoesModifyReplace<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>
@@ -134,11 +138,9 @@ int ProcessStore<kDefaultType>(
 // This assumes that owner of public_key has already been confirmed as being
 // a valid Chunk Info Holder, and that public_key has not been revoked on the
 // network.
-// NB - version is not used in this function.
 template <>
 int ProcessDelete<kDefaultType>(
     const std::string &name,
-    const std::string &version,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
