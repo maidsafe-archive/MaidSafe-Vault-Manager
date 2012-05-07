@@ -89,6 +89,7 @@ class RemoteChunkStore {
     OperationData()
         : op_type(),
           active(false),
+          ready(false),
           owner_key_id(),
           owner_public_key(),
           ownership_proof(),
@@ -97,6 +98,7 @@ class RemoteChunkStore {
     explicit OperationData(const OperationType &op_type)
         : op_type(op_type),
           active(false),
+          ready(false),
           owner_key_id(),
           owner_public_key(),
           ownership_proof(),
@@ -104,16 +106,18 @@ class RemoteChunkStore {
           callback() {}
     OperationData(const OperationType &op_type,
                   const OpFunctor &callback,
-                  const ValidationData &validation_data)
+                  const ValidationData &validation_data,
+                  bool ready)
         : op_type(op_type),
           active(false),
+          ready(ready),
           owner_key_id(validation_data.key_pair.identity),
           owner_public_key(validation_data.key_pair.public_key),
           ownership_proof(validation_data.ownership_proof),
           content(),
           callback(callback) {}
     OperationType op_type;
-    bool active;
+    bool active, ready;
     asymm::Identity owner_key_id;
     asymm::PublicKey owner_public_key;
     std::string ownership_proof;
@@ -181,6 +185,9 @@ class RemoteChunkStore {
 
   /// Waits for pending operations, returns false if it times out.
   bool WaitForCompletion();
+
+  /// Print operation statistics to debug log.
+  void LogStats();
 
   /// Sets the maximum number of operations to be processed in parallel.
   void SetMaxActiveOps(const int &max_active_ops) {
