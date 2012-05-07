@@ -274,7 +274,7 @@ class RemoteChunkStoreTest: public testing::Test {
     empty_callback_ = std::bind(&RemoteChunkStoreTest::EmptyCallback,
                                   this, args::_1);
     rcs_pending_ops_conn_ = this->chunk_store_->sig_num_pending_ops()->connect(
-            std::bind(&RemoteChunkStoreTest::PrintPendingOps, this, args::_1));
+            boost::bind(&RemoteChunkStoreTest::PrintPendingOps, this, _1));
   }
 
   void TearDown() {
@@ -419,7 +419,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Store) {
 
   EXPECT_TRUE(this->chunk_store_->Empty());
   // EXPECT_EQ(0, this->chunk_store_->Count());
-  EXPECT_EQ(0, this->chunk_store_->Size());
+  EXPECT_EQ(0U, this->chunk_store_->Size());
   // EXPECT_FALSE(this->chunk_store_->Has(name));
   // EXPECT_EQ(0, this->chunk_store_->Count(name));
   // EXPECT_EQ(0, this->chunk_store_->Size(name));
@@ -454,7 +454,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
   // EXPECT_FALSE(this->chunk_store_->Has(name));
   // EXPECT_EQ(0, this->chunk_store_->Count(name));
   // EXPECT_EQ(0, this->chunk_store_->Size(name));
-  EXPECT_EQ(0, this->chunk_store_->Size());
+  EXPECT_EQ(0U, this->chunk_store_->Size());
 
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
                                         store_success_callback_));
@@ -539,10 +539,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread(
-          std::bind(
-          &RemoteChunkStoreTest::DoGet, this, chunk_store_, it->first,
-          it->second.first, 0));
+      thread_group_.create_thread([&] {
+          DoGet(chunk_store_, it->first, it->second.first, 0);
+      });
     }
   }
   {
@@ -561,10 +560,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread(
-          std::bind(
-          &RemoteChunkStoreTest::DoGet, this, chunk_store_, it->first,
-          it->second.second, 0));
+      thread_group_.create_thread([&] {
+          DoGet(chunk_store_, it->first, it->second.second, 0);
+      });
     }
   }
   {
@@ -831,7 +829,7 @@ TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
   std::string name(crypto::Hash<crypto::SHA512>(content));
   EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_, testing::_,
                                              testing::_))
-      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(boost::bind(
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 10; ++i) {
     ++parallel_tasks_;
@@ -850,7 +848,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
                 keys_.private_key, &name, &content);
   EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_, testing::_,
                                                testing::_))
-      .WillOnce(testing::WithArgs<0>(testing::Invoke(std::bind(
+      .WillOnce(testing::WithArgs<0>(testing::Invoke(boost::bind(
           &MockChunkManager::StoreChunkPass, mock_chunk_manager_.get(),
           name))));
   EXPECT_TRUE(this->mock_manager_chunk_store_->Store(name, content,
@@ -859,7 +857,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
   mock_manager_chunk_store_->WaitForCompletion();
   EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_, testing::_,
                                                 testing::_, testing::_))
-      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
+      .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(boost::bind(
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 5; ++i) {
     ++parallel_tasks_;
