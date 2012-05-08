@@ -393,6 +393,9 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
 
   OpFunctor callback(it->info.callback);
   --active_ops_count_;
+//   DLOG(INFO) << "OnOpResult - Erasing completed op '" << kOpName[op_type]
+//              << "' for chunk " << Base32Substr(name) << " - ID "
+//              << it->right;
   pending_ops_.erase(it);
   cond_var_.notify_all();
 
@@ -413,7 +416,24 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
   if (transaction_id == 0)  // our op is redundant
     return kWaitCancelled;
 
-  while (pending_ops_.left.count(name) > 1) {
+  // wait until our operation is the next one, or has been cancelled
+
+  for (;;) {
+    // does our op still exist?
+    if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
+      DLOG(WARNING) << "WaitForConflictingOps - Operation to "
+                    << kOpName[op_type] << " " << Base32Substr(name)
+                    << " with transaction ID " << transaction_id
+                    << " was cancelled.";
+      return kWaitCancelled;
+    }
+
+    // is our op the next one with this name?
+    auto it = pending_ops_.left.find(name);
+    if (it != pending_ops_.left.end() &&
+        pending_ops_.project_right(it)->first == transaction_id)
+      return kWaitSuccess;
+
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       DLOG(ERROR) << "WaitForConflictingOps - Timed out trying to "
                   << kOpName[op_type] << " " << Base32Substr(name) << " with "
@@ -424,15 +444,7 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
       failed_ops_.insert(std::make_pair(name, op_type));
       return kWaitTimeout;
     }
-    if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
-      DLOG(WARNING) << "WaitForConflictingOps - Operation to "
-                    << kOpName[op_type] << " " << Base32Substr(name)
-                    << " with transaction ID " << transaction_id
-                    << " was cancelled.";
-      return kWaitCancelled;
-    }
   }
-  return kWaitSuccess;
 }
 
 bool RemoteChunkStore::WaitForGetOps(const std::string &name,
@@ -578,8 +590,8 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
       }
 
 //       DLOG(INFO) << "ProcessPendingOps - About to "
-//                 << kOpName[op_data.op_type]
-//                 << " chunk " << Base32Substr(name) << " - ID " << it->right;
+//                  << kOpName[op_data.op_type]
+//                  << " chunk " << Base32Substr(name) << " - ID " << it->right;
 
       it->info.active = true;
     }
