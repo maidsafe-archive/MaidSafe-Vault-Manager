@@ -714,6 +714,8 @@ std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     return std::shared_ptr<RemoteChunkStore>();
   }
 
+  buffered_chunk_store->SetCacheCapacity(64 << 20);
+
   std::shared_ptr<pca::ChunkActionAuthority> chunk_action_authority(
       new pca::ChunkActionAuthority(buffered_chunk_store));
   std::shared_ptr<LocalChunkManager> local_chunk_manager(
