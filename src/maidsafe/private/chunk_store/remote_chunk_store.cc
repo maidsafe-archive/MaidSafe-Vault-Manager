@@ -696,9 +696,10 @@ std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
                             local_chunk_manager_path,
                             millisecs));
 
-  return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
-                                            local_chunk_manager,
-                                            chunk_action_authority);
+  return std::shared_ptr<RemoteChunkStore>(
+      new RemoteChunkStore(buffered_chunk_store,
+                           local_chunk_manager,
+                           chunk_action_authority));
 }
 
 }  // namespace chunk_store

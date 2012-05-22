@@ -292,12 +292,12 @@ class RemoteChunkStoreTest: public testing::Test {
     buffered_chunk_store->Init(base_dir / buffered_chunk_store_dir);
     std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority(
         new chunk_actions::ChunkActionAuthority(buffered_chunk_store));
-    mock_chunk_manager_ =
-        std::make_shared<MockChunkManager>(buffered_chunk_store);
+    mock_chunk_manager_.reset(new MockChunkManager(buffered_chunk_store));
 
-    return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
-                                              mock_chunk_manager_,
-                                              chunk_action_authority);
+    return std::shared_ptr<RemoteChunkStore>(
+        new RemoteChunkStore(buffered_chunk_store,
+                             mock_chunk_manager_,
+                             chunk_action_authority));
   }
 
   void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
