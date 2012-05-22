@@ -611,10 +611,12 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
     lock->unlock();
     switch (op_data.op_type) {
       case kOpGet:
-        chunk_manager_->GetChunk(name, op_data.keys, false);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys,
+                                 false);
         break;
       case kOpGetLock:
-        chunk_manager_->GetChunk(name, op_data.keys, true);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys,
+                                 true);
         break;
       case kOpStore:
         chunk_manager_->StoreChunk(name, op_data.keys);

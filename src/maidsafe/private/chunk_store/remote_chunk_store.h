@@ -82,6 +82,7 @@ class RemoteChunkStore {
           active(false),
           ready(false),
           keys(),
+          local_version(),
           content(),
           callback() {}
     explicit OperationData(const OperationType &op_type)
@@ -89,6 +90,7 @@ class RemoteChunkStore {
           active(false),
           ready(false),
           keys(),
+          local_version(),
           content(),
           callback() {}
     OperationData(const OperationType &op_type,
@@ -99,12 +101,13 @@ class RemoteChunkStore {
           active(false),
           ready(ready),
           keys(keys),
+          local_version(),
           content(),
           callback(callback) {}
     OperationType op_type;
     bool active, ready;
     std::shared_ptr<asymm::Keys> keys;
-    std::string content;
+    std::string local_version, content;
     OpFunctor callback;
   };
 

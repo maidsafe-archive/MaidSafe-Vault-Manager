@@ -54,6 +54,7 @@ class ChunkManager {
   virtual ~ChunkManager() {}
 
   virtual void GetChunk(const std::string &name,
+                        const std::string &local_version,
                         const std::shared_ptr<asymm::Keys> &keys,
                         bool lock) = 0;
   virtual void StoreChunk(const std::string &name,

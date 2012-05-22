@@ -830,7 +830,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
 TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
   std::string content(RandomString(100));
   std::string name(crypto::Hash<crypto::SHA512>(content));
-  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_,
+  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_, testing::_,
                                              testing::_))
       .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
