@@ -73,7 +73,6 @@ class RemoteChunkStoreTest: public testing::Test {
         num_successes_(0),
         rcs_pending_ops_conn_(),
         keys_(),
-        data_(),
         signed_data_(),
         store_failed_callback_(),
         store_success_callback_(),
@@ -93,7 +92,7 @@ class RemoteChunkStoreTest: public testing::Test {
       ++task_number_;
     }
     EXPECT_TRUE(EqualChunks(chunk_content,
-                            chunk_store->Get(chunk_name, data_)));
+                            chunk_store->Get(chunk_name, keys_)));
     DLOG(INFO) << "DoGet - " << Base32Substr(chunk_name)
                 << " - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
@@ -112,7 +111,7 @@ class RemoteChunkStoreTest: public testing::Test {
         cond_var_.wait(lock);
     }
     EXPECT_TRUE(chunk_store->Store(chunk_name, chunk_content,
-                                   store_success_callback_, data_));
+                                   store_success_callback_, keys_));
     DLOG(INFO) << "DoStore - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
@@ -137,7 +136,7 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_EQ(expected_result, chunk_store->Delete(chunk_name,
                                                    delete_success_callback_,
-                                                   data_));
+                                                   keys_));
     DLOG(INFO) << "DoDelete - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
@@ -161,7 +160,7 @@ class RemoteChunkStoreTest: public testing::Test {
         cond_var_.wait(lock);
     }
     EXPECT_TRUE(chunk_store->Modify(chunk_name, chunk_content,
-                                         modify_success_callback_, data_));
+                                         modify_success_callback_, keys_));
         DLOG(INFO) << "DoModify - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
@@ -176,7 +175,7 @@ class RemoteChunkStoreTest: public testing::Test {
   void DoDeleteWithoutTest(
       std::shared_ptr<priv::chunk_store::RemoteChunkStore> chunk_store,
       const std::string &chunk_name) {
-    if (chunk_store->Delete(chunk_name, delete_failed_callback_, data_))
+    if (chunk_store->Delete(chunk_name, delete_failed_callback_, keys_))
       ++num_successes_;
     DLOG(INFO) << "DoDeleteWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
@@ -198,7 +197,7 @@ class RemoteChunkStoreTest: public testing::Test {
         cond_var_.wait(lock);
     }
     chunk_store->Modify(chunk_name, chunk_content,
-                                         empty_callback_, data_);
+                                         empty_callback_, keys_);
         DLOG(INFO) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
@@ -253,12 +252,10 @@ class RemoteChunkStoreTest: public testing::Test {
     InitMockManagerChunkStore(&mock_manager_chunk_store_,
                               chunk_dir_,
                               asio_service_.service());
-    maidsafe::rsa::GenerateKeyPair(&keys_);
+    maidsafe::rsa::GenerateKeyPair(keys_.get());
     signed_data_.set_data(RandomString(50));
-    asymm::Sign(signed_data_.data(), keys_.private_key,
+    asymm::Sign(signed_data_.data(), keys_->private_key,
             signed_data_.mutable_signature());
-    data_ = priv::chunk_store::RemoteChunkStore::ValidationData(keys_,
-                signed_data_.SerializeAsString());
     store_failed_callback_ = std::bind(
         &RemoteChunkStoreTest::StoreFailedCallback, this, args::_1);
     store_success_callback_ = std::bind(
@@ -302,13 +299,13 @@ class RemoteChunkStoreTest: public testing::Test {
 
   void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                            const fs::path &chunk_dir,
-                           boost::asio::io_service &asio_service) {
+                           boost::asio::io_service & /*asio_service*/) {
     chunk_store->reset();
     fs::path buffered_chunk_store_path(chunk_dir / RandomAlphaNumericString(8));
     fs::path local_repository(chunk_dir / "local_repository");
-    *chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,
+    /*chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,
                                          local_repository,
-                                         asio_service);
+                                         asio_service);*/
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
     (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }
@@ -383,8 +380,7 @@ class RemoteChunkStoreTest: public testing::Test {
 
   bs2::connection rcs_pending_ops_conn_;
 
-  maidsafe::rsa::Keys keys_;
-  priv::chunk_store::RemoteChunkStore::ValidationData data_;
+  std::shared_ptr<maidsafe::rsa::Keys> keys_;
   priv::chunk_actions::SignedData signed_data_;
   std::function<void(bool)> store_failed_callback_;  // NOLINT (Philip)
   std::function<void(bool)> store_success_callback_;  // NOLINT (Philip)
@@ -400,12 +396,12 @@ TEST_F(RemoteChunkStoreTest, BEH_Get) {
   std::string name(crypto::Hash<crypto::SHA512>(content));
 
   // invalid chunks, should fail
-  EXPECT_TRUE(this->chunk_store_->Get("").empty());
-  EXPECT_TRUE(this->chunk_store_->Get(name).empty());
+  EXPECT_TRUE(this->chunk_store_->Get("", keys_).empty());
+  EXPECT_TRUE(this->chunk_store_->Get(name, keys_).empty());
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_));
+                                        store_success_callback_, keys_));
   // existing chunk
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
 }
 
 
@@ -414,8 +410,10 @@ TEST_F(RemoteChunkStoreTest, BEH_Store) {
   std::string content(RandomString(123));
   std::string name(crypto::Hash<crypto::SHA512>(content));
   // invalid input
-  EXPECT_FALSE(this->chunk_store_->Store(name, "", store_failed_callback_));
-  EXPECT_FALSE(this->chunk_store_->Store("", content, store_failed_callback_));
+  EXPECT_FALSE(this->chunk_store_->Store(name, "", store_failed_callback_,
+                                         keys_));
+  EXPECT_FALSE(this->chunk_store_->Store("", content, store_failed_callback_,
+                                         keys_));
 
   EXPECT_TRUE(this->chunk_store_->Empty());
   // EXPECT_EQ(0, this->chunk_store_->Count());
@@ -426,7 +424,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Store) {
 
 //  valid store
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_));
+                                        store_success_callback_, keys_));
   // EXPECT_FALSE(this->chunk_store_->Empty());
   // EXPECT_EQ(123, this->chunk_store_->Size());
   // EXPECT_EQ(1, this->chunk_store_->Count());
@@ -434,7 +432,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Store) {
   // EXPECT_EQ(1, this->chunk_store_->Count(name));
   // EXPECT_EQ(123, this->chunk_store_->Size(name));
   ASSERT_EQ(name,
-            crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(name)));
+            crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(name, keys_)));
 }
 
 TEST_F(RemoteChunkStoreTest, BEH_Delete) {
@@ -442,13 +440,14 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
   std::string name;
 
   GenerateChunk(priv::chunk_actions::kUnknownType, 123,
-                keys_.private_key, &name, &content);
+                keys_->private_key, &name, &content);
   // Deleting chunk of unknown type should fail
-  ASSERT_FALSE(this->chunk_store_->Delete(name, delete_failed_callback_));
+  ASSERT_FALSE(this->chunk_store_->Delete(name, delete_failed_callback_,
+                                          keys_));
 
   GenerateChunk(priv::chunk_actions::kDefaultType, 123,
-                keys_.private_key, &name, &content);
-  EXPECT_TRUE(this->chunk_store_->Get(name).empty());
+                keys_->private_key, &name, &content);
+  EXPECT_TRUE(this->chunk_store_->Get(name, keys_).empty());
   EXPECT_TRUE(this->chunk_store_->Empty());
 
   // EXPECT_FALSE(this->chunk_store_->Has(name));
@@ -457,14 +456,15 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
   EXPECT_EQ(0, this->chunk_store_->Size());
 
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_));
+                                        store_success_callback_, keys_));
   EXPECT_FALSE(this->chunk_store_->Empty());
   // EXPECT_TRUE(this->chunk_store_->Has(name));
   // EXPECT_EQ(1, this->chunk_store_->Count(name));
   // EXPECT_EQ(123, this->chunk_store_->Size(name));
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
-  ASSERT_TRUE(this->chunk_store_->Delete(name, delete_success_callback_));
-  EXPECT_TRUE(this->chunk_store_->Get(name).empty());
+  EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
+  ASSERT_TRUE(this->chunk_store_->Delete(name, delete_success_callback_,
+                                         keys_));
+  EXPECT_TRUE(this->chunk_store_->Get(name, keys_).empty());
 }
 
 TEST_F(RemoteChunkStoreTest, BEH_Modify) {
@@ -473,42 +473,43 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
   // test that modifying of chunk of default type fails
   {
     GenerateChunk(priv::chunk_actions::kDefaultType, 123,
-                  keys_.private_key, &name, &content);
+                  keys_->private_key, &name, &content);
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                    keys_.private_key, &dummy, &new_content);
+                    keys_->private_key, &dummy, &new_content);
 
     ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                          store_success_callback_, data_));
+                                          store_success_callback_, keys_));
     ASSERT_TRUE(chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_EQ(content, this->chunk_store_->Get(name));
+    EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
 
     ASSERT_FALSE(this->chunk_store_->Modify(name, new_content,
-                                           modify_failed_callback_, data_));
-    EXPECT_EQ(content, this->chunk_store_->Get(name));
+                                           modify_failed_callback_, keys_));
+    EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
   }
 
   // test modifying of chunk of modifiable by owner type
   {
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                  keys_.private_key, &name, &content);
+                  keys_->private_key, &name, &content);
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                    keys_.private_key, &dummy, &new_content);
+                    keys_->private_key, &dummy, &new_content);
 
     ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                          store_success_callback_, data_));
+                                          store_success_callback_, keys_));
     ASSERT_TRUE(chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_EQ(content, this->chunk_store_->Get(name));
+    EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
 
     // modify without correct validation data should fail
-    this->chunk_store_->Modify(name, new_content, modify_failed_callback_);
-    EXPECT_EQ(content, this->chunk_store_->Get(name));
+    this->chunk_store_->Modify(name, new_content, modify_failed_callback_,
+                               keys_);
+    EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
 
     // modify with correct validation data should succeed
     ASSERT_TRUE(this->chunk_store_->Modify(name, new_content,
-                                           modify_success_callback_, data_));
-    EXPECT_EQ(new_content, this->chunk_store_->Get(name));
+                                           modify_success_callback_, keys_));
+    EXPECT_EQ(new_content, this->chunk_store_->Get(name, keys_));
   }
 }
 
@@ -524,16 +525,16 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     std::string chunk_new_content;
     std::string chunk_name;
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-              keys_.private_key, &chunk_name, &chunk_content);
+              keys_->private_key, &chunk_name, &chunk_content);
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-              keys_.private_key, &dummy, &chunk_new_content);
+              keys_->private_key, &dummy, &chunk_new_content);
     chunks[chunk_name].first = chunk_content;
     chunks[chunk_name].second = chunk_new_content;
   }
   boost::thread_group thread_group_;
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
       ASSERT_TRUE(chunk_store_->Store(it->first, it->second.first,
-                                      store_success_callback_, data_));
+                                      store_success_callback_, keys_));
   }
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
@@ -555,7 +556,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   }
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     ASSERT_TRUE(chunk_store_->Modify(it->first, it->second.second,
-                                     store_success_callback_, data_));
+                                     store_success_callback_, keys_));
   }
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
@@ -581,9 +582,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
   std::string content, name, new_content, dummy;
   task_number_ = 0;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
+                keys_->private_key, &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
+                                        store_success_callback_, keys_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
   {
@@ -609,11 +610,11 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesAndModifies) {
   task_number_ = 0;
   int task_number_initialiser(0);
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
+                keys_->private_key, &name, &content);
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &dummy, &new_content);
+                keys_->private_key, &dummy, &new_content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
+                                        store_success_callback_, keys_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
   {
@@ -647,38 +648,38 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   int kNumModifies(10);
   std::string content, name, new_content, dummy;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
+                keys_->private_key, &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
+                                        store_success_callback_, keys_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
 
   std::vector<std::string*> new_content_vector;
   for (int i(0); i < kNumModifies; ++i) {
     std::string* new_content = new std::string;
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &dummy, new_content);
+                keys_->private_key, &dummy, new_content);
     new_content_vector.push_back(new_content);
   }
   // test sequential modifies
   for (int i(0); i < kNumModifies; ++i) {
     EXPECT_TRUE(chunk_store_->Modify(name, *(new_content_vector.at(i)),
-                                     modify_success_callback_, data_));
-    EXPECT_EQ(*(new_content_vector.at(i)), this->chunk_store_->Get(name));
+                                     modify_success_callback_, keys_));
+    EXPECT_EQ(*(new_content_vector.at(i)), this->chunk_store_->Get(name, keys_));
   }
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
-  EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name));
+  EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name, keys_));
 
   // test concurrent modifies
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
+                keys_->private_key, &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
+                                        store_success_callback_, keys_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
-  EXPECT_EQ(content, this->chunk_store_->Get(name));
+  EXPECT_EQ(content, this->chunk_store_->Get(name, keys_));
   // int task_num_initialiser(0);
   // task_number_ = 0;
   {
@@ -698,7 +699,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   }
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
-  // EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name));
+  // EXPECT_EQ(**(new_content_vector.rbegin()), this->chunk_store_->Get(name, keys_));
 }
 
 TEST_F(RemoteChunkStoreTest, FUNC_MultiThreads) {
@@ -716,7 +717,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_MultiThreads) {
       std::string chunk_content;
       std::string chunk_name;
       GenerateChunk(priv::chunk_actions::kDefaultType, 123,
-                keys_.private_key, &chunk_name, &chunk_content);
+                keys_->private_key, &chunk_name, &chunk_content);
       chunks[chunk_name] = chunk_content;
     }
     task_number_ = 0;
@@ -758,11 +759,11 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
   while (chunks.size() < kNumChunks) {
     std::string chunk_name, chunk_contents;
     if (chunks.size() < kNumChunks / 2)
-      GenerateChunk(priv::chunk_actions::kDefaultType, 123,
-                    asymm::PrivateKey(), &chunk_name, &chunk_contents);
+      GenerateChunk(priv::chunk_actions::kDefaultType, 123, asymm::PrivateKey(),
+                    &chunk_name, &chunk_contents);
     else
       GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                    keys_.private_key, &chunk_name,
+                    keys_->private_key, &chunk_name,
                     &chunk_contents);
     chunks[chunk_name] = chunk_contents;
   }
@@ -770,23 +771,23 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
   // check ops are executed in order
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     EXPECT_TRUE(this->chunk_store_->Delete(it->first, delete_success_callback_,
-                                           data_));
+                                           keys_));
     EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second,
-                                          store_success_callback_, data_));
+                                          store_success_callback_, keys_));
     EXPECT_TRUE(this->chunk_store_->Delete(it->first, delete_success_callback_,
-                                           data_));
+                                           keys_));
     EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second,
-                                          store_success_callback_, data_));
+                                          store_success_callback_, keys_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
 
     ASSERT_TRUE(EqualChunks(it->second, this->chunk_store_->Get(it->first,
-                                                                data_)));
+                                                                keys_)));
 
     EXPECT_TRUE(this->chunk_store_->Delete(it->first,
                                            delete_success_callback_,
-                                           data_));
-    EXPECT_TRUE(this->chunk_store_->Get(it->first, data_).empty());
+                                           keys_));
+    EXPECT_TRUE(this->chunk_store_->Get(it->first, keys_).empty());
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
   }
@@ -797,39 +798,39 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
     std::string chunk_name(crypto::Hash<crypto::SHA512>(chunk_content));
     for (size_t i(0); i < kRepeatTimes; ++i)
       EXPECT_TRUE(this->chunk_store_->Store(
-          chunk_name, chunk_content, store_success_callback_, data_));
+          chunk_name, chunk_content, store_success_callback_, keys_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
 
     EXPECT_TRUE(EqualChunks(chunk_content,
-                            this->chunk_store_->Get(chunk_name, data_)));
+                            this->chunk_store_->Get(chunk_name, keys_)));
 
     for (size_t i(0); i < kRepeatTimes - 1; ++i)
       EXPECT_TRUE(this->chunk_store_->Delete(
-          chunk_name, delete_success_callback_, data_));
+          chunk_name, delete_success_callback_, keys_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
 
     EXPECT_TRUE(EqualChunks(chunk_content,
-                            this->chunk_store_->Get(chunk_name, data_)));
+                            this->chunk_store_->Get(chunk_name, keys_)));
 
     EXPECT_TRUE(this->chunk_store_->Delete(
-        chunk_name, delete_success_callback_, data_));
+        chunk_name, delete_success_callback_, keys_));
 
     ASSERT_TRUE(this->chunk_store_->WaitForCompletion());
     Sleep(boost::posix_time::seconds(1));
 
     this->chunk_store_->Clear();
-    EXPECT_TRUE(this->chunk_store_->Get(chunk_name, data_).empty());
+    EXPECT_TRUE(this->chunk_store_->Get(chunk_name, keys_).empty());
   }
 }
 
 TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
   std::string content(RandomString(100));
   std::string name(crypto::Hash<crypto::SHA512>(content));
-  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_, testing::_,
+  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_,
                                              testing::_))
       .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
@@ -837,7 +838,7 @@ TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
     ++parallel_tasks_;
     DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
     asio_service_.service().post(std::bind(
-      &RemoteChunkStore::Get, mock_manager_chunk_store_, name, data_));
+      &RemoteChunkStore::Get, mock_manager_chunk_store_, name, keys_));
   }
   Sleep(boost::posix_time::seconds(1));
   this->mock_manager_chunk_store_->WaitForCompletion();
@@ -847,18 +848,16 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
   std::string content, name, new_content, dummy;
   num_successes_ = 0;
   GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
-                keys_.private_key, &name, &content);
-  EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_, testing::_,
-                                               testing::_))
+                keys_->private_key, &name, &content);
+  EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_, testing::_))
       .WillOnce(testing::WithArgs<0>(testing::Invoke(std::bind(
           &MockChunkManager::StoreChunkPass, mock_chunk_manager_.get(),
           name))));
   EXPECT_TRUE(this->mock_manager_chunk_store_->Store(name, content,
-                                        store_success_callback_, data_));
+                                        store_success_callback_, keys_));
   Sleep(boost::posix_time::seconds(1));
   mock_manager_chunk_store_->WaitForCompletion();
-  EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_, testing::_,
-                                                testing::_, testing::_))
+  EXPECT_CALL(*mock_chunk_manager_, DeleteChunk(testing::_, testing::_))
       .WillRepeatedly(testing::WithArgs<0>(testing::Invoke(std::bind(
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 5; ++i) {
