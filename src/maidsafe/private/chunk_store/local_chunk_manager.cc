@@ -22,6 +22,7 @@
 #include "maidsafe/private/log.h"
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
+#include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 #include "maidsafe/private/chunk_store/threadsafe_chunk_store.h"
@@ -72,15 +73,17 @@ LocalChunkManager::LocalChunkManager(
 LocalChunkManager::~LocalChunkManager() {}
 
 void LocalChunkManager::GetChunk(const std::string &name,
-                                 const std::string &/*local_version*/,
+                                 const std::string & local_version,
                                  const std::shared_ptr<asymm::Keys> &keys,
                                  bool lock) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(get_wait_);
   }
   // TODO(Team): Add check of ID on network
-  if (chunk_store_->Has(name)) {
-    (*sig_chunk_got_)(name, kSuccess);
+  if (chunk_store_->Has(name) &&
+      simulation_chunk_action_authority_->Version(name) == local_version) {
+    DLOG(INFO) << "Local chunk is same version as requested chunk";
+    (*sig_chunk_got_)(name, kChunkNotModified);
     return;
   }
   std::string content, existing_lock, transaction_id;
@@ -160,10 +163,14 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
   }
 
   // TODO(Team): Add check of ID on network
-  std::string ownership_proof(keys->validation_token);
-  asymm::Sign(RandomString(64), keys->private_key, &ownership_proof);
+  priv::chunk_actions::SignedData ownership_proof;
+  std::string ownership_proof_string;
+          ownership_proof.set_data(RandomString(16));
+          asymm::Sign(ownership_proof.data(), keys->private_key,
+                      ownership_proof.mutable_signature());
+  ownership_proof.SerializeToString(&ownership_proof_string);
   if (!simulation_chunk_action_authority_->Delete(name,
-                                                  ownership_proof,
+                                                  ownership_proof_string,
                                                   keys->public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_deleted_)(name, kDeleteFailure);
