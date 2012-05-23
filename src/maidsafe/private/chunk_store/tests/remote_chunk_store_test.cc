@@ -72,7 +72,7 @@ class RemoteChunkStoreTest: public testing::Test {
         task_number_(0),
         num_successes_(0),
         rcs_pending_ops_conn_(),
-        keys_(),
+        keys_(new asymm::Keys),
         signed_data_(),
         store_failed_callback_(),
         store_success_callback_(),
@@ -299,13 +299,13 @@ class RemoteChunkStoreTest: public testing::Test {
 
   void InitLocalChunkStore(std::shared_ptr<RemoteChunkStore> *chunk_store,
                            const fs::path &chunk_dir,
-                           boost::asio::io_service & /*asio_service*/) {
+                           boost::asio::io_service & asio_service) {
     chunk_store->reset();
     fs::path buffered_chunk_store_path(chunk_dir / RandomAlphaNumericString(8));
     fs::path local_repository(chunk_dir / "local_repository");
-    /*chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,
+    *chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,
                                          local_repository,
-                                         asio_service);*/
+                                         asio_service);
     (*chunk_store)->SetCompletionWaitTimeout(boost::posix_time::seconds(3));
     (*chunk_store)->SetOperationWaitTimeout(boost::posix_time::seconds(2));
   }

@@ -42,7 +42,8 @@ LocalChunkManager::LocalChunkManager(
       simulation_chunk_store_(),
       simulation_chunk_action_authority_(),
       get_wait_(millisecs),
-      action_wait_(millisecs * 3) {
+      action_wait_(millisecs * 3),
+      lock_directory_() {
   std::shared_ptr<FileChunkStore> file_chunk_store(new FileChunkStore);
   fs::path local_version_directory;
   if (simulation_directory.empty()) {
@@ -56,6 +57,7 @@ LocalChunkManager::LocalChunkManager(
   } else {
     local_version_directory = simulation_directory;
   }
+  lock_directory_ = local_version_directory / "ChunkLocks";
 
   if (!file_chunk_store->Init(simulation_directory)) {
     DLOG(ERROR) << "Failed to initialise file chunk store";
@@ -70,9 +72,9 @@ LocalChunkManager::LocalChunkManager(
 LocalChunkManager::~LocalChunkManager() {}
 
 void LocalChunkManager::GetChunk(const std::string &name,
-                                 const asymm::Identity &/*owner_key_id*/,
-                                 const asymm::PublicKey &owner_public_key,
-                                 const std::string &/*ownership_proof*/) {
+                                 const std::string &/*local_version*/,
+                                 const std::shared_ptr<asymm::Keys> &keys,
+                                 bool lock) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(get_wait_);
   }
@@ -81,9 +83,36 @@ void LocalChunkManager::GetChunk(const std::string &name,
     (*sig_chunk_got_)(name, kSuccess);
     return;
   }
-
-  std::string content(
-      simulation_chunk_action_authority_->Get(name, "", owner_public_key));
+  std::string content, existing_lock, transaction_id;
+  fs::path lock_file = lock_directory_ / name;
+  if (lock) {
+    while (fs::exists(lock_file)) {
+      ReadFile(lock_file, &existing_lock);
+      std::string lock_timestamp_string(existing_lock.substr(0,
+                                            existing_lock.find_first_of(' ')));
+      uint32_t lock_timestamp(
+          boost::lexical_cast<uint32_t>(lock_timestamp_string));
+      uint32_t current_timestamp(GetTimeStamp());
+      if (current_timestamp > lock_timestamp + lock_timeout_.seconds())
+        break;
+      else
+        Sleep(boost::posix_time::seconds(1));
+    }
+    uint32_t current_time(GetTimeStamp());
+    transaction_id = RandomAlphaNumericString(32);
+    std::string current_time_string(
+        boost::lexical_cast<std::string>(current_time));
+    std::string lock_content(current_time_string + " " + transaction_id);
+    WriteFile(lock_file, lock_content);
+  }
+  content = simulation_chunk_action_authority_->Get(name, "", keys->public_key);
+  if (lock && fs::exists(lock_file)) {
+    ReadFile(lock_file, &existing_lock);
+    std::string lock_transaction_id(
+        existing_lock.substr(existing_lock.find_first_of(' ') + 1));
+    if (lock_transaction_id == transaction_id)
+      fs::remove(lock_file);
+  }
   if (content.empty()) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
@@ -100,8 +129,7 @@ void LocalChunkManager::GetChunk(const std::string &name,
 }
 
 void LocalChunkManager::StoreChunk(const std::string &name,
-                                   const asymm::Identity &/*owner_key_id*/,
-                                   const asymm::PublicKey &owner_public_key) {
+                                   const std::shared_ptr<asymm::Keys> &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -116,7 +144,7 @@ void LocalChunkManager::StoreChunk(const std::string &name,
 
   if (!simulation_chunk_action_authority_->Store(name,
                                                  content,
-                                                 owner_public_key)) {
+                                                 keys->public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
@@ -126,17 +154,17 @@ void LocalChunkManager::StoreChunk(const std::string &name,
 }
 
 void LocalChunkManager::DeleteChunk(const std::string &name,
-                                    const asymm::Identity &/*owner_key_id*/,
-                                    const asymm::PublicKey &owner_public_key,
-                                    const std::string &ownership_proof) {
+                                    const std::shared_ptr<asymm::Keys> &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
 
   // TODO(Team): Add check of ID on network
+  std::string ownership_proof(keys->validation_token);
+  asymm::Sign(RandomString(64), keys->private_key, &ownership_proof);
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   ownership_proof,
-                                                  owner_public_key)) {
+                                                  keys->public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_deleted_)(name, kDeleteFailure);
     return;
@@ -147,8 +175,7 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
 
 void LocalChunkManager::ModifyChunk(const std::string &name,
                                     const std::string &content,
-                                    const asymm::Identity &/*owner_key_id*/,
-                                    const asymm::PublicKey &owner_public_key) {
+                                    const std::shared_ptr<asymm::Keys> &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -156,7 +183,7 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
-                                                  owner_public_key,
+                                                  keys->public_key,
                                                   &operation_diff)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_modified_)(name, kModifyFailure);

@@ -58,6 +58,7 @@ const bptime::time_duration kOperationWaitTimeout(bptime::seconds(50));
 const bptime::time_duration kGetRetryTimeout(bptime::seconds(3));
 
 const std::string RemoteChunkStore::kOpName[] = { "get",
+                                                  "get and lock",
                                                   "store",
                                                   "modify",
                                                   "delete" };
@@ -707,7 +708,7 @@ int Deserialize(std::stringstream *input_stream,
 
 */
 
-/* std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
+  std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path &buffered_chunk_store_path,
     const fs::path &local_chunk_manager_path,
     boost::asio::io_service &asio_service,  // NOLINT (Dan)
@@ -731,7 +732,7 @@ int Deserialize(std::stringstream *input_stream,
   return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
                                             local_chunk_manager,
                                             chunk_action_authority);
-} */
+}
 
 }  // namespace chunk_store
 
