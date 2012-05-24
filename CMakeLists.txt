@@ -110,4 +110,5 @@ set(ALL_PRIVATE_STYLE ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_TESTS_DIR} ${
 list(REMOVE_ITEM ALL_PRIVATE_STYLE ${PROTO_SOURCE_FILES} ${PROTO_HEADER_FILES})
 add_style_test(${ALL_PRIVATE_STYLE})
 add_gtests(TESTprivate)
+add_project_experimental()
 test_summary_output()
