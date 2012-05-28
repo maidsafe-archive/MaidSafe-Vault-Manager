@@ -89,14 +89,14 @@ RemoteChunkStore::RemoteChunkStore(
       op_success_count_(),
       op_skip_count_(),
       op_size_() {
-  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpGet, args::_1, args::_2));
-  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpStore, args::_1, args::_2));
-  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpModify, args::_1, args::_2));
-  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(std::bind(
-      &RemoteChunkStore::OnOpResult, this, kOpDelete, args::_1, args::_2));
+  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(boost::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpGet, _1, _2));
+  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(boost::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpStore, _1, _2));
+  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(boost::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpModify, _1, _2));
+  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(boost::bind(
+      &RemoteChunkStore::OnOpResult, this, kOpDelete, _1, _2));
 }
 
 RemoteChunkStore::~RemoteChunkStore() {
@@ -729,9 +729,10 @@ int Deserialize(std::stringstream *input_stream,
                             local_chunk_manager_path,
                             millisecs));
 
-  return std::make_shared<RemoteChunkStore>(buffered_chunk_store,
-                                            local_chunk_manager,
-                                            chunk_action_authority);
+  return std::shared_ptr<RemoteChunkStore>(
+      new RemoteChunkStore(buffered_chunk_store,
+                           local_chunk_manager,
+                           chunk_action_authority));
 }
 
 }  // namespace chunk_store

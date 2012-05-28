@@ -27,11 +27,5 @@
 #  pragma warning(pop)
 #endif
 
-#include "maidsafe/private/version.h"
-
-#if MAIDSAFE_PRIVATE_VERSION != 300
-#  error This API is not compatible with the installed library.\
-    Please update the library.
-#endif
 
 #endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_APPENDABLE_BY_ALL_PB_H_

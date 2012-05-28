@@ -14,10 +14,10 @@
 * ============================================================================
 */
 
-// Applies to MaidSafe Contact ID & MaidSafe Message ID
+// Applies to PKI SignaturePackets
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_APPENDABLE_BY_ALL_RULES_H_
-#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_APPENDABLE_BY_ALL_RULES_H_
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_
 
 #include <memory>
 #include <string>
@@ -27,13 +27,6 @@
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
 
-#include "maidsafe/private/version.h"
-#if MAIDSAFE_PRIVATE_VERSION != 300
-#  error This API is not compatible with the installed library.\
-    Please update the library.
-#endif
-
-
 namespace maidsafe {
 
 namespace priv {
@@ -42,39 +35,39 @@ namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
-// Returns false.
-template <>
-bool IsCacheable<kAppendableByAll>();
-
-// Returns true.
-template <>
-bool IsModifiable<kAppendableByAll>();
+extern const std::string kRevokedSignaturePacket;
 
 // Returns false.
 template <>
-bool DoesModifyReplace<kAppendableByAll>();
+bool IsCacheable<kSignaturePacket>();
 
-// Returns true if the chunk exists.
+// Returns false.
 template <>
-bool IsValidChunk<kAppendableByAll>(
+bool IsModifiable<kSignaturePacket>();
+
+// Returns false.
+template <>
+bool DoesModifyReplace<kSignaturePacket>();
+
+// Returns true if the chunk exists, and
+// name == Hash(chunk.data() + chunk.signature()).
+template <>
+bool IsValidChunk<kSignaturePacket>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
-// Returns Tiger hash of chunk content.
+// Returns first 24 bytes of name.
 template <>
-std::string GetVersion<kAppendableByAll>(
+std::string GetVersion<kSignaturePacket>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
-// Any user can Get.  Owner gets all data; non-owner gets only first value
-// which contains owner's public key for encryption of messages.
+// Any user can Get.
 // For overall success, the following must be true:
 //   * chunk_store.get() succeeds
-//   * public_key is valid
-// This assumes that public_key has not been revoked on the network.
-// NB - version is currently ignored for this function.
+// NB - version is not used in this function.
 template <>
-int ProcessGet<kAppendableByAll>(
+int ProcessGet<kSignaturePacket>(
     const std::string &name,
     const std::string &version,
     const asymm::PublicKey &public_key,
@@ -84,12 +77,13 @@ int ProcessGet<kAppendableByAll>(
 // Any user can Store.
 // For overall success, the following must be true:
 //   * the chunk doesn't already exist
-//   * content parses as AppendableByAll
+//   * content parses as a SignedData
 //   * public_key is valid
 //   * chunk.signature() validates with public_key
+//   * name must match Hash(chunk.data())
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessStore<kAppendableByAll>(
+int ProcessStore<kSignaturePacket>(
     const std::string &name,
     const std::string &content,
     const asymm::PublicKey &public_key,
@@ -105,36 +99,15 @@ int ProcessStore<kAppendableByAll>(
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessDelete<kAppendableByAll>(
+int ProcessDelete<kSignaturePacket>(
     const std::string &name,
     const std::string &ownership_proof,
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
-// Any user can Modify.
-// The first value contains owner's public key for encryption of messages, and a
-// bool authorising other users to append data.
-// Owner can either replace only first value (by sending a modified first value)
-// or can remove all appended values (by sending an unmodified first value).
-// For overall success as owner, the following must be true:
-//   * chunk_store.get() succeeds
-//   * retrieved content parses as AppendableByAll
-//   * public_key is valid
-//   * retrieved chunk.signature() validates with public_key
-//   * content parses as AppendableByAll
-//   * new chunk.signature() validates with public_key
-// This assumes that public_key has not been revoked on the network.
-// Non-owner can only append a value iff the bool in the first value is true.
-// For overall success as non-owner, the following must be true:
-//   * chunk_store.get() succeeds
-//   * retrieved content parses as AppendableByAll
-//   * public_key is valid
-//   * owner has set allow_others_to_append to true
-//   * content parses as AppendableByAll
-//   * chunk.signature() validates with public_key
-// This assumes that public_key has not been revoked on the network.
+// Modify is an invalid operation for all users.
 template <>
-int ProcessModify<kAppendableByAll>(
+int ProcessModify<kSignaturePacket>(
     const std::string &name,
     const std::string &content,
     const asymm::PublicKey &public_key,
@@ -145,9 +118,9 @@ int ProcessModify<kAppendableByAll>(
 // Any user can call Has.
 // For overall success, the following must be true:
 //   * chunk_store.has() succeeds
-// NB - version is currently ignored for this function.
+// NB - version is not used in this function.
 template <>
-int ProcessHas<kAppendableByAll>(
+int ProcessHas<kSignaturePacket>(
     const std::string &name,
     const std::string &version,
     const asymm::PublicKey &public_key,
@@ -159,4 +132,4 @@ int ProcessHas<kAppendableByAll>(
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_APPENDABLE_BY_ALL_RULES_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_SIGNATURE_PACKET_RULES_H_

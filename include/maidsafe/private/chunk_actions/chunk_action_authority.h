@@ -25,12 +25,6 @@
 #include "boost/signals2/signal.hpp"
 
 #include "maidsafe/common/rsa.h"
-#include "maidsafe/private/version.h"
-
-#if MAIDSAFE_PRIVATE_VERSION != 300
-#  error This API is not compatible with the installed library.\
-    Please update the library.
-#endif
 
 namespace bs2 = boost::signals2;
 namespace fs = boost::filesystem;
