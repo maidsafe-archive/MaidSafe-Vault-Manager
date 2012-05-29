@@ -413,16 +413,16 @@ TEST_F(RemoteChunkStoreTest, BEH_GetAndLock) {
   std::string name(crypto::Hash<crypto::SHA512>(content));
   std::string retrieved_content;
   // invalid chunks, should fail
-  EXPECT_FALSE(this->chunk_store_->GetAndLock("", "", keys_,
+  EXPECT_EQ(kGeneralError, this->chunk_store_->GetAndLock("", "", keys_,
                                               &retrieved_content));
   EXPECT_EQ("", retrieved_content);
-  EXPECT_FALSE(this->chunk_store_->GetAndLock(name, "", keys_,
+  EXPECT_EQ(kGeneralError, this->chunk_store_->GetAndLock(name, "", keys_,
                                               &retrieved_content));
   EXPECT_EQ("", retrieved_content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content,
                                         store_success_callback_, keys_));
   // existing chunk
-  EXPECT_TRUE(this->chunk_store_->GetAndLock(name, "", keys_,
+  EXPECT_EQ(kSuccess, this->chunk_store_->GetAndLock(name, "", keys_,
                                              &retrieved_content));
   EXPECT_EQ(content, retrieved_content);
 }
@@ -561,9 +561,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
-          DoGet(chunk_store_, it->first, it->second.first, 0);
-      });
+      thread_group_.create_thread(boost::bind(
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, it->first,
+          it->second.first, 0));
     }
   }
   {
@@ -582,9 +582,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
-          DoGet(chunk_store_, it->first, it->second.second, 0);
-      });
+      thread_group_.create_thread(boost::bind(
+          &RemoteChunkStoreTest::DoGet, this, chunk_store_, it->first,
+          it->second.second, 0));
     }
   }
   {
