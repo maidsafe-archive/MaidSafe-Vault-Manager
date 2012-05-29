@@ -36,6 +36,8 @@ namespace chunk_store {
 
 class ChunkStore;
 
+auto const kLockTimeout(boost::posix_time::minutes(1));
+
 class ChunkManager {
  public:
   typedef bs2::signal<void(const std::string&, const int&)>
@@ -77,7 +79,7 @@ class ChunkManager {
         sig_chunk_modified_(new ChunkModifiedSig),
         sig_chunk_deleted_(new ChunkDeletedSig),
         chunk_store_(chunk_store),
-        lock_timeout_(boost::posix_time::minutes(1)) {}
+        lock_timeout_(kLockTimeout) {}
   ChunkGotSigPtr sig_chunk_got_;
   ChunkStoredSigPtr sig_chunk_stored_;
   ChunkModifiedSigPtr sig_chunk_modified_;
