@@ -241,6 +241,7 @@ class RemoteChunkStore {
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
   std::multiset<std::string> waiting_gets_;
+  std::set<std::string> not_modified_gets_;
   std::map<std::string, bptime::ptime> failed_gets_;
   uintmax_t op_count_[4],
             op_success_count_[4],
@@ -251,6 +252,7 @@ class RemoteChunkStore {
   std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
      const fs::path &buffered_chunk_store_path,
      const fs::path &local_chunk_manager_path,
+     const fs::path &chunk_lock_path,
      boost::asio::io_service &asio_service,  // NOLINT (Dan)
      const bptime::time_duration &millisecs = bptime::milliseconds(0));
 
