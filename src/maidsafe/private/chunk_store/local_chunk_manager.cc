@@ -38,6 +38,7 @@ namespace chunk_store {
 LocalChunkManager::LocalChunkManager(
     std::shared_ptr<ChunkStore> normal_local_chunk_store,
     const fs::path &simulation_directory,
+    const fs::path &lock_directory,
     const boost::posix_time::time_duration &millisecs)
     : ChunkManager(normal_local_chunk_store),
       simulation_chunk_store_(),
@@ -58,7 +59,7 @@ LocalChunkManager::LocalChunkManager(
   } else {
     local_version_directory = simulation_directory;
   }
-  lock_directory_ = local_version_directory / "ChunkLocks";
+  lock_directory_ =   lock_directory;
 
   if (!file_chunk_store->Init(simulation_directory)) {
     DLOG(ERROR) << "Failed to initialise file chunk store";
@@ -80,16 +81,25 @@ void LocalChunkManager::GetChunk(const std::string &name,
     Sleep(get_wait_);
   }
   // TODO(Team): Add check of ID on network
-  if (chunk_store_->Has(name) &&
+  if (chunk_store_->Has(name)) {
+    (*sig_chunk_got_)(name, kSuccess);
+    return;
+  }
+  if (lock && !local_version.empty() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-    DLOG(INFO) << "Local chunk is same version as requested chunk";
+    DLOG(WARNING) << "GetChunk - " << HexSubstr(keys->identity)
+                  << " - Won't retrieve " << Base32Substr(name)
+                  << " because local and remote versions "
+                  << HexSubstr(local_version) << " match.";
     (*sig_chunk_got_)(name, kChunkNotModified);
     return;
   }
   std::string content, existing_lock, transaction_id;
-  fs::path lock_file = lock_directory_ / name;
+  fs::path lock_file = lock_directory_ / EncodeToBase32(name);
   if (lock) {
     while (fs::exists(lock_file)) {
+      DLOG(INFO) << "GetChunk - Before Get, lock file exists for "
+                 << Base32Substr(name);
       ReadFile(lock_file, &existing_lock);
       std::string lock_timestamp_string(existing_lock.substr(0,
                                             existing_lock.find_first_of(' ')));
@@ -107,14 +117,19 @@ void LocalChunkManager::GetChunk(const std::string &name,
         boost::lexical_cast<std::string>(current_time));
     std::string lock_content(current_time_string + " " + transaction_id);
     WriteFile(lock_file, lock_content);
+    DLOG(INFO) << "Wrote lock file for " << Base32Substr(name);
   }
   content = simulation_chunk_action_authority_->Get(name, "", keys->public_key);
   if (lock && fs::exists(lock_file)) {
+    DLOG(INFO) << "GetChunk - After Get, lock file exists for "
+               << Base32Substr(name);
     ReadFile(lock_file, &existing_lock);
     std::string lock_transaction_id(
         existing_lock.substr(existing_lock.find_first_of(' ') + 1));
-    if (lock_transaction_id == transaction_id)
+    if (lock_transaction_id == transaction_id) {
       fs::remove(lock_file);
+    DLOG(INFO) << "Removed lock file for " << Base32Substr(name);
+    }
   }
   if (content.empty()) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);

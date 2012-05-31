@@ -43,6 +43,7 @@ class LocalChunkManager : public ChunkManager {
  public:
   LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_chunk_store,
                     const fs::path &simulation_directory,
+                    const fs::path &lock_directory,
                     const boost::posix_time::time_duration &millisecs =
                         boost::posix_time::milliseconds(0));
   ~LocalChunkManager();
