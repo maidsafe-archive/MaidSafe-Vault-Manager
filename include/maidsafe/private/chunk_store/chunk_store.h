@@ -40,6 +40,19 @@ namespace priv {
 
 namespace chunk_store {
 
+struct ChunkData {
+  ChunkData()
+    : chunk_name(),
+      chunk_size() {}
+
+  ChunkData(const std::string &name, uintmax_t size)
+    : chunk_name(name),
+      chunk_size(size) {}
+
+  std::string chunk_name;
+  uintmax_t chunk_size;
+};
+
 // Abstract class to manage storage and retrieval of named data items (chunks).
 // A chunk is a small, content-adressable piece of data that can be validated
 // using an implementation-specific mechanism.
@@ -126,6 +139,9 @@ class ChunkStore {
 
   // Deletes all stored chunks.
   virtual void Clear() { size_ = 0; }
+
+  // Returns a list of chunk data (name & size) being held by store.
+  virtual std::vector<ChunkData> GetChunks() const = 0;
 
  protected:
   // Increases the total size of the stored chunks.  To be called by derived
