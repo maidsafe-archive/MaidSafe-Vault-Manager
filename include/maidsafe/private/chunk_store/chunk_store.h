@@ -29,6 +29,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_CHUNK_STORE_H_
 
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/path.hpp"
 

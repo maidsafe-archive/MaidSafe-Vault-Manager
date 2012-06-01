@@ -311,6 +311,17 @@ void MemoryChunkStore::Clear() {
   ChunkStore::Clear();
 }
 
+std::vector<ChunkData> MemoryChunkStore::GetChunks() const {
+  std::vector<ChunkData> chunk_list;
+
+  for (auto it = chunks_.begin(); it != chunks_.end(); ++it) {
+    ChunkData chunk_data(it->first, it->second.first);
+    chunk_list.push_back(chunk_data);
+  }
+
+  return chunk_list;
+}
+
 }  // namespace chunk_store
 
 }  // namespace priv

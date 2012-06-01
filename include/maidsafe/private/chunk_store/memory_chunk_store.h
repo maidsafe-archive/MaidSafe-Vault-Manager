@@ -32,6 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #ifdef __MSVC__
 #  pragma warning(push, 1)
@@ -77,6 +78,7 @@ class MemoryChunkStore : public ChunkStore {
   uintmax_t Count() const;
   bool Empty() const;
   void Clear();
+  std::vector<ChunkData> GetChunks() const;
 
  private:
   typedef std::pair<uintmax_t, std::string> ChunkEntry;
