@@ -128,7 +128,7 @@ class RemoteChunkStore {
   ~RemoteChunkStore();
 
   std::string Get(const std::string &name,
-                  const std::shared_ptr<asymm::Keys> &keys);
+                  const std::shared_ptr<asymm::Keys> &keys = nullptr);
 
   int GetAndLock(const std::string &name,
                  const std::string &local_version,
@@ -138,11 +138,11 @@ class RemoteChunkStore {
   bool Store(const std::string &name,
              const std::string &content,
              const OpFunctor &callback,
-             const std::shared_ptr<asymm::Keys> &keys);
+             const std::shared_ptr<asymm::Keys> &keys = nullptr);
 
   bool Delete(const std::string &name,
               const OpFunctor &callback,
-              const std::shared_ptr<asymm::Keys> &keys);
+              const std::shared_ptr<asymm::Keys> &keys = nullptr);
 
   bool Modify(const std::string &name,
               const std::string &content,
@@ -249,12 +249,12 @@ class RemoteChunkStore {
             op_size_[4];
 };
 
-  std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
-     const fs::path &buffered_chunk_store_path,
-     const fs::path &local_chunk_manager_path,
-     const fs::path &chunk_lock_path,
-     boost::asio::io_service &asio_service,  // NOLINT (Dan)
-     const bptime::time_duration &millisecs = bptime::milliseconds(0));
+std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
+    const fs::path &buffered_chunk_store_path,
+    const fs::path &local_chunk_manager_path,
+    const fs::path &chunk_lock_path,
+    boost::asio::io_service &asio_service,  // NOLINT (Dan)
+    const bptime::time_duration &millisecs = bptime::milliseconds(0));
 
 }  // namespace chunk_store
 
