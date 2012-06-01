@@ -270,10 +270,12 @@ bool RemoteChunkStore::Store(const std::string &name,
     DLOG(WARNING) << "Store - Terminated early for " << Base32Substr(name);
     return result == kWaitCancelled;
   }
-
+  asymm::PublicKey public_key;
+  if (keys)
+    public_key = keys->public_key;
   if (!chunk_action_authority_->Store(name,
                                       content,
-                                      keys->public_key)) {
+                                      public_key)) {
     DLOG(ERROR) << "Store - Could not store " << Base32Substr(name)
                 << " locally.";
     pending_ops_.right.erase(id);
@@ -303,15 +305,18 @@ bool RemoteChunkStore::Delete(const std::string &name,
     DLOG(WARNING) << "Delete - Terminated early for " << Base32Substr(name);
     return result == kWaitCancelled;
   }
-
   std::string data(RandomString(16)), signature;
+  asymm::PublicKey public_key;
+  if (keys) {
+    public_key = keys->public_key;
+    asymm::Sign(data, keys->private_key, &signature);
+  }
   chunk_actions::SignedData proof;
-  asymm::Sign(data, keys->private_key, &signature);
   proof.set_data(data);
   proof.set_signature(signature);
   if (!chunk_action_authority_->Delete(name,
                                         proof.SerializeAsString(),
-                                        keys->public_key)) {
+                                        public_key)) {
     DLOG(ERROR) << "Delete - Could not delete " << Base32Substr(name)
                 << " locally.";
     pending_ops_.right.erase(id);

@@ -151,7 +151,13 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
-
+  bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
+  if (!is_cacheable && !keys) {
+    DLOG(ERROR) << "StoreChunk - Keys required for " << Base32Substr(name)
+                << " but not passed.";
+    (*sig_chunk_stored_)(name, kGeneralError);
+    return;
+  }
   // TODO(Team): Add check of ID on network
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
@@ -159,10 +165,12 @@ void LocalChunkManager::StoreChunk(const std::string &name,
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }
-
+  asymm::PublicKey public_key;
+  if (!is_cacheable)
+    public_key = keys->public_key;
   if (!simulation_chunk_action_authority_->Store(name,
                                                  content,
-                                                 keys->public_key)) {
+                                                 public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
@@ -177,16 +185,28 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
     Sleep(action_wait_);
   }
 
+  bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
+  if (!is_cacheable && !keys) {
+    DLOG(ERROR) << "DeleteChunk - Keys required for " << Base32Substr(name)
+                << " but not passed.";
+    (*sig_chunk_deleted_)(name, kGeneralError);
+    return;
+  }
+
   // TODO(Team): Add check of ID on network
   priv::chunk_actions::SignedData ownership_proof;
   std::string ownership_proof_string;
-          ownership_proof.set_data(RandomString(16));
-          asymm::Sign(ownership_proof.data(), keys->private_key,
-                      ownership_proof.mutable_signature());
-  ownership_proof.SerializeToString(&ownership_proof_string);
+  asymm::PublicKey public_key;
+  if (!is_cacheable) {
+    ownership_proof.set_data(RandomString(16));
+    asymm::Sign(ownership_proof.data(), keys->private_key,
+              ownership_proof.mutable_signature());
+    ownership_proof.SerializeToString(&ownership_proof_string);
+    public_key = keys->public_key;
+  }
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   ownership_proof_string,
-                                                  keys->public_key)) {
+                                                  public_key)) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_deleted_)(name, kDeleteFailure);
     return;
@@ -201,7 +221,12 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
-
+  if (!keys) {
+    DLOG(ERROR) << "ModifyChunk - Keys required for " << Base32Substr(name)
+                << " but not passed.";
+    (*sig_chunk_modified_)(name, kGeneralError);
+    return;
+  }
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
