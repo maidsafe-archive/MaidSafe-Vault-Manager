@@ -863,6 +863,11 @@ std::list<std::string> BufferedChunkStore::GetRemovableChunks() const {
   return removable_chunks_;
 }
 
+std::vector<ChunkData> BufferedChunkStore::GetChunks() const {
+  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  return internal_perm_chunk_store_->GetChunks();
+}
+
 }  // namespace chunk_store
 
 }  // namespace priv
