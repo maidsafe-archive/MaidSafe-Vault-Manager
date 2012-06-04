@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #ifdef __MSVC__
 #  pragma warning(push, 1)
@@ -84,6 +85,7 @@ class FileChunkStore : public ChunkStore {
   uintmax_t Count() const;
   bool Empty() const;
   void Clear();
+  std::vector<ChunkData> GetChunks() const;
   friend class test::FileChunkStoreTest_BEH_Methods_Test;
 
  private:

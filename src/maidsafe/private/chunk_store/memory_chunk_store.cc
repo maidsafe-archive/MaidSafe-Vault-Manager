@@ -315,7 +315,7 @@ std::vector<ChunkData> MemoryChunkStore::GetChunks() const {
   std::vector<ChunkData> chunk_list;
 
   for (auto it = chunks_.begin(); it != chunks_.end(); ++it) {
-    ChunkData chunk_data(it->first, it->second.first);
+    ChunkData chunk_data(it->first, Size(it->first));
     chunk_list.push_back(chunk_data);
   }
 
