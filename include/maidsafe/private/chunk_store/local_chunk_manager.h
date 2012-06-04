@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/filesystem/path.hpp"
@@ -67,6 +68,7 @@ class LocalChunkManager : public ChunkManager {
   std::shared_ptr<ca::ChunkActionAuthority> simulation_chunk_action_authority_;
   boost::posix_time::time_duration get_wait_, action_wait_;
   fs::path lock_directory_;
+  std::map<std::string, std::string> current_transactions_;
 };
 
 }  // namespace chunk_store

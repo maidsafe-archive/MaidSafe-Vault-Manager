@@ -327,7 +327,7 @@ class RemoteChunkStoreTest: public testing::Test {
                            const fs::path &chunk_dir,
                            boost::asio::io_service & asio_service) {
     chunk_store->reset();
-    fs::path chunk_lock_path =  *test_dir_ / "chunk_locks";
+    fs::path chunk_lock_path = *test_dir_ / "chunk_locks";
     fs::path buffered_chunk_store_path(chunk_dir / RandomAlphaNumericString(8));
     fs::path local_repository(chunk_dir / "local_repository");
     *chunk_store = CreateLocalChunkStore(buffered_chunk_store_path,

@@ -45,7 +45,8 @@ LocalChunkManager::LocalChunkManager(
       simulation_chunk_action_authority_(),
       get_wait_(millisecs),
       action_wait_(millisecs * 3),
-      lock_directory_() {
+      lock_directory_(),
+      current_transactions_() {
   std::shared_ptr<FileChunkStore> file_chunk_store(new FileChunkStore);
   fs::path local_version_directory;
   if (simulation_directory.empty()) {
@@ -59,8 +60,9 @@ LocalChunkManager::LocalChunkManager(
   } else {
     local_version_directory = simulation_directory;
   }
-  lock_directory_ =   lock_directory;
-
+  lock_directory_ =  lock_directory;
+  if (!fs::exists(lock_directory_))
+    fs::create_directory(lock_directory_);
   if (!file_chunk_store->Init(simulation_directory)) {
     DLOG(ERROR) << "Failed to initialise file chunk store";
     return;
@@ -117,20 +119,10 @@ void LocalChunkManager::GetChunk(const std::string &name,
         boost::lexical_cast<std::string>(current_time));
     std::string lock_content(current_time_string + " " + transaction_id);
     WriteFile(lock_file, lock_content);
+    current_transactions_[name] = transaction_id;
     DLOG(INFO) << "Wrote lock file for " << Base32Substr(name);
   }
   content = simulation_chunk_action_authority_->Get(name, "", keys->public_key);
-  if (lock && fs::exists(lock_file)) {
-    DLOG(INFO) << "GetChunk - After Get, lock file exists for "
-               << Base32Substr(name);
-    ReadFile(lock_file, &existing_lock);
-    std::string lock_transaction_id(
-        existing_lock.substr(existing_lock.find_first_of(' ') + 1));
-    if (lock_transaction_id == transaction_id) {
-      fs::remove(lock_file);
-    DLOG(INFO) << "Removed lock file for " << Base32Substr(name);
-    }
-  }
   if (content.empty()) {
     DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
@@ -227,6 +219,21 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
     (*sig_chunk_modified_)(name, kGeneralError);
     return;
   }
+  fs::path lock_file = lock_directory_ / EncodeToBase32(name);
+  if (fs::exists(lock_file)) {
+    std::string existing_lock;
+    DLOG(INFO) << "GetChunk - Modify, lock file exists for "
+               << Base32Substr(name);
+    std::string expected_transaction_id(current_transactions_[name]);
+    ReadFile(lock_file, &existing_lock);
+    std::string lock_transaction_id(
+        existing_lock.substr(existing_lock.find_first_of(' ') + 1));
+    if (lock_transaction_id == expected_transaction_id) {
+      fs::remove(lock_file);
+    DLOG(INFO) << "Removed lock file for " << Base32Substr(name);
+    }
+  }
+
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
