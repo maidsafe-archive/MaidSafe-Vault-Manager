@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/path.hpp"
 #include "boost/thread/mutex.hpp"
@@ -72,6 +73,7 @@ class ThreadsafeChunkStore : public ChunkStore {
   uintmax_t Count() const;
   bool Empty() const;
   void Clear();
+  std::vector<ChunkData> GetChunks() const;
 
  private:
   ThreadsafeChunkStore(const ThreadsafeChunkStore&);

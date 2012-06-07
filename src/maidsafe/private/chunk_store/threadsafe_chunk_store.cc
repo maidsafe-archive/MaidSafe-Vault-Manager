@@ -141,6 +141,11 @@ void ThreadsafeChunkStore::Clear() {
   chunk_store_->Clear();
 }
 
+std::vector<ChunkData> ThreadsafeChunkStore::GetChunks() const {
+  boost::lock_guard<boost::mutex> lock(mutex_);
+  return chunk_store_->GetChunks();
+}
+
 }  // namespace chunk_store
 
 }  // namespace priv

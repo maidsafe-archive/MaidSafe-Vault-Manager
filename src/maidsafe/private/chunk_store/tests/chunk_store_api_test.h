@@ -810,6 +810,39 @@ TYPED_TEST_P(ChunkStoreTest, BEH_Clear) {
   EXPECT_EQ(0, this->chunk_store_->Size());
 }
 
+TYPED_TEST_P(ChunkStoreTest, BEH_GetChunks) {
+  std::vector<std::pair<std::string, std::string>> chunks;
+  for (int i = 0; i < 100; ++i) {
+    std::string content(RandomString(100 + (i % 20)));
+    std::string name(crypto::Hash<crypto::SHA512>(content));
+    chunks.push_back(std::make_pair(name, content));
+  }
+
+  for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+    EXPECT_TRUE(this->chunk_store_->Store(it->first, it->second));
+    EXPECT_EQ(this->chunk_store_->Size(it->first), it->second.size());
+  }
+
+  EXPECT_EQ(100, this->chunk_store_->Count());
+
+  std::vector<ChunkData> chunk_data(this->chunk_store_->GetChunks());
+  EXPECT_EQ(100, chunk_data.size());
+
+  int chunks_found(0);
+
+  for (auto it = chunk_data.begin(); it != chunk_data.end(); ++it) {
+    for (auto chunks_it = chunks.begin(); chunks_it != chunks.end(); ++chunks_it) {
+      if (chunks_it->first == it->chunk_name) {
+        EXPECT_EQ(chunks_it->second.size(), it->chunk_size);
+        ++chunks_found;
+        break;
+      }
+    }
+  }
+
+  EXPECT_EQ(100, chunks_found);
+}
+
 REGISTER_TYPED_TEST_CASE_P(ChunkStoreTest,
                            BEH_Init,
                            BEH_Get,
@@ -821,7 +854,8 @@ REGISTER_TYPED_TEST_CASE_P(ChunkStoreTest,
                            BEH_Capacity,
                            BEH_References,
                            BEH_SmallName,
-                           BEH_Clear);
+                           BEH_Clear,
+                           BEH_GetChunks);
 
 }  // namespace test
 
