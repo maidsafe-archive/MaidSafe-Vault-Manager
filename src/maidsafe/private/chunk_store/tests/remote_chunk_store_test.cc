@@ -539,7 +539,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
+      thread_group_.create_thread([=] {
           DoGet(chunk_store_, it->first, it->second.first, 0);
       });
     }
@@ -560,7 +560,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
       DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
+      thread_group_.create_thread([=] {
           DoGet(chunk_store_, it->first, it->second.second, 0);
       });
     }
