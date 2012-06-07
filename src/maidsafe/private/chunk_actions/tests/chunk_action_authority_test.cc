@@ -430,7 +430,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidGet) {
             chunk_action_authority_->ValidGet(fake_name, "",
                                               key_.public_key,
                                               &result_content));
-  EXPECT_EQ(kInvalidPublicKey,
+  EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidGet(appendable_by_all_name_, "",
                                               asymm::PublicKey(),
                                               &result_content));

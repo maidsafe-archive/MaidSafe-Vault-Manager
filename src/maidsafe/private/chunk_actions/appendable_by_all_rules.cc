@@ -86,15 +86,10 @@ int ProcessGet<kAppendableByAll>(
     return kGeneralError;
   }
 
-  if (!asymm::ValidateKey(public_key)) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name)
-                << ": invalid public key";
-    return kInvalidPublicKey;
-  }
-
-  if (asymm::CheckSignature(existing_chunk.allow_others_to_append().data(),
-                            existing_chunk.allow_others_to_append().signature(),
-                            public_key) == kSuccess) {
+  if (asymm::ValidateKey(public_key) &&
+      kSuccess == asymm::CheckSignature(existing_chunk.allow_others_to_append().data(),
+                                        existing_chunk.allow_others_to_append().signature(),
+                                        public_key)) {
     // Owner - return all data
     *existing_content = all_existing_content;
     // and the content in the chunk shall be cleaned up later on via base class
