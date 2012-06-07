@@ -645,6 +645,26 @@ uintmax_t FileChunkStore::GetNumFromString(const std::string &str) const {
   }
 }
 
+std::vector<ChunkData> FileChunkStore::GetChunks() const {
+  std::vector<ChunkData> chunk_list;
+
+  for (fs::recursive_directory_iterator it(storage_location_);
+       it != fs::recursive_directory_iterator(); ++it) {
+    if (fs::is_regular_file(it->status()) && it->path().filename().string() != "info") {
+      std::string chunk_name(it->path().string().substr(storage_location_.string().size()));
+      for (unsigned int i = 0; i < dir_depth_ + 1; ++i) {
+        chunk_name.erase(i, 1);
+      }
+      chunk_name = DecodeFromBase32(chunk_name);
+      uintmax_t chunk_size = Size(chunk_name);
+      ChunkData chunk_data(chunk_name, chunk_size);
+      chunk_list.push_back(chunk_data);
+    }
+  }
+
+  return chunk_list;
+}
+
 }  // namespace chunk_store
 
 }  // namespace priv

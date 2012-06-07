@@ -33,6 +33,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include <string>
 #include <memory>
+#include <vector>
 
 #ifdef __MSVC__
 #  pragma warning(push, 1)
@@ -178,6 +179,8 @@ class BufferedChunkStore : public ChunkStore {
   bool DeleteAllMarked();
 
   std::list<std::string> GetRemovableChunks() const;
+
+  std::vector<ChunkData> GetChunks() const;
 
  private:
   BufferedChunkStore(const BufferedChunkStore&);

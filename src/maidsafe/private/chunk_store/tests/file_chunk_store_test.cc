@@ -376,6 +376,52 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
   EXPECT_EQ(0, chunk_info.second);
 }
 
+TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
+  // store chunks in one chunk store, retrieve list with GetChunks. Create new chunk store
+  // with same storage dir and retrieve chunks again through GetChunks. Result of both
+  // Gets should match.
+
+  std::vector<ChunkData> chunk_data_pre;
+  std::vector<ChunkData> chunk_data_post;
+  {
+    std::shared_ptr<FileChunkStore> fcs_1(new FileChunkStore());
+
+    std::vector<std::pair<std::string, std::string>> chunks;
+    for (int i = 0; i < 100; ++i) {
+      std::string content(RandomString(100 + (i % 20)));
+      std::string name(crypto::Hash<crypto::SHA512>(content));
+      chunks.push_back(std::make_pair(name, content));
+    }
+
+    EXPECT_TRUE(fcs_1->Init(chunk_dir_, 5));
+
+    for (auto it = chunks.begin(); it != chunks.end(); ++it) {
+      EXPECT_TRUE(fcs_1->Store(it->first, it->second));
+      EXPECT_EQ(fcs_1->Size(it->first), it->second.size());
+    }
+
+    EXPECT_EQ(100, fcs_1->Count());
+
+    chunk_data_pre = fcs_1->GetChunks();
+    EXPECT_EQ(100, chunk_data_pre.size());
+  }
+  {
+    std::shared_ptr<FileChunkStore> fcs_2(new FileChunkStore());
+    EXPECT_EQ(0, chunk_data_post.size());
+    EXPECT_TRUE(fcs_2->Init(chunk_dir_, 5));
+    EXPECT_EQ(100, fcs_2->Count());
+
+    chunk_data_post = fcs_2->GetChunks();
+    EXPECT_EQ(100, chunk_data_post.size());
+  }
+
+  for (auto before = chunk_data_pre.begin(), after = chunk_data_post.begin();
+       before != chunk_data_pre.end(), after != chunk_data_post.end(); ++before, ++after) {
+    EXPECT_EQ(before->chunk_name, after->chunk_name);
+    EXPECT_EQ(before->chunk_size, after->chunk_size);
+  }
+}
+
 }  // namespace test
 
 }  // namespace chunk_store

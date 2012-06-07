@@ -56,9 +56,10 @@ class RemoteChunkStore {
  public:
   enum OperationType {
     kOpGet = 0,
-    kOpStore = 1,
-    kOpModify = 2,
-    kOpDelete = 3
+    kOpGetLock = 1,
+    kOpStore = 2,
+    kOpModify = 3,
+    kOpDelete = 4
   };
 
   static const std::string kOpName[];  // see implementation
@@ -69,53 +70,38 @@ class RemoteChunkStore {
   typedef bs2::signal<void(size_t)> NumPendingOpsSig;
   typedef std::shared_ptr<NumPendingOpsSig> NumPendingOpsSigPtr;
 
-  struct ValidationData {
-    ValidationData(const asymm::Keys &key_pair_in,
-                   const std::string &ownership_proof_in)
-        : key_pair(key_pair_in),
-          ownership_proof(ownership_proof_in) {}
-    ValidationData() : key_pair(), ownership_proof() {}
-    asymm::Keys key_pair;
-    std::string ownership_proof;
-  };
-
   struct OperationData {
     OperationData()
         : op_type(),
           active(false),
           ready(false),
-          owner_key_id(),
-          owner_public_key(),
-          ownership_proof(),
+          keys(),
+          local_version(),
           content(),
           callback() {}
     explicit OperationData(const OperationType &op_type)
         : op_type(op_type),
           active(false),
           ready(false),
-          owner_key_id(),
-          owner_public_key(),
-          ownership_proof(),
+          keys(),
+          local_version(),
           content(),
           callback() {}
     OperationData(const OperationType &op_type,
                   const OpFunctor &callback,
-                  const ValidationData &validation_data,
+                  const std::shared_ptr<asymm::Keys> &keys,
                   bool ready)
         : op_type(op_type),
           active(false),
           ready(ready),
-          owner_key_id(validation_data.key_pair.identity),
-          owner_public_key(validation_data.key_pair.public_key),
-          ownership_proof(validation_data.ownership_proof),
+          keys(keys),
+          local_version(),
           content(),
           callback(callback) {}
     OperationType op_type;
     bool active, ready;
-    asymm::Identity owner_key_id;
-    asymm::PublicKey owner_public_key;
-    std::string ownership_proof;
-    std::string content;
+    std::shared_ptr<asymm::Keys> keys;
+    std::string local_version, content;
     OpFunctor callback;
   };
 
@@ -141,23 +127,27 @@ class RemoteChunkStore {
 
   ~RemoteChunkStore();
 
-  std::string Get(
-      const std::string &name,
-      const ValidationData &validation_data = ValidationData());
+  std::string Get(const std::string &name,
+                  const std::shared_ptr<asymm::Keys> &keys = nullptr);
+
+  int GetAndLock(const std::string &name,
+                 const std::string &local_version,
+                 const std::shared_ptr<asymm::Keys> &keys,
+                 std::string *content);
 
   bool Store(const std::string &name,
              const std::string &content,
              const OpFunctor &callback,
-             const ValidationData &validation_data = ValidationData());
+             const std::shared_ptr<asymm::Keys> &keys = nullptr);
 
   bool Delete(const std::string &name,
               const OpFunctor &callback,
-              const ValidationData &validation_data = ValidationData());
+              const std::shared_ptr<asymm::Keys> &keys = nullptr);
 
   bool Modify(const std::string &name,
               const std::string &content,
               const OpFunctor &callback,
-              const ValidationData &validation_data = ValidationData());
+              const std::shared_ptr<asymm::Keys> &keys);
 
   uintmax_t Size() const {
     // TODO(Steve) get from account
@@ -251,6 +241,7 @@ class RemoteChunkStore {
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
   std::multiset<std::string> waiting_gets_;
+  std::set<std::string> not_modified_gets_;
   std::map<std::string, bptime::ptime> failed_gets_;
   uintmax_t op_count_[4],
             op_success_count_[4],
@@ -261,6 +252,7 @@ class RemoteChunkStore {
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path &buffered_chunk_store_path,
     const fs::path &local_chunk_manager_path,
+    const fs::path &chunk_lock_path,
     boost::asio::io_service &asio_service,  // NOLINT (Dan)
     const bptime::time_duration &millisecs = bptime::milliseconds(0));
 

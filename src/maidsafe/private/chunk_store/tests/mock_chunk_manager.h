@@ -45,24 +45,20 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
       std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store);
   virtual ~MockChunkManager();
 
-  MOCK_METHOD4(GetChunk, void(const std::string &chunk_name,
-                              const asymm::Identity &owner_key_id,
-                              const asymm::PublicKey &owner_public_key,
-                              const std::string &ownership_proof));
+  MOCK_METHOD4(GetChunk, void(const std::string &name,
+                              const std::string &local_version,
+                              const std::shared_ptr<asymm::Keys> &keys,
+                              bool lock));
 
-  MOCK_METHOD3(StoreChunk, void(const std::string &chunk_name,
-                                const asymm::Identity &owner_key_id,
-                                const asymm::PublicKey &owner_public_key));
+  MOCK_METHOD2(StoreChunk, void(const std::string &chunk_name,
+                              const std::shared_ptr<asymm::Keys> &keys));
 
-  MOCK_METHOD4(ModifyChunk, void(const std::string &name,
+  MOCK_METHOD3(ModifyChunk, void(const std::string &name,
                                  const std::string &content,
-                                 const asymm::Identity &owner_key_id,
-                                 const asymm::PublicKey &owner_public_key));
+                              const std::shared_ptr<asymm::Keys> &keys));
 
-  MOCK_METHOD4(DeleteChunk, void(const std::string &chunk_name,
-                                 const asymm::Identity &owner_key_id,
-                                 const asymm::PublicKey &owner_public_key,
-                                 const std::string &ownership_proof));
+  MOCK_METHOD2(DeleteChunk, void(const std::string &chunk_name,
+                              const std::shared_ptr<asymm::Keys> &keys));
 
   void Timeout() {
     // do nothing, causing an eventual timeout

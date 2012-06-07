@@ -46,7 +46,8 @@ enum ReturnCode {
   kInvalidPublicKey = -150021,
   kAppendDisallowed = -150022,
   kHashFailure = -150023,
-  kDifferentVersion = -150024
+  kDifferentVersion = -150024,
+  kChunkNotModified = -150025
 };
 
 }  // namespace priv
