@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 
+#include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/signals2/signal.hpp"
 
 #include "maidsafe/common/rsa.h"
@@ -35,6 +36,8 @@ namespace chunk_store {
 
 class ChunkStore;
 
+auto const kLockTimeout(boost::posix_time::minutes(1));
+
 class ChunkManager {
  public:
   typedef bs2::signal<void(const std::string&, const int&)>
@@ -47,20 +50,16 @@ class ChunkManager {
   virtual ~ChunkManager() {}
 
   virtual void GetChunk(const std::string &name,
-                        const asymm::Identity &owner_key_id,
-                        const asymm::PublicKey &owner_public_key,
-                        const std::string &ownership_proof) = 0;
+                        const std::string &local_version,
+                        const std::shared_ptr<asymm::Keys> &keys,
+                        bool lock) = 0;
   virtual void StoreChunk(const std::string &name,
-                          const asymm::Identity &owner_key_id,
-                          const asymm::PublicKey &owner_public_key) = 0;
+                          const std::shared_ptr<asymm::Keys> &keys) = 0;
   virtual void ModifyChunk(const std::string &name,
                            const std::string &content,
-                           const asymm::Identity &owner_key_id,
-                           const asymm::PublicKey &owner_public_key) = 0;
+                           const std::shared_ptr<asymm::Keys> &keys) = 0;
   virtual void DeleteChunk(const std::string &name,
-                           const asymm::Identity &owner_key_id,
-                           const asymm::PublicKey &owner_public_key,
-                           const std::string &ownership_proof) = 0;
+                           const std::shared_ptr<asymm::Keys> &keys) = 0;
 
   ChunkGotSigPtr sig_chunk_got() { return sig_chunk_got_; }
   ChunkStoredSigPtr sig_chunk_stored() { return sig_chunk_stored_; }
@@ -68,18 +67,25 @@ class ChunkManager {
   ChunkDeletedSigPtr sig_chunk_deleted() { return sig_chunk_deleted_; }
   std::shared_ptr<ChunkStore> chunk_store() { return chunk_store_; }
 
+  boost::posix_time::time_duration lock_timeout() { return lock_timeout_; }
+  void SetLockTimeout(const boost::posix_time::time_duration &value) {
+    lock_timeout_ = value;
+  }
+
  protected:
   explicit ChunkManager(std::shared_ptr<ChunkStore> chunk_store)
       : sig_chunk_got_(new ChunkGotSig),
         sig_chunk_stored_(new ChunkStoredSig),
         sig_chunk_modified_(new ChunkModifiedSig),
         sig_chunk_deleted_(new ChunkDeletedSig),
-        chunk_store_(chunk_store) {}
+        chunk_store_(chunk_store),
+        lock_timeout_(kLockTimeout) {}
   ChunkGotSigPtr sig_chunk_got_;
   ChunkStoredSigPtr sig_chunk_stored_;
   ChunkModifiedSigPtr sig_chunk_modified_;
   ChunkDeletedSigPtr sig_chunk_deleted_;
   std::shared_ptr<ChunkStore> chunk_store_;
+  boost::posix_time::time_duration lock_timeout_;
 
  private:
   ChunkManager(const ChunkManager&);

@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/filesystem/path.hpp"
@@ -43,25 +44,21 @@ class LocalChunkManager : public ChunkManager {
  public:
   LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_chunk_store,
                     const fs::path &simulation_directory,
+                    const fs::path &lock_directory,
                     const boost::posix_time::time_duration &millisecs =
                         boost::posix_time::milliseconds(0));
   ~LocalChunkManager();
 
   void GetChunk(const std::string &name,
-                const asymm::Identity &owner_key_id,
-                const asymm::PublicKey &owner_public_key,
-                const std::string &ownership_proof);
+                const std::string &local_version,
+                const std::shared_ptr<asymm::Keys> &keys, bool lock);
   void StoreChunk(const std::string &name,
-                  const asymm::Identity &owner_key_id,
-                  const asymm::PublicKey &owner_public_key);
+                  const std::shared_ptr<asymm::Keys> &keys);
   void DeleteChunk(const std::string &name,
-                   const asymm::Identity &owner_key_id,
-                   const asymm::PublicKey &owner_public_key,
-                   const std::string &ownership_proof);
+                   const std::shared_ptr<asymm::Keys> &keys);
   void ModifyChunk(const std::string &name,
                    const std::string &content,
-                   const asymm::Identity &owner_key_id,
-                   const asymm::PublicKey &owner_public_key);
+                   const std::shared_ptr<asymm::Keys> &keys);
 
  private:
   LocalChunkManager(const LocalChunkManager&);
@@ -70,6 +67,8 @@ class LocalChunkManager : public ChunkManager {
   std::shared_ptr<ChunkStore> simulation_chunk_store_;
   std::shared_ptr<ca::ChunkActionAuthority> simulation_chunk_action_authority_;
   boost::posix_time::time_duration get_wait_, action_wait_;
+  fs::path lock_directory_;
+  std::map<std::string, std::string> current_transactions_;
 };
 
 }  // namespace chunk_store
