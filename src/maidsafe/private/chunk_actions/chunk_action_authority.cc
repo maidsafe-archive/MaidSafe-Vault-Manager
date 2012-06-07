@@ -17,10 +17,10 @@
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/log.h"
 
 #include "maidsafe/private/chunk_actions/chunk_types.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
@@ -40,7 +40,7 @@ namespace chunk_actions {
 
 std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type) {
   if (name.size() != static_cast<size_t>(crypto::SHA512::DIGESTSIZE)) {
-    DLOG(ERROR) << "Name " << Base32Substr(name) << " is " << name.size()
+    LOG(kError) << "Name " << Base32Substr(name) << " is " << name.size()
                 << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
     return "";
   }
@@ -58,7 +58,7 @@ unsigned char GetDataType(const std::string &name) {
     return kDefaultType;
 
   if (name.size() != crypto::SHA512::DIGESTSIZE + 1) {
-    DLOG(WARNING) << "Unknown data type (invalid name size of " << name.size()
+    LOG(kWarning) << "Unknown data type (invalid name size of " << name.size()
                   << ")";
     return kUnknownType;
   }
@@ -67,7 +67,7 @@ unsigned char GetDataType(const std::string &name) {
     case kAppendableByAll: return kAppendableByAll;
     case kModifiableByOwner: return kModifiableByOwner;
     case kSignaturePacket: return kSignaturePacket;
-    default: DLOG(WARNING) << "Unknown data type "
+    default: LOG(kWarning) << "Unknown data type "
                            << static_cast<int>(*name.rbegin());
              return kUnknownType;
   }
@@ -86,7 +86,7 @@ std::string ChunkActionAuthority::Get(
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name) << ": " << result;
+    LOG(kError) << "Failed to get " << Base32Substr(name) << ": " << result;
     existing_content.clear();
   }
 
@@ -100,12 +100,12 @@ bool ChunkActionAuthority::Get(const std::string &name,
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name) << ": " << result;
+    LOG(kError) << "Failed to get " << Base32Substr(name) << ": " << result;
     return false;
   }
 
   if (!WriteFile(sink_file_name, existing_content)) {
-    DLOG(ERROR) << "Failed to write chunk " << Base32Substr(name) << " to "
+    LOG(kError) << "Failed to write chunk " << Base32Substr(name) << " to "
                 << sink_file_name;
     return false;
   }
@@ -118,13 +118,13 @@ bool ChunkActionAuthority::Store(const std::string &name,
                                  const asymm::PublicKey &public_key) {
   int result(ValidStore(name, content, public_key));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to store " << Base32Substr(name) << ": "
+    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": "
                 << result;
     return false;
   }
 
   if (!chunk_store_->Store(name, content)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name);
+    LOG(kError) << "Failed to store " << Base32Substr(name);
     return false;
   }
 
@@ -137,19 +137,19 @@ bool ChunkActionAuthority::Store(const std::string &name,
                                  const asymm::PublicKey &public_key) {
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    DLOG(ERROR) << "Failed to read " << source_file_name;
+    LOG(kError) << "Failed to read " << source_file_name;
     return false;
   }
 
   int result(ValidStore(name, content, public_key));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to store " << Base32Substr(name) << ": "
+    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": "
                 << result;
     return false;
   }
 
   if (!chunk_store_->Store(name, content)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name);
+    LOG(kError) << "Failed to store " << Base32Substr(name);
     return false;
   }
 
@@ -158,7 +158,7 @@ bool ChunkActionAuthority::Store(const std::string &name,
 #ifdef DEBUG
     bool removed(fs::remove(source_file_name, error_code));
     if (!removed) {
-      DLOG(WARNING) << "Failed to remove source file " << source_file_name
+      LOG(kWarning) << "Failed to remove source file " << source_file_name
                     << (error_code ? (": " + error_code.message()) : "");
     }
 #else
@@ -174,13 +174,13 @@ bool ChunkActionAuthority::Delete(const std::string &name,
                                   const asymm::PublicKey &public_key) {
   int result(ValidDelete(name, ownership_proof, public_key));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to delete " << Base32Substr(name) << ": "
+    LOG(kError) << "Invalid request to delete " << Base32Substr(name) << ": "
                 << result;
     return false;
   }
 
   if (!chunk_store_->Delete(name)) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name);
+    LOG(kError) << "Failed to delete " << Base32Substr(name);
     return false;
   }
 
@@ -195,13 +195,13 @@ bool ChunkActionAuthority::Modify(const std::string &name,
   int result(ValidModify(name, content, public_key, size_difference,
                          &new_content));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to modify " << Base32Substr(name) << ": "
+    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": "
                 << result;
     return false;
   }
 
   if (!chunk_store_->Modify(name, new_content)) {
-    DLOG(ERROR) << "Failed to modify " << Base32Substr(name);
+    LOG(kError) << "Failed to modify " << Base32Substr(name);
     return false;
   }
 
@@ -215,7 +215,7 @@ bool ChunkActionAuthority::Modify(const std::string &name,
                                   int64_t *size_difference) {
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    DLOG(ERROR) << "Failed to read " << source_file_name;
+    LOG(kError) << "Failed to read " << source_file_name;
     return false;
   }
 
@@ -223,13 +223,13 @@ bool ChunkActionAuthority::Modify(const std::string &name,
   int result(ValidModify(name, content, public_key, size_difference,
                          &new_content));
   if (result != kSuccess) {
-    DLOG(ERROR) << "Invalid request to modify " << Base32Substr(name) << ": "
+    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": "
                 << result;
     return false;
   }
 
   if (!chunk_store_->Modify(name, new_content)) {
-    DLOG(ERROR) << "Failed to modify " << Base32Substr(name);
+    LOG(kError) << "Failed to modify " << Base32Substr(name);
     return false;
   }
 
@@ -238,7 +238,7 @@ bool ChunkActionAuthority::Modify(const std::string &name,
 #ifdef DEBUG
     bool removed(fs::remove(source_file_name, error_code));
     if (!removed) {
-      DLOG(WARNING) << "Failed to remove source file " << source_file_name
+      LOG(kWarning) << "Failed to remove source file " << source_file_name
                     << (error_code ? (": " + error_code.message()) : "");
     }
 #else
@@ -254,7 +254,7 @@ bool ChunkActionAuthority::Has(const std::string &name,
                                const asymm::PublicKey &public_key) const {
   int result(ValidHas(name, version, public_key));
   if (result != kSuccess) {
-    DLOG(WARNING) << "Invalid request or doesn't have " << Base32Substr(name)
+    LOG(kWarning) << "Invalid request or doesn't have " << Base32Substr(name)
                   << ": " << result;
     return false;
   }
@@ -273,7 +273,7 @@ bool ChunkActionAuthority::Cacheable(const std::string &name) const {
     case kModifiableByOwner: return IsCacheable<kModifiableByOwner>();
     case kSignaturePacket: return IsCacheable<kSignaturePacket>();
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return false;
   }
@@ -286,7 +286,7 @@ bool ChunkActionAuthority::Modifiable(const std::string &name) const {
     case kModifiableByOwner: return IsModifiable<kModifiableByOwner>();
     case kSignaturePacket: return IsModifiable<kSignaturePacket>();
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return false;
   }
@@ -304,7 +304,7 @@ bool ChunkActionAuthority::ModifyReplaces(const std::string &name) const {
     case kSignaturePacket:
       return DoesModifyReplace<kSignaturePacket>();
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return false;
   }
@@ -320,7 +320,7 @@ bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
     case kSignaturePacket: return IsValidChunk<kSignaturePacket>(name,
                                                                  chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return false;
   }
@@ -336,7 +336,7 @@ std::string ChunkActionAuthority::Version(const std::string &name) const {
     case kSignaturePacket: return GetVersion<kSignaturePacket>(name,
                                                                chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return "";
   }
@@ -369,7 +369,7 @@ int ChunkActionAuthority::ValidGet(const std::string &name,
                                                                existing_content,
                                                                chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return kInvalidChunkType;
   }
@@ -397,7 +397,7 @@ int ChunkActionAuthority::ValidStore(const std::string &name,
                                                                  public_key,
                                                                  chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return kInvalidChunkType;
   }
@@ -428,7 +428,7 @@ int ChunkActionAuthority::ValidDelete(
                                                public_key,
                                                chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
       return kInvalidChunkType;
   }
@@ -440,7 +440,7 @@ int ChunkActionAuthority::ValidModify(const std::string &name,
                                       int64_t *size_difference,
                                       std::string *new_content) const {
   if (!size_difference) {
-    DLOG(ERROR) << "nullptr parameter passed.";
+    LOG(kError) << "nullptr parameter passed.";
     return kNullParameter;
   }
   *size_difference = 0;
@@ -479,7 +479,7 @@ int ChunkActionAuthority::ValidModify(const std::string &name,
                                                new_content,
                                                chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
              return kInvalidChunkType;
   }
@@ -508,7 +508,7 @@ int ChunkActionAuthority::ValidHas(const std::string &name,
                                             public_key,
                                             chunk_store_);
     case kUnknownType:
-    default: DLOG(ERROR) << "Unknown type "
+    default: LOG(kError) << "Unknown type "
                          << static_cast<int>(GetDataType(name));
       return kInvalidChunkType;
   }

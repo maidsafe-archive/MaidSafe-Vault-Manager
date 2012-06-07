@@ -30,7 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/crypto.h"
-#include "maidsafe/private/log.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
 namespace fs = boost::filesystem;
@@ -57,7 +57,7 @@ bool FileChunkStore::Init(const fs::path &storage_location,
                           unsigned int dir_depth) {
   try {
     if (storage_location.empty()) {
-      DLOG(ERROR) << "Provided location is an empty path";
+      LOG(kError) << "Provided location is an empty path";
       return false;
     }
 
@@ -68,7 +68,7 @@ bool FileChunkStore::Init(const fs::path &storage_location,
       IncreaseSize(chunk_info.second);
     } else {
       if (!fs::create_directories(storage_location)) {
-        DLOG(ERROR) << "Failed to create storage location directory: "
+        LOG(kError) << "Failed to create storage location directory: "
                     << storage_location;
         return false;
       }
@@ -85,7 +85,7 @@ bool FileChunkStore::Init(const fs::path &storage_location,
     initialised_ = info_file_.good();
   }
   catch(const std::exception &e) {
-    DLOG(ERROR) << "Init - " << e.what();
+    LOG(kError) << "Init - " << e.what();
     return false;
   }
   return true;
@@ -93,19 +93,19 @@ bool FileChunkStore::Init(const fs::path &storage_location,
 
 std::string FileChunkStore::Get(const std::string &name) const {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return "";
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty";
+    LOG(kError) << "Name of data empty";
     return "";
   }
 
   fs::path file_path(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(file_path));
   if (ref_count == 0) {
-    DLOG(ERROR) << "Data has reference count == 0: " << Base32Substr(name);
+    LOG(kError) << "Data has reference count == 0: " << Base32Substr(name);
     return "";
   }
 
@@ -116,7 +116,7 @@ std::string FileChunkStore::Get(const std::string &name) const {
   if (ReadFile(file_path, &content)) {
     return content;
   } else {
-    DLOG(ERROR) << "Failed to read data: " << Base32Substr(name);
+    LOG(kError) << "Failed to read data: " << Base32Substr(name);
     return "";
   }
 }
@@ -124,12 +124,12 @@ std::string FileChunkStore::Get(const std::string &name) const {
 bool FileChunkStore::Get(const std::string &name,
                          const fs::path &sink_file_name) const {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty() || sink_file_name.empty()) {
-    DLOG(ERROR) << "Name of data(" << Base32Substr(name)
+    LOG(kError) << "Name of data(" << Base32Substr(name)
                 << ") or sink file(" << sink_file_name << ") path empty";
     return false;
   }
@@ -137,7 +137,7 @@ bool FileChunkStore::Get(const std::string &name,
   fs::path source_file_path(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(source_file_path));
   if (ref_count == 0) {
-    DLOG(ERROR) << "Data has reference count == 0: " << Base32Substr(name);
+    LOG(kError) << "Data has reference count == 0: " << Base32Substr(name);
     return false;
   }
 
@@ -153,12 +153,12 @@ bool FileChunkStore::Get(const std::string &name,
 bool FileChunkStore::Store(const std::string &name,
                            const std::string &content) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty";
+    LOG(kError) << "Name of data empty";
     return false;
   }
 
@@ -168,12 +168,12 @@ bool FileChunkStore::Store(const std::string &name,
   if (ref_count == 0) {
     //  new chunk!
     if (content.empty()) {
-      DLOG(ERROR) << "Content to be stored empty: " << Base32Substr(name);
+      LOG(kError) << "Content to be stored empty: " << Base32Substr(name);
       return false;
     }
 
     if (!Vacant(content.size())) {
-      DLOG(ERROR) << "Not enough space to store: " << Base32Substr(name)
+      LOG(kError) << "Not enough space to store: " << Base32Substr(name)
                   << ", size: " << content.size();
       return false;
     }
@@ -182,7 +182,7 @@ bool FileChunkStore::Store(const std::string &name,
     chunk_file.replace_extension(".1");
 
     if (!WriteFile(chunk_file, content)) {
-      DLOG(ERROR) << "Failed to write the file: " << Base32Substr(name);
+      LOG(kError) << "Failed to write the file: " << Base32Substr(name);
       return false;
     }
 
@@ -207,12 +207,12 @@ bool FileChunkStore::Store(const std::string &name,
                            const fs::path &source_file_name,
                            bool delete_source_file) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty";
+    LOG(kError) << "Name of data empty";
     return false;
   }
 
@@ -227,13 +227,13 @@ bool FileChunkStore::Store(const std::string &name,
       uintmax_t file_size(fs::file_size(source_file_name, ec));
 
       if (file_size == 0) {
-        DLOG(ERROR) << "Source file empty - name: " << Base32Substr(name)
+        LOG(kError) << "Source file empty - name: " << Base32Substr(name)
                     << ", path: " << source_file_name;
         return false;
       }
 
       if (!Vacant(file_size)) {
-        DLOG(ERROR) << "Not enough space to store: " << Base32Substr(name)
+        LOG(kError) << "Not enough space to store: " << Base32Substr(name)
                     << ", size: " << file_size;
         return false;
       }
@@ -251,7 +251,7 @@ bool FileChunkStore::Store(const std::string &name,
       return true;
     }
     catch(const std::exception &e) {
-      DLOG(ERROR) << "name: " << Base32Substr(name) << ", path: "
+      LOG(kError) << "name: " << Base32Substr(name) << ", path: "
                   << source_file_name << ", exception: " << e.what();
       return false;
     }
@@ -273,19 +273,19 @@ bool FileChunkStore::Store(const std::string &name,
     }
   }
 
-  DLOG(ERROR) << "End of function without positive return - name: "
+  LOG(kError) << "End of function without positive return - name: "
               << Base32Substr(name) << ", path: " << source_file_name;
   return false;
 }
 
 bool FileChunkStore::Delete(const std::string &name) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty";
+    LOG(kError) << "Name of data empty";
     return false;
   }
 
@@ -323,7 +323,7 @@ bool FileChunkStore::Delete(const std::string &name) {
       return true;
   }
 
-  DLOG(ERROR) << "End of function without positive return - name: "
+  LOG(kError) << "End of function without positive return - name: "
               << Base32Substr(name);
   return false;
 }
@@ -331,12 +331,12 @@ bool FileChunkStore::Delete(const std::string &name) {
 bool FileChunkStore::Modify(const std::string &name,
                             const std::string &content) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty() || !Has(name)) {
-    DLOG(ERROR) << "Name of data empty or chunk doesn't exist: "
+    LOG(kError) << "Name of data empty or chunk doesn't exist: "
                 << Base32Substr(name);
     return false;
   }
@@ -353,13 +353,13 @@ bool FileChunkStore::Modify(const std::string &name,
                               content.size(),
                               &increase_size,
                               &content_size_difference)) {
-    DLOG(ERROR) << "Size differential unacceptable - increase_size: "
+    LOG(kError) << "Size differential unacceptable - increase_size: "
                 << increase_size << ", name: " << Base32Substr(name);
     return false;
   }
 
   if (!WriteFile(chunk_file, content)) {
-    DLOG(ERROR) << "Failed to write the file: " << Base32Substr(name);
+    LOG(kError) << "Failed to write the file: " << Base32Substr(name);
     return false;
   }
 
@@ -372,12 +372,12 @@ bool FileChunkStore::Modify(const std::string &name,
                             const fs::path &source_file_name,
                             bool delete_source_file) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty() || !Has(name)) {
-    DLOG(ERROR) << "Name of data empty or chunk doesn't exist: "
+    LOG(kError) << "Name of data empty or chunk doesn't exist: "
                 << Base32Substr(name);
     return false;
   }
@@ -393,7 +393,7 @@ bool FileChunkStore::Modify(const std::string &name,
                               fs::file_size(source_file_name, ec1),
                               &increase_size,
                               &content_size_difference) || ec1 || ec2) {
-    DLOG(ERROR) << "Size differential unacceptable - increase_size: "
+    LOG(kError) << "Size differential unacceptable - increase_size: "
                 << increase_size << ", name: " << Base32Substr(name)
                 << ", ec1: " << ec1.value() << ", ec2: " << ec2.value();
     return false;
@@ -404,7 +404,7 @@ bool FileChunkStore::Modify(const std::string &name,
                 fs::copy_option::overwrite_if_exists,
                 ec1);
   if (ec1) {
-    DLOG(ERROR) << "Failed to copy the file over - name: "
+    LOG(kError) << "Failed to copy the file over - name: "
                 << Base32Substr(name) << ", source: " << source_file_name
                 << ", destination: " << chunk_file << ", result: "
                 << ec1.value();
@@ -422,12 +422,12 @@ bool FileChunkStore::Modify(const std::string &name,
 
 bool FileChunkStore::Has(const std::string &name) const {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty.";
+    LOG(kError) << "Name of data empty.";
     return false;
   }
 
@@ -437,12 +437,12 @@ bool FileChunkStore::Has(const std::string &name) const {
 bool FileChunkStore::MoveTo(const std::string &name,
                             ChunkStore *sink_chunk_store) {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   if (name.empty() || !sink_chunk_store) {
-    DLOG(ERROR) << "Name of data empty or chunk store passed is null: "
+    LOG(kError) << "Name of data empty or chunk store passed is null: "
                 << Base32Substr(name);
     return false;
   }
@@ -453,7 +453,7 @@ bool FileChunkStore::MoveTo(const std::string &name,
   //  this store does not have the file
   //  Not calling Has here to avoid two calls to GetChunkReferenceCount
   if (ref_count == 0) {
-    DLOG(ERROR) << "Data has reference count == 0: " << Base32Substr(name);
+    LOG(kError) << "Data has reference count == 0: " << Base32Substr(name);
     return false;
   }
 
@@ -466,7 +466,7 @@ bool FileChunkStore::MoveTo(const std::string &name,
     uintmax_t size = fs::file_size(chunk_file, ec);
 
     if (ec || size == 0) {
-      DLOG(ERROR) << "Size error: " << Base32Substr(name) << ", file_size: "
+      LOG(kError) << "Size error: " << Base32Substr(name) << ", file_size: "
                   << size << ", error: " << ec.value();
       return false;
     }
@@ -482,19 +482,19 @@ bool FileChunkStore::MoveTo(const std::string &name,
     }
   }
 
-  DLOG(ERROR) << "End of function without positive return - name: "
+  LOG(kError) << "End of function without positive return - name: "
               << Base32Substr(name);
   return false;
 }
 
 uintmax_t FileChunkStore::Size(const std::string &name) const {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return 0;
   }
 
   if (name.empty()) {
-    DLOG(ERROR) << "Name of data empty.";
+    LOG(kError) << "Name of data empty.";
     return 0;
   }
 
@@ -511,7 +511,7 @@ uintmax_t FileChunkStore::Size(const std::string &name) const {
 
 uintmax_t FileChunkStore::Count() const {
   if (!IsChunkStoreInitialised()) {
-    DLOG(ERROR) << "Chunk Store not initialised";
+    LOG(kError) << "Chunk Store not initialised";
     return 0;
   }
 
@@ -520,7 +520,7 @@ uintmax_t FileChunkStore::Count() const {
 
 uintmax_t FileChunkStore::Count(const std::string &name) const {
   if (!IsChunkStoreInitialised() || name.empty()) {
-    DLOG(ERROR) << "Name of data empty or chunk store not initialised: "
+    LOG(kError) << "Name of data empty or chunk store not initialised: "
                 << Base32Substr(name);
     return 0;
   }
@@ -538,7 +538,7 @@ void FileChunkStore::Clear() {
   boost::system::error_code ec;
   fs::remove_all(storage_location_, ec);
   if (ec) {
-    DLOG(WARNING) << "Failed to remove " << storage_location_ << ": "
+    LOG(kWarning) << "Failed to remove " << storage_location_ << ": "
                   << ec.message();
   }
   ChunkStore::Clear();
@@ -609,13 +609,13 @@ uintmax_t FileChunkStore::GetChunkReferenceCount(
     const fs::path &chunk_path) const {
   boost::system::error_code ec;
   if (!fs::exists(chunk_path.parent_path(), ec)) {
-    DLOG(ERROR) << "Path given doesn't exist: " << chunk_path;
+    LOG(kError) << "Path given doesn't exist: " << chunk_path;
     return 0;
   }
 
   // heuristic to prevent iteration for the most common case
   if (fs::exists(fs::path(chunk_path.string() + ".1"), ec)) {
-    DLOG(INFO) << "Heuristic to prevent iteration for the most common case: "
+    LOG(kInfo) << "Heuristic to prevent iteration for the most common case: "
                << chunk_path;
     return 1;
   }
@@ -630,7 +630,7 @@ uintmax_t FileChunkStore::GetChunkReferenceCount(
     }
   }
   catch(const std::exception &e) {
-    DLOG(ERROR) << "GetChunkReferenceCount - " << e.what();
+    LOG(kError) << "GetChunkReferenceCount - " << e.what();
   }
 
   return 0;
@@ -640,7 +640,7 @@ uintmax_t FileChunkStore::GetNumFromString(const std::string &str) const {
   try {
     return boost::lexical_cast<uintmax_t>(str);
   } catch(const boost::bad_lexical_cast &e) {
-    DLOG(ERROR) << e.what();
+    LOG(kError) << e.what();
     return 0;
   }
 }

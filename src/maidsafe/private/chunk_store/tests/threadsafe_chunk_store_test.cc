@@ -35,9 +35,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "boost/thread.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/log.h"
 #include "maidsafe/private/chunk_store/memory_chunk_store.h"
 #include "maidsafe/private/chunk_store/threadsafe_chunk_store.h"
 #include "maidsafe/private/chunk_store/tests/chunk_store_api_test.h"
@@ -86,7 +86,7 @@ class ThreadsafeChunkStoreTest : public testing::Test {
     StoreFromSourceFile(13, false);
     for (uint8_t i = 0; i < 30U; ++i) {
       thread_group_.create_thread([this]
-          { ThreadsafeChunkStoreTest::RunThread(); } );
+          { ThreadsafeChunkStoreTest::RunThread(); } );  // NOLINT (Fraser)
     }
   }
 
@@ -96,7 +96,7 @@ class ThreadsafeChunkStoreTest : public testing::Test {
         asio_service_.run();
       }
       catch(const std::exception &e) {
-        DLOG(ERROR) << "Exception in RunThread, " << e.what();
+        LOG(kError) << "Exception in RunThread, " << e.what();
       }
     }
   }
@@ -107,7 +107,7 @@ class ThreadsafeChunkStoreTest : public testing::Test {
       return true;
     }
     catch(const std::exception &e) {
-      DLOG(ERROR) << "Cannot post job to pool: " << e.what();
+      LOG(kError) << "Cannot post job to pool: " << e.what();
       return false;
     }
   }

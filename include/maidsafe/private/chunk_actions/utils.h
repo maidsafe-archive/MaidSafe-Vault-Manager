@@ -22,6 +22,7 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_types.h"
@@ -37,9 +38,6 @@ namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
-// Need this helper to avoid #include log.h in this header.
-void PrintToLog(const std::string &message);
-
 template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
 
@@ -53,12 +51,12 @@ template <typename T>
 bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
   try {
     if (!protobuf_type->ParseFromString(serialised_data)) {
-      PrintToLog(std::string("ParseProtobuf - Failed to parse."));
+      LOG(kError) << "ParseProtobuf - Failed to parse.";
       return false;
     }
   }
   catch(const std::exception &e) {
-    PrintToLog(std::string("ParseProtobuf - Failed to parse: ") + e.what());
+    LOG(kError) << "ParseProtobuf - Failed to parse: " << e.what();
     return false;
   }
   return true;

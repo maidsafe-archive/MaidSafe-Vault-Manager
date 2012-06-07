@@ -17,9 +17,9 @@
 
 #include "maidsafe/private/chunk_store/local_chunk_manager.h"
 
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/log.h"
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_types.h"
@@ -49,7 +49,7 @@ LocalChunkManager::LocalChunkManager(
     boost::system::error_code error_code;
     local_version_directory = fs::temp_directory_path(error_code);
     if (error_code) {
-      DLOG(ERROR) << "Failed to get temp directory: " << error_code.message();
+      LOG(kError) << "Failed to get temp directory: " << error_code.message();
       return;
     }
     local_version_directory /= "LocalUserCredentials";
@@ -58,7 +58,7 @@ LocalChunkManager::LocalChunkManager(
   }
 
   if (!file_chunk_store->Init(simulation_directory)) {
-    DLOG(ERROR) << "Failed to initialise file chunk store";
+    LOG(kError) << "Failed to initialise file chunk store";
     return;
   }
 
@@ -85,13 +85,13 @@ void LocalChunkManager::GetChunk(const std::string &name,
   std::string content(
       simulation_chunk_action_authority_->Get(name, "", owner_public_key));
   if (content.empty()) {
-    DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
+    LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
     return;
   }
 
   if (!chunk_store_->Store(name, content)) {
-    DLOG(ERROR) << "Failed to store locally " << Base32Substr(name);
+    LOG(kError) << "Failed to store locally " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
     return;
   }
@@ -109,7 +109,7 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   // TODO(Team): Add check of ID on network
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "No chunk in local chunk store " << Base32Substr(name);
+    LOG(kError) << "No chunk in local chunk store " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }
@@ -117,7 +117,7 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   if (!simulation_chunk_action_authority_->Store(name,
                                                  content,
                                                  owner_public_key)) {
-    DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
+    LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_stored_)(name, kStoreFailure);
     return;
   }
@@ -137,7 +137,7 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   ownership_proof,
                                                   owner_public_key)) {
-    DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
+    LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_deleted_)(name, kDeleteFailure);
     return;
   }
@@ -158,7 +158,7 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
                                                   content,
                                                   owner_public_key,
                                                   &operation_diff)) {
-    DLOG(ERROR) << "CAA failure on network chunkstore " << Base32Substr(name);
+    LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_modified_)(name, kModifyFailure);
     return;
   }

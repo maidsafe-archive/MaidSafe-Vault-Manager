@@ -28,8 +28,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/private/chunk_store/memory_chunk_store.h"
 
 #include "maidsafe/common/utils.h"
+#include "maidsafe/common/log.h"
 
-#include "maidsafe/private/log.h"
 
 namespace maidsafe {
 
@@ -44,7 +44,7 @@ MemoryChunkStore::~MemoryChunkStore() {}
 std::string MemoryChunkStore::Get(const std::string &name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-    DLOG(ERROR) << "Get - Can't get chunk " << Base32Substr(name);
+    LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
     return "";
   }
 
@@ -55,7 +55,7 @@ bool MemoryChunkStore::Get(const std::string &name,
                            const fs::path &sink_file_name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-    DLOG(ERROR) << "Get - Can't get chunk " << Base32Substr(name);
+    LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
     return false;
   }
 
@@ -65,26 +65,26 @@ bool MemoryChunkStore::Get(const std::string &name,
 bool MemoryChunkStore::Store(const std::string &name,
                              const std::string &content) {
   if (name.empty()) {
-    DLOG(ERROR) << "Store - Empty name passed.";
+    LOG(kError) << "Store - Empty name passed.";
     return false;
   }
 
   auto it(chunks_.lower_bound(name));
   if (it != chunks_.end() && (*it).first == name) {
     ++(*it).second.first;
-//     DLOG(INFO) << "Store - Increased count of chunk " << Base32Substr(name)
+//     LOG(kInfo) << "Store - Increased count of chunk " << Base32Substr(name)
 //                << " to " << (*it).second.first;
     return true;
   }
 
   uintmax_t chunk_size(content.size());
   if (chunk_size == 0) {
-    DLOG(ERROR) << "Store - Empty contents passed for " << Base32Substr(name);
+    LOG(kError) << "Store - Empty contents passed for " << Base32Substr(name);
     return false;
   }
 
   if (!Vacant(chunk_size)) {
-    DLOG(ERROR) << "Store - Chunk " << Base32Substr(name) << " has size "
+    LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size "
                 << chunk_size << " > vacant space";
     return false;
   }
@@ -97,7 +97,7 @@ bool MemoryChunkStore::Store(const std::string &name,
   }
   chunks_.insert(it, std::make_pair(name, ChunkEntry(1, content)));
   IncreaseSize(chunk_size);
-//   DLOG(INFO) << "Store - Stored chunk " << Base32Substr(name);
+//   LOG(kInfo) << "Store - Stored chunk " << Base32Substr(name);
   return true;
 }
 
@@ -105,7 +105,7 @@ bool MemoryChunkStore::Store(const std::string &name,
                              const fs::path &source_file_name,
                              bool delete_source_file) {
   if (name.empty()) {
-    DLOG(ERROR) << "Store - Empty name passed.";
+    LOG(kError) << "Store - Empty name passed.";
     return false;
   }
 
@@ -114,31 +114,31 @@ bool MemoryChunkStore::Store(const std::string &name,
   if (it == chunks_.end()) {
     uintmax_t chunk_size(fs::file_size(source_file_name, ec));
     if (ec) {
-      DLOG(ERROR) << "Store - Failed to calculate size for chunk "
+      LOG(kError) << "Store - Failed to calculate size for chunk "
                   << Base32Substr(name) << ": " << ec.message();
       return false;
     }
 
     if (chunk_size == 0) {
-      DLOG(ERROR) << "Store - Chunk " << Base32Substr(name) << " has size 0";
+      LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size 0";
       return false;
     }
 
     if (!Vacant(chunk_size)) {
-      DLOG(ERROR) << "Store - Chunk " << Base32Substr(name) << " has size "
+      LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size "
                   << chunk_size << " > vacant space.";
       return false;
     }
 
     std::string content;
     if (!ReadFile(source_file_name, &content)) {
-      DLOG(ERROR) << "Store - Failed to read file for chunk "
+      LOG(kError) << "Store - Failed to read file for chunk "
                   << Base32Substr(name);
       return false;
     }
 
     if (content.size() != chunk_size) {
-      DLOG(ERROR) << "Store - File content size " << content.size()
+      LOG(kError) << "Store - File content size " << content.size()
                   << " != chunk_size " << chunk_size << " for chunk "
                   << Base32Substr(name);
       return false;
@@ -146,10 +146,10 @@ bool MemoryChunkStore::Store(const std::string &name,
 
     chunks_[name] = ChunkEntry(1, content);
     IncreaseSize(chunk_size);
-//     DLOG(INFO) << "Store - Stored chunk " << Base32Substr(name);
+//     LOG(kInfo) << "Store - Stored chunk " << Base32Substr(name);
   } else {
     ++(*it).second.first;
-//     DLOG(INFO) << "Store - Increased count of chunk " << Base32Substr(name)
+//     LOG(kInfo) << "Store - Increased count of chunk " << Base32Substr(name)
 //                << " to " << (*it).second.first;
   }
 
@@ -161,13 +161,13 @@ bool MemoryChunkStore::Store(const std::string &name,
 
 bool MemoryChunkStore::Delete(const std::string &name) {
   if (name.empty()) {
-    DLOG(ERROR) << "Delete - Empty name passed.";
+    LOG(kError) << "Delete - Empty name passed.";
     return false;
   }
 
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-//     DLOG(INFO) << "Delete - Chunk " << Base32Substr(name)
+//     LOG(kInfo) << "Delete - Chunk " << Base32Substr(name)
 //                << " already deleted";
     return true;
   }
@@ -175,9 +175,9 @@ bool MemoryChunkStore::Delete(const std::string &name) {
   if (--(*it).second.first == 0) {
     DecreaseSize((*it).second.second.size());
     chunks_.erase(it);
-//     DLOG(INFO) << "Delete - Deleted chunk " << Base32Substr(name);
+//     LOG(kInfo) << "Delete - Deleted chunk " << Base32Substr(name);
 //   } else {
-//     DLOG(INFO) << "Delete - Decreased count of chunk " << Base32Substr(name)
+//     LOG(kInfo) << "Delete - Decreased count of chunk " << Base32Substr(name)
 //                << " to " << (*it).second.first << " via deletion";
   }
 
@@ -187,7 +187,7 @@ bool MemoryChunkStore::Delete(const std::string &name) {
 bool MemoryChunkStore::Modify(const std::string &name,
                               const std::string &content) {
   if (name.empty()) {
-    DLOG(ERROR) << "Modify - Empty name passed.";
+    LOG(kError) << "Modify - Empty name passed.";
     return false;
   }
 
@@ -203,7 +203,7 @@ bool MemoryChunkStore::Modify(const std::string &name,
                               content.size(),
                               &increase_size,
                               &content_size_difference)) {
-    DLOG(ERROR) << "Size differential unacceptable - increase_size: "
+    LOG(kError) << "Size differential unacceptable - increase_size: "
                 << increase_size << ", name: " << Base32Substr(name);
     return false;
   }
@@ -218,19 +218,19 @@ bool MemoryChunkStore::Modify(const std::string &name,
                               const fs::path &source_file_name,
                               bool delete_source_file) {
   if (source_file_name.empty()) {
-    DLOG(ERROR) << "source_file_name empty: " << Base32Substr(name);
+    LOG(kError) << "source_file_name empty: " << Base32Substr(name);
     return false;
   }
 
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    DLOG(ERROR) << "Error reading file: " << Base32Substr(name)
+    LOG(kError) << "Error reading file: " << Base32Substr(name)
                 << ", path: " << source_file_name;
     return false;
   }
 
   if (!Modify(name, content)) {
-    DLOG(ERROR) << "Failed to modify: " << Base32Substr(name);
+    LOG(kError) << "Failed to modify: " << Base32Substr(name);
     return false;
   }
 
@@ -242,7 +242,7 @@ bool MemoryChunkStore::Modify(const std::string &name,
 
 bool MemoryChunkStore::Has(const std::string &name) const {
   bool found(chunks_.find(name) != chunks_.end());
-//   DLOG(INFO) << (found ? "Have chunk " : "Do not have chunk ")
+//   LOG(kInfo) << (found ? "Have chunk " : "Do not have chunk ")
 //              << Base32Substr(name);
   return found;
 }
@@ -250,18 +250,18 @@ bool MemoryChunkStore::Has(const std::string &name) const {
 bool MemoryChunkStore::MoveTo(const std::string &name,
                               ChunkStore *sink_chunk_store) {
   if (!sink_chunk_store) {
-    DLOG(ERROR) << "MoveTo - NULL sink passed for chunk " << Base32Substr(name);
+    LOG(kError) << "MoveTo - NULL sink passed for chunk " << Base32Substr(name);
     return false;
   }
 
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-    DLOG(WARNING) << "MoveTo - Failed to find chunk " << Base32Substr(name);
+    LOG(kWarning) << "MoveTo - Failed to find chunk " << Base32Substr(name);
     return false;
   }
 
   if (!sink_chunk_store->Store(name, (*it).second.second)) {
-    DLOG(ERROR) << "MoveTo - Failed to store chunk " << Base32Substr(name)
+    LOG(kError) << "MoveTo - Failed to store chunk " << Base32Substr(name)
                 << " in sink";
     return false;
   }
@@ -269,9 +269,9 @@ bool MemoryChunkStore::MoveTo(const std::string &name,
   if (--(*it).second.first == 0) {
     DecreaseSize((*it).second.second.size());
     chunks_.erase(it);
-    DLOG(INFO) << "MoveTo - Moved chunk " << Base32Substr(name);
+    LOG(kInfo) << "MoveTo - Moved chunk " << Base32Substr(name);
   } else {
-    DLOG(INFO) << "MoveTo - Decreased count of chunk " << Base32Substr(name)
+    LOG(kInfo) << "MoveTo - Decreased count of chunk " << Base32Substr(name)
                << " to " << (*it).second.first << " via move";
   }
 
@@ -281,7 +281,7 @@ bool MemoryChunkStore::MoveTo(const std::string &name,
 uintmax_t MemoryChunkStore::Size(const std::string &name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-    DLOG(ERROR) << "Chunk not found: " << Base32Substr(name);
+    LOG(kError) << "Chunk not found: " << Base32Substr(name);
     return 0;
   }
 
@@ -291,7 +291,7 @@ uintmax_t MemoryChunkStore::Size(const std::string &name) const {
 uintmax_t MemoryChunkStore::Count(const std::string &name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
-    DLOG(ERROR) << "Chunk not found: " << Base32Substr(name);
+    LOG(kError) << "Chunk not found: " << Base32Substr(name);
     return 0;
   }
 

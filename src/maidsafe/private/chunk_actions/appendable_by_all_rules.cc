@@ -16,10 +16,10 @@
 
 #include "maidsafe/private/chunk_actions/appendable_by_all_rules.h"
 
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/log.h"
 
 #include "maidsafe/private/chunk_actions/appendable_by_all_pb.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
@@ -50,7 +50,7 @@ bool IsValidChunk<kAppendableByAll>(
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
   std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
+    LOG(kError) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
   }
   return true;
@@ -75,13 +75,13 @@ int ProcessGet<kAppendableByAll>(
   existing_content->clear();
   std::string all_existing_content(chunk_store->Get(name));
   if (all_existing_content.empty()) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name);
+    LOG(kError) << "Failed to get " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 
   AppendableByAll existing_chunk;
   if (!ParseProtobuf<AppendableByAll>(all_existing_content, &existing_chunk)) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name)
+    LOG(kError) << "Failed to get " << Base32Substr(name)
                 << ": existing data doesn't parse as AppendableByAll";
     return kGeneralError;
   }
@@ -97,13 +97,13 @@ int ProcessGet<kAppendableByAll>(
     std::string with_empty_appendices;
     BOOST_VERIFY(existing_chunk.SerializeToString(&with_empty_appendices));
     if (!chunk_store->Modify(name, with_empty_appendices)) {
-      DLOG(ERROR) << "Failed to modify chunk: " << Base32Substr(name);
+      LOG(kError) << "Failed to modify chunk: " << Base32Substr(name);
       return kModifyFailure;
     }
   } else {
     // Not owner - return only first value
     if (!existing_chunk.identity_key().SerializeToString(existing_content)) {
-      DLOG(ERROR) << "Failed to serialise: " << Base32Substr(name);
+      LOG(kError) << "Failed to serialise: " << Base32Substr(name);
       return kGeneralError;
     }
   }
@@ -118,20 +118,20 @@ int ProcessStore<kAppendableByAll>(
     const asymm::PublicKey &public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to store " << Base32Substr(name)
+    LOG(kWarning) << "Failed to store " << Base32Substr(name)
                   << ": chunk already exists";
     return kKeyNotUnique;
   }
 
   AppendableByAll chunk;
   if (!ParseProtobuf<AppendableByAll>(content, &chunk)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+    LOG(kError) << "Failed to store " << Base32Substr(name)
                 << ": data doesn't parse as AppendableByAll";
     return kInvalidSignedData;
   }
 
   if (!asymm::ValidateKey(public_key)) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+    LOG(kError) << "Failed to store " << Base32Substr(name)
                 << ": invalid public key";
     return kInvalidPublicKey;
   }
@@ -139,7 +139,7 @@ int ProcessStore<kAppendableByAll>(
   if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
                             chunk.allow_others_to_append().signature(),
                             public_key) != kSuccess) {
-    DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+    LOG(kError) << "Failed to store " << Base32Substr(name)
                 << ": signature verification failed";
     return kSignatureVerificationFailure;
   }
@@ -155,19 +155,19 @@ int ProcessDelete<kAppendableByAll>(
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
-    DLOG(INFO) << Base32Substr(name) << " already deleted";
+    LOG(kInfo) << Base32Substr(name) << " already deleted";
     return kSuccess;
   }
 
   AppendableByAll existing_chunk;
   if (!ParseProtobuf<AppendableByAll>(existing_content, &existing_chunk)) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+    LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kGeneralError;
   }
 
   if (!asymm::ValidateKey(public_key)) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+    LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": invalid public key";
     return kInvalidPublicKey;
   }
@@ -175,20 +175,20 @@ int ProcessDelete<kAppendableByAll>(
   if (asymm::CheckSignature(existing_chunk.allow_others_to_append().data(),
                             existing_chunk.allow_others_to_append().signature(),
                             public_key) != kSuccess) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+    LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": signature verification failed";
     return kSignatureVerificationFailure;
   }
 
   SignedData deletion_token;
   if (!ParseProtobuf<SignedData>(ownership_proof, &deletion_token)) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+    LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": deletion_token doesn't parse - not owner";
     return kNotOwner;
   }
   if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
                             public_key) != kSuccess) {
-    DLOG(ERROR) << "Failed to delete " << Base32Substr(name)
+    LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": signature verification failed - not owner";
     return kNotOwner;
   }
@@ -207,19 +207,19 @@ int ProcessModify<kAppendableByAll>(
   new_content->clear();
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
-    DLOG(ERROR) << Base32Substr(name) << " doesn't exist";
+    LOG(kError) << Base32Substr(name) << " doesn't exist";
     return kFailedToFindChunk;
   }
 
   AppendableByAll existing_chunk;
   if (!ParseProtobuf<AppendableByAll>(existing_content, &existing_chunk)) {
-    DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+    LOG(kError) << "Failed to modify " << Base32Substr(name)
                 << ": existing data doesn't parse as AppendableByAll";
     return kGeneralError;
   }
 
   if (!asymm::ValidateKey(public_key)) {
-    DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+    LOG(kError) << "Failed to modify " << Base32Substr(name)
                 << ": invalid public key";
     return kInvalidPublicKey;
   }
@@ -232,7 +232,7 @@ int ProcessModify<kAppendableByAll>(
   if (is_owner) {
     ModifyAppendableByAll chunk;
     if (!ParseProtobuf<ModifyAppendableByAll>(content, &chunk)) {
-      DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+      LOG(kError) << "Failed to modify " << Base32Substr(name)
                   << ": data doesn't parse as ModifyAppendableByAll";
       return kParseFailure;
     }
@@ -243,12 +243,12 @@ int ProcessModify<kAppendableByAll>(
     // One and only one new_data of identity_key and allow_others_to_append
     // shall be provided via content
     if ((!has_allow_others_to_append) && (!has_identity_key)) {
-      DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+      LOG(kError) << "Failed to modify " << Base32Substr(name)
                   << ": no new_control_content provided";
       return kInvalidModify;
     }
     if ((has_allow_others_to_append) && (has_identity_key)) {
-      DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+      LOG(kError) << "Failed to modify " << Base32Substr(name)
                   << ": too much new_control_content provided";
       return kInvalidModify;
     }
@@ -257,7 +257,7 @@ int ProcessModify<kAppendableByAll>(
       if (asymm::CheckSignature(chunk.allow_others_to_append().data(),
                                 chunk.allow_others_to_append().signature(),
                                 public_key) != kSuccess) {
-        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+        LOG(kError) << "Failed to modify " << Base32Substr(name)
                     << ": signature verification failed";
         return kSignatureVerificationFailure;
       }
@@ -279,7 +279,7 @@ int ProcessModify<kAppendableByAll>(
       if (asymm::CheckSignature(chunk.identity_key().data(),
                                 chunk.identity_key().signature(),
                                 public_key) != kSuccess) {
-        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+        LOG(kError) << "Failed to modify " << Base32Substr(name)
                     << ": signature verification failed";
         return kSignatureVerificationFailure;
       }
@@ -293,7 +293,7 @@ int ProcessModify<kAppendableByAll>(
     if (appendability == kAppendableByAll) {
       SignedData appendix;
       if (!ParseProtobuf<SignedData>(content, &appendix)) {
-        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+        LOG(kError) << "Failed to modify " << Base32Substr(name)
                     << ": data doesn't parse as SignedData";
         return kInvalidSignedData;
       }
@@ -301,7 +301,7 @@ int ProcessModify<kAppendableByAll>(
       if (asymm::CheckSignature(appendix.data(),
                                 appendix.signature(),
                                 public_key) != kSuccess) {
-        DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+        LOG(kError) << "Failed to modify " << Base32Substr(name)
                     << ": signature verification failed";
         return kSignatureVerificationFailure;
       }
@@ -309,7 +309,7 @@ int ProcessModify<kAppendableByAll>(
       existing_chunk.add_appendices()->CopyFrom(appendix);
       BOOST_VERIFY(existing_chunk.SerializeToString(new_content));
     } else {
-      DLOG(INFO) << "Failed to modify " << Base32Substr(name)
+      LOG(kInfo) << "Failed to modify " << Base32Substr(name)
                  << ": appending disallowed by owner";
       return kAppendDisallowed;
     }
@@ -327,7 +327,7 @@ int ProcessHas<kAppendableByAll>(
     const asymm::PublicKey &/*public_key*/,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+    LOG(kWarning) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 

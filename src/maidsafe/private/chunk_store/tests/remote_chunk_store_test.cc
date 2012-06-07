@@ -34,7 +34,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gmock/gmock.h"
 
 #include "maidsafe/common/test.h"
-#include "maidsafe/private/log.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"
@@ -94,12 +94,12 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(EqualChunks(chunk_content,
                             chunk_store->Get(chunk_name, data_)));
-    DLOG(INFO) << "DoGet - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoGet - " << Base32Substr(chunk_name)
                 << " - before lock, parallel_tasks_ = " << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoGet - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoGet - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -113,7 +113,7 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(chunk_store->Store(chunk_name, chunk_content,
                                    store_success_callback_, data_));
-    DLOG(INFO) << "DoStore - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoStore - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     {
@@ -121,7 +121,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(INFO) << "DoStore - " << Base32Substr(chunk_name)
+      LOG(kInfo) << "DoStore - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -138,7 +138,7 @@ class RemoteChunkStoreTest: public testing::Test {
     EXPECT_EQ(expected_result, chunk_store->Delete(chunk_name,
                                                    delete_success_callback_,
                                                    data_));
-    DLOG(INFO) << "DoDelete - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoDelete - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     {
@@ -146,7 +146,7 @@ class RemoteChunkStoreTest: public testing::Test {
       --parallel_tasks_;
       ++task_number_;
       cond_var_.notify_all();
-      DLOG(INFO) << "DoDelete - " << Base32Substr(chunk_name)
+      LOG(kInfo) << "DoDelete - " << Base32Substr(chunk_name)
                   << " - end, parallel_tasks_ = " << parallel_tasks_;
     }
   }
@@ -162,14 +162,14 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     EXPECT_TRUE(chunk_store->Modify(chunk_name, chunk_content,
                                          modify_success_callback_, data_));
-        DLOG(INFO) << "DoModify - " << Base32Substr(chunk_name)
+        LOG(kInfo) << "DoModify - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     ++task_number_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoModify - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoModify - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
@@ -178,13 +178,13 @@ class RemoteChunkStoreTest: public testing::Test {
       const std::string &chunk_name) {
     if (chunk_store->Delete(chunk_name, delete_failed_callback_, data_))
       ++num_successes_;
-    DLOG(INFO) << "DoDeleteWithoutTest - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoDeleteWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoDeleteWithoutTest - end, parallel_tasks_ = "
+    LOG(kInfo) << "DoDeleteWithoutTest - end, parallel_tasks_ = "
                << parallel_tasks_;
   }
 
@@ -199,20 +199,20 @@ class RemoteChunkStoreTest: public testing::Test {
     }
     chunk_store->Modify(chunk_name, chunk_content,
                                          empty_callback_, data_);
-        DLOG(INFO) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
+        LOG(kInfo) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
                << " - before lock, parallel_tasks_ = "
                << parallel_tasks_;
     boost::mutex::scoped_lock lock(mutex_);
     --parallel_tasks_;
     ++task_number_;
     cond_var_.notify_all();
-    DLOG(INFO) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
+    LOG(kInfo) << "DoModifyWithoutTest - " << Base32Substr(chunk_name)
                 << " - end, parallel_tasks_ = " << parallel_tasks_;
   }
 
   void StoreSuccessfulCallback(bool success) {
     EXPECT_TRUE(success);
-    DLOG(INFO) << "StoreSuccessfulCallback reached";
+    LOG(kInfo) << "StoreSuccessfulCallback reached";
   }
 
   void StoreFailedCallback(bool success) {
@@ -237,9 +237,9 @@ class RemoteChunkStoreTest: public testing::Test {
   void EmptyCallback(bool /*success*/) {}
 
   void PrintPendingOps(size_t num_pending_ops) {
-    DLOG(INFO) << "Number of pending ops according to signal: "
+    LOG(kInfo) << "Number of pending ops according to signal: "
                << num_pending_ops;
-    DLOG(INFO) << "Number of pending ops according to getter: "
+    LOG(kInfo) << "Number of pending ops according to getter: "
                << chunk_store_->NumPendingOps();
   }
 
@@ -352,8 +352,8 @@ class RemoteChunkStoreTest: public testing::Test {
           chunk.SerializeToString(chunk_contents);
         }
       default:
-        LOG(ERROR) << "GenerateChunk - Unsupported type "
-                   << static_cast<int>(chunk_type);
+        LOG(kError) << "GenerateChunk - Unsupported type "
+                    << static_cast<int>(chunk_type);
     }
   }
 
@@ -538,8 +538,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      thread_group_.create_thread([=] {
           DoGet(chunk_store_, it->first, it->second.first, 0);
       });
     }
@@ -559,8 +559,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
     for (int i(0); i < kNumConcurrentGets; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
-      thread_group_.create_thread([&] {
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      thread_group_.create_thread([=] {
           DoGet(chunk_store_, it->first, it->second.second, 0);
       });
     }
@@ -588,7 +588,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoDelete, this, chunk_store_, name,
           true, task_number_));
@@ -618,7 +618,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesAndModifies) {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoModifyWithoutTest, this, chunk_store_, name,
           new_content, 0));
@@ -626,7 +626,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesAndModifies) {
     }
     for (int i(0); i < 10; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoDelete, this, chunk_store_, name,
           true, 0));
@@ -683,7 +683,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
     boost::mutex::scoped_lock lock(mutex_);
     for (int i(0); i < kNumModifies; ++i) {
       ++parallel_tasks_;
-      DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+      LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
       asio_service_.service().post(std::bind(
           &RemoteChunkStoreTest::DoModify, this, chunk_store_, name,
           *(new_content_vector.at(i)), 0));
@@ -833,7 +833,7 @@ TEST_F(RemoteChunkStoreTest, BEH_GetTimeout) {
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 10; ++i) {
     ++parallel_tasks_;
-    DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+    LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
     asio_service_.service().post(std::bind(
       &RemoteChunkStore::Get, mock_manager_chunk_store_, name, data_));
   }
@@ -861,7 +861,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
           &MockChunkManager::Timeout, mock_chunk_manager_.get()))));
   for (int i(0); i < 5; ++i) {
     ++parallel_tasks_;
-    DLOG(INFO) << "Before Posting: Parallel tasks: " << parallel_tasks_;
+    LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;
     asio_service_.service().post(std::bind(
         &RemoteChunkStoreTest::DoDeleteWithoutTest, this,
         mock_manager_chunk_store_, name));

@@ -27,9 +27,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/chunk_store/buffered_chunk_store.h"
 
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/log.h"
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 #include "maidsafe/private/chunk_store/memory_chunk_store.h"
 #include "maidsafe/private/chunk_store/threadsafe_chunk_store.h"
@@ -66,7 +66,7 @@ BufferedChunkStore::~BufferedChunkStore() {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty() || asio_service_.stopped();
       })) {
-    DLOG(ERROR) << "~BufferedChunkStore - Timed out.";
+    LOG(kError) << "~BufferedChunkStore - Timed out.";
   }
 }
 
@@ -75,7 +75,7 @@ bool BufferedChunkStore::Init(const fs::path &storage_location,
                               unsigned int dir_depth) {
   if (!reinterpret_cast<FileChunkStore*>(
         internal_perm_chunk_store_.get())->Init(storage_location, dir_depth)) {
-    DLOG(ERROR) << "Failed to initialise internal permanent chunk store.";
+    LOG(kError) << "Failed to initialise internal permanent chunk store.";
     return false;
   }
 
@@ -88,7 +88,7 @@ bool BufferedChunkStore::Init(const fs::path &storage_location,
 
 std::string BufferedChunkStore::Get(const std::string &name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "Get - Empty name passed.";
+    LOG(kError) << "Get - Empty name passed.";
     return "";
   }
 
@@ -113,7 +113,7 @@ std::string BufferedChunkStore::Get(const std::string &name) const {
 bool BufferedChunkStore::Get(const std::string &name,
                              const fs::path &sink_file_name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "Get - Empty name passed.";
+    LOG(kError) << "Get - Empty name passed.";
     return false;
   }
 
@@ -138,12 +138,12 @@ bool BufferedChunkStore::Get(const std::string &name,
 bool BufferedChunkStore::Store(const std::string &name,
                                const std::string &content) {
   if (name.empty()) {
-    DLOG(ERROR) << "Store - Empty name passed.";
+    LOG(kError) << "Store - Empty name passed.";
     return false;
   }
 
   if (!DoCacheStore(name, content)) {
-    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
+    LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
   }
 
@@ -151,7 +151,7 @@ bool BufferedChunkStore::Store(const std::string &name,
     // AddCachedChunksEntry(name);
     boost::lock_guard<boost::mutex> lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
-    DLOG(ERROR) << "Failed to make chunk permanent: " << Base32Substr(name);
+    LOG(kError) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
   }
 
@@ -162,7 +162,7 @@ bool BufferedChunkStore::Store(const std::string &name,
                                const fs::path &source_file_name,
                                bool delete_source_file) {
   if (name.empty()) {
-    DLOG(ERROR) << "Store - Empty name passed.";
+    LOG(kError) << "Store - Empty name passed.";
     return false;
   }
 
@@ -170,7 +170,7 @@ bool BufferedChunkStore::Store(const std::string &name,
   uintmax_t size(fs::file_size(source_file_name, ec));
 
   if (!DoCacheStore(name, size, source_file_name, false)) {
-    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
+    LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
   }
 
@@ -178,7 +178,7 @@ bool BufferedChunkStore::Store(const std::string &name,
     // AddCachedChunksEntry(name);
     boost::lock_guard<boost::mutex> lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
-    DLOG(ERROR) << "Failed to make chunk permanent: " << Base32Substr(name);
+    LOG(kError) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
   }
 
@@ -191,12 +191,12 @@ bool BufferedChunkStore::Store(const std::string &name,
 bool BufferedChunkStore::CacheStore(const std::string &name,
                                     const std::string &content) {
   if (name.empty()) {
-    DLOG(ERROR) << "CacheStore - Empty name passed.";
+    LOG(kError) << "CacheStore - Empty name passed.";
     return false;
   }
 
   if (!DoCacheStore(name, content)) {
-    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
+    LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
   }
 
@@ -208,7 +208,7 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
                                     const fs::path &source_file_name,
                                     bool delete_source_file) {
   if (name.empty()) {
-    DLOG(ERROR) << "CacheStore - Empty name passed.";
+    LOG(kError) << "CacheStore - Empty name passed.";
     return false;
   }
 
@@ -216,7 +216,7 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
   uintmax_t size(fs::file_size(source_file_name, ec));
 
   if (!DoCacheStore(name, size, source_file_name, false)) {
-    DLOG(ERROR) << "Failed to cache: " << Base32Substr(name);
+    LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
   }
 
@@ -229,7 +229,7 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
 
 bool BufferedChunkStore::PermanentStore(const std::string &name) {
   if (name.empty()) {
-    DLOG(ERROR) << "PermanentStore - Empty name passed.";
+    LOG(kError) << "PermanentStore - Empty name passed.";
     return false;
   }
 
@@ -245,14 +245,14 @@ bool BufferedChunkStore::PermanentStore(const std::string &name) {
     if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
-      DLOG(ERROR) << "PermanentStore - Timed out storing " << Base32Substr(name)
+      LOG(kError) << "PermanentStore - Timed out storing " << Base32Substr(name)
                   << " while waiting for pending transfers.";
       return false;
     }
     if (perm_chunk_store_->Has(name))
       return true;
     if (content.empty() || !perm_chunk_store_->Store(name, content)) {
-      DLOG(ERROR) << "PermanentStore - Could not transfer "
+      LOG(kError) << "PermanentStore - Could not transfer "
                   << Base32Substr(name);
       return false;
     }
@@ -264,7 +264,7 @@ bool BufferedChunkStore::PermanentStore(const std::string &name) {
 
 bool BufferedChunkStore::Delete(const std::string &name) {
   if (name.empty()) {
-    DLOG(ERROR) << "Delete - Empty name passed.";
+    LOG(kError) << "Delete - Empty name passed.";
     return false;
   }
 
@@ -274,7 +274,7 @@ bool BufferedChunkStore::Delete(const std::string &name) {
     if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
-      DLOG(ERROR) << "Delete - Timed out deleting " << Base32Substr(name)
+      LOG(kError) << "Delete - Timed out deleting " << Base32Substr(name)
                   << " while waiting for pending transfers.";
       return false;
     }
@@ -283,7 +283,7 @@ bool BufferedChunkStore::Delete(const std::string &name) {
   }
 
   if (!file_delete_result)
-    DLOG(ERROR) << "Delete - Could not delete " << Base32Substr(name);
+    LOG(kError) << "Delete - Could not delete " << Base32Substr(name);
 
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
   auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
@@ -297,7 +297,7 @@ bool BufferedChunkStore::Delete(const std::string &name) {
 bool BufferedChunkStore::Modify(const std::string &name,
                                 const std::string &content) {
   if (name.empty()) {
-    DLOG(ERROR) << "Modify - Empty name passed.";
+    LOG(kError) << "Modify - Empty name passed.";
     return false;
   }
 
@@ -307,7 +307,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
-    DLOG(ERROR) << "Modify - Timed out modifying " << Base32Substr(name)
+    LOG(kError) << "Modify - Timed out modifying " << Base32Substr(name)
                 << " while waiting for pending transfers.";
     return false;
   }
@@ -323,7 +323,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
         // Wait For Space in Perm Store
         while (perm_size_ + content_size_difference > perm_capacity_) {
           if (removable_chunks_.empty()) {
-            DLOG(ERROR) << "Modify - Can't make space for changes to "
+            LOG(kError) << "Modify - Can't make space for changes to "
                         << Base32Substr(name);
             return false;
           }
@@ -351,7 +351,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
       }
       return true;
     } else {
-      DLOG(ERROR) << "Modify - Couldn't modify " << Base32Substr(name);
+      LOG(kError) << "Modify - Couldn't modify " << Base32Substr(name);
       return false;
     }
   } else {
@@ -359,7 +359,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
     {
       boost::mutex::scoped_lock lock(cache_mutex_);
       if (!cache_chunk_store_->Has(name)) {
-        DLOG(ERROR) << "Modify - Don't have chunk " << Base32Substr(name);
+        LOG(kError) << "Modify - Don't have chunk " << Base32Substr(name);
         return false;
       }
 
@@ -372,7 +372,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
           if (cached_chunks_.empty()) {
             lock.unlock();
             if (pending_xfers_.empty()) {
-              DLOG(ERROR) << "Modify - Can't make space for changes to "
+              LOG(kError) << "Modify - Can't make space for changes to "
                           << Base32Substr(name);
               return false;
             }
@@ -381,7 +381,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
             if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
                   return pending_xfers_.empty() || (--limit) == 0;
                 })) {
-              DLOG(ERROR) << "Modify - Timed out modifying "
+              LOG(kError) << "Modify - Timed out modifying "
                           << Base32Substr(name)
                           << " while waiting for pending transfers.";
               return false;
@@ -401,7 +401,7 @@ bool BufferedChunkStore::Modify(const std::string &name,
                                 const fs::path &source_file_name,
                                 bool delete_source_file) {
   if (source_file_name.empty()) {
-    DLOG(ERROR) << "Modify - No source file passed for " << Base32Substr(name);
+    LOG(kError) << "Modify - No source file passed for " << Base32Substr(name);
     return false;
   }
 
@@ -409,13 +409,13 @@ bool BufferedChunkStore::Modify(const std::string &name,
 
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    DLOG(ERROR) << "Modify - Couldn't read source file for "
+    LOG(kError) << "Modify - Couldn't read source file for "
                 << Base32Substr(name);
     return false;
   }
 
   if (!Modify(name, content)) {
-    DLOG(ERROR) << "Modify - Couldn't modify " << Base32Substr(name);
+    LOG(kError) << "Modify - Couldn't modify " << Base32Substr(name);
     return false;
   }
 
@@ -432,7 +432,7 @@ bool BufferedChunkStore::Has(const std::string &name) const {
 bool BufferedChunkStore::MoveTo(const std::string &name,
                                 ChunkStore *sink_chunk_store) {
   if (name.empty()) {
-    DLOG(ERROR) << "MoveTo - Empty name passed.";
+    LOG(kError) << "MoveTo - Empty name passed.";
     return false;
   }
 
@@ -442,7 +442,7 @@ bool BufferedChunkStore::MoveTo(const std::string &name,
     if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
-      DLOG(ERROR) << "MoveTo - Timed out moving " << Base32Substr(name)
+      LOG(kError) << "MoveTo - Timed out moving " << Base32Substr(name)
                   << " while waiting for pending transfers.";
       return false;
     }
@@ -451,7 +451,7 @@ bool BufferedChunkStore::MoveTo(const std::string &name,
   }
 
   if (!chunk_moved) {
-    DLOG(ERROR) << "MoveTo - Could not move " << Base32Substr(name);
+    LOG(kError) << "MoveTo - Could not move " << Base32Substr(name);
     return false;
   }
 
@@ -466,7 +466,7 @@ bool BufferedChunkStore::MoveTo(const std::string &name,
 
 bool BufferedChunkStore::CacheHas(const std::string &name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "CacheHas - Empty name passed.";
+    LOG(kError) << "CacheHas - Empty name passed.";
     return false;
   }
 
@@ -476,7 +476,7 @@ bool BufferedChunkStore::CacheHas(const std::string &name) const {
 
 bool BufferedChunkStore::PermanentHas(const std::string &name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "PermanentHas - Empty name passed.";
+    LOG(kError) << "PermanentHas - Empty name passed.";
     return false;
   }
 
@@ -484,7 +484,7 @@ bool BufferedChunkStore::PermanentHas(const std::string &name) const {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
-    DLOG(ERROR) << "PermanentHas - Timed out for " << Base32Substr(name)
+    LOG(kError) << "PermanentHas - Timed out for " << Base32Substr(name)
                 << " while waiting for pending transfers.";
     return false;
   }
@@ -497,7 +497,7 @@ bool BufferedChunkStore::PermanentHas(const std::string &name) const {
 
 uintmax_t BufferedChunkStore::Size(const std::string &name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "Size - Empty name passed.";
+    LOG(kError) << "Size - Empty name passed.";
     return 0;
   }
 
@@ -534,7 +534,7 @@ void BufferedChunkStore::SetCapacity(const uintmax_t &capacity) {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
-    DLOG(ERROR) << "SetCapacity - Timed out waiting for pending transfers.";
+    LOG(kError) << "SetCapacity - Timed out waiting for pending transfers.";
     return;
   }
   perm_chunk_store_->SetCapacity(capacity);
@@ -559,7 +559,7 @@ bool BufferedChunkStore::CacheVacant(
 
 uintmax_t BufferedChunkStore::Count(const std::string &name) const {
   if (name.empty()) {
-    DLOG(ERROR) << "Count - Empty name passed.";
+    LOG(kError) << "Count - Empty name passed.";
     return 0;
   }
 
@@ -567,7 +567,7 @@ uintmax_t BufferedChunkStore::Count(const std::string &name) const {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
-    DLOG(ERROR) << "Count - Timed out for " << Base32Substr(name)
+    LOG(kError) << "Count - Timed out for " << Base32Substr(name)
                 << " while waiting for pending transfers.";
     return false;
   }
@@ -579,7 +579,7 @@ uintmax_t BufferedChunkStore::Count() const {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
-    DLOG(ERROR) << "Count - Timed out waiting for pending transfers.";
+    LOG(kError) << "Count - Timed out waiting for pending transfers.";
     return false;
   }
   return perm_chunk_store_->Count();
@@ -604,7 +604,7 @@ void BufferedChunkStore::Clear() {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
-    DLOG(ERROR) << "Clear - Timed out waiting for pending transfers.";
+    LOG(kError) << "Clear - Timed out waiting for pending transfers.";
     return;
   }
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
@@ -621,7 +621,7 @@ void BufferedChunkStore::CacheClear() {
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
-    DLOG(ERROR) << "CacheClear - Timed out waiting for pending transfers.";
+    LOG(kError) << "CacheClear - Timed out waiting for pending transfers.";
     return;
   }
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
@@ -656,7 +656,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
   // Check whether cache has capacity to store chunk
   if (content.size() > cache_chunk_store_->Capacity() &&
       cache_chunk_store_->Capacity() > 0) {
-    DLOG(ERROR) << "DoCacheStore - Chunk " << Base32Substr(name) << " too big ("
+    LOG(kError) << "DoCacheStore - Chunk " << Base32Substr(name) << " too big ("
                 << BytesToBinarySiUnits(content.size()) << " vs. "
                 << BytesToBinarySiUnits(cache_chunk_store_->Capacity()) << ").";
     return false;
@@ -669,7 +669,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
       {
         boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
         if (pending_xfers_.empty()) {
-          DLOG(ERROR) << "DoCacheStore - Can't make space for "
+          LOG(kError) << "DoCacheStore - Can't make space for "
                       << Base32Substr(name);
           return false;
         }
@@ -677,7 +677,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
         if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
               return pending_xfers_.empty() || (--limit) == 0;
             })) {
-          DLOG(ERROR) << "DoCacheStore - Timed out for " << Base32Substr(name)
+          LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";
           return false;
         }
@@ -702,7 +702,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
   // Check whether cache has capacity to store chunk
   if (size > cache_chunk_store_->Capacity() &&
       cache_chunk_store_->Capacity() > 0) {
-    DLOG(ERROR) << "DoCacheStore - Chunk " << Base32Substr(name) << " too big ("
+    LOG(kError) << "DoCacheStore - Chunk " << Base32Substr(name) << " too big ("
                 << BytesToBinarySiUnits(size) << " vs. "
                 << BytesToBinarySiUnits(cache_chunk_store_->Capacity()) << ").";
     return false;
@@ -715,7 +715,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
       {
         boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
         if (pending_xfers_.empty()) {
-          DLOG(ERROR) << "DoCacheStore - Can't make space for "
+          LOG(kError) << "DoCacheStore - Can't make space for "
                       << Base32Substr(name);
           return false;
         }
@@ -723,7 +723,7 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
         if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
               return pending_xfers_.empty() || (--limit) == 0;
             })) {
-          DLOG(ERROR) << "DoCacheStore - Timed out for " << Base32Substr(name)
+          LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";
           return false;
         }
@@ -741,7 +741,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
                                             const uintmax_t &size) {
   boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
   if (!initialised_) {
-    DLOG(ERROR) << "MakeChunkPermanent - Can't make " << Base32Substr(name)
+    LOG(kError) << "MakeChunkPermanent - Can't make " << Base32Substr(name)
                 << " permanent, not initialised.";
     return false;
   }
@@ -751,7 +751,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
   // Check whether permanent store has capacity to store chunk
   if (perm_capacity_ > 0) {
     if (size > perm_capacity_) {
-      DLOG(ERROR) << "MakeChunkPermanent - Chunk " << Base32Substr(name)
+      LOG(kError) << "MakeChunkPermanent - Chunk " << Base32Substr(name)
                   << " too big (" << BytesToBinarySiUnits(size) << " vs. "
                   << BytesToBinarySiUnits(perm_capacity_) << ").";
       return false;
@@ -762,7 +762,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
       if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
             return pending_xfers_.empty();
           })) {
-        DLOG(ERROR) << "MakeChunkPermanent - Timed out for "
+        LOG(kError) << "MakeChunkPermanent - Timed out for "
                     << Base32Substr(name) << " waiting for pending transfers.";
         return false;
       }
@@ -772,7 +772,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
         // Make space in permanent store
         while (perm_size_ + size > perm_capacity_) {
           if (removable_chunks_.empty()) {
-            DLOG(ERROR) << "MakeChunkPermanent - Can't make space for "
+            LOG(kError) << "MakeChunkPermanent - Can't make space for "
                         << Base32Substr(name);
             return false;
           }
@@ -803,12 +803,12 @@ void BufferedChunkStore::DoMakeChunkPermanent(const std::string &name) {
   }
 
   if (content.empty()) {
-    DLOG(ERROR) << "DoMakeChunkPermanent - Could not get " << Base32Substr(name)
+    LOG(kError) << "DoMakeChunkPermanent - Could not get " << Base32Substr(name)
                 << " from cache.";
   } else if (perm_chunk_store_->Store(name, content)) {
     AddCachedChunksEntry(name);
   } else {
-    DLOG(ERROR) << "DoMakeChunkPermanent - Could not store "
+    LOG(kError) << "DoMakeChunkPermanent - Could not store "
                 << Base32Substr(name);
   }
 
@@ -834,13 +834,13 @@ bool BufferedChunkStore::DeleteAllMarked() {
     if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
-    DLOG(ERROR) << "DeleteAllMarked - Timed out waiting for pending transfers.";
+    LOG(kError) << "DeleteAllMarked - Timed out waiting for pending transfers.";
     return false;
   }
     for (auto it = rem_chunks.begin(); it != rem_chunks.end(); ++it) {
       if (!perm_chunk_store_->Delete(*it)) {
         delete_result = false;
-        DLOG(ERROR) << "DeleteAllMarked - Could not delete "
+        LOG(kError) << "DeleteAllMarked - Could not delete "
                     << Base32Substr(*it) << " from permanent store.";
       }
     }

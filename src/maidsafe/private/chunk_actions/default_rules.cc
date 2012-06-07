@@ -17,9 +17,9 @@
 #include "maidsafe/private/chunk_actions/default_rules.h"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/log.h"
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
@@ -48,12 +48,12 @@ bool IsValidChunk<kDefaultType>(
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string content(chunk_store->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "Failed to get " << Base32Substr(name) << " for validation";
+    LOG(kError) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
   }
 
   if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
-    DLOG(ERROR) << "Failed to validate " << Base32Substr(name)
+    LOG(kError) << "Failed to validate " << Base32Substr(name)
                 << ": chunk isn't hashable";
     return false;
   }
@@ -77,7 +77,7 @@ int ProcessGet<kDefaultType>(
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   *existing_content = chunk_store->Get(name);
   if (existing_content->empty()) {
-    DLOG(WARNING) << "Failed to get " << Base32Substr(name);
+    LOG(kWarning) << "Failed to get " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 
@@ -94,14 +94,14 @@ int ProcessStore<kDefaultType>(
   if (existing_content.empty()) {
     // New chunk on network - check data hashes to name
     if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
-      DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+      LOG(kError) << "Failed to store " << Base32Substr(name)
                   << ": default chunk type should be hashable";
       return kNotHashable;
     }
   } else {
     // Pre-existing chunk - ensure data is identical
     if (existing_content != content) {
-      DLOG(ERROR) << "Failed to store " << Base32Substr(name)
+      LOG(kError) << "Failed to store " << Base32Substr(name)
                   << ": existing data doesn't match new data - can't store";
       return kInvalidSignedData;
     }
@@ -127,7 +127,7 @@ int ProcessModify<kDefaultType>(
     int64_t * /*size_difference*/,
     std::string * /*new_content*/,
     std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
-  DLOG(ERROR) << "Failed to modify " << Base32Substr(name)
+  LOG(kError) << "Failed to modify " << Base32Substr(name)
               << ": no modify of default chunk type allowed";
   return kInvalidModify;
 }
@@ -139,7 +139,7 @@ int ProcessHas<kDefaultType>(
     const asymm::PublicKey &/*public_key*/,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
-    DLOG(WARNING) << "Failed to find " << Base32Substr(name);
+    LOG(kWarning) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;
   }
 

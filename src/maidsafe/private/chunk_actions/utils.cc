@@ -20,7 +20,6 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/log.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
 
@@ -33,7 +32,7 @@ namespace priv {
 namespace chunk_actions {
 
 void PrintToLog(const std::string &message) {
-  DLOG(ERROR) << message;
+  LOG(kError) << message;
 }
 
 int GetContentAndTigerHash(const std::string &name,
@@ -42,7 +41,7 @@ int GetContentAndTigerHash(const std::string &name,
                            std::string *hash) {
   std::string content(chunk_store->Get(name));
   if (content.empty()) {
-    DLOG(ERROR) << "GetContentAndTigerHash - Failed to retrieve "
+    LOG(kError) << "GetContentAndTigerHash - Failed to retrieve "
                 << Base32Substr(name);
     if (chunk_content)
       chunk_content->clear();
@@ -54,7 +53,7 @@ int GetContentAndTigerHash(const std::string &name,
   if (hash) {
     *hash = crypto::Hash<crypto::Tiger>(content);
     if (hash->empty()) {
-      DLOG(ERROR) << "GetContentAndTigerHash - Failed to hash "
+      LOG(kError) << "GetContentAndTigerHash - Failed to hash "
                   << Base32Substr(name);
       return kHashFailure;
     }
