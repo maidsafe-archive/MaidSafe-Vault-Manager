@@ -67,8 +67,8 @@ class BufferedChunkStoreTest: public testing::Test {
       : test_dir_(
             maidsafe::test::CreateTestPath("MaidSafe_TestBufferedChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
-        asio_service_(),
-        test_asio_service_(),
+        asio_service_(3),
+        test_asio_service_(3),
         chunk_action_authority_(),
         chunk_store_(),
         mutex_(),
@@ -117,8 +117,8 @@ class BufferedChunkStoreTest: public testing::Test {
 
  protected:
   void SetUp() {
-    asio_service_.Start(3);
-    test_asio_service_.Start(3);
+    asio_service_.Start();
+    test_asio_service_.Start();
     chunk_store_.reset(new BufferedChunkStore(asio_service_.service()));
     fs::create_directories(chunk_dir_);
     chunk_store_->Init(chunk_dir_);

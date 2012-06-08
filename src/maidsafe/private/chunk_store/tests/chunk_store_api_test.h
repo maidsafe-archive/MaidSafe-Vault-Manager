@@ -62,7 +62,7 @@ class ChunkStoreTest: public testing::Test {
         chunk_dir_(*test_dir_ / "chunks"),
         alt_chunk_dir_(*test_dir_ / "chunks_alt"),
         tiger_chunk_dir_(*test_dir_ / "chunks_tiger"),
-        asio_service_(),
+        asio_service_(3),
         chunk_store_(),
         alt_chunk_store_(),
         tiger_chunk_store_() {}
@@ -70,7 +70,7 @@ class ChunkStoreTest: public testing::Test {
 
  protected:
   void SetUp() {
-    asio_service_.Start(3);
+    asio_service_.Start();
     fs::create_directories(chunk_dir_);
     fs::create_directories(alt_chunk_dir_);
     fs::create_directories(tiger_chunk_dir_);

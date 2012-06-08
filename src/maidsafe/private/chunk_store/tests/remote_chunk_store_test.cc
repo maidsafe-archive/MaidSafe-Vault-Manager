@@ -62,7 +62,7 @@ class RemoteChunkStoreTest: public testing::Test {
   RemoteChunkStoreTest()
       : test_dir_(maidsafe::test::CreateTestPath("TestRemoteChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
-        asio_service_(),
+        asio_service_(21),
         chunk_store_(),
         mock_manager_chunk_store_(),
         mock_chunk_manager_(),
@@ -270,7 +270,7 @@ class RemoteChunkStoreTest: public testing::Test {
 
  protected:
   void SetUp() {
-    asio_service_.Start(21);
+    asio_service_.Start();
     fs::create_directories(chunk_dir_);
     InitLocalChunkStore(&chunk_store_, chunk_dir_, asio_service_.service());
     InitMockManagerChunkStore(&mock_manager_chunk_store_,
