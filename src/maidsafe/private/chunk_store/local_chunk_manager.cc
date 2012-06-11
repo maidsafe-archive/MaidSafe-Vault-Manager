@@ -89,7 +89,7 @@ void LocalChunkManager::GetChunk(const std::string &name,
   }
   if (lock && !local_version.empty() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-    LOG(kWarning) << "GetChunk - " << HexSubstr(keys->identity)
+      LOG(kWarning) << "GetChunk - " << (keys ? HexSubstr(keys->identity) : "Anonymous")
                   << " - Won't retrieve " << Base32Substr(name)
                   << " because local and remote versions "
                   << HexSubstr(local_version) << " match.";
@@ -100,13 +100,10 @@ void LocalChunkManager::GetChunk(const std::string &name,
   fs::path lock_file = lock_directory_ / EncodeToBase32(name);
   if (lock) {
     while (fs::exists(lock_file)) {
-      LOG(kInfo) << "GetChunk - Before Get, lock file exists for "
-                 << Base32Substr(name);
+      LOG(kInfo) << "GetChunk - Before Get, lock file exists for " << Base32Substr(name);
       ReadFile(lock_file, &existing_lock);
-      std::string lock_timestamp_string(existing_lock.substr(0,
-                                            existing_lock.find_first_of(' ')));
-      uint32_t lock_timestamp(
-          boost::lexical_cast<uint32_t>(lock_timestamp_string));
+      std::string lock_timestamp_string(existing_lock.substr(0, existing_lock.find_first_of(' ')));
+      uint32_t lock_timestamp(boost::lexical_cast<uint32_t>(lock_timestamp_string));
       uint32_t current_timestamp(GetTimeStamp());
       if (current_timestamp > lock_timestamp + lock_timeout_.seconds())
         break;
@@ -115,14 +112,15 @@ void LocalChunkManager::GetChunk(const std::string &name,
     }
     uint32_t current_time(GetTimeStamp());
     transaction_id = RandomAlphaNumericString(32);
-    std::string current_time_string(
-        boost::lexical_cast<std::string>(current_time));
+    std::string current_time_string(boost::lexical_cast<std::string>(current_time));
     std::string lock_content(current_time_string + " " + transaction_id);
     WriteFile(lock_file, lock_content);
     current_transactions_[name] = transaction_id;
     LOG(kInfo) << "Wrote lock file for " << Base32Substr(name);
   }
-  content = simulation_chunk_action_authority_->Get(name, "", keys->public_key);
+  content = simulation_chunk_action_authority_->Get(name,
+                                                    "",
+                                                    keys ? keys->public_key : asymm::PublicKey());
   if (content.empty()) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);

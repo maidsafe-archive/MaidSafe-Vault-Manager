@@ -122,8 +122,7 @@ std::string RemoteChunkStore::Get(const std::string &name,
     return "";
   }
 
-  if (chunk_action_authority_->Cacheable(name) &&
-      pending_ops_.left.count(name) == 0) {
+  if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name) == 0) {
     std::string content(chunk_store_->Get(name));
     if (!content.empty()) {
       LOG(kInfo) << "Get - Found local content for " << Base32Substr(name);
@@ -131,8 +130,7 @@ std::string RemoteChunkStore::Get(const std::string &name,
     }
   }
 
-  uint32_t id(EnqueueOp(
-      name, OperationData(kOpGet, nullptr, keys, true), &lock));
+  uint32_t id(EnqueueOp(name, OperationData(kOpGet, nullptr, keys, true), &lock));
   ProcessPendingOps(&lock);
   if (!WaitForGetOps(name, id, &lock)) {
     LOG(kError) << "Get - Timed out for " << Base32Substr(name) << " - ID "
@@ -142,8 +140,7 @@ std::string RemoteChunkStore::Get(const std::string &name,
 
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
-    LOG(kError) << "Get - Failed retrieving " << Base32Substr(name)
-                 << " - ID " << id;
+    LOG(kError) << "Get - Failed retrieving " << Base32Substr(name) << " - ID " << id;
     return "";
   }
 
@@ -168,10 +165,8 @@ std::string RemoteChunkStore::Get(const std::string &name,
       waiting_gets_.erase(waiting_it);
   }
 
-  if (it == pending_ops_.end() &&
-      waiting_gets_.find(name) == waiting_gets_.end()) {
-    LOG(kInfo) << "Get - Done, deleting " << Base32Substr(name) << " - ID "
-               << id;
+  if (it == pending_ops_.end() && waiting_gets_.find(name) == waiting_gets_.end()) {
+    LOG(kInfo) << "Get - Done, deleting " << Base32Substr(name) << " - ID " << id;
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
@@ -691,12 +686,10 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
     lock->unlock();
     switch (op_data.op_type) {
       case kOpGet:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys,
-                                 false);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, false);
         break;
       case kOpGetLock:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys,
-                                 true);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, true);
         break;
       case kOpStore:
         chunk_manager_->StoreChunk(name, op_data.keys);
