@@ -119,7 +119,7 @@ int GetOptions(int ac, char* av[]) {
       return 0;
     }
 
-    if (vm.count("include-path")) {
+    /*if (vm.count("include-path")) {
       std::cout << "Include paths are: "
            << vm["include-path"].as<std::vector<std::string>>() << "\n";
     }
@@ -127,7 +127,7 @@ int GetOptions(int ac, char* av[]) {
     if (vm.count("input-file")) {
       std::cout << "Input files are: "
            << vm["input-file"].as<std::vector<std::string>> << "\n";
-    }
+    }*/
 
     std::cout << "Using  " << opt << " Gb of disk space for all vaults\n";
   }
@@ -135,6 +135,7 @@ int GetOptions(int ac, char* av[]) {
     std::cout << e.what() << "\n";
     return 1;
   }
+  return 0;
 }
 
 #include <boost/process.hpp>
@@ -145,11 +146,7 @@ int GetOptions(int ac, char* av[]) {
 
 using namespace boost::process;
 
-int main(int ac, char* av[])
-{
-  GetOptions(ac,av);
-  std::string exec = find_executable_in_path("TESTcommon");
-  std::vector<std::string> args = boost::assign::list_of("TESTcommon")("--gtest_list_tests");
+int launch(const std::string& exec, std::vector<std::string> args) {
   posix_context ctx;
   ctx.environment = self::get_environment();
   child c = posix_launch(exec, args, ctx);
@@ -158,5 +155,32 @@ int main(int ac, char* av[])
     std::cout << s.exit_status() << std::endl;
   if (s.signaled())
     std::cout << s.term_signal() << std::endl;
+  return s.exit_status();
+}
+
+void manage_process(const std::string& exec, std::vector<std::string> args) {
+  int result(launch(exec, args));
+  std::cout << "Dummy process " << i << " exits with result " << result << std::endl;
+  while (result != 0) {
+    std::cout << "Dummy process " << i << " crashed, restarting..." << std::endl;
+    result = launch(exec, args);
+  }
+  std::cout << "Dummy process " << i << " Exited successfully" << std::endl;
+}
+
+int main(int ac, char* av[])
+{
+  GetOptions(ac,av);
+  //std::string exec = find_executable_in_path("TESTcommon");
+  //std::vector<std::string> args = boost::assign::list_of("TESTcommon");
+  std::string path_string(boost::filesystem::current_path().string());
+  std::string exec = find_executable_in_path("DUMMYprocess", path_string);
+  for (int i(0); i < 10; ++i) {
+    std::vector<std::string> args = boost::assign::list_of("DUMMYprocess");
+    if(i % 2 == 0)
+      args.push_back("succeed");
+    manage_process(exec, args);
+  }
+  return 0;
 }
 

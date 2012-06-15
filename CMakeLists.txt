@@ -77,6 +77,7 @@ source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
 add_executable(TESTprocess "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process/tests/process_test.cc")
+add_executable(DUMMYprocess "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process/tests/dummy_process.cc")
 
 ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
@@ -84,6 +85,7 @@ ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(TESTprocess maidsafe_private  boost_program_options-static)
+target_link_libraries(DUMMYprocess maidsafe_private  boost_program_options-static)
 rename_outdated_built_exes()
 
 
