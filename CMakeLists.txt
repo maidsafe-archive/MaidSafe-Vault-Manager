@@ -84,8 +84,8 @@ ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
-target_link_libraries(TESTprocess maidsafe_private  boost_program_options-static)
-target_link_libraries(DUMMYprocess maidsafe_private  boost_program_options-static)
+target_link_libraries(TESTprocess maidsafe_common  boost_program_options-static)
+target_link_libraries(DUMMYprocess maidsafe_common  boost_program_options-static)
 rename_outdated_built_exes()
 
 

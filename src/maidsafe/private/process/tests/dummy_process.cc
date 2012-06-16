@@ -25,58 +25,43 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <boost/process.hpp>
-#include <boost/thread.hpp>
-#include <boost/assign/list_of.hpp>
-#include <string>
-#include <vector>
+#include <boost/program_options.hpp>
+#include <thread>
+#include <chrono>
+#include <iostream>
 
-namespace bp = boost::process;
+namespace po = boost::program_options;
 
-int launch(const std::string& exec, std::vector<std::string> args) {
-#ifdef MAIDSAFE_WIN32
-  bp::win32_context ctx;
-#else
-  bp::posix_context ctx;
-#endif
-  ctx.environment = bp::self::get_environment();
-  bp::child c = bp::posix_launch(exec, args, ctx);
-#ifdef MAIDSAFE_WIN32
-  bp::win32_status s = c.wait();
-#else
-  bp::posix_status s = c.wait();
-#endif
-  if (s.exited())
-    std::cout << s.exit_status() << std::endl;
-  if (s.signaled())
-    std::cout << s.term_signal() << std::endl;
-  return s.exit_status();
-}
+int main(int ac, char* av[]) {
+  po::options_description desc("Allowed options");
+  desc.add_options()
+      ("help", "produce help message")
+      ("runtime", po::value<int>(), "Set runtime in seconds then crash")
+      ("nocrash", "set no crash on runtime ended");
+  try {
+    po::variables_map vm;
+    po::store(po::parse_command_line(ac, av, desc), vm);
+    po::notify(vm);
 
-void manage_process(const std::string& exec, std::vector<std::string> args, int i) {
-  int result(launch(exec, args));
-  std::cout << "Dummy process " << i << " exits with result " << result << std::endl;
-  while (result != 0) {
-    std::cout << "Dummy process " << i << " crashed, restarting..." << std::endl;
-    args.push_back("--nocrash");
-    result = launch(exec, args);
-  }
-  std::cout << "Dummy process " << i << " Exited successfully" << std::endl;
-}
-
-int main()
-{
-  std::string path_string(boost::filesystem::current_path().string());
-  std::string exec = bp::find_executable_in_path("DUMMYprocess", path_string);
-  for (int i(0); i < 5; ++i) {
-    std::vector<std::string> args;
-    args.push_back("DUMMYprocess");
-    if(i % 2 == 0) {
-      args.push_back("--runtime");
-      args.push_back("2");
+    if (vm.count("help")) {
+        std::cout << desc << "\n";
+        return 1;
+    } else if (vm.count("runtime")) {
+      int runtime = vm["runtime"].as<int>();
+        std::cout << "Running for  "
+     << runtime << " seconds.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(runtime));
+        if (vm.count("nocrash"))
+          return 0;
+        else
+          return 1;
     }
-    manage_process(exec, args, i);
+
+  } catch(std::exception& e)  {
+    std::cout << e.what() << "\n";
+    return 1;
   }
+
   return 0;
 }
 
