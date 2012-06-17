@@ -55,6 +55,9 @@ int main(int ac, char* av[]) {
           return 0;
         else
           return 1;
+    } else {
+      while(true)
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
   } catch(std::exception& e)  {

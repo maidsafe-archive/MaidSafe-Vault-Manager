@@ -27,22 +27,31 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <string>
 #include <vector>
-
+#include <utility>
+#include <thread>
+#include <chrono>
+#include <algorithm>
 #include <boost/process.hpp>
 #include <boost/filesystem.hpp>
 
 #include "maidsafe/private/process_manager.h"
 
+namespace maidsafe {
+
 namespace bp = boost::process;
 
 bool Process::SetProcessName(std::string process_name) {
   std::string path_string(boost::filesystem::current_path().string());
-  boost::system::error_condition ec;
-  boost::filesystem3::exists(process_name, ec);
-  if (!ec)
+  boost::system::error_code ec;
+  boost::filesystem3::path proc(process_name);
+  if (!boost::filesystem3::exists(proc, ec))
+    return false;
+  if (!boost::filesystem3::is_regular_file(proc, ec))
+    return false;
+  if (ec)
     return false;
   std::string exec = bp::find_executable_in_path(process_name, path_string);
-  process_name_ = process_name;
+  process_name_ = exec;
   return true;
 }
 
@@ -50,89 +59,103 @@ void Process::AddArgument(std::string argument) {
   args_.push_back(argument);
 }
 
-std::string Process::ProcessName() {
+std::string Process::ProcessName() const {
   return process_name_;
 }
 
-std::vector<std::string> Process::Args() {
+std::vector<std::string> Process::Args() const {
   return args_;
 }
 
+ProcessManager::ProcessManager() :
+  processes_(),
+  process_count_(0),
+  done_(false) {}
+
+ProcessManager::~ProcessManager() {
+  TerminateAll();
+}
+
+int ProcessManager::AddProcess(Process process) {
+  ProcessInfo info;
+  info.process = process;
+  info.id = ++process_id_;
+  info.done = false;
+//  std::thread thd([=] { RunProcess(process_id_); });
+//  info.thread = std::move(thd);
+  processes_.push_back(std::move(info));
+  return process_id_;
+}
+
+int32_t ProcessManager::NumberOfProcesses() {
+  return processes_.size();
+}
 
 
-bool ProcessManager::RunAll() {
-  for (auto &i, processes_) {
-  #ifdef MAIDSAFE_WIN32
-    bp::win32_context ctx;
-    ctx.environment = bp::self::get_environment();
-    bp::child c = bp::win32_launch(i.ProcessName(), i.Args(), ctx);
-  #else
-    bp::posix_context ctx;
-    ctx.environment = bp::self::get_environment();
-    bp::child c = bp::posix_launch(i.ProcessName(), i.Args(), ctx);
-  #endif
-    processes_[i] = c;
+int32_t ProcessManager::NumberOfLiveProcesses() {
+  int32_t count(0);
+  for (auto &i : processes_) {
+    if(i.done && i.thread.joinable())
+      ++count;
   }
+  return count;
 }
 
-void ProcessManager::MonitorAll() {
-  for (auto &i, processes_) {
-    if (processes_.second.get_stderr().valid()) {
-    #ifdef MAIDSAFE_WIN32
-      bp::win32_context ctx;
-      ctx.environment = bp::self::get_environment();
-      processes_.second = bp::win32_launch(i.ProcessName(), i.Args(), ctx);
-    #else
-      bp::posix_context ctx;
-      ctx.environment = bp::self::get_environment();
-      processes_.second = bp::posix_launch(i.ProcessName(), i.Args(), ctx);
-    #endif
-    }
+int32_t ProcessManager::NumberOfSleepingProcesses() {
+  int32_t count(0);
+  for (auto &i : processes_) {
+    if(!i.done)
+      ++count;
   }
+  return count;
 }
 
-
-
-int launch(const std::string& exec, std::vector<std::string> args) {
-
-
-
-#ifdef MAIDSAFE_WIN32
-  bp::win32_status s = c.wait();
-#else
-  bp::posix_status s = c.wait();
-#endif
-  if (s.exited())
-    std::cout << s.exit_status() << std::endl;
-  if (s.signaled())
-    std::cout << s.term_signal() << std::endl;
-  return s.exit_status();
+void ProcessManager::RunProcess(int32_t id) {
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+  auto i = FindProcess(id);
+  if (i == processes_.end())
+    return;
+  bp::context ctx;
+  ctx.environment = bp::self::get_environment();
+  bp::child c = bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx);
+  (*i).child = c;
+  c.wait();
+  if (! (*i).done)
+    RunProcess(id);
 }
 
-void manage_process(const std::string& exec, std::vector<std::string> args, int i) {
-  int result(launch(exec, args));
-  std::cout << "Dummy process " << i << " exits with result " << result << std::endl;
-  while (result != 0) {
-    std::cout << "Dummy process " << i << " crashed, restarting..." << std::endl;
-    args.push_back("--nocrash");
-    result = launch(exec, args);
+void ProcessManager::KillProcess(int32_t id) {
+  auto i = FindProcess(id);
+  if (i == processes_.end())
+    return;
+  (*i).done = true;
+  (*i).child.terminate(true);
+}
+
+void ProcessManager::RestartProcess(int32_t id) {
+  auto i = FindProcess(id);
+  if (i == processes_.end())
+    return;
+  (*i).done = false;
+  //(*i).child.terminate(true);
+  std::thread thd([=] { RunProcess(process_id_); });
+  (*i).thread = std::move(thd);
+}
+
+std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
+  int32_t id_to_find = num;
+  return std::find_if(processes_.begin(), processes_.end(),[=] (ProcessInfo &j) {
+    return (j.id == id_to_find);
+  });
+}
+
+void ProcessManager::TerminateAll() {
+  for (auto &i : processes_) {
+    i.done = false;
+    i.child.terminate(true);
+    i.thread.join();
   }
-  std::cout << "Dummy process " << i << " Exited successfully" << std::endl;
+  processes_.clear();
 }
 
-int main()
-{
-  std::string path_string(boost::filesystem::current_path().string());
-  std::string exec = bp::find_executable_in_path("DUMMYprocess", path_string);
-  for (int i(0); i < 5; ++i) {
-    std::vector<std::string> args;
-    args.push_back("DUMMYprocess");
-    if(i % 2 == 0) {
-      args.push_back("--runtime");
-      args.push_back("2");
-    }
-    manage_process(exec, args, i);
-  }
-  return 0;
-}
-
+}  // namespace maidsafe

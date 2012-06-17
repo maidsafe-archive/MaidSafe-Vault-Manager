@@ -25,58 +25,38 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <boost/process.hpp>
-#include <boost/thread.hpp>
-#include <boost/assign/list_of.hpp>
 #include <string>
 #include <vector>
+#include <thread>
+#include "maidsafe/common/test.h"
+#include "maidsafe/private/process_manager.h"
 
-namespace bp = boost::process;
+namespace maidsafe {
 
-int launch(const std::string& exec, std::vector<std::string> args) {
-#ifdef MAIDSAFE_WIN32
-  bp::win32_context ctx;
-#else
-  bp::posix_context ctx;
-#endif
-  ctx.environment = bp::self::get_environment();
-  bp::child c = bp::posix_launch(exec, args, ctx);
-#ifdef MAIDSAFE_WIN32
-  bp::win32_status s = c.wait();
-#else
-  bp::posix_status s = c.wait();
-#endif
-  if (s.exited())
-    std::cout << s.exit_status() << std::endl;
-  if (s.signaled())
-    std::cout << s.term_signal() << std::endl;
-  return s.exit_status();
+namespace test {
+
+TEST(ProcessManagerTest, BEH_StartSingleProcess) {
+  maidsafe::ProcessManager manager;
+  maidsafe::Process test;
+  ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+  test.AddArgument("DUMMYprocess");
+  EXPECT_EQ(0, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//  uint32_t num = manager.AddProcess(test);
+//  EXPECT_GT(num, 0);
+//  manager.KillProcess(num);
+
 }
 
-void manage_process(const std::string& exec, std::vector<std::string> args, int i) {
-  int result(launch(exec, args));
-  std::cout << "Dummy process " << i << " exits with result " << result << std::endl;
-  while (result != 0) {
-    std::cout << "Dummy process " << i << " crashed, restarting..." << std::endl;
-    args.push_back("--nocrash");
-    result = launch(exec, args);
-  }
-  std::cout << "Dummy process " << i << " Exited successfully" << std::endl;
-}
 
-int main()
-{
-  std::string path_string(boost::filesystem::current_path().string());
-  std::string exec = bp::find_executable_in_path("DUMMYprocess", path_string);
-  for (int i(0); i < 5; ++i) {
-    std::vector<std::string> args;
-    args.push_back("DUMMYprocess");
-    if(i % 2 == 0) {
-      args.push_back("--runtime");
-      args.push_back("2");
-    }
-    manage_process(exec, args, i);
-  }
-  return 0;
-}
 
+}  // namespace test
+
+}  // namespace maidsafe
+
+int main(int argc, char **argv) {
+  maidsafe::log::FilterMap filter;
+  filter["*"] = maidsafe::log::kInfo;
+  return ExecuteMain(argc, argv, filter);
+}

@@ -26,10 +26,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <boost/process.hpp>
-#include <thread.hpp>
-#include <boost/assign/list_of.hpp>
+#include <thread>
 #include <string>
 #include <vector>
+
+namespace maidsafe {
+
 namespace bp = boost::process;
 
 enum class ProcessStatus {
@@ -40,33 +42,48 @@ enum class ProcessStatus {
 
 class Process {
  public:
-    bool SetProcessName(std::string process_name);
-    void AddArgument(std:::string argument);
-    std::string ProcessName();
-    std::vector<std::string> Args();
+  bool SetProcessName(std::string process_name);
+  void AddArgument(std::string argument);
+  std::string ProcessName() const;
+  std::vector<std::string> Args() const;
  private:
-   std::vector<std::string> args_;
-   std::string process_name_;
+  std::vector<std::string> args_;
+  std::string process_name_;
+};
+
+struct ProcessInfo {
+  ProcessInfo() : process(), thread(), id(0), done(false), child() {}
+  Process process;
+  std::thread thread;
+  int32_t id;
+  bool done;
+  bp::child child;
 };
 
 class ProcessManager {
  public:
   ProcessManager();
-  void AddProcess(Process &process);
+  ~ProcessManager();
+  int AddProcess(Process process);
   int32_t NumberOfProcesses();
+  int32_t NumberOfLiveProcesses();
+  int32_t NumberOfSleepingProcesses();
   void StopAndRemoveProcess(Process &process);
   ProcessStatus GetProcessStatus(Process &process);
-  bool RunAll();
-  void MonitorAll();
-  void TerminateAll();
+  void RunProcess(int32_t id);
+  void KillProcess(int32_t id);
+  void RestartProcess(int32_t id);
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
-  std::thread thread_;
-  std::map<Process, bp::child> processes_;
+  std::vector<ProcessInfo>::iterator FindProcess(int32_t num);
+  void RunAll();
+  void MonitorAll();
+  void TerminateAll();
+  std::vector<ProcessInfo> processes_;
   uint32_t process_count_;
+  bool done_;
+  int32_t process_id_;
 };
-
-}  // namespace private
 
 }  // namespace maidsafe
