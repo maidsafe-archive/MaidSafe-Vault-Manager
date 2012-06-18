@@ -95,7 +95,7 @@ int32_t ProcessManager::NumberOfProcesses() {
 int32_t ProcessManager::NumberOfLiveProcesses() {
   int32_t count(0);
   for (auto &i : processes_) {
-    if(i.done && i.thread.joinable())
+    if(!i.done && i.thread.joinable())
       ++count;
   }
   return count;
@@ -111,7 +111,6 @@ int32_t ProcessManager::NumberOfSleepingProcesses() {
 }
 
 void ProcessManager::RunProcess(int32_t id) {
-  std::this_thread::sleep_for(std::chrono::seconds(3));
   auto i = FindProcess(id);
   if (i == processes_.end())
     return;
@@ -137,9 +136,25 @@ void ProcessManager::RestartProcess(int32_t id) {
   if (i == processes_.end())
     return;
   (*i).done = false;
-  //(*i).child.terminate(true);
-  std::thread thd([=] { RunProcess(process_id_); });
+ // (*i).child.terminate(true);
+  std::thread thd([=] { RunProcess(id); });
   (*i).thread = std::move(thd);
+}
+
+void ProcessManager::StartProcess(int32_t id) {
+  auto i = FindProcess(id);
+  if (i == processes_.end())
+    return;
+  (*i).done = false;
+  std::thread thd([=] { RunProcess(id); });
+  (*i).thread = std::move(thd);
+}
+
+void ProcessManager::LetProcessDie(int32_t id) {
+  auto i = FindProcess(id);
+  if (i == processes_.end())
+    return;
+  (*i).done = true;
 }
 
 std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
@@ -151,9 +166,9 @@ std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
 
 void ProcessManager::TerminateAll() {
   for (auto &i : processes_) {
-    i.done = false;
-    i.child.terminate(true);
-    i.thread.join();
+    i.done = true;
+   // i.child.terminate();
+   i.thread.join();
   }
   processes_.clear();
 }

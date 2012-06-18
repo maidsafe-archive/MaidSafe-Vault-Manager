@@ -70,13 +70,15 @@ class ProcessManager {
   int32_t NumberOfSleepingProcesses();
   void StopAndRemoveProcess(Process &process);
   ProcessStatus GetProcessStatus(Process &process);
-  void RunProcess(int32_t id);
+  void StartProcess(int32_t id);
+  void LetProcessDie(int32_t id);
   void KillProcess(int32_t id);
   void RestartProcess(int32_t id);
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
   std::vector<ProcessInfo>::iterator FindProcess(int32_t num);
+  void RunProcess(int32_t id);
   void RunAll();
   void MonitorAll();
   void TerminateAll();

@@ -40,13 +40,19 @@ TEST(ProcessManagerTest, BEH_StartSingleProcess) {
   maidsafe::Process test;
   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
   test.AddArgument("DUMMYprocess");
+  test.AddArgument("--runtime");
+  test.AddArgument("3");
+  test.AddArgument("--nocrash");
   EXPECT_EQ(0, manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
-//  uint32_t num = manager.AddProcess(test);
-//  EXPECT_GT(num, 0);
-//  manager.KillProcess(num);
-
+  uint32_t num = manager.AddProcess(test);
+  manager.StartProcess(num);
+  EXPECT_GT(num, 0);
+  manager.LetProcessDie(num);
+  EXPECT_EQ(1, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
 }
 
 
