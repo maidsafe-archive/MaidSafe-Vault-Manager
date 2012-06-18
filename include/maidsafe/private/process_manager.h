@@ -25,6 +25,9 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
+
 #include <boost/process.hpp>
 #include <thread>
 #include <string>
@@ -42,6 +45,7 @@ enum class ProcessStatus {
 
 class Process {
  public:
+  Process() : args_(), process_name_() {}
   bool SetProcessName(std::string process_name);
   void AddArgument(std::string argument);
   std::string ProcessName() const;
@@ -74,6 +78,7 @@ class ProcessManager {
   void LetProcessDie(int32_t id);
   void KillProcess(int32_t id);
   void RestartProcess(int32_t id);
+
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
@@ -89,3 +94,5 @@ class ProcessManager {
 };
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_

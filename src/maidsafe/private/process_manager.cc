@@ -25,152 +25,155 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <string>
-#include <vector>
-#include <utility>
+#include "maidsafe/private/process_manager.h"
+
 #include <thread>
 #include <chrono>
-#include <algorithm>
+
 #include <boost/process.hpp>
 #include <boost/filesystem.hpp>
 
-#include "maidsafe/private/process_manager.h"
+#include <string>
+#include <vector>
+#include <utility>
+#include <algorithm>
 
 namespace maidsafe {
 
-namespace bp = boost::process;
+  namespace bp = boost::process;
 
-bool Process::SetProcessName(std::string process_name) {
-  std::string path_string(boost::filesystem::current_path().string());
-  boost::system::error_code ec;
-  boost::filesystem3::path proc(process_name);
-  if (!boost::filesystem3::exists(proc, ec))
-    return false;
-  if (!boost::filesystem3::is_regular_file(proc, ec))
-    return false;
-  if (ec)
-    return false;
-  std::string exec = bp::find_executable_in_path(process_name, path_string);
-  process_name_ = exec;
-  return true;
-}
-
-void Process::AddArgument(std::string argument) {
-  args_.push_back(argument);
-}
-
-std::string Process::ProcessName() const {
-  return process_name_;
-}
-
-std::vector<std::string> Process::Args() const {
-  return args_;
-}
-
-ProcessManager::ProcessManager() :
-  processes_(),
-  process_count_(0),
-  done_(false) {}
-
-ProcessManager::~ProcessManager() {
-  TerminateAll();
-}
-
-int ProcessManager::AddProcess(Process process) {
-  ProcessInfo info;
-  info.process = process;
-  info.id = ++process_id_;
-  info.done = false;
-//  std::thread thd([=] { RunProcess(process_id_); });
-//  info.thread = std::move(thd);
-  processes_.push_back(std::move(info));
-  return process_id_;
-}
-
-int32_t ProcessManager::NumberOfProcesses() {
-  return processes_.size();
-}
-
-
-int32_t ProcessManager::NumberOfLiveProcesses() {
-  int32_t count(0);
-  for (auto &i : processes_) {
-    if(!i.done && i.thread.joinable())
-      ++count;
+  bool Process::SetProcessName(std::string process_name) {
+    std::string path_string(boost::filesystem::current_path().string());
+    boost::system::error_code ec;
+    boost::filesystem3::path proc(process_name);
+    if (!boost::filesystem3::exists(proc, ec))
+      return false;
+    if (!boost::filesystem3::is_regular_file(proc, ec))
+      return false;
+    if (ec)
+      return false;
+    std::string exec = bp::find_executable_in_path(process_name, path_string);
+    process_name_ = exec;
+    return true;
   }
-  return count;
-}
 
-int32_t ProcessManager::NumberOfSleepingProcesses() {
-  int32_t count(0);
-  for (auto &i : processes_) {
-    if(!i.done)
-      ++count;
+  void Process::AddArgument(std::string argument) {
+    args_.push_back(argument);
   }
-  return count;
-}
 
-void ProcessManager::RunProcess(int32_t id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  bp::context ctx;
-  ctx.environment = bp::self::get_environment();
-  bp::child c = bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx);
-  (*i).child = c;
-  c.wait();
-  if (! (*i).done)
-    RunProcess(id);
-}
-
-void ProcessManager::KillProcess(int32_t id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = true;
-  (*i).child.terminate(true);
-}
-
-void ProcessManager::RestartProcess(int32_t id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = false;
- // (*i).child.terminate(true);
-  std::thread thd([=] { RunProcess(id); });
-  (*i).thread = std::move(thd);
-}
-
-void ProcessManager::StartProcess(int32_t id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = false;
-  std::thread thd([=] { RunProcess(id); });
-  (*i).thread = std::move(thd);
-}
-
-void ProcessManager::LetProcessDie(int32_t id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = true;
-}
-
-std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
-  int32_t id_to_find = num;
-  return std::find_if(processes_.begin(), processes_.end(),[=] (ProcessInfo &j) {
-    return (j.id == id_to_find);
-  });
-}
-
-void ProcessManager::TerminateAll() {
-  for (auto &i : processes_) {
-    i.done = true;
-   // i.child.terminate();
-   i.thread.join();
+  std::string Process::ProcessName() const {
+    return process_name_;
   }
-  processes_.clear();
-}
+
+  std::vector<std::string> Process::Args() const {
+    return args_;
+  }
+
+  ProcessManager::ProcessManager() :
+    processes_(),
+    process_count_(0),
+    done_(false),
+    process_id_() {}
+
+  ProcessManager::~ProcessManager() {
+    TerminateAll();
+  }
+
+  int ProcessManager::AddProcess(Process process) {
+    ProcessInfo info;
+    info.process = process;
+    info.id = ++process_id_;
+    info.done = false;
+  //  std::thread thd([=] { RunProcess(process_id_); });
+  //  info.thread = std::move(thd);
+    processes_.push_back(std::move(info));
+    return process_id_;
+  }
+
+  int32_t ProcessManager::NumberOfProcesses() {
+    return processes_.size();
+  }
+
+
+  int32_t ProcessManager::NumberOfLiveProcesses() {
+    int32_t count(0);
+    for (auto &i : processes_) {
+      if (!i.done && i.thread.joinable())
+        ++count;
+    }
+    return count;
+  }
+
+  int32_t ProcessManager::NumberOfSleepingProcesses() {
+    int32_t count(0);
+    for (auto &i : processes_) {
+      if (!i.done)
+        ++count;
+    }
+    return count;
+  }
+
+  void ProcessManager::RunProcess(int32_t id) {
+    auto i = FindProcess(id);
+    if (i == processes_.end())
+      return;
+    bp::context ctx;
+    ctx.environment = bp::self::get_environment();
+    bp::child c = bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx);
+    (*i).child = c;
+    c.wait();
+    if (!(*i).done)
+      RunProcess(id);
+  }
+
+  void ProcessManager::KillProcess(int32_t id) {
+    auto i = FindProcess(id);
+    if (i == processes_.end())
+      return;
+    (*i).done = true;
+    (*i).child.terminate(true);
+  }
+
+  void ProcessManager::RestartProcess(int32_t id) {
+    auto i = FindProcess(id);
+    if (i == processes_.end())
+      return;
+    (*i).done = false;
+  // (*i).child.terminate(true);
+    std::thread thd([=] { RunProcess(id); }); //NOLINT
+    (*i).thread = std::move(thd);
+  }
+
+  void ProcessManager::StartProcess(int32_t id) {
+    auto i = FindProcess(id);
+    if (i == processes_.end())
+      return;
+    (*i).done = false;
+    std::thread thd([=] { RunProcess(id); }); //NOLINT
+    (*i).thread = std::move(thd);
+  }
+
+  void ProcessManager::LetProcessDie(int32_t id) {
+    auto i = FindProcess(id);
+    if (i == processes_.end())
+      return;
+    (*i).done = true;
+  }
+
+  std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
+    int32_t id_to_find = num;
+    return std::find_if(processes_.begin(), processes_.end(), [=] (ProcessInfo &j) {
+      return (j.id == id_to_find);
+    });
+  }
+
+  void ProcessManager::TerminateAll() {
+    for (auto &i : processes_) {
+      i.done = true;
+    // i.child.terminate();
+    i.thread.join();
+    }
+    processes_.clear();
+  }
 
 }  // namespace maidsafe
