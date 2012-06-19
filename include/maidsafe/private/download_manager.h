@@ -27,6 +27,8 @@
 #include "boost/asio.hpp"
 #include "boost/filesystem/path.hpp"
 
+namespace bai = boost::asio::ip;
+
 namespace maidsafe {
 // assumes NAME-VERSION-PATCH naming convention
 // passing "" will mean system ignores these and always downloads
@@ -34,31 +36,41 @@ namespace maidsafe {
 class DownloadManager {
  public:
   DownloadManager(std::string site,
-                  std::string name, // eg maidsafe_vault / maidsafe_client
-                  std::string platform, // linux / osx / windows
+                  std::string name,  // eg maidsafe_vault / maidsafe_client
+                  std::string platform,  // linux / osx / windows
                   std::string cpu_size,  // 64/32
-                  std::string current_version, // e.g. 123
-                  std::string current_patchlevel); // e.g. 234
-//  void SetSiteName(std::string site);
-//  void SetProtocol(std::string protocol = "http");
-//  void SetNameToDownload(std::string name);
-//  void SetVersionToDownload(std::string version);
-//  void SetPatchlevelToDownload(std::string patchlevel);
+                  std::string current_version,  // e.g. 123
+                  std::string current_patchlevel);  // e.g. 234
+  void SetSiteName(std::string site) { site_ = site; }
+  void SetProtocol(std::string protocol = "http");
+  void SetNameToDownload(std::string name) { name_ = name; }
+  void SetCurrentVersionToUpdate(std::string version) { current_version_ = version; }
+  void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
   bool Exists();
+  bool UpdateCurrentFile(boost::filesystem::path directory);
+  bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
+               std::istream* response_stream);
   std::ostream & ReadStream();
   std::string ReadString();
+
  private:
+  bool FileIsUseful(std::string file);
   std::string site_;
   std::string name_;
+  std::string platform_;
+  std::string cpu_size_;
   std::string current_version_;
   std::string current_patchlevel_;
   std::string protocol_;
+  std::string file_to_download_;
+  boost::asio::io_service io_service_;
+  bai::tcp::socket socket_;
 };
 
 
 
-int RetrieveBootstrapContacts(const fs::path &download_dir,
-                              std::vector<dht::Contact> *bootstrap_contacts);
+/*int RetrieveBootstrapContacts(const fs::path &download_dir,
+                              std::vector<dht::Contact> *bootstrap_contacts);*/
 
 
 
