@@ -36,26 +36,33 @@ namespace maidsafe {
 class DownloadManager {
  public:
   DownloadManager(std::string site,
+                  std::string location,  // location of files on site
                   std::string name,  // eg maidsafe_vault / maidsafe_client
                   std::string platform,  // linux / osx / windows
                   std::string cpu_size,  // 64/32
                   std::string current_version,  // e.g. 123
                   std::string current_patchlevel);  // e.g. 234
   void SetSiteName(std::string site) { site_ = site; }
+  void SetLocation(std::string location) { location_ = location; }
   void SetProtocol(std::string protocol = "http");
   void SetNameToDownload(std::string name) { name_ = name; }
   void SetCurrentVersionToUpdate(std::string version) { current_version_ = version; }
   void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
-  bool Exists();
+  void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
+  void SetCpuSizeToUpdate(std::string cpu_size) { cpu_size_ = cpu_size; }
+  void ClearFileToDownload() { file_to_download_ = ""; }
+  std::string file_to_download() {return file_to_download_;}
+  bool FindLatestFile();
   bool UpdateCurrentFile(boost::filesystem::path directory);
-  bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
-               std::istream* response_stream);
-  std::ostream & ReadStream();
-  std::string ReadString();
 
  private:
+  bool FileIsValid(std::string file);
+  bool FileIsLaterThan(std::string file1, std::string file2);
   bool FileIsUseful(std::string file);
+  bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
+                     std::istream* response_stream);
   std::string site_;
+  std::string location_;
   std::string name_;
   std::string platform_;
   std::string cpu_size_;
@@ -66,13 +73,6 @@ class DownloadManager {
   boost::asio::io_service io_service_;
   bai::tcp::socket socket_;
 };
-
-
-
-/*int RetrieveBootstrapContacts(const fs::path &download_dir,
-                              std::vector<dht::Contact> *bootstrap_contacts);*/
-
-
 
 }  // namespace maidsafe
 

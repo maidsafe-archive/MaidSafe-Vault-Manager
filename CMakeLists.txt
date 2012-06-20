@@ -76,7 +76,7 @@ source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-add_executable(TESTprocess  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc")
+add_executable(TESTprocess  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc")
 add_executable(DUMMYprocess "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 add_executable(SigningTool "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
 
