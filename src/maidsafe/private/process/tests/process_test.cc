@@ -56,8 +56,8 @@ namespace bp = ::boost::process;
 //    return os;
 //}
 
-int GetOptions(int ac, char* av[]) {
-  try {
+int GetOptions(int /*ac*/, char* /*av*/[]) {
+  /*try {
     int opt;
     std::string config_file;
 
@@ -134,7 +134,8 @@ int GetOptions(int ac, char* av[]) {
   catch(std::exception& e)  {
     std::cout << e.what() << "\n";
     return 1;
-  }
+  }*/
+  return 0;
 }
 
 #include <boost/process.hpp>
@@ -145,9 +146,9 @@ int GetOptions(int ac, char* av[]) {
 
 using namespace boost::process;
 
-int main(int ac, char* av[])
+int main(int /*ac*/, char* /*av*/[])
 {
-  GetOptions(ac,av);
+  /*GetOptions(ac,av);
   std::string exec = find_executable_in_path("TESTcommon");
   std::vector<std::string> args = boost::assign::list_of("TESTcommon")("--gtest_list_tests");
   posix_context ctx;
@@ -157,6 +158,7 @@ int main(int ac, char* av[])
   if (s.exited())
     std::cout << s.exit_status() << std::endl;
   if (s.signaled())
-    std::cout << s.term_signal() << std::endl;
+    std::cout << s.term_signal() << std::endl;*/
+  return 0;
 }
 
