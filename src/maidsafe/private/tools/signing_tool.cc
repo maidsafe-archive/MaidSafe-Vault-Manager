@@ -14,7 +14,7 @@
 * ============================================================================
 */
 
-#include "maidsafe/private/cli.h"
+#include "maidsafe/private/cli_menu.h"
 
 #include <fstream>
 #include <iostream>
@@ -22,33 +22,80 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#include <string>
-#include <stdio.h>
-#include <stdlib.h>
-#include "boost/program_options.hpp"
 #include "boost/filesystem.hpp"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
-
-namespace fs = boost::filesystem;
-namespace po = boost::program_options;
-
-boost::program_options::options_description desc;
+static std::string prompt(">> ");
 static maidsafe::rsa::Keys Keys;
 static bool have_private_key(false);
 static bool have_public_key(false);
-static bool in_cli(false);
 
-void CreateKeys(std::string) {
+template <class T>
+T Get(std::string display_message, bool echo_input = true);
+
+
+#ifdef _WIN32
+#include <windows.h>
+void Echo(bool on) {
+    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+    GetConsoleMode(hStdin, &mode);
+    if (on)
+      SetConsoleMode(hStdin, mode & (ENABLE_ECHO_INPUT));
+    else
+      SetConsoleMode(hStdin, mode & (~ENABLE_ECHO_INPUT));
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+}
+#else
+#include <termios.h>
+#include <unistd.h>
+void Echo(bool on) {
+    termios oldt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    termios newt = oldt;
+    if (on)
+      newt.c_lflag &= ECHO;
+    else
+      newt.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+}
+#endif
+
+std::string GetPasswd() {
+  std::string passwd("r"), passwd2("s");
+  Echo(false);
+  while (passwd != passwd2) {
+    std::cout << "please Enter passwd \n";
+    std::getline(std::cin, passwd);
+    std::cout << "please Re-Enter same passwd \n";
+    std::getline(std::cin, passwd2);
+  }
+  Echo(true);
+  return maidsafe::crypto::Hash<maidsafe::crypto::SHA512>(passwd);
+}
+
+std::vector<std::string> TokeniseLine(std::string line)  {
+  std::vector<std::string> args;
+  line = std::string("--") + line;
+  boost::char_separator<char> sep(" ");
+  boost::tokenizer< boost::char_separator<char> > tokens(line, sep);
+  for (const auto& t : tokens) {
+    args.push_back(t);
+  }
+}
+
+void CreateKeys() {
   std::cout << "Creating keys \nPlease wait !!\n";
   maidsafe::rsa::GenerateKeyPair(&Keys);
   have_public_key = true;
   have_private_key = true;
+  std::cout << "Creating keys sucessful\n";
 }
 
-void SavePrivateKey(std::string filename) {
+void SavePrivateKey() {
+  std::string filename = Get<std::string>("please enter filename");
   if (!have_private_key) {
     std::cout << "You have not loaded or created a Private Key\nAborting!\n";
   }else {
@@ -62,7 +109,8 @@ void SavePrivateKey(std::string filename) {
   }
 }
 
-void SavePublicKey(std::string filename) {
+void SavePublicKey() {
+  std::string filename = Get<std::string>("please enter filename to save to\n");
   if (!have_public_key) {
     std::cout << "You have not loaded or created a Public Key\nAborting!\n";
   }else {
@@ -72,11 +120,12 @@ void SavePublicKey(std::string filename) {
     if (!maidsafe::WriteFile(file, pub_key))
       std::cout << "error writing file\n";
     else
-      std::cout << "Stored private key in " << filename << "\n";
+      std::cout << "Stored public key in " << filename << "\n";
   }
 }
 
-void LoadPrivateKey(std::string filename) {
+void LoadPrivateKey() {
+  std::string filename = Get<std::string>("please enter filename");
     fs::path file(filename);
     std::string priv_key;
     if (!maidsafe::ReadFile(file, &priv_key)) {
@@ -91,7 +140,8 @@ void LoadPrivateKey(std::string filename) {
       std::cout << "private key invalid !! \n";
 }
 
-void LoadPublicKey(std::string filename) {
+void LoadPublicKey() {
+  std::string filename = Get<std::string>("please enter filename");
     fs::path file(filename);
     std::string pub_key;
     if (!maidsafe::ReadFile(file, &pub_key)) {
@@ -106,7 +156,8 @@ void LoadPublicKey(std::string filename) {
       std::cout << "public key invalid !! \n";
 }
 
-void SignFile(std::string filename) {
+void SignFile() {
+  std::string filename = Get<std::string>("please enter filename");
   fs::path file(filename);
   std::string data, signature;
   if (!maidsafe::ReadFile(file, &data)) {
@@ -128,7 +179,8 @@ void SignFile(std::string filename) {
     std::cout << "Stored signature in " << sigfile << "\n";
 }
 
-void ValidateSignature(std::string filename) {
+void ValidateSignature() {
+  std::string filename = Get<std::string>("please enter filename");
   fs::path file(filename);
   fs::path sigfile(filename + ".sig");
 
@@ -148,18 +200,8 @@ void ValidateSignature(std::string filename) {
   }
 }
 
-std::string GetPasswd() {
-  std::string passwd("r"), passwd2("s");
-  while (passwd != passwd2) {
-    std::cout << "please Enter passwd \n";
-    std::getline(std::cin, passwd);
-    std::cout << "please Re-Enter same passwd \n";
-    std::getline(std::cin, passwd2);
-  }
-  return maidsafe::crypto::Hash<maidsafe::crypto::SHA512>(passwd);
-}
-
-void EncryptFile(std::string filename) {
+void EncryptFile() {
+  std::string filename = Get<std::string>("please enter filename");
   fs::path file(filename);
   std::string data;
   std::string passwd = GetPasswd();
@@ -177,7 +219,8 @@ void EncryptFile(std::string filename) {
     std::cout << "File is now encrypted " << filename << "\n";
 }
 
-void DecryptFile(std::string filename) {
+void DecryptFile() {
+  std::string filename = Get<std::string>("please enter filename");
   fs::path file(filename);
   std::string data;
   std::string passwd = GetPasswd();
@@ -194,7 +237,7 @@ void DecryptFile(std::string filename) {
     std::cout << "File is now decrypted " << filename << "\n";
 }
 
-void CreateKeyGroup(std::string ) {
+void CreateKeyGroup() {
   std::string total;
   std::cout << "please Enter total number of people \n";
   std::getline(std::cin, total);
@@ -212,8 +255,11 @@ void CreateKeyGroup(std::string ) {
     std::cout << "smallest required group is 2";
     return;
   }
-
-  CreateKeys("");
+  if (!have_private_key) {
+    std::cout << " No Private key found, creating now\n";
+    CreateKeys();
+    std::cout << " You can still load another private key from disk if you wish\n";
+  }
 
   // create the chunks of the private key.
   std::string priv_key;
@@ -229,6 +275,8 @@ void CreateKeyGroup(std::string ) {
     std::cout << "please Enter unique name \n";
     std::getline(std::cin, name);
     std::string passwd = GetPasswd();
+    if (i < max - 1)
+      std::cout << "Password Sucessfull next person please\n ==================================\n";
     ret = users.insert(std::pair<std::string, std::string>(name, passwd));
     if (!ret.second) {
       std::cout << "Error, are you sure you used a unique name, retry !\n";
@@ -247,10 +295,10 @@ void CreateKeyGroup(std::string ) {
       }
     }
   }
-  SavePublicKey("group_public_key.id");
+  SavePublicKey();
 }
 
-void GroupSignIn(std::string) {
+void GroupSignIn() {
   std::string total;
   std::cout << "please Enter total number of people \n";
   std::getline(std::cin, total);
@@ -269,7 +317,8 @@ void GroupSignIn(std::string) {
     std::cout << "please Enter name \n";
     std::getline(std::cin, name);
     std::string passwd = GetPasswd();
-
+     if (i < max - 1)
+      std::cout << "Password captured next person please\n ==================================\n";
     std::string key = passwd.substr(0, 32);
     std::string iv = passwd.substr(32, 48);
     fs::path file(name + ".keyfile");
@@ -292,70 +341,99 @@ void GroupSignIn(std::string) {
 }
 
 
-void Exit(std::string)
-{
+void Exit() {
   exit(0);
 }
 
-void help(std::string ) {
-  if (in_cli) {
-    std::cout << "MaidSafe Help \n"
-              << "CreateKeys   \t \t \t Creates an RSA keypair (2048) \n"
-              << "SavePrivateKey <out file name> \t Stores private key to file \n"
-              << "SavePublicKey <out file name> \t Stores public key to file \n"
-              << "LoadPrivateKey <in file name> \t Setrieve private key to file \n"
-              << "LoadPublicKey <in file name> \t Retrieve public key to file \n"
-              << "CreateKeyGroup \t\t Creates  a group of X people of whom Y are required to validate / sign data \n"
-              << "GroupSignIn \t\t\t Y people will be required to sign in\n"
-              << "SignFile <filename> \t\t Sign the file passed on command line\n"
-              << "ValidateSignature <filename> \t Validate signature of file\n"
-              << "EncryptFile <file> \t Encrypt (AES256) a file with this password\n"
-              << "DecryptFile <file> \t Decrypt (AES256) a file with this password\n";
-  } else {
-    std::cout << "MaidSafe Help \n"
-              << "============================================================================\n"
-              << "EncryptFile <file>  <password>\t Encrypt (AES256) a file with this password\n"
-              << "DecryptFile <file>  <password>\t Decrypt (AES256) a file with this password\n"
-              << "\n"
-              << "____________________________________________________________________________\n"
-              << "use SigningTool --cli for a command line interface (more options) \n\n";
+void Help() {
+  std::cout << "MaidSafe Help \n ________________________________________________\n"
+            << "1: CreateKeys   \t \t Creates an RSA keypair (2048) \n"
+            << "2: SavePrivateKey \t\t Stores private key to file \n"
+            << "3: SavePublicKey \t\t Stores public key to file \n"
+            << "4: LoadPrivateKey \t\t Setrieve private key to file \n"
+            << "5: LoadPublicKey \t\t Retrieve public key to file \n"
+            << "6: CreateKeyGroup \t\t X people of whom Y are required to manage keys \n"
+            << "7: GroupSignIn    \t\t Y Sign in and load private key\n"
+            << "8: SignFile <filename> \t\t Sign the file passed on command line\n"
+            << "9: ValidateSignature \t\t Validate signature of file\n"
+            << "10: EncryptFile <file> \t\t Encrypt (AES256) a file\n"
+            << "11: DecryptFile <file> \t\t Decrypt (AES256) a file\n"
+            << "0: Exit the system;";
+}
+
+void Process(int command) {
+  switch (command) {
+  case 0:
+    Exit();
+    break;
+  case 1:
+    CreateKeys();
+    break;
+  case 2:
+    SavePrivateKey();
+    break;
+  case 3:
+    SavePublicKey();
+    break;
+  case 4:
+    LoadPrivateKey();
+    break;
+  case 5:
+    LoadPublicKey();
+    break;
+  case 6:
+    CreateKeyGroup();
+    break;
+  case 7:
+    GroupSignIn();
+    break;
+  case 8:
+    SignFile();
+    break;
+  case 9:
+    ValidateSignature();
+    break;
+  case 10:
+    EncryptFile();
+    break;
+  case 11:
+    DecryptFile();
+    break;
+  default :
+    std::cout << "unknown option \n";
+    std::cout << prompt << std::flush;
+    Help();
   }
 }
 
-int main(int argc, char **argv) {
-  desc.add_options()
-      ("help", po::value<std::string>()->notifier(&help)->implicit_value(""))
-      ("cli", "command line")
-      ("CreateKeys", po::value<std::string>()->notifier(&CreateKeys)->implicit_value(""))
-      ("SavePrivateKey", po::value<std::string>()->notifier(&SavePrivateKey))
-      ("SavePublicKey", po::value<std::string>()->notifier(&SavePublicKey))
-      ("LoadPrivateKey", po::value<std::string>()->notifier(&LoadPrivateKey))
-      ("LoadPublicKey", po::value<std::string>()->notifier(&LoadPublicKey))
-      ("SignFile", po::value<std::string>()->notifier(&SignFile))
-      ("ValidateSignature", po::value<std::string>()->notifier(&ValidateSignature))
-      ("EncryptFile", po::value<std::string>()->notifier(&EncryptFile))
-      ("DecryptFile", po::value<std::string>()->notifier(&DecryptFile))
-      ("CreateKeyGroup", po::value<std::string>()->notifier(&CreateKeyGroup)->implicit_value(""))
-      ("GroupSignIn", po::value<std::string>()->notifier(&GroupSignIn)->implicit_value(""))
-      ("exit", po::value<std::string>()->notifier(&Exit)->implicit_value(""))
-      ("quit", po::value<std::string>()->notifier(&Exit)->implicit_value(""));
-
-  try {
-    po::variables_map vm1;
-    po::store(po::parse_command_line(argc, argv, desc), vm1);
-    po::notify(vm1);
-    maidsafe::Cli cli(desc);
-    if (vm1.count("cli")) {
-      in_cli = true;
-      cli.Run(std::cin);
+template <class T>
+T Get(std::string display_message, bool echo_input) {
+  Echo(echo_input);
+  std::cout << display_message << "\n";
+  std::cout << prompt << std::flush;
+  T command;
+  std::string input;
+  while (std::getline(std::cin, input, '\n')) {
+    std::cout << prompt << std::flush;
+    if (std::stringstream(input) >> command) {
+      Echo(true);
+      return command;
+    } else {
+      Echo(true);
+      std::cout << "invalid option\n";
+      std::cout << prompt << std::flush;
     }
-  } catch (po::error  &e) {
-    std::cerr << "error: " << e.what() << std::endl;
   }
-  if (!in_cli)
-    help("");
-
 }
 
+int main() {
+  while(true) {
+  Echo(true);
+    std::cout << "=======================================\n";
+    Help();
+    Process(Get<int>("", true));
+    std::cout << "=======================================\n";
+  }
+}
 
 
