@@ -15,7 +15,12 @@
 */
 
 #include "maidsafe/private/cli_menu.h"
-
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <termio.h>
+#include <unistd.h>
+#endif
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -36,32 +41,30 @@ template <class T>
 T Get(std::string display_message, bool echo_input = true);
 
 
-#ifdef _WIN32
-#include <windows.h>
-void Echo(bool on) {
+void Echo(bool enable = true) {
+#ifdef WIN32
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode = 0;
+    DWORD mode;
     GetConsoleMode(hStdin, &mode);
-    if (on)
-      SetConsoleMode(hStdin, mode & (ENABLE_ECHO_INPUT));
+
+    if( !enable )
+        mode &= ~ENABLE_ECHO_INPUT;
     else
-      SetConsoleMode(hStdin, mode & (~ENABLE_ECHO_INPUT));
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-}
+        mode |= ENABLE_ECHO_INPUT;
+
+    SetConsoleMode(hStdin, mode );
+
 #else
-#include <termios.h>
-#include <unistd.h>
-void Echo(bool on) {
-    termios oldt;
-    tcgetattr(STDIN_FILENO, &oldt);
-    termios newt = oldt;
-    if (on)
-      newt.c_lflag &= ECHO;
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty);
+    if( !enable )
+        tty.c_lflag &= ~ECHO;
     else
-      newt.c_lflag &= ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-}
+        tty.c_lflag |= ECHO;
+
+    (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
+}
 
 std::string GetPasswd() {
   std::string passwd("r"), passwd2("s");
