@@ -73,21 +73,21 @@ set(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_T
 source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
+
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-add_executable(TESTprocess  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc")
-add_executable(DUMMYprocess "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
-add_executable(SigningTool "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-
 ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
+ms_add_executable(TESTprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc")
+ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
+ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
-target_link_libraries(TESTprocess maidsafe_private  boost_program_options-static)
-target_link_libraries(DUMMYprocess maidsafe_private  boost_program_options-static)
-target_link_libraries(SigningTool maidsafe_private  boost_program_options-static)
+target_link_libraries(TESTprocess maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 rename_outdated_built_exes()
 
 
