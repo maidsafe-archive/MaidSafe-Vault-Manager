@@ -28,6 +28,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
 #include <thread>
 #include <string>
@@ -43,6 +44,11 @@ enum class ProcessStatus {
   Crashed
 };
 
+enum class TerminateStatus {
+  kTerminate,
+  kNoTerminate
+};
+
 class Process {
  public:
   Process() : args_(), process_name_() {}
@@ -56,7 +62,7 @@ class Process {
 };
 
 struct ProcessInfo {
-  ProcessInfo() : process(), thread(), id(0), done(false), child() {}
+  ProcessInfo() : process(), thread(), id(0), done(false) {}
   // move constructor
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
@@ -64,7 +70,6 @@ struct ProcessInfo {
   std::thread thread;
   int32_t id;
   bool done;
-  bp::child child;
 };
 
 class ProcessManager {
@@ -90,10 +95,14 @@ class ProcessManager {
   void RunAll();
   void MonitorAll();
   void TerminateAll();
+  bool AddTerminateFlag(TerminateStatus status);
+  bool SetTerminateFlag(int32_t id, TerminateStatus status);
   std::vector<ProcessInfo> processes_;
   uint32_t process_count_;
   bool done_;
   int32_t process_id_;
+  std::string shared_mem_name_;
+  boost::interprocess::managed_shared_memory shared_mem_;
 };
 
 }  // namespace maidsafe

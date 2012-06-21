@@ -31,7 +31,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <chrono>
 
 #include <boost/process.hpp>
+#include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/containers/string.hpp>
 #include <boost/filesystem.hpp>
+
+#include <maidsafe/common/log.h>
+#include <maidsafe/common/utils.h>
 
 #include <string>
 #include <vector>
@@ -40,6 +45,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace maidsafe {
 
+  typedef boost::interprocess::vector<TerminateStatus> TerminateVector;
   namespace bp = boost::process;
 
   bool Process::SetProcessName(std::string process_name) {
@@ -70,12 +76,11 @@ namespace maidsafe {
   }
 
   ProcessInfo::ProcessInfo(ProcessInfo&& other) :
-    process(), thread(), id(0), done(false), child() {
+    process(), thread(), id(0), done(false) {
     process = std::move(other.process);
     thread = std::move(other.thread);
     id = std::move(other.id);
     done = std::move(other.done);
-    child = std::move(other.child);
   }
 
   ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
@@ -83,7 +88,6 @@ namespace maidsafe {
     thread = std::move(other.thread);
     id = std::move(other.id);
     done = std::move(other.done);
-    child = std::move(other.child);
     return *this;
   }
 
@@ -91,7 +95,11 @@ namespace maidsafe {
     processes_(),
     process_count_(0),
     done_(false),
-    process_id_() {}
+    process_id_(),
+    shared_mem_name_(RandomAlphaNumericString(16)),
+    shared_mem_(boost::interprocess::open_or_create, shared_mem_name_.c_str(), 1024) {
+      shared_mem_.find_or_construct<TerminateVector>("terminate_info")();
+    }
 
   ProcessManager::~ProcessManager() {
     TerminateAll();
@@ -99,9 +107,16 @@ namespace maidsafe {
 
   int ProcessManager::AddProcess(Process process) {
     ProcessInfo info;
-    info.process = process;
     info.id = ++process_id_;
     info.done = false;
+    process.AddArgument("--pid");
+    process.AddArgument(boost::lexical_cast<std::string>(info.id));
+    process.AddArgument("--sharedmem");
+    process.AddArgument(shared_mem_name_);
+    LOG(kInfo) << "Process Arguments: ";
+    for (std::string i : process.Args())
+      LOG(kInfo) << i;
+    info.process = process;
   //  std::thread thd([=] { RunProcess(process_id_); });
   //  info.thread = std::move(thd);
     processes_.push_back(std::move(info));
@@ -137,8 +152,7 @@ namespace maidsafe {
       return;
     bp::context ctx;
     ctx.environment = bp::self::get_environment();
-    bp::child c = bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx);
-    (*i).child = c;
+    boost::process::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
     c.wait();
     if (!(*i).done)
       RunProcess(id);
@@ -149,7 +163,9 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = true;
-    (*i).child.terminate(true);
+    LOG(kInfo) << "KillProcess: SetTerminateFlag";
+    SetTerminateFlag(id, TerminateStatus::kTerminate);
+    // (*i).child.terminate(true);
   }
 
   void ProcessManager::RestartProcess(int32_t id) {
@@ -157,6 +173,8 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = false;
+    LOG(kInfo) << "RestartProcess: SetTerminateFlag";
+    SetTerminateFlag(id, TerminateStatus::kTerminate);
   // (*i).child.terminate(true);
     std::thread thd([=] { RunProcess(id); }); //NOLINT
     (*i).thread = std::move(thd);
@@ -167,6 +185,8 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = false;
+    LOG(kInfo) << "StartProcess: AddTerminateFlag";
+    AddTerminateFlag(TerminateStatus::kNoTerminate);
     std::thread thd([=] { RunProcess(id); }); //NOLINT
     (*i).thread = std::move(thd);
   }
@@ -187,11 +207,54 @@ namespace maidsafe {
 
   void ProcessManager::TerminateAll() {
     for (auto &i : processes_) {
-      i.done = true;
+      if (!i.done) {
+        i.done = true;
+        LOG(kInfo) << "TerminateAll: SetTerminateFlag";
+        SetTerminateFlag(i.id, TerminateStatus::kTerminate);
+      }
     // i.child.terminate();
     i.thread.join();
     }
     processes_.clear();
   }
 
+  bool ProcessManager::AddTerminateFlag(TerminateStatus status) {
+    std::pair<TerminateVector*, std::size_t> t =
+        shared_mem_.find<TerminateVector>("terminate_info");
+    TerminateVector terminate;
+    if (t.first) {
+      terminate = *t.first;
+      LOG(kInfo) << "AddTerminateFlag: vector is size " << terminate.size();
+    } else {
+      LOG(kError) << "AddTerminateFlag: failed to access IPC shared memory";
+      return false;
+    }
+    terminate.push_back(status);
+    LOG(kInfo) << "AddTerminateFlag: vector is now size " << terminate.size();
+    *t.first = terminate;
+    return true;
+  }
+
+  bool ProcessManager::SetTerminateFlag(int32_t id, TerminateStatus status) {
+    std::pair<TerminateVector*, std::size_t> t =
+        shared_mem_.find<TerminateVector>("terminate_info");
+    TerminateVector terminate;
+    size_t size(0);
+    if (t.first) {
+      terminate = *t.first;
+      size = terminate.size();
+      LOG(kInfo) << "SetTerminateFlag: vector is size " << size;
+    } else {
+      LOG(kError) << "SetTerminateFlag: failed to access IPC shared memory";
+      return false;
+    }
+    if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
+      LOG(kError) << "SetTerminateFlag: given process id is invalid or outwith range of "
+                  << "terminate vector. Vector size: " << size << ", ID: " << id;
+      return false;
+    }
+    terminate.at(id - 1) = status;
+    *t.first = terminate;
+    return true;
+  }
 }  // namespace maidsafe
