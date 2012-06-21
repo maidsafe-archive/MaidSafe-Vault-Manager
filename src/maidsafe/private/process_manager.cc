@@ -71,11 +71,20 @@ namespace maidsafe {
 
   ProcessInfo::ProcessInfo(ProcessInfo&& other) :
     process(), thread(), id(0), done(false), child() {
-    process = other.process;
+    process = std::move(other.process);
     thread = std::move(other.thread);
-    id = other.id;
-    done = other.done;
-    child = other.child;
+    id = std::move(other.id);
+    done = std::move(other.done);
+    child = std::move(other.child);
+  }
+
+  ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
+    process = std::move(other.process);
+    thread = std::move(other.thread);
+    id = std::move(other.id);
+    done = std::move(other.done);
+    child = std::move(other.child);
+    return *this;
   }
 
   ProcessManager::ProcessManager() :
