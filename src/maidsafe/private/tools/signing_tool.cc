@@ -14,13 +14,14 @@
 * ============================================================================
 */
 
-#include "maidsafe/private/cli_menu.h"
+
 #ifdef WIN32
 #include <windows.h>
 #else
 #include <termio.h>
 #include <unistd.h>
 #endif
+
 #include <fstream>
 #include <iostream>
 #include <istream>
