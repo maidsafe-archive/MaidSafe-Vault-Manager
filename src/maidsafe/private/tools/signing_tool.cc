@@ -14,8 +14,6 @@
 * ============================================================================
 */
 
-#include "maidsafe/private/cli_menu.h"
-
 #include <fstream>
 #include <iostream>
 #include <istream>
