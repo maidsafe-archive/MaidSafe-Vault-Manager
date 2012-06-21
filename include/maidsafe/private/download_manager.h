@@ -60,7 +60,7 @@ class DownloadManager {
   bool FileIsLaterThan(std::string file1, std::string file2);
   bool FileIsUseful(std::string file);
   bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
-                     std::istream* response_stream);
+                     std::istream* response_stream, bai::tcp::socket* socket);
   std::string site_;
   std::string location_;
   std::string name_;
@@ -70,8 +70,6 @@ class DownloadManager {
   std::string current_patchlevel_;
   std::string protocol_;
   std::string file_to_download_;
-  boost::asio::io_service io_service_;
-  bai::tcp::socket socket_;
 };
 
 }  // namespace maidsafe
