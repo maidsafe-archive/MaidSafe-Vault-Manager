@@ -69,6 +69,15 @@ namespace maidsafe {
     return args_;
   }
 
+  ProcessInfo::ProcessInfo(ProcessInfo&& other) :
+    process(), thread(), id(0), done(false), child() {
+    process = other.process;
+    thread = std::move(other.thread);
+    id = other.id;
+    done = other.done;
+    child = other.child;
+  }
+
   ProcessManager::ProcessManager() :
     processes_(),
     process_count_(0),

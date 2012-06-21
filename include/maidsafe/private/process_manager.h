@@ -57,6 +57,8 @@ class Process {
 
 struct ProcessInfo {
   ProcessInfo() : process(), thread(), id(0), done(false), child() {}
+  // move constructor
+  ProcessInfo(ProcessInfo&& other);
   Process process;
   std::thread thread;
   int32_t id;
