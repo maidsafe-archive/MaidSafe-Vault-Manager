@@ -99,7 +99,7 @@ void CreateKeys() {
 }
 
 void SavePrivateKey() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to save the private key to\n");
   if (!have_private_key) {
     std::cout << "You have not loaded or created a Private Key\nAborting!\n";
   }else {
@@ -114,7 +114,7 @@ void SavePrivateKey() {
 }
 
 void SavePublicKey() {
-  std::string filename = Get<std::string>("please enter filename to save to\n");
+  std::string filename = Get<std::string>("please enter filename to save the public key to\n");
   if (!have_public_key) {
     std::cout << "You have not loaded or created a Public Key\nAborting!\n";
   }else {
@@ -129,7 +129,7 @@ void SavePublicKey() {
 }
 
 void LoadPrivateKey() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to load private key from\n");
     fs::path file(filename);
     std::string priv_key;
     if (!maidsafe::ReadFile(file, &priv_key)) {
@@ -145,7 +145,7 @@ void LoadPrivateKey() {
 }
 
 void LoadPublicKey() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to load public key from\n");
     fs::path file(filename);
     std::string pub_key;
     if (!maidsafe::ReadFile(file, &pub_key)) {
@@ -161,7 +161,7 @@ void LoadPublicKey() {
 }
 
 void SignFile() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to sign");
   fs::path file(filename);
   std::string data, signature;
   if (!maidsafe::ReadFile(file, &data)) {
@@ -184,7 +184,7 @@ void SignFile() {
 }
 
 void ValidateSignature() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to validate \n We will read the filename.sig as signature file\n");
   fs::path file(filename);
   fs::path sigfile(filename + ".sig");
 
@@ -205,7 +205,7 @@ void ValidateSignature() {
 }
 
 void EncryptFile() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to encrypt");
   fs::path file(filename);
   std::string data;
   std::string passwd = GetPasswd();
@@ -224,7 +224,7 @@ void EncryptFile() {
 }
 
 void DecryptFile() {
-  std::string filename = Get<std::string>("please enter filename");
+  std::string filename = Get<std::string>("please enter filename to decrypt");
   fs::path file(filename);
   std::string data;
   std::string passwd = GetPasswd();
@@ -252,7 +252,7 @@ void CreateKeyGroup() {
   int min = atoi(quorum.c_str());
 
   if (max < min) {
-    std::cout << "Y must be smaller or equal to X\n";
+    std::cout << "required must be smaller or equal to total\n";
     return;
   }
   if (min < 2) {
@@ -350,19 +350,21 @@ void Exit() {
 }
 
 void Help() {
-  std::cout << "MaidSafe Help \n ________________________________________________\n"
-            << "1: CreateKeys   \t \t Creates an RSA keypair (2048) \n"
-            << "2: SavePrivateKey \t\t Stores private key to file \n"
-            << "3: SavePublicKey \t\t Stores public key to file \n"
-            << "4: LoadPrivateKey \t\t Setrieve private key to file \n"
-            << "5: LoadPublicKey \t\t Retrieve public key to file \n"
-            << "6: CreateKeyGroup \t\t X people of whom Y are required to manage keys \n"
-            << "7: GroupSignIn    \t\t Y Sign in and load private key\n"
-            << "8: SignFile <filename> \t\t Sign the file passed on command line\n"
-            << "9: ValidateSignature \t\t Validate signature of file\n"
-            << "10: EncryptFile <file> \t\t Encrypt (AES256) a file\n"
-            << "11: DecryptFile <file> \t\t Decrypt (AES256) a file\n"
-            << "0: Exit the system;";
+  std::cout << "\t\tMaidSafe Encryption Tool \n"
+            << "_________________________________________________________________\n"
+            << "1:  CreateKeys   \t \t Creates an RSA keypair (2048)\t |\n"
+            << "2:  SavePrivateKey \t\t Stores private key to file  \t |\n"
+            << "3:  SavePublicKey \t\t Stores public key to file    \t |\n"
+            << "4:  LoadPrivateKey \t\t Retrieve private key from file\t |\n"
+            << "5:  LoadPublicKey \t\t Retrieve public key from file \t |\n"
+            << "6:  CreateKeyGroup \t\t Group to manage keys (n+p )   \t |\n"
+            << "7:  GroupSignIn    \t\t Sign in and load private key  \t |\n"
+            << "8:  SignFile  \t\t\t Sign a file                  \t |\n"
+            << "9:  ValidateSignature \t\t Validate signature of file \t |\n"
+            << "10: EncryptFile  \t\t Encrypt (AES256) a file       \t |\n"
+            << "11: DecryptFile  \t\t Decrypt (AES256) a file       \t |\n"
+            << "_________________________________________________________________|\n"
+            << "0:  Exit the system;";
 }
 
 void Process(int command) {
@@ -433,10 +435,10 @@ T Get(std::string display_message, bool echo_input) {
 int main() {
   while(true) {
   Echo(true);
-    std::cout << "=======================================\n";
+    std::cout << "_________________________________________________________________\n";
     Help();
     Process(Get<int>("", true));
-    std::cout << "=======================================\n";
+    std::cout <<"_________________________________________________________________\n";
   }
 }
 
