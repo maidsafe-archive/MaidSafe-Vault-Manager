@@ -37,6 +37,7 @@ static std::string prompt(">> ");
 static maidsafe::rsa::Keys Keys;
 static bool have_private_key(false);
 static bool have_public_key(false);
+static bool group_signed_in;
 
 template <class T>
 T Get(std::string display_message, bool echo_input = true);
@@ -88,6 +89,7 @@ std::vector<std::string> TokeniseLine(std::string line)  {
   for (const auto& t : tokens) {
     args.push_back(t);
   }
+  return args;
 }
 
 void CreateKeys() {
@@ -99,6 +101,8 @@ void CreateKeys() {
 }
 
 void SavePrivateKey() {
+  if (group_signed_in)
+    return;
   std::string filename = Get<std::string>("please enter filename to save the private key to\n");
   if (!have_private_key) {
     std::cout << "You have not loaded or created a Private Key\nAborting!\n";
@@ -338,10 +342,12 @@ void GroupSignIn() {
   maidsafe::crypto::SecretRecoverData(min, chunks, &priv_key);
   maidsafe::rsa::DecodePrivateKey(priv_key, &Keys.private_key);
 
-  if (maidsafe::rsa::ValidateKey(Keys.private_key))
+  if (maidsafe::rsa::ValidateKey(Keys.private_key)) {
     std::cout << "private key loaded and valid \n";
-  else
+    group_signed_in = true;
+  } else {
     std::cout << "private key invalid !! \n";
+  }
 }
 
 
@@ -352,9 +358,10 @@ void Exit() {
 void Help() {
   std::cout << "\t\tMaidSafe Encryption Tool \n"
             << "_________________________________________________________________\n"
-            << "1:  CreateKeys   \t \t Creates an RSA keypair (2048)\t |\n"
-            << "2:  SavePrivateKey \t\t Stores private key to file  \t |\n"
-            << "3:  SavePublicKey \t\t Stores public key to file    \t |\n"
+            << "1:  CreateKeys   \t \t Creates an RSA keypair (2048)\t |\n";
+            if (!group_signed_in)
+  std::cout << "2:  SavePrivateKey \t\t Stores private key to file  \t |\n";
+  std::cout << "3:  SavePublicKey \t\t Stores public key to file    \t |\n"
             << "4:  LoadPrivateKey \t\t Retrieve private key from file\t |\n"
             << "5:  LoadPublicKey \t\t Retrieve public key from file \t |\n"
             << "6:  CreateKeyGroup \t\t Group to manage keys (n+p )   \t |\n"
@@ -430,6 +437,7 @@ T Get(std::string display_message, bool echo_input) {
       std::cout << prompt << std::flush;
     }
   }
+  return command;
 }
 
 int main() {
