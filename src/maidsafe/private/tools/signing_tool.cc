@@ -28,6 +28,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <cstdint>
 #include "boost/filesystem.hpp"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/crypto.h"
@@ -246,15 +247,8 @@ void DecryptFile() {
 }
 
 void CreateKeyGroup() {
-  std::string total;
-  std::cout << "please Enter total number of people \n";
-  std::getline(std::cin, total);
-  std::string quorum;
-  std::cout << "please Enter number of people required to sign\n";
-  std::getline(std::cin, quorum);
-  int max = atoi(total.c_str());
-  int min = atoi(quorum.c_str());
-
+  int32_t max = Get<int32_t>("please Enter total number of people \n");
+  int32_t min = Get<int32_t>("please Enter number of people required to sign\n");
   if (max < min) {
     std::cout << "required must be smaller or equal to total\n";
     return;
@@ -278,12 +272,12 @@ void CreateKeyGroup() {
 
   std::map<std::string, std::string> users;
   std::pair<std::map<std::string, std::string>::iterator, bool> ret;
-  for(int i =0; i < max; ++i) {
+  for(int i = 0; i < max; ++i) {
     std::string name;
     std::cout << "please Enter unique name \n";
     std::getline(std::cin, name);
     std::string passwd = GetPasswd();
-    if (i < max - 1)
+    if (i < (max - 1))
       std::cout << "Password Sucessfull next person please\n ==================================\n";
     ret = users.insert(std::pair<std::string, std::string>(name, passwd));
     if (!ret.second) {
