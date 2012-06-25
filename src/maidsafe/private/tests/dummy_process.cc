@@ -27,6 +27,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/program_options.hpp>
 #include <thread>
 #include <chrono>
@@ -35,53 +36,61 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/log.h"
 
 namespace po = boost::program_options;
+namespace bi = boost::interprocess;
 
 enum class TerminateStatus {
-  kTerminate,
-  kNoTerminate
+  kTerminate = 1,
+  kNoTerminate = 2
 };
 
-typedef boost::interprocess::vector<TerminateStatus> TerminateVector;
+  typedef bi::allocator<TerminateStatus,
+      bi::managed_shared_memory::segment_manager> TerminateAlloc;
+  typedef bi::vector<TerminateStatus, TerminateAlloc> TerminateVector;
 
-bool CheckTerminateFlag(int32_t id, boost::interprocess::managed_shared_memory& shared_mem) {
+  static bool check_finished(false);
+
+bool CheckTerminateFlag(int32_t id, bi::managed_shared_memory& shared_mem) {
   std::pair<TerminateVector*, std::size_t> t = shared_mem.find<TerminateVector>("terminate_info");
-  TerminateVector terminate;
+  size_t size(0);
   if (t.first) {
-    terminate = *t.first;
+    size = (*t.first).size();
   } else {
-    LOG(kError) << "CheckTerminateFlag: failed to access IPC shared memory";
+    std::cout << "CheckTerminateFlag: failed to access IPC shared memory";
     return false;
   }
-  if (t.second <= static_cast<size_t>(id - 1) || id - 1 < 0) {
-    LOG(kError) << "CheckTerminateFlag: given process id is invalid or outwith range of "
-                << "terminate vector";
+  if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
+    std::cout << "CheckTerminateFlag: given process id is invalid or outwith range of "
+              << "terminate vector";
     return false;
   }
-  if (terminate.at(id - 1) == TerminateStatus::kTerminate)
+  if ((*t.first).at(id - 1) == TerminateStatus::kTerminate) {
+    std::cout << "Process terminating. ";
     return true;
+  }
   return false;
 }
 
-
 void ListenForTerminate(std::string shared_mem_name, int id) {
-    boost::interprocess::managed_shared_memory shared_mem(boost::interprocess::open_or_create,
+    bi::managed_shared_memory shared_mem(bi::open_or_create,
                                                           shared_mem_name.c_str(),
                                                           1024);
-    while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem))
+    while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem) && !check_finished)
       boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-    LOG(kInfo) << "Crash point reached";
-    int i;
-    i = 1/0;
+    if (check_finished)
+      return;
+    exit(0);
 }
 
 int main(int ac, char* av[]) {
+  std::thread thd;
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
       ("pid", po::value<int>(), "process id")
-      ("sharedmem", po::value<std::string>(), "name of shared memory segment");
+      ("sharedmem", po::value<std::string>(), "name of shared memory segment")
+      ("randomstuff", po::value<std::string>(), "random stuff");
   try {
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
@@ -93,22 +102,25 @@ int main(int ac, char* av[]) {
     }
     if (vm.count("sharedmem")) {
       std::string shared_mem_name = vm["sharedmem"].as<std::string>();
-      if (!vm.count("id")) {
-        std::cout << "To use shared memory, you must supply a process id";
+      if (!vm.count("pid")) {
+        LOG(kInfo) << " main: To use shared memory, you must supply a process id";
         return 1;
       }
-      int id = vm["id"].as<int>();
-      std::thread thd([=] { ListenForTerminate(shared_mem_name, id); }); // NOLINT
+      int id = vm["pid"].as<int>();
+      thd = std::thread([=] { ListenForTerminate(shared_mem_name, id); }); // NOLINT
     }
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
-        std::cout << "Running for  "
-     << runtime << " seconds.\n";
+        std::cout << "Running for " << runtime << " seconds. \n";
         std::this_thread::sleep_for(std::chrono::seconds(runtime));
-        if (vm.count("nocrash"))
+        if (vm.count("nocrash")) {
+          check_finished = true;
+          std::cout << "Process finishing normally. ";
+          thd.join();
           return 0;
-        else
+        } else {
           return 1;
+        }
     } else {
       while (true)
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -117,7 +129,6 @@ int main(int ac, char* av[]) {
     std::cout << e.what() << "\n";
     return 1;
   }
-
   return 0;
 }
 

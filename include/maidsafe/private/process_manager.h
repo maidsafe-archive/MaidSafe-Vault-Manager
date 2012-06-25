@@ -45,8 +45,8 @@ enum class ProcessStatus {
 };
 
 enum class TerminateStatus {
-  kTerminate,
-  kNoTerminate
+  kTerminate = 1,
+  kNoTerminate = 2
 };
 
 class Process {
@@ -84,6 +84,7 @@ class ProcessManager {
   ProcessStatus GetProcessStatus(Process &process);
   void StartProcess(int32_t id);
   void LetProcessDie(int32_t id);
+  void WaitForProcesses();
   void KillProcess(int32_t id);
   void RestartProcess(int32_t id);
 
@@ -91,12 +92,13 @@ class ProcessManager {
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
   std::vector<ProcessInfo>::iterator FindProcess(int32_t num);
-  void RunProcess(int32_t id);
+  void RunProcess(int32_t id, bool restart);
   void RunAll();
   void MonitorAll();
   void TerminateAll();
   bool AddTerminateFlag(TerminateStatus status);
   bool SetTerminateFlag(int32_t id, TerminateStatus status);
+  bool CheckTerminateFlag(int32_t id);
   std::vector<ProcessInfo> processes_;
   uint32_t process_count_;
   bool done_;
