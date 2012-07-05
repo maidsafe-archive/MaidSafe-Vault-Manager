@@ -44,9 +44,8 @@ template <>
 bool DoesModifyReplace<kSignaturePacket>() { return false; }
 
 template <>
-bool IsValidChunk<kSignaturePacket>(
-    const std::string &name,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+bool IsValidChunk<kSignaturePacket>(const std::string &name,
+                                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_data(chunk_store->Get(name));
   if (existing_data.empty()) {
     LOG(kError) << "Failed to get " << Base32Substr(name) << " for validation";
@@ -60,11 +59,9 @@ bool IsValidChunk<kSignaturePacket>(
     return false;
   }
 
-  if (crypto::Hash<crypto::SHA512>(
-          existing_chunk.data() + existing_chunk.signature()) !=
+  if (crypto::Hash<crypto::SHA512>(existing_chunk.data() + existing_chunk.signature()) !=
       RemoveTypeFromName(name)) {
-    LOG(kError) << "Failed to validate " << Base32Substr(name)
-                << ": chunk isn't hashable";
+    LOG(kError) << "Failed to validate " << Base32Substr(name) << ": chunk isn't hashable";
     return false;
   }
 
@@ -72,19 +69,17 @@ bool IsValidChunk<kSignaturePacket>(
 }
 
 template <>
-std::string GetVersion<kSignaturePacket>(
-    const std::string &name,
-    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
+std::string GetVersion<kSignaturePacket>(const std::string &name,
+                                         std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   return name.substr(0, crypto::Tiger::DIGESTSIZE);
 }
 
 template <>
-int ProcessGet<kSignaturePacket>(
-    const std::string &name,
-    const std::string &/*version*/,
-    const asymm::PublicKey &/*public_key*/,
-    std::string *existing_content,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessGet<kSignaturePacket>(const std::string &name,
+                                 const std::string &/*version*/,
+                                 const asymm::PublicKey &/*public_key*/,
+                                 std::string *existing_content,
+                                 std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   *existing_content = chunk_store->Get(name);
   if (existing_content->empty()) {
     LOG(kError) << "Failed to get " << Base32Substr(name);
@@ -95,14 +90,12 @@ int ProcessGet<kSignaturePacket>(
 }
 
 template <>
-int ProcessStore<kSignaturePacket>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &public_key,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessStore<kSignaturePacket>(const std::string &name,
+                                   const std::string &content,
+                                   const asymm::PublicKey &public_key,
+                                   std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": chunk already exists";
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": chunk already exists";
     return kKeyNotUnique;
   }
 
@@ -114,34 +107,35 @@ int ProcessStore<kSignaturePacket>(
   }
 
   if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": invalid public key";
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": invalid public key";
     return kInvalidPublicKey;
   }
 
-  if (asymm::CheckSignature(chunk.data(), chunk.signature(), public_key) !=
-      kSuccess) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": signature verification failed";
+  if (asymm::CheckSignature(chunk.data(), chunk.signature(), public_key) != kSuccess) {
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": signature verification failed";
     return kSignatureVerificationFailure;
   }
 
-  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) !=
-      RemoveTypeFromName(name)) {
-    LOG(kError) << "Failed to validate " << Base32Substr(name)
-                << ": chunk isn't hashable";
+  if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) != RemoveTypeFromName(name)) {
+    LOG(kError) << "Failed to validate " << Base32Substr(name) << ": chunk isn't hashable";
     return kNotHashable;
+  }
+
+  asymm::PublicKey decoded_public_key;
+  asymm::DecodePublicKey(chunk.data(), &decoded_public_key);
+  if (!asymm::ValidateKey(decoded_public_key)) {
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data not encoded public key";
+    return kDataNotPublicKey;
   }
 
   return kSuccess;
 }
 
 template <>
-int ProcessDelete<kSignaturePacket>(
-    const std::string &name,
-    const std::string &ownership_proof,
-    const asymm::PublicKey &public_key,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessDelete<kSignaturePacket>(const std::string &name,
+                                    const std::string &ownership_proof,
+                                    const asymm::PublicKey &public_key,
+                                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
     LOG(kInfo) << Base32Substr(name) << " already deleted";
@@ -156,8 +150,7 @@ int ProcessDelete<kSignaturePacket>(
   }
 
   if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to delete " << Base32Substr(name)
-                << ": invalid public key";
+    LOG(kError) << "Failed to delete " << Base32Substr(name) << ": invalid public key";
     return kInvalidPublicKey;
   }
 
@@ -186,24 +179,21 @@ int ProcessDelete<kSignaturePacket>(
 }
 
 template <>
-int ProcessModify<kSignaturePacket>(
-    const std::string &name,
-    const std::string &/*content*/,
-    const asymm::PublicKey &/*public_key*/,
-    int64_t * /*size_difference*/,
-    std::string * /*new_content*/,
-    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
-  LOG(kError) << "Failed to modify " << Base32Substr(name)
-              << ": no modify of SignedData allowed";
+int ProcessModify<kSignaturePacket>(const std::string &name,
+                                    const std::string &/*content*/,
+                                    const asymm::PublicKey &/*public_key*/,
+                                    int64_t * /*size_difference*/,
+                                    std::string * /*new_content*/,
+                                    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
+  LOG(kError) << "Failed to modify " << Base32Substr(name) << ": no modify of SignedData allowed";
   return kInvalidModify;
 }
 
 template <>
-int ProcessHas<kSignaturePacket>(
-    const std::string &name,
-    const std::string &/*version*/,
-    const asymm::PublicKey &/*public_key*/,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessHas<kSignaturePacket>(const std::string &name,
+                                 const std::string &/*version*/,
+                                 const asymm::PublicKey &/*public_key*/,
+                                 std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
     LOG(kError) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;
