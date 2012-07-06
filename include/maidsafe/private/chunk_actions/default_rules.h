@@ -44,6 +44,9 @@ template <unsigned char DataType>
 bool DoesModifyReplace();
 
 template <unsigned char DataType>
+bool IsPayable();
+
+template <unsigned char DataType>
 bool IsValidChunk(const std::string &name,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -95,6 +98,10 @@ bool IsModifiable<kDefaultType>();
 // Returns false.
 template <>
 bool DoesModifyReplace<kDefaultType>();
+
+// Returns true.
+template <>
+bool IsPayable<kDefaultType>();
 
 // Returns true if the chunk exists, and name == Hash(content).
 template <>

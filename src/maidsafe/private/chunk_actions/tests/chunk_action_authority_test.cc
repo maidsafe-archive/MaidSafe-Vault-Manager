@@ -321,6 +321,20 @@ TEST_F(ChunkActionAuthorityTest, BEH_ModifyReplaces) {
   EXPECT_FALSE(chunk_action_authority_->ModifyReplaces(wrong_length_short));
 }
 
+TEST_F(ChunkActionAuthorityTest, BEH_Payable) {
+  std::string invalid_type(default_name_ + std::string(1, -127));
+  std::string wrong_length_long(default_name_ + "aa");
+  std::string wrong_length_short(default_name_.substr(1));
+
+  EXPECT_TRUE(chunk_action_authority_->Payable(default_name_));
+  EXPECT_FALSE(chunk_action_authority_->Payable(appendable_by_all_name_));
+  EXPECT_FALSE(chunk_action_authority_->Payable(modifiable_by_owner_name_));
+  EXPECT_FALSE(chunk_action_authority_->Payable(signature_name_));
+  EXPECT_FALSE(chunk_action_authority_->Payable(invalid_type));
+  EXPECT_FALSE(chunk_action_authority_->Payable(wrong_length_long));
+  EXPECT_FALSE(chunk_action_authority_->Payable(wrong_length_short));
+}
+
 TEST_F(ChunkActionAuthorityTest, BEH_ValidStore) {
   EXPECT_EQ(kInvalidChunkType,
             chunk_action_authority_->ValidStore("", default_content_, key_.public_key));

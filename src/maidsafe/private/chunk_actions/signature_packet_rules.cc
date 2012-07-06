@@ -44,6 +44,9 @@ template <>
 bool DoesModifyReplace<kSignaturePacket>() { return false; }
 
 template <>
+bool IsPayable<kSignaturePacket>() { return false; }
+
+template <>
 bool IsValidChunk<kSignaturePacket>(const std::string &name,
                                     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_data(chunk_store->Get(name));

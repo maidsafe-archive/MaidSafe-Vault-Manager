@@ -43,6 +43,9 @@ template <>
 bool DoesModifyReplace<kDefaultType>() { return false; }
 
 template <>
+bool IsPayable<kDefaultType>() { return true; }
+
+template <>
 bool IsValidChunk<kDefaultType>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

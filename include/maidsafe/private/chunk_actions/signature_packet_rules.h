@@ -49,6 +49,10 @@ bool IsModifiable<kSignaturePacket>();
 template <>
 bool DoesModifyReplace<kSignaturePacket>();
 
+// Returns false.
+template <>
+bool IsPayable<kSignaturePacket>();
+
 // Returns true if the chunk exists, and
 // name == Hash(chunk.data() + chunk.signature()).
 template <>
