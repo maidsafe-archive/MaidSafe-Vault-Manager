@@ -32,7 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <fstream>
 #include <iterator>
-#include <sys/wait.h>
+// #include <sys/wait.h>
 namespace po = boost::program_options;
 namespace bp = ::boost::process;
 
