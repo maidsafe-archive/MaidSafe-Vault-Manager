@@ -34,6 +34,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/private/vault_controller.h"
+#include "maidsafe/common/utils.h"
 
 namespace po = boost::program_options;
 namespace bi = boost::interprocess;
@@ -83,12 +85,14 @@ void ListenForTerminate(std::string shared_mem_name, int id) {
 
 int main(int ac, char* av[]) {
   std::thread thd;
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  maidsafe::priv::VaultController vc;
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
-      ("pid", po::value<int>(), "process id")
+      ("pid", po::value<std::string>(), "process id")
       ("sharedmem", po::value<std::string>(), "name of shared memory segment")
       ("randomstuff", po::value<std::string>(), "random stuff");
   try {
@@ -106,8 +110,9 @@ int main(int ac, char* av[]) {
         LOG(kInfo) << " main: To use shared memory, you must supply a process id";
         return 1;
       }
-      int id = vm["pid"].as<int>();
-      thd = std::thread([=] { ListenForTerminate(shared_mem_name, id); }); // NOLINT
+
+      std::string id = vm["pid"].as<std::string>();
+      vc.Start(shared_mem_name.c_str(), id.c_str());
     }
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
