@@ -108,7 +108,7 @@ TEST(ProcessManagerTest, BEH_RestartProcess) {
   manager.StartProcess(num);
   EXPECT_GT(num, 0);
   manager.RestartProcess(num);
-  boost::this_thread::sleep(boost::posix_time::millisec(10));
+  boost::this_thread::sleep(boost::posix_time::millisec(2000));
   manager.LetProcessDie(num);
   manager.WaitForProcesses();
   auto end(boost::posix_time::microsec_clock::universal_time());
@@ -159,7 +159,7 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
   manager.RestartProcess(num);
   manager.RestartProcess(num1);
   manager.RestartProcess(num2);
-  boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
   manager.LetProcessDie(num);
   manager.LetProcessDie(num1);
   manager.LetProcessDie(num2);

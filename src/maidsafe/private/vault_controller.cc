@@ -38,6 +38,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/private/vault_controller.h"
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/utils.h"
 
 namespace maidsafe {
 namespace priv {
@@ -53,7 +54,8 @@ namespace priv {
   VaultController::VaultController() : process_id_(),
                                       shared_mem_name_(),
                                       shared_mem_(),
-                                      check_finished_(false) {}
+                                      check_finished_(false),
+                                      thd() {}
 
   VaultController::~VaultController() {}
 
@@ -90,7 +92,6 @@ namespace priv {
   }
 
   bool VaultController::Start(std::string shared_mem_name, std::string pid_string) {
-    std::thread thd;
     try {
       if (shared_mem_name != "") {
         if (pid_string == "") {
@@ -98,12 +99,13 @@ namespace priv {
           return 1;
         }
         int pid = boost::lexical_cast<uint32_t>(pid_string);
-        thd = std::thread([=] { ListenForTerminate(shared_mem_name, pid); }); // NOLINT
+        thd = boost::thread([=] { ListenForTerminate(shared_mem_name, pid); }); // NOLINT
       }
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;
     }
+    
     return true;
   }
 

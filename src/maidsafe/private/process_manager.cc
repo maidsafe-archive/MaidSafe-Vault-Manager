@@ -159,6 +159,7 @@ namespace maidsafe {
     if (restart) {
       boost::this_thread::sleep(boost::posix_time::milliseconds(600));
       SetTerminateFlag(id, TerminateStatus::kNoTerminate);
+      LOG(kInfo) << "THE SIZE OF THE ENVIRONMENT IS " << bp::self::get_environment().size(); 
     }
     bp::context ctx;
     ctx.environment = bp::self::get_environment();
@@ -166,21 +167,28 @@ namespace maidsafe {
     ctx.stdout_behavior = bp::capture_stream();
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
     bp::pistream& is = c.get_stdout();
-    bp::pistream& is2 = c.get_stderr();
+    //bp::pistream& is2 = c.get_stderr();
     std::string result;
     std::string line;
-    while (std::getline(is, line)) {
+  
+    LOG(kInfo) << is.rdbuf() << std::endl; 
+    /*while (std::getline(is, line)) {
       result += line;
+      //LOG(kInfo) << line;
+      //LOG(kInfo) << "\n";
     }
     result += "\nstd::err: ";
     while (std::getline(is2, line)) {
       result += line;
-    }
+      //LOG(kInfo) << "Error "<< line;
+      //LOG(kInfo) << "\n";      
+    }*/
     c.wait();
     LOG(kInfo) << "Process " << id << " completes. Output: ";
     LOG(kInfo) << result;
-    if (!(*i).done)
-      RunProcess(id, true);
+    
+//     if (!(*i).done)
+//       RunProcess(id, true);
   }
 
   void ProcessManager::KillProcess(int32_t id) {
@@ -208,6 +216,7 @@ namespace maidsafe {
     (*i).done = false;
     LOG(kInfo) << "StartProcess: AddTerminateFlag";
     AddTerminateFlag(TerminateStatus::kNoTerminate);
+    /*boost::this_thread::sleep(boost::posix_time::seconds(10000));*/
     std::thread thd([=] { RunProcess(id, false); }); //NOLINT
     (*i).thread = std::move(thd);
   }
@@ -290,7 +299,7 @@ namespace maidsafe {
       return false;
     }
     if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
-      LOG(kError) << "SetTerminateFlag: given process id is invalid or outwith range of "
+      LOG(kError) << "CheckTerminateFlag: given process id is invalid or outwith range of "
                   << "terminate vector. Vector size: " << size << ", index: " << id - 1;
       return false;
     }

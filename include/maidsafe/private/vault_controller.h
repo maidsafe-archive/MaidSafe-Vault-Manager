@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
+#include <boost/thread.hpp>
 #include <thread>
 #include <string>
 #include <vector>
@@ -72,6 +73,7 @@ class VaultController {
   std::string shared_mem_name_;
   boost::interprocess::managed_shared_memory shared_mem_;
   bool check_finished_;
+  boost::thread thd;
 };
 
 }  // namespace priv

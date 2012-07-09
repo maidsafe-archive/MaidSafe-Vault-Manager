@@ -38,7 +38,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class R;
 class R;
 namespace maidsafe {
-  
+
 namespace priv {
 
 class VaultManager {
@@ -52,9 +52,10 @@ class VaultManager {
   int32_t ListVaults(bool select);
   void RestartVault(int32_t id);
   int_fast32_t get_process_vector_size();
- 
-private:
-//   void RunVault(/*std::string chunkstore_path, */std::string chunkstore_capacity, bool new_vault);
+ private:
+//   It should be decided if the following three methods are going to be private or public
+//   void RunVault(/*std::string chunkstore_path, */std::string chunkstore_capacity,
+//                     bool new_vault);
 //   void StopVault();
 //   bool ReadConfig();
   bool WriteConfig();
