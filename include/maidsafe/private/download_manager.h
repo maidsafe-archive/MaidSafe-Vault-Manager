@@ -35,6 +35,7 @@ namespace maidsafe {
 // the file
 class DownloadManager {
  public:
+  DownloadManager();
   DownloadManager(std::string site,
                   std::string location,  // location of files on site
                   std::string name,  // eg maidsafe_vault / maidsafe_client
@@ -54,10 +55,10 @@ class DownloadManager {
   std::string file_to_download() {return file_to_download_;}
   bool FindLatestFile();
   bool UpdateCurrentFile(boost::filesystem::path directory);
-
- private:
   bool FileIsValid(std::string file);
   bool FileIsLaterThan(std::string file1, std::string file2);
+
+ private:
   bool FileIsUseful(std::string file);
   bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
                      std::istream* response_stream, bai::tcp::socket* socket);

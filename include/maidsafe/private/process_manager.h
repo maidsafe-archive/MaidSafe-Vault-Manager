@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
+#include <boost/thread/pthread/mutex.hpp>
 #include <thread>
 #include <string>
 #include <vector>
@@ -44,9 +45,26 @@ enum class ProcessStatus {
   Crashed
 };
 
-enum class TerminateStatus {
+enum ProcessInstruction {
+  kRun = 1,
+  kStop = 2,
+  kTerminate = 3,
+  kInvalid = 4
+};
+
+/*enum class TerminateStatus {
   kTerminate = 1,
   kNoTerminate = 2
+};
+
+enum class StopStatus {
+  kStop = 1,
+  kNoStop = 2
+};*/
+
+
+struct ProcessManagerStruct {
+  ProcessInstruction instruction;
 };
 
 class Process {
@@ -62,13 +80,14 @@ class Process {
 };
 
 struct ProcessInfo {
-  ProcessInfo() : process(), thread(), id(0), done(false) {}
+  ProcessInfo() : process(), thread(), id(0), restart_count(0), done(false) {}
   // move constructor
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
   Process process;
   std::thread thread;
   int32_t id;
+  int32_t restart_count;
   bool done;
 };
 
@@ -86,20 +105,22 @@ class ProcessManager {
   void LetProcessDie(int32_t id);
   void WaitForProcesses();
   void KillProcess(int32_t id);
+  void StopProcess(int32_t id);
   void RestartProcess(int32_t id);
 
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
   std::vector<ProcessInfo>::iterator FindProcess(int32_t num);
-  void RunProcess(int32_t id, bool restart);
+  void RunProcess(int32_t id, bool restart, bool logging);
   void RunAll();
   void MonitorAll();
   void TerminateAll();
-  bool AddTerminateFlag(TerminateStatus status);
-  bool SetTerminateFlag(int32_t id, TerminateStatus status);
-  bool CheckTerminateFlag(int32_t id);
+  bool AddStatus(int32_t id, ProcessManagerStruct status);
+  bool SetInstruction(int32_t id, ProcessInstruction instruction);
+  ProcessInstruction CheckInstruction(int32_t id);
   std::vector<ProcessInfo> processes_;
+  boost::mutex process_info_mutex_;
   uint32_t process_count_;
   bool done_;
   int32_t process_id_;

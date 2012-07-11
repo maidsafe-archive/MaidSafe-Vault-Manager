@@ -36,6 +36,203 @@ namespace maidsafe {
 
 namespace test {
 
+// TEST(ProcessManagerTest, BEH_StartSingleProcess) {
+//   maidsafe::ProcessManager manager;
+//   maidsafe::Process test;
+//   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+//   test.AddArgument("DUMMYprocess");
+//   test.AddArgument("--runtime");
+//   test.AddArgument("2");
+//   test.AddArgument("--nocrash");
+//
+//   EXPECT_EQ(0, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//   uint32_t num = manager.AddProcess(test);
+//   auto start(boost::posix_time::microsec_clock::universal_time());
+//   manager.StartProcess(num);
+//   EXPECT_GT(num, 0);
+//   manager.LetProcessDie(num);
+//   manager.WaitForProcesses();
+//   auto end(boost::posix_time::microsec_clock::universal_time());
+//   boost::posix_time::time_duration elapsed(end - start);
+//   int64_t seconds(elapsed.seconds());
+//   EXPECT_GE(seconds, 2);
+//   EXPECT_LE(seconds, 3);
+//   EXPECT_EQ(1, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+// }
+//
+// TEST(ProcessManagerTest, BEH_KillProcess) {
+//   maidsafe::ProcessManager manager;
+//   maidsafe::Process test;
+//   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+//   test.AddArgument("DUMMYprocess");
+//   test.AddArgument("--runtime");
+//   test.AddArgument("5");
+//   test.AddArgument("--nocrash");
+//
+//   EXPECT_EQ(0, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//   uint32_t num = manager.AddProcess(test);
+//   auto start(boost::posix_time::microsec_clock::universal_time());
+//   manager.StartProcess(num);
+//   EXPECT_GT(num, 0);
+//   manager.KillProcess(num);
+//   manager.WaitForProcesses();
+//   auto end(boost::posix_time::microsec_clock::universal_time());
+//   boost::posix_time::time_duration elapsed(end - start);
+//   int64_t seconds(elapsed.seconds());
+//   EXPECT_LE(seconds, 1);
+//   EXPECT_EQ(1, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+// }
+//
+// TEST(ProcessManagerTest, BEH_RestartProcess) {
+//   maidsafe::ProcessManager manager;
+//   maidsafe::Process test;
+//   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+//   test.AddArgument("DUMMYprocess");
+//   test.AddArgument("--runtime");
+//   test.AddArgument("2");
+//   test.AddArgument("--nocrash");
+//
+//   EXPECT_EQ(0, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//   uint32_t num = manager.AddProcess(test);
+//   auto start(boost::posix_time::microsec_clock::universal_time());
+//   manager.StartProcess(num);
+//   EXPECT_GT(num, 0);
+//   manager.RestartProcess(num);
+//   boost::this_thread::sleep(boost::posix_time::millisec(2000));
+//   manager.LetProcessDie(num);
+//   manager.WaitForProcesses();
+//   auto end(boost::posix_time::microsec_clock::universal_time());
+//   boost::posix_time::time_duration elapsed(end - start);
+//   int64_t seconds(elapsed.seconds());
+//   EXPECT_GE(seconds, 2);
+//   EXPECT_LE(seconds, 3);
+//   EXPECT_EQ(1, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+// }
+//
+//
+//
+// TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
+//   maidsafe::ProcessManager manager;
+//   maidsafe::Process test;
+//   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+//   test.AddArgument("DUMMYprocess");
+//   test.AddArgument("--runtime");
+//   test.AddArgument("2");
+//   test.AddArgument("--nocrash");
+//
+//   maidsafe::Process test1;
+//   ASSERT_TRUE(test1.SetProcessName("DUMMYprocess"));
+//   test1.AddArgument("DUMMYprocess");
+//   test1.AddArgument("--runtime");
+//   test1.AddArgument("2");
+//   test1.AddArgument("--nocrash");
+//
+//   maidsafe::Process test2;
+//   ASSERT_TRUE(test2.SetProcessName("DUMMYprocess"));
+//   test2.AddArgument("DUMMYprocess");
+//   test2.AddArgument("--runtime");
+//   test2.AddArgument("2");
+//   test2.AddArgument("--nocrash");
+//
+//   EXPECT_EQ(0, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//   uint32_t num = manager.AddProcess(test);
+//   uint32_t num1 = manager.AddProcess(test1);
+//   uint32_t num2 = manager.AddProcess(test2);
+//   auto start(boost::posix_time::microsec_clock::universal_time());
+//   manager.StartProcess(num);
+//   manager.StartProcess(num1);
+//   manager.StartProcess(num2);
+//   manager.RestartProcess(num);
+//   manager.RestartProcess(num1);
+//   manager.RestartProcess(num2);
+//   boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+//   manager.LetProcessDie(num);
+//   manager.LetProcessDie(num1);
+//   manager.LetProcessDie(num2);
+//   manager.WaitForProcesses();
+//   auto end(boost::posix_time::microsec_clock::universal_time());
+//   boost::posix_time::time_duration elapsed(end - start);
+//   int64_t seconds(elapsed.seconds());
+//   EXPECT_GE(seconds, 2);
+//   EXPECT_LE(seconds, 3);
+//   EXPECT_EQ(3, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+// }
+//
+// TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
+//   maidsafe::ProcessManager manager;
+//   std::vector<Process> processes_5, processes_10;
+//   for (int i(0); i < 5; ++i) {
+//     maidsafe::Process test_5;
+//     ASSERT_TRUE(test_5.SetProcessName("DUMMYprocess"));
+//     test_5.AddArgument("DUMMYprocess");
+//     test_5.AddArgument("--runtime");
+//     test_5.AddArgument("5");
+//     test_5.AddArgument("--nocrash");
+//     processes_5.push_back(test_5);
+//   }
+//   for (int i(0); i < 5; ++i) {
+//     maidsafe::Process test_10;
+//     ASSERT_TRUE(test_10.SetProcessName("DUMMYprocess"));
+//     test_10.AddArgument("DUMMYprocess");
+//     test_10.AddArgument("--runtime");
+//     test_10.AddArgument("10");
+//     test_10.AddArgument("--nocrash");
+//     processes_10.push_back(test_10);
+//   }
+//   EXPECT_EQ(0, manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+//   std::vector<uint32_t> process_ids_5, process_ids_10;
+//   for (size_t i(0); i < processes_5.size(); ++i) {
+//     uint32_t num = manager.AddProcess(processes_5[i]);
+//     EXPECT_GT(num, 0);
+//     process_ids_5.push_back(num);
+//     manager.StartProcess(num);
+//   }
+//   for (size_t i(0); i < processes_10.size(); ++i) {
+//     uint32_t num = manager.AddProcess(processes_10[i]);
+//     EXPECT_GT(num, 0);
+//     manager.StartProcess(num);
+//     process_ids_10.push_back(num);
+//   }
+//   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
+//   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfLiveProcesses());
+//
+//   for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
+//     manager.LetProcessDie(*it);
+//
+//   std::this_thread::sleep_for(std::chrono::seconds(6));
+//
+//   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
+//   EXPECT_EQ(process_ids_10.size(), manager.NumberOfLiveProcesses());
+//
+//   for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
+//     manager.LetProcessDie(*it);
+//
+//   std::this_thread::sleep_for(std::chrono::seconds(6));
+//   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
+//   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+//   manager.WaitForProcesses();
+// }
+
+
+
 TEST(ProcessManagerTest, BEH_StartSingleProcess) {
   maidsafe::ProcessManager manager;
   maidsafe::Process test;
@@ -91,13 +288,13 @@ TEST(ProcessManagerTest, BEH_KillProcess) {
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
 }
 
-TEST(ProcessManagerTest, BEH_RestartProcess) {
+TEST(ProcessManagerTest, BEH_StopProcess) {
   maidsafe::ProcessManager manager;
   maidsafe::Process test;
   ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
   test.AddArgument("DUMMYprocess");
   test.AddArgument("--runtime");
-  test.AddArgument("2");
+  test.AddArgument("5");
   test.AddArgument("--nocrash");
 
   EXPECT_EQ(0, manager.NumberOfProcesses());
@@ -107,8 +304,40 @@ TEST(ProcessManagerTest, BEH_RestartProcess) {
   auto start(boost::posix_time::microsec_clock::universal_time());
   manager.StartProcess(num);
   EXPECT_GT(num, 0);
+  manager.StopProcess(num);
+  manager.WaitForProcesses();
+  auto end(boost::posix_time::microsec_clock::universal_time());
+  boost::posix_time::time_duration elapsed(end - start);
+  int64_t seconds(elapsed.seconds());
+  EXPECT_LE(seconds, 1);
+  EXPECT_EQ(1, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+}
+
+TEST(ProcessManagerTest, BEH_RestartProcess) {
+  maidsafe::ProcessManager manager;
+  maidsafe::Process test;
+  ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+  test.AddArgument("DUMMYprocess");
+  test.AddArgument("--runtime");
+  test.AddArgument("2");
+  test.AddArgument("--nocrash");
+  /*test.AddArgument("--start");
+test.AddArgument("--chunkstore_capacity");
+test.AddArgument("0");
+test.AddArgument("--chunkstore_path");
+test.AddArgument("~/vault");*/
+
+  EXPECT_EQ(0, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+  uint32_t num = manager.AddProcess(test);
+  auto start(boost::posix_time::microsec_clock::universal_time());
+  manager.StartProcess(num);
+  EXPECT_GT(num, 0);
   manager.RestartProcess(num);
-  boost::this_thread::sleep(boost::posix_time::millisec(2000));
+  boost::this_thread::sleep(boost::posix_time::millisec(800));
   manager.LetProcessDie(num);
   manager.WaitForProcesses();
   auto end(boost::posix_time::microsec_clock::universal_time());
@@ -159,7 +388,7 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
   manager.RestartProcess(num);
   manager.RestartProcess(num1);
   manager.RestartProcess(num2);
-  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+  boost::this_thread::sleep(boost::posix_time::milliseconds(800));
   manager.LetProcessDie(num);
   manager.LetProcessDie(num1);
   manager.LetProcessDie(num2);
@@ -177,7 +406,7 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
 TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   maidsafe::ProcessManager manager;
   std::vector<Process> processes_5, processes_10;
-  for (int i(0); i < 5; ++i) {
+  for (int i(0); i < 2; ++i) {
     maidsafe::Process test_5;
     ASSERT_TRUE(test_5.SetProcessName("DUMMYprocess"));
     test_5.AddArgument("DUMMYprocess");
@@ -186,7 +415,8 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     test_5.AddArgument("--nocrash");
     processes_5.push_back(test_5);
   }
-  for (int i(0); i < 5; ++i) {
+    LOG(kInfo) << "HELLO1";
+  for (int i(0); i < 0; ++i) {
     maidsafe::Process test_10;
     ASSERT_TRUE(test_10.SetProcessName("DUMMYprocess"));
     test_10.AddArgument("DUMMYprocess");
@@ -195,28 +425,34 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     test_10.AddArgument("--nocrash");
     processes_10.push_back(test_10);
   }
+  LOG(kInfo) << "HELLO2";
   EXPECT_EQ(0, manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
   std::vector<uint32_t> process_ids_5, process_ids_10;
   for (size_t i(0); i < processes_5.size(); ++i) {
-    uint32_t num = manager.AddProcess(processes_5[i]);
+    LOG(kInfo) << "HELLO21";
+    uint32_t num = manager.AddProcess(processes_5.at(i));
     EXPECT_GT(num, 0);
+    LOG(kInfo) << "HELLO22";
     process_ids_5.push_back(num);
     manager.StartProcess(num);
+    LOG(kInfo) << "HELLO23";
   }
+  LOG(kInfo) << "HELLO3";
   for (size_t i(0); i < processes_10.size(); ++i) {
-    uint32_t num = manager.AddProcess(processes_10[i]);
+    uint32_t num = manager.AddProcess(processes_10.at(i));
     EXPECT_GT(num, 0);
     manager.StartProcess(num);
     process_ids_10.push_back(num);
   }
+  LOG(kInfo) << "HELLO3";
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfLiveProcesses());
 
   for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
     manager.LetProcessDie(*it);
-
+  LOG(kInfo) << "HELLO4";
   std::this_thread::sleep_for(std::chrono::seconds(6));
 
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
@@ -224,14 +460,44 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
   for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
     manager.LetProcessDie(*it);
-
+  LOG(kInfo) << "HELLO5";
   std::this_thread::sleep_for(std::chrono::seconds(6));
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  LOG(kInfo) << "HELLO6";
   manager.WaitForProcesses();
+  LOG(kInfo) << "HELLO7";
 }
 
+TEST(ProcessManagerTest, FUNC_StartSingleProcessForLongTime) {
+  maidsafe::ProcessManager manager;
+  maidsafe::Process test;
+  ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
+  test.AddArgument("DUMMYprocess");
+  test.AddArgument("--runtime");
+  test.AddArgument("500");
+  test.AddArgument("--nocrash");
 
+  EXPECT_EQ(0, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+  uint32_t num = manager.AddProcess(test);
+  auto start(boost::posix_time::microsec_clock::universal_time());
+  manager.StartProcess(num);
+  EXPECT_GT(num, 0);
+  boost::this_thread::sleep(boost::posix_time::seconds(400));
+  /*manager.LetProcessDie(num);
+manager.WaitForProcesses();*/
+  manager.KillProcess(num);
+  auto end(boost::posix_time::microsec_clock::universal_time());
+  boost::posix_time::time_duration elapsed(end - start);
+  int64_t seconds(elapsed.seconds() + elapsed.minutes() * 60);
+  EXPECT_GE(seconds, 400);
+  EXPECT_LE(seconds, 401);
+  EXPECT_EQ(1, manager.NumberOfProcesses());
+  EXPECT_EQ(0, manager.NumberOfLiveProcesses());
+  EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
+}
 
 
 }  // namespace test
@@ -243,3 +509,37 @@ int main(int argc, char **argv) {
   filter["*"] = maidsafe::log::kInfo;
   return ExecuteMain(argc, argv, filter);
 }
+
+/*#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/thread.hpp>
+#include <string>
+#include <iostream>
+
+namespace bi = boost::interprocess;
+
+struct Struct {
+  int32_t integer;
+};
+
+int main(int ac, char* av[]) {
+  typedef boost::interprocess::allocator<std::pair<const int32_t, Struct>,
+    boost::interprocess::managed_shared_memory::segment_manager> StructAlloc;
+  typedef boost::interprocess::map<int32_t, Struct, std::less<int32_t>, StructAlloc> StructMap;
+  std::string shared_mem_name("hello");
+
+  boost::interprocess::shared_memory_object::remove(shared_mem_name.c_str());
+  boost::interprocess::managed_shared_memory shared_mem(boost::interprocess::open_or_create, shared_mem_name.c_str(), 4096);
+  StructMap* map = shared_mem.construct<StructMap>("struct_map")(std::less<int32_t>(), shared_mem.get_segment_manager());
+  for (int i(1); i < 11; ++i)
+    (*map)[i].integer = 5;
+  for (auto it(map->begin()); it != map->end(); ++it)
+    std::cout << "KEY: " << (*it).first << " VALUE: " << (*it).second.integer << std::endl;
+  for (int i(1); i < 11; ++i) {
+
+    std::cout << "KEY " << i <<  " HAS " << (*map).count(i) << " VALUE(S)" << std::endl;
+  }
+  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+  return 0;
+}*/

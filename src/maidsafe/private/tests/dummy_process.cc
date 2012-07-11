@@ -45,42 +45,59 @@ enum class TerminateStatus {
   kNoTerminate = 2
 };
 
+enum ProcessInstruction {
+  kRun = 1,
+  kStop = 2,
+  kTerminate = 3,
+  kInvalid = 4
+};
+
+struct ProcessManagerStruct {
+  ProcessInstruction instruction;
+};
+
   typedef bi::allocator<TerminateStatus,
       bi::managed_shared_memory::segment_manager> TerminateAlloc;
   typedef bi::vector<TerminateStatus, TerminateAlloc> TerminateVector;
 
   static bool check_finished(false);
 
-bool CheckTerminateFlag(int32_t id, bi::managed_shared_memory& shared_mem) {
-  std::pair<TerminateVector*, std::size_t> t = shared_mem.find<TerminateVector>("terminate_info");
-  size_t size(0);
-  if (t.first) {
-    size = (*t.first).size();
-  } else {
-    std::cout << "CheckTerminateFlag: failed to access IPC shared memory";
-    return false;
-  }
-  if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
-    std::cout << "CheckTerminateFlag: given process id is invalid or outwith range of "
-              << "terminate vector";
-    return false;
-  }
-  if ((*t.first).at(id - 1) == TerminateStatus::kTerminate) {
-    std::cout << "Process terminating. ";
-    return true;
-  }
-  return false;
-}
+// bool CheckTerminateFlag(int32_t id, bi::managed_shared_memory& shared_mem) {
+//   std::pair<TerminateVector*, std::size_t> t =
+//       shared_mem.find<TerminateVector>("terminate_info");
+//   size_t size(0);
+//   if (t.first) {
+//     size = (*t.first).size();
+//   } else {
+//     std::cout << "CheckTerminateFlag: failed to access IPC shared memory";
+//     return false;
+//   }
+//   if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
+//     std::cout << "CheckTerminateFlag: given process id is invalid or outwith range of "
+//               << "terminate vector";
+//     return false;
+//   }
+//   if ((*t.first).at(id - 1) == TerminateStatus::kTerminate) {
+//     std::cout << "Process terminating. ";
+//     return true;
+//   }
+//   return false;
+// }
+//
+// void ListenForTerminate(std::string shared_mem_name, int id) {
+//     bi::managed_shared_memory shared_mem(bi::open_or_create,
+//                                                           shared_mem_name.c_str(),
+//                                                           1024);
+//     while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem) && !check_finished)
+//       boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+//     if (check_finished)
+//       return;
+//     exit(0);
+// }
 
-void ListenForTerminate(std::string shared_mem_name, int id) {
-    bi::managed_shared_memory shared_mem(bi::open_or_create,
-                                                          shared_mem_name.c_str(),
-                                                          1024);
-    while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem) && !check_finished)
-      boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-    if (check_finished)
-      return;
-    exit(0);
+void stop_handler() {
+  std::cout << "Process stopping, asked to stop by parent." << std::endl;
+  exit(0);
 }
 
 int main(int ac, char* av[]) {
@@ -112,7 +129,7 @@ int main(int ac, char* av[]) {
       }
 
       std::string id = vm["pid"].as<std::string>();
-      vc.Start(shared_mem_name.c_str(), id.c_str());
+      vc.Start(shared_mem_name.c_str(), id.c_str(), [&] { stop_handler(); });  // NOLINT
     }
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
@@ -121,7 +138,8 @@ int main(int ac, char* av[]) {
         if (vm.count("nocrash")) {
           check_finished = true;
           std::cout << "Process finishing normally. ";
-          thd.join();
+          if (thd.joinable())
+            thd.join();
           return 0;
         } else {
           return 1;
@@ -131,9 +149,38 @@ int main(int ac, char* av[]) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } catch(std::exception& e)  {
-    std::cout << e.what() << "\n";
+    std::cout << "WE'RE DEFINITELY HERE " << e.what() << " WE'RE HERE\n";
     return 1;
   }
   return 0;
 }
 
+/*#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/thread.hpp>
+#include <string>
+#include <iostream>
+
+namespace bi = boost::interprocess;
+
+struct Struct {
+  int32_t integer;
+};
+
+int main(int ac, char* av[]) {
+  typedef boost::interprocess::allocator<std::pair<const int32_t, Struct>,
+    boost::interprocess::managed_shared_memory::segment_manager> StructAlloc;
+  typedef boost::interprocess::map<int32_t, Struct, std::less<int32_t>, StructAlloc> StructMap;
+  std::string shared_mem_name("hello");
+
+  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+
+  boost::interprocess::managed_shared_memory shared_mem(boost::interprocess::open_or_create, shared_mem_name.c_str(), 4096);
+  std::pair<StructMap*, std::size_t> map_pair(shared_mem.find<StructMap>("struct_map"));
+  for (auto it((map_pair.first)->begin()); it != (map_pair.first)->end(); ++it)
+    std::cout << "KEY: " << (*it).first << " VALUE: " << (*it).second.integer << std::endl;
+  for (int i(1); i < 11; ++i)
+    std::cout << "KEY " << i << " HAS " << (*map_pair.first).count(i) << " VALUE(S)" << std::endl;
+  return 0;
+}*/

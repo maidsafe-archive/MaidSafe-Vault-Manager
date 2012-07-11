@@ -43,7 +43,8 @@ namespace maidsafe {
 
 namespace priv {
 
-  VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_() {}
+  VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_(),
+                                 download_manager_() {}
 
   VaultManager::~VaultManager() {}
 
@@ -80,8 +81,8 @@ namespace priv {
   }
 
   void VaultManager::StopVault(int32_t id) {
-    manager_.KillProcess(p_id_vector_[id]);
-//     manager_.StopProcess(p_id_vector_[id]); This is to be put in function when the
+//     manager_.KillProcess(p_id_vector_[id]);
+    manager_.StopProcess(p_id_vector_[id]);  // This is to be put in function when the
 //     new model od process manager will work properly
   }
 
@@ -101,7 +102,7 @@ namespace priv {
 
     std::string content = "";
 
-    for (int i = 0; i < process_vector_.size(); i++) {
+    for (size_t i = 0; i < process_vector_.size(); i++) {
       if (i != 0)
       {
         content += "\n";
@@ -133,6 +134,7 @@ namespace priv {
        std::vector<std::string> vault(arg_tokenizer.begin(), arg_tokenizer.end());
        RunVault(vault[0], vault[1], false);
     }
+    return true;
   }
 
   int32_t VaultManager::ListVaults(bool select) {
@@ -166,18 +168,119 @@ namespace priv {
   int32_t VaultManager::get_process_vector_size() {
     return process_vector_.size();
   }
+
+  std::pair<std::string, std::string> VaultManager::FindLatestLocalVersion(std::string name,
+                                                                           std::string platform,
+                                                                           std::string cpu_size) {
+    boost::filesystem::path current_path(boost::filesystem::current_path());
+    fs::directory_iterator end;
+    std::string latest_file(name + "_" + platform + "_" + cpu_size + "_0_0");
+    std::string max_version(""), max_patchlevel("");
+    for (fs::directory_iterator dir_it(current_path); dir_it != end; ++dir_it) {
+      if (!download_manager_.FileIsValid((*dir_it).path().filename().string()))
+        continue;
+      boost::char_separator<char> sep("_");
+      boost::tokenizer<boost::char_separator<char>> tok((*dir_it).path().filename().string(), sep);
+      auto it(tok.begin());
+      std::string current_name(*it);
+      std::cout << "name " << std::endl;
+      std::cout << name << std::endl;
+      std::cout << current_name << std::endl;
+      if (name != current_name)
+        continue;
+      std::cout << "name == current_name " << std::endl;
+      std::string current_platform(*(++it));
+      std::cout << "platform" << std::endl;
+      std::cout << platform << std::endl;
+      std::cout << current_platform << std::endl;
+      if (platform != current_platform)
+        continue;
+      std::cout << "platform == current_platform " << std::endl;
+      std::string current_cpu_size(*(++it));
+      std::cout << "cpu_size" << std::endl;
+      std::cout << cpu_size << std::endl;
+      std::cout << current_cpu_size << std::endl;
+      if (cpu_size != current_cpu_size)
+        continue;
+      std::cout << "cpu_size == current_cpu_size " << std::endl;
+      std::cout << "(*dir_it).path().filename().string(): " << (*dir_it).path().filename().string()
+                << std::endl;
+      std::cout << "latest_file: " << latest_file << std::endl;
+
+//       std::string maxversion2 (*(++it));
+//       std::string maxpatch2 (*(++it));
+//       std::cout << "max_version2: " << maxversion2 << std::endl;
+//       std::cout << "maxpatch2: " << maxpatch2 << std::endl;
+
+      std::string temp_max_version = *(++it);
+      std::string temp_max_patchlevel = *(++it);
+
+      if (download_manager_.FileIsLaterThan((*dir_it).path().filename().string(), latest_file)) {
+        std::cout << "helllooooooooooooooooooooooooooo" << std::endl;
+        std::cout << "(*dir_it).path().filename().string() FOR SECOND TIME: "
+                  << (*dir_it).path().filename().string() << std::endl;
+        latest_file = (*dir_it).path().filename().string();
+        max_version = temp_max_version;
+        max_patchlevel = temp_max_patchlevel;
+      }
+    }
+    return std::pair<std::string, std::string>(max_version, max_patchlevel);
+  }
+
+  void VaultManager::ListenForUpdates() {
+    std::string name("lifestufflocal");
+    int32_t cpu_size(maidsafe::CpuSize());
+    std::string platform;
+    #ifdef _WINDOWS
+    platform = "win";
+    #elifdef _APPLE_
+    platform = "osx";
+    #else
+    platform = "linux";
+    #endif
+    std::string current_version, current_patchlevel;
+    std::pair<std::string, std::string> version_and_patchlevel;
+    boost::filesystem::path current_path(boost::filesystem::current_path());
+    std::cout << current_path << std::endl;
+    while (true) {
+      std::cout << "FINDING LATEST LOCAL VERSION OF " << name << std::endl;
+      version_and_patchlevel = FindLatestLocalVersion(name, platform,
+                                                      boost::lexical_cast<std::string>(cpu_size));
+      std::cout << "CPU SIZE: " << cpu_size << std::endl;
+      current_version = version_and_patchlevel.first;
+      current_patchlevel = version_and_patchlevel.second;
+      std::cout << "LATEST LOCAL VERSION OF " << name << " IS "
+                                              << version_and_patchlevel.first << "_"
+                                              << version_and_patchlevel.second << std::endl;
+      download_manager_ = DownloadManager("dash.maidsafe.net", "~phil", name,
+                                          platform, boost::lexical_cast<std::string>(cpu_size),
+                                          current_version, current_patchlevel);
+
+      std::cout << "INITIALISED DOWNLOAD MANAGER" << std::endl;
+      if (download_manager_.FindLatestFile()) {
+        std::string file_to_download(download_manager_.file_to_download());
+        std::cout << "LATEST FILE FOUND, " << file_to_download  << std::endl;
+        download_manager_.UpdateCurrentFile(current_path);
+        std::cout << "UPDATED " << name << " TO " << file_to_download;
+      } else {
+        std::cout << "LATEST FILE NOT FOUND, " << std::endl;
+      }
+      boost::this_thread::sleep(boost::posix_time::minutes(5));
+    }
+  }
+
 }       // namespace priv
 }       // namespace maidsafe
 
-int main(int argc, char **argv) {
+int main(int /*argc*/, char **/*argv*/) {
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-//   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   maidsafe::ProcessManager manager;
   maidsafe::priv::VaultManager vman;
 
-  vman.ReadConfig();
+  /*vman.ReadConfig();*/
 
-  int32_t stdinput;
+  // sint32_t stdinput;
   std::string options = "1. (Start a new vault)\n";
   options.append("2. (Start a stopped vault)\n");
   options.append("3. (Stop a vault)\n");
@@ -185,11 +288,11 @@ int main(int argc, char **argv) {
   options.append("5. (List all vaults)\n");
   options.append("6. (Quit)\n");
 
-  bool exit = false;
+  // bool exit = false;
 
   std::string size;
   std::string option = "";
-  while (!exit && (std::cout << options) && (std::cin >> stdinput))
+  /*while (!exit && (std::cout << options) && (std::cin >> stdinput))
   {
     switch (stdinput) {
       case 1:
@@ -217,7 +320,12 @@ int main(int argc, char **argv) {
         exit = true;
         break;
     }
-  }
+  }*/
+
+  std::thread thd( [&] { vman.ListenForUpdates(); } ); // NOLINT
+  if (thd.joinable())
+    thd.join();
+
   std::cout << "Exiting..." << std::endl;
 //  int32_t p_id;
 //  std::vector<int32_t> p_idd;

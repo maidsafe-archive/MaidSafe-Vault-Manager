@@ -30,8 +30,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "maidsafe/private/process_manager.h"
+#include "maidsafe/private/download_manager.h"
 #include "boost/filesystem/fstream.hpp"
 #include "boost/filesystem/operations.hpp"
 
@@ -52,6 +54,11 @@ class VaultManager {
   int32_t ListVaults(bool select);
   void RestartVault(int32_t id);
   int_fast32_t get_process_vector_size();
+  void ListenForUpdates();
+  std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
+                                                             std::string platform,
+                                                             std::string cpu_size);
+
  private:
 //   It should be decided if the following three methods are going to be private or public
 //   void RunVault(/*std::string chunkstore_path, */std::string chunkstore_capacity,
@@ -62,6 +69,7 @@ class VaultManager {
   std::vector<int32_t> p_id_vector_;
   std::vector<maidsafe::Process> process_vector_;
   maidsafe::ProcessManager manager_;
+  maidsafe::DownloadManager download_manager_;
 };
 
 }  // namespace private

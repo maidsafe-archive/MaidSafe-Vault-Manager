@@ -47,9 +47,11 @@ enum class ProcessStatus {
   Crashed
 };
 
-enum class TerminateStatus {
-  kTerminate = 1,
-  kNoTerminate = 2
+enum ProcessInstruction {
+  kRun = 1,
+  kStop = 2,
+  kTerminate = 3,
+  kInvalid = 4
 };
 
 enum class KeysStatus {
@@ -59,16 +61,23 @@ enum class KeysStatus {
   kDoHaveKeys = 4
 };
 
+struct ProcessManagerStruct {
+  ProcessInstruction instruction;
+};
+
 class VaultController {
  public:
   VaultController();
   ~VaultController();
-  bool Start(std::string shared_mem_name, std::string pid_string);
+  bool Start(std::string shared_mem_name, std::string pid_string,
+             std::function<void()> stop_callback);
   bool GetKeys(std::string* keys);
 
  private:
-  void ListenForTerminate(std::string shared_mem_name, int id);
-  bool CheckTerminateFlag(int32_t id, bi::managed_shared_memory& shared_mem);
+  void ListenForStopTerminate(std::string shared_mem_name,
+                              int id,
+                              std::function<void()> stop_handler);
+  ProcessInstruction CheckInstruction(const int32_t& id);
   int32_t process_id_;
   std::string shared_mem_name_;
   boost::interprocess::managed_shared_memory shared_mem_;
