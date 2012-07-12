@@ -99,6 +99,7 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) {
   // LOG(kInfo) << "FILE (2) " << file2 << " IS VERSION " << version2;
   if (version2 < version1)
     return true;
+
   uint32_t patchlevel1(boost::lexical_cast<uint32_t>(*(++it1)));
   uint32_t patchlevel2(boost::lexical_cast<uint32_t>(*(++it2)));
   // LOG(kInfo) << "FILE (1) " << file1 << " IS PATCHLEVEL " << patchlevel1;
@@ -118,23 +119,25 @@ bool DownloadManager::FileIsUseful(std::string file) {
   LOG(kInfo) << "HERE 1";
   if (name_ != name)
     return false;
+  LOG(kInfo) << "NAME IS OK";
   std::string platform(*(++it));
-  LOG(kInfo) << "HERE 2";
   if (platform_ != platform)
     return false;
+  LOG(kInfo) << "PLATFORM IS OK";
   std::string cpu_size(*(++it));
-  LOG(kInfo) << "HERE 3";
   if (cpu_size_ != cpu_size)
     return false;
+  LOG(kInfo) << "CPU SIZE IS OK";
+
   uint32_t version(boost::lexical_cast<uint32_t>(*(++it)));
-  LOG(kInfo) << "HERE 4";
   if (current_version_ == "") {
     LOG(kInfo) << "FileIsUseful: Empty version, getting any version from server";
     return true;
   }
   uint32_t current_version(boost::lexical_cast<uint32_t>(current_version_));
-  LOG(kInfo) << "HERE 5";
-  if (version <= current_version)
+  LOG(kInfo) << "BEFORE CHECKING WHICH VERSION CURRENT IS " << current_version
+             << " VERSION THAT IS CHECKED IS " << version;
+  if (version < current_version)
     return false;
   uint32_t patchlevel(boost::lexical_cast<uint32_t>(*(++it)));
   if (current_patchlevel_ == "") {
@@ -177,13 +180,17 @@ bool DownloadManager::FindLatestFile() {
   while (std::getline(file_list_stream, current_file))
     files.push_back(current_file);
   auto it(files.begin());
-  std::string latest_file;
+  std::string latest_file, next_file;
   for (; it != files.end(); ++it) {
-    LOG(kInfo) << "LATEST FILE: " << latest_file << " CURRENT FILE: " << (*it);
-    LOG(kInfo) << "FILE IS LATER THAN " << ((FileIsLaterThan(*it, latest_file)) ? "TRUE" : "FALSE");
-    LOG(kInfo) << "FILE IS USEFUL " << ((FileIsUseful(*it)) ? "TRUE" : "FALSE");
-    if (FileIsUseful(*it) && FileIsLaterThan(*it, latest_file))
-      latest_file = *it;
+    next_file = *it;
+    // THIS WILL PROBABLY CHANGE IF THERE ARE PROBLEMS WITH MACs
+    boost::erase_all(next_file, "*exe");
+    LOG(kInfo) << "LATEST FILE: " << latest_file << " CURRENT FILE: " << next_file;  //  (*it);
+    LOG(kInfo) << "FILE IS LATER THAN " << ((FileIsLaterThan(/**it*/ next_file, latest_file))
+                ? "TRUE" : "FALSE");
+    LOG(kInfo) << "FILE IS USEFUL " << ((FileIsUseful(/**it*/next_file)) ? "TRUE" : "FALSE");
+    if (FileIsUseful(/**it*/next_file) && FileIsLaterThan(/**it*/ next_file, latest_file))
+      latest_file = next_file;/**it*/
   }
   if (latest_file == "") {
     LOG(kWarning) << "FindLatestFile: No more recent version of requested file " << name_

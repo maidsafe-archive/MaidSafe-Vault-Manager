@@ -177,10 +177,10 @@ namespace priv {
     std::string latest_file(name + "_" + platform + "_" + cpu_size + "_0_0");
     std::string max_version(""), max_patchlevel("");
     for (fs::directory_iterator dir_it(current_path); dir_it != end; ++dir_it) {
-      if (!download_manager_.FileIsValid((*dir_it).path().filename().string()))
+      if (!download_manager_.FileIsValid((*dir_it).path().stem().string()))
         continue;
       boost::char_separator<char> sep("_");
-      boost::tokenizer<boost::char_separator<char>> tok((*dir_it).path().filename().string(), sep);
+      boost::tokenizer<boost::char_separator<char>> tok((*dir_it).path().stem().string(), sep);
       auto it(tok.begin());
       std::string current_name(*it);
       std::cout << "name " << std::endl;
@@ -203,7 +203,7 @@ namespace priv {
       if (cpu_size != current_cpu_size)
         continue;
       std::cout << "cpu_size == current_cpu_size " << std::endl;
-      std::cout << "(*dir_it).path().filename().string(): " << (*dir_it).path().filename().string()
+      std::cout << "(*dir_it).path().stem().string(): " << (*dir_it).path().stem().string()
                 << std::endl;
       std::cout << "latest_file: " << latest_file << std::endl;
 
@@ -215,11 +215,12 @@ namespace priv {
       std::string temp_max_version = *(++it);
       std::string temp_max_patchlevel = *(++it);
 
-      if (download_manager_.FileIsLaterThan((*dir_it).path().filename().string(), latest_file)) {
+//       if (download_manager_.FileIsLaterThan((*dir_it).path().filename().string(), latest_file)) {
+      if (download_manager_.FileIsLaterThan((*dir_it).path().stem().string(), latest_file)) {
         std::cout << "helllooooooooooooooooooooooooooo" << std::endl;
-        std::cout << "(*dir_it).path().filename().string() FOR SECOND TIME: "
-                  << (*dir_it).path().filename().string() << std::endl;
-        latest_file = (*dir_it).path().filename().string();
+        std::cout << "(*dir_it).path().stem().string() FOR SECOND TIME: "
+                  << (*dir_it).path().stem().string() << std::endl;
+        latest_file = (*dir_it).path().stem().string();
         max_version = temp_max_version;
         max_patchlevel = temp_max_patchlevel;
       }
@@ -261,7 +262,7 @@ namespace priv {
         std::string file_to_download(download_manager_.file_to_download());
         std::cout << "LATEST FILE FOUND, " << file_to_download  << std::endl;
         download_manager_.UpdateCurrentFile(current_path);
-        std::cout << "UPDATED " << name << " TO " << file_to_download;
+        std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
       } else {
         std::cout << "LATEST FILE NOT FOUND, " << std::endl;
       }
