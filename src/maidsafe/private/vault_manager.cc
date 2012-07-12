@@ -182,27 +182,24 @@ namespace priv {
       boost::char_separator<char> sep("_");
       boost::tokenizer<boost::char_separator<char>> tok((*dir_it).path().stem().string(), sep);
       auto it(tok.begin());
+
       std::string current_name(*it);
-      std::cout << "name " << std::endl;
-      std::cout << name << std::endl;
-      std::cout << current_name << std::endl;
+      std::cout << "name " << name << std::endl;
+      std::cout << "current_name " <<current_name << std::endl;
       if (name != current_name)
         continue;
-      std::cout << "name == current_name " << std::endl;
+
       std::string current_platform(*(++it));
-      std::cout << "platform" << std::endl;
-      std::cout << platform << std::endl;
-      std::cout << current_platform << std::endl;
+      std::cout << "platform " << platform << std::endl;
+      std::cout << "current_platform " << current_platform << std::endl;
       if (platform != current_platform)
         continue;
-      std::cout << "platform == current_platform " << std::endl;
+
       std::string current_cpu_size(*(++it));
-      std::cout << "cpu_size" << std::endl;
-      std::cout << cpu_size << std::endl;
-      std::cout << current_cpu_size << std::endl;
+      std::cout << "cpu_size " << cpu_size << std::endl;
+      std::cout << "current_cpu_size " << current_cpu_size << std::endl;
       if (cpu_size != current_cpu_size)
         continue;
-      std::cout << "cpu_size == current_cpu_size " << std::endl;
       std::cout << "(*dir_it).path().stem().string(): " << (*dir_it).path().stem().string()
                 << std::endl;
       std::cout << "latest_file: " << latest_file << std::endl;
@@ -217,7 +214,6 @@ namespace priv {
 
 //       if (download_manager_.FileIsLaterThan((*dir_it).path().filename().string(), latest_file)) {
       if (download_manager_.FileIsLaterThan((*dir_it).path().stem().string(), latest_file)) {
-        std::cout << "helllooooooooooooooooooooooooooo" << std::endl;
         std::cout << "(*dir_it).path().stem().string() FOR SECOND TIME: "
                   << (*dir_it).path().stem().string() << std::endl;
         latest_file = (*dir_it).path().stem().string();
@@ -232,13 +228,17 @@ namespace priv {
     std::string name("lifestufflocal");
     int32_t cpu_size(maidsafe::CpuSize());
     std::string platform;
+    std::string extension = "";
+
     #ifdef _WINDOWS
     platform = "win";
+    extension = ".exe"
     #elifdef _APPLE_
     platform = "osx";
     #else
     platform = "linux";
     #endif
+
     std::string current_version, current_patchlevel;
     std::pair<std::string, std::string> version_and_patchlevel;
     boost::filesystem::path current_path(boost::filesystem::current_path());
@@ -260,12 +260,35 @@ namespace priv {
       std::cout << "INITIALISED DOWNLOAD MANAGER" << std::endl;
       if (download_manager_.FindLatestFile()) {
         std::string file_to_download(download_manager_.file_to_download());
-        std::cout << "LATEST FILE FOUND, " << file_to_download  << std::endl;
+
+        // Download the signature file
+        std::string signature_file = file_to_download + extension + ".sig";
+        std::cout << "SIGNATURE FILE IS " << signature_file << std::endl;
+        download_manager_.SetFileToDownload(signature_file);
+        download_manager_.UpdateCurrentFile(current_path);
+        std::cout << "SIGNATURE FILE " << signature_file << " HAS BEEN DOWNLOADED." << std::endl;
+
+        // Download the client file
+        file_to_download = file_to_download +  extension;
+        std::cout << "FILE FOUND TO BE DOWNLOADED, " << file_to_download  << std::endl;
+        download_manager_.SetFileToDownload(file_to_download);
         download_manager_.UpdateCurrentFile(current_path);
         std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
+
+        if (download_manager_.VerifySignature()) {
+          // Remove the signature_file
+          std::cout << "REMOVING SIGNATURE FILE" << std::endl;
+          boost::filesystem::remove(current_path / signature_file);
+        } else {
+          std::cout << "Invalid Signature" << std::endl;
+          // Remove the signature_file
+          boost::filesystem::remove(current_path / signature_file);
+          boost::filesystem::remove(current_path / file_to_download);
+        }
       } else {
         std::cout << "LATEST FILE NOT FOUND, " << std::endl;
       }
+      std::cout << "Sleeping for five minutes! " << std::endl;
       boost::this_thread::sleep(boost::posix_time::minutes(5));
     }
   }

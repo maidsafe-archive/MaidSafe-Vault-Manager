@@ -51,12 +51,14 @@ class DownloadManager {
   void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
   void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
   void SetCpuSizeToUpdate(std::string cpu_size) { cpu_size_ = cpu_size; }
+  void SetFileToDownload(std::string file_to_download) { file_to_download_ = file_to_download; }
   void ClearFileToDownload() { file_to_download_ = ""; }
   std::string file_to_download() {return file_to_download_;}
   bool FindLatestFile();
   bool UpdateCurrentFile(boost::filesystem::path directory);
   bool FileIsValid(std::string file);
   bool FileIsLaterThan(std::string file1, std::string file2);
+  bool VerifySignature();
 
  private:
   bool FileIsUseful(std::string file);

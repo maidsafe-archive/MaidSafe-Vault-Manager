@@ -29,6 +29,7 @@
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/rsa.h"
 
 namespace bai = boost::asio::ip;
 
@@ -252,6 +253,36 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
                 << ": " << e.what();
     return false;
   }
+  return true;
+}
+
+bool DownloadManager::VerifySignature() {
+  boost::filesystem::path current_path(boost::filesystem::current_path());
+  boost::filesystem::path key_file("maidsafe_public");
+  boost::filesystem::path file(file_to_download_);
+  boost::filesystem::path sigfile(file_to_download_ + ".sig");
+  std::string public_key, signature, data;
+  maidsafe::rsa::Keys key;
+
+  if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)
+                                       || !maidsafe::ReadFile(key_file, &public_key)) {
+    std::cout << "error reading file\n";
+    return false;
+  }
+
+  maidsafe::rsa::DecodePublicKey(public_key, &key.public_key);
+
+  if (!maidsafe::rsa::ValidateKey(key.public_key)) {
+    std::cout << "public key invalid, aborting!!\n";
+  }
+
+  if (maidsafe::rsa::CheckSignature(data, signature, key.public_key) == 0)  {
+    std::cout << "Signature valid\n";
+  } else {
+    std::cout << "Invalid signature !! \n";
+    return false;
+  }
+  // SEE WHAT TO RETURN
   return true;
 }
 
