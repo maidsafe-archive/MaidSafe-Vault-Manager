@@ -157,6 +157,7 @@ void LoadPublicKey() {
       std::cout << "error reading file\n";
       return;
     }
+    std::cout << maidsafe::EncodeToHex(pub_key) << "\n";
     maidsafe::rsa::DecodePublicKey(pub_key, &Keys.public_key);
 
     if (maidsafe::rsa::ValidateKey(Keys.public_key))

@@ -73,6 +73,7 @@ class DownloadManager {
   std::string current_patchlevel_;
   std::string protocol_;
   std::string file_to_download_;
+  std::string maidsafe_public_key_;
 };
 
 }  // namespace maidsafe

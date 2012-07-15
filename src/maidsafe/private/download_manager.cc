@@ -43,7 +43,8 @@ DownloadManager::DownloadManager()
   current_version_(),
   current_patchlevel_(),
   protocol_(),
-  file_to_download_() {}
+  file_to_download_(),
+  maidsafe_public_key_(DecodeFromHex("308201080282010100bce669239b27e494d9dfd51c543d689092b094948d532c716622ce8ad4d022df8372742284c18953064e0bcb2e19d8797038d898b0180fc042948fb32ad209c88cbff58550107b6e0504db6c6bcc237877a0e2781c9de1ccc3604c1a58fe1057c70f71dd6b556456366b0d9961956542451160a89af4c2490a5c011719d578790aa5459e73cf0ef0c3e0a04ed3e9685572095781937392f09e2de5f1824b53cc307c5076c828771381ffad3145cfc17575084831dab072c90396b0e786709ae845cfa690f190f80733cf9c8939b074911365c19a48ab1ae1de9b7b538d3d444eabe41e7787f664fd07df014d08a608020ab6b71e53a853240054365dad1d758d020111")) {}  // NOLINT
 
 DownloadManager::DownloadManager(std::string site,
                                  std::string location,
@@ -261,22 +262,20 @@ bool DownloadManager::VerifySignature() {
   boost::filesystem::path key_file("maidsafe_public");
   boost::filesystem::path file(file_to_download_);
   boost::filesystem::path sigfile(file_to_download_ + ".sig");
-  std::string public_key, signature, data;
-  maidsafe::rsa::Keys key;
+  std::string signature, data;
 
-  if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)
-                                       || !maidsafe::ReadFile(key_file, &public_key)) {
+  if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
     std::cout << "error reading file\n";
     return false;
   }
+  asymm::PublicKey public_key;
+  asymm::DecodePublicKey(maidsafe_public_key_, &public_key);
 
-  maidsafe::rsa::DecodePublicKey(public_key, &key.public_key);
-
-  if (!maidsafe::rsa::ValidateKey(key.public_key)) {
+  if (!maidsafe::rsa::ValidateKey(public_key)) {
     std::cout << "public key invalid, aborting!!\n";
   }
 
-  if (maidsafe::rsa::CheckSignature(data, signature, key.public_key) == 0)  {
+  if (maidsafe::rsa::CheckSignature(data, signature, public_key) == 0)  {
     std::cout << "Signature valid\n";
   } else {
     std::cout << "Invalid signature !! \n";

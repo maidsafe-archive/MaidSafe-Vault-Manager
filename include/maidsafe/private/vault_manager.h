@@ -53,7 +53,7 @@ class VaultManager {
   void EraseVault(int32_t id);
   int32_t ListVaults(bool select);
   void RestartVault(int32_t id);
-  int_fast32_t get_process_vector_size();
+  int32_t get_process_vector_size();
   void ListenForUpdates();
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
