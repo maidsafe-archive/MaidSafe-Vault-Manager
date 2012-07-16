@@ -85,10 +85,11 @@ namespace maidsafe {
   }
 
   ProcessInfo::ProcessInfo(ProcessInfo&& other) :
-    process(), thread(), id(), restart_count(0), done(false) {
+    process(), thread(), id(), port(), restart_count(0), done(false) {
     process = std::move(other.process);
     thread = std::move(other.thread);
     id = std::move(other.id);
+    port = std::move(other.port);
     restart_count = std::move(other.restart_count);
     done = std::move(other.done);
   }
@@ -97,6 +98,7 @@ namespace maidsafe {
     process = std::move(other.process);
     thread = std::move(other.thread);
     id = std::move(other.id);
+    port = std::move(other.port);
     restart_count = std::move(other.restart_count);
     done = std::move(other.done);
     return *this;
@@ -104,9 +106,11 @@ namespace maidsafe {
 
   ProcessManager::ProcessManager() :
     processes_(),
+    process_info_mutex_(),
     process_count_(0),
-    done_(false) {
-    }
+    done_(false),
+    current_port_(5483),
+    io_service_() {}
 
   ProcessManager::~ProcessManager() {
     TerminateAll();
@@ -118,9 +122,10 @@ namespace maidsafe {
     info.id = id;
     info.done = false;
     info.restart_count = 0;
+    info.port = current_port_++;
     LOG(kInfo) << "Restart count on init: " << info.restart_count;
     process.AddArgument("--pid");
-    process.AddArgument(info.id);
+    process.AddArgument(info.id + "-" + boost::lexical_cast<std::string>(info.port));
     LOG(kInfo) << "Process Arguments: ";
     for (std::string i : process.Args())
       LOG(kInfo) << i;
@@ -172,10 +177,15 @@ namespace maidsafe {
     ctx.environment = bp::self::get_environment();
     ctx.stderr_behavior = bp::capture_stream();
     ctx.stdout_behavior = bp::capture_stream();
+    bai::tcp::acceptor acceptor(io_service_, bai::tcp::endpoint(bai::tcp::v4(), (*i).port));
+    bai::tcp::socket socket(io_service_);
+
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
+    acceptor.accept(socket);
+
     bp::pistream& is = c.get_stdout();
-    bp::pistream& is2 = c.get_stderr();
+    // bp::pistream& is2 = c.get_stderr();
     std::string result;
     std::string line;
 
@@ -261,8 +271,8 @@ namespace maidsafe {
     (*i).done = false;
     (*i).restart_count = 0;
     LOG(kInfo) << "StartProcess: AddStatus. ID: " << id;
-    ProcessManagerStruct status;
-    status.instruction = ProcessInstruction::kRun;
+    // ProcessManagerStruct status;
+    // status.instruction = ProcessInstruction::kRun;
     // AddStatus(id, status);
     /*boost::this_thread::sleep(boost::posix_time::seconds(10000));*/
     std::thread thd([=] { RunProcess(id, false, false); }); //NOLINT

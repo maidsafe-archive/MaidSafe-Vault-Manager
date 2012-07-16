@@ -31,6 +31,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
 #include <boost/thread.hpp>
+#include <boost/asio.hpp>
 #include <thread>
 #include <string>
 #include <vector>
@@ -38,6 +39,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace maidsafe {
 
 namespace priv {
+
+namespace bai = boost::asio::ip;
 
 enum class ProcessStatus {
   Running,
@@ -74,12 +77,18 @@ class VaultController {
   void ListenForStopTerminate(std::string shared_mem_name,
                               int id,
                               std::function<void()> stop_handler);
+  void ConnectToManager();
+  void ReceiveKeys();
   ProcessInstruction CheckInstruction(const int32_t& id);
-  int32_t process_id_;
-  std::string shared_mem_name_;
-  boost::interprocess::managed_shared_memory shared_mem_;
-  bool check_finished_;
+  std::string process_id_;
+  uint32_t port_;
   boost::thread thd;
+  boost::asio::io_service io_service_;
+  bai::tcp::resolver resolver_;
+  bai::tcp::resolver::query query_;
+  bai::tcp::resolver::iterator endpoint_iterator_;
+  bai::tcp::socket socket_;
+  bool check_finished_;
 };
 
 }  // namespace priv

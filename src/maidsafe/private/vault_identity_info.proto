@@ -1,0 +1,6 @@
+package maidsafe.priv;
+
+message VaultIdentityInfo {
+  required bytes keys = 1;
+  required bytes account_name = 2;
+}

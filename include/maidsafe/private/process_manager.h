@@ -31,6 +31,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
 #include <boost/thread/pthread/mutex.hpp>
+#include <boost/asio.hpp>
 #include <thread>
 #include <string>
 #include <vector>
@@ -80,13 +81,14 @@ class Process {
 };
 
 struct ProcessInfo {
-  ProcessInfo() : process(), thread(), id(), restart_count(0), done(false) {}
+  ProcessInfo() : process(), thread(), id(), port(), restart_count(0), done(false) {}
   // move constructor
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
   Process process;
   std::thread thread;
   std::string id;
+  uint32_t port;
   int32_t restart_count;
   bool done;
 };
@@ -123,6 +125,8 @@ class ProcessManager {
   boost::mutex process_info_mutex_;
   uint32_t process_count_;
   bool done_;
+  uint32_t current_port_;
+  boost::asio::io_service io_service_;
 };
 
 }  // namespace maidsafe

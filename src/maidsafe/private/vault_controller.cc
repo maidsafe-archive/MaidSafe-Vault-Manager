@@ -32,11 +32,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/interprocess/sync/named_condition.hpp>
 #include <boost/program_options.hpp>
+#include <boost/array.hpp>
 #include <thread>
 #include <chrono>
 #include <iostream>
 
 #include "maidsafe/private/vault_controller.h"
+#include "maidsafe/private/vault_identity_info.pb.h"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -47,8 +49,14 @@ namespace priv {
 
 
   VaultController::VaultController() : process_id_(),
-                                      check_finished_(false),
-                                      thd() {}
+                                      port_(0),
+                                      thd(),
+                                      io_service_(),
+                                      resolver_(io_service_),
+                                      query_("", ""),
+                                      endpoint_iterator_(),
+                                      socket_(io_service_),
+                                      check_finished_(false) {}
 
   VaultController::~VaultController() {}
 
@@ -121,14 +129,58 @@ namespace priv {
         exit(0);
   }*/
 
+  void VaultController::ConnectToManager() {
+    try {
+      // resolver_ = bai::tcp::resolver(io_service_);
+      query_ = bai::tcp::resolver::query("127.0.0.1", boost::lexical_cast<std::string>(port_));
+      endpoint_iterator_ = resolver_.resolve(query_);
+      bai::tcp::resolver::iterator end;
+      // socket_ = bai::tcp::socket(io_service_);
+      boost::system::error_code error = boost::asio::error::host_not_found;
+      while (error && endpoint_iterator_ != end) {
+        socket_.close();
+        socket_.connect(*endpoint_iterator_++, error);
+      }
+      if (error)
+        throw boost::system::system_error(error);
+    } catch(std::exception& e) {
+      LOG(kError) << "expection thrown in ConnectToManager: " << e.what();
+    }
+  }
+
+  void VaultController::ReceiveKeys() {
+    std::string serialised_keys;
+    boost::system::error_code error = boost::asio::error::host_not_found;
+    for (;;) {
+      boost::array<char, 128> buf;
+      size_t len = socket_.read_some(boost::asio::buffer(buf), error);
+      if (error == boost::asio::error::eof)
+        break;  // Connection closed cleanly by peer.
+      else if (error)
+        throw boost::system::system_error(error);
+      serialised_keys.append(buf.data(), len);
+    }
+    VaultIdentityInfo info;
+    info.ParseFromString(serialised_keys);
+    /*maidsafe::rsa::KeysContainer container;
+    container.ParseFromString(info.keys());*/
+  }
+
   bool VaultController::Start(std::string pid_string,
-                              std::function<void()> stop_callback) {
+                              std::function<void()> /*stop_callback*/) {
     try {
       if (pid_string == "") {
         LOG(kInfo) << " VaultController: you must supply a process id";
         return 1;
       }
+      boost::char_separator<char> sep("-");
+      boost::tokenizer<boost::char_separator<char>> tok(pid_string, sep);
+      auto it(tok.begin());
+      process_id_ = (*it);
+      ++it;
+      port_ = boost::lexical_cast<uint32_t>(*it);
       thd = boost::thread([=] {
+                                ConnectToManager();
                                   /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
                               });
     } catch(std::exception& e)  {
