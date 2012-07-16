@@ -406,7 +406,7 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
 TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   maidsafe::ProcessManager manager;
   std::vector<Process> processes_5, processes_10;
-  for (int i(0); i < 2; ++i) {
+  for (int i(0); i < 5; ++i) {
     maidsafe::Process test_5;
     ASSERT_TRUE(test_5.SetProcessName("DUMMYprocess"));
     test_5.AddArgument("DUMMYprocess");
@@ -416,7 +416,7 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     processes_5.push_back(test_5);
   }
     LOG(kInfo) << "HELLO1";
-  for (int i(0); i < 0; ++i) {
+  for (int i(0); i < 5; ++i) {
     maidsafe::Process test_10;
     ASSERT_TRUE(test_10.SetProcessName("DUMMYprocess"));
     test_10.AddArgument("DUMMYprocess");

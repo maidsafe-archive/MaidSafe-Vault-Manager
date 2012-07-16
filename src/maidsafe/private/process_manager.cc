@@ -204,6 +204,7 @@ namespace maidsafe {
       // LOG(kInfo) << "\n";      
     }*/
     c.wait();
+    i = FindProcess(id);
     LOG(kInfo) << "Process " << id << " completes. Output: ";
     LOG(kInfo) << result;
 
