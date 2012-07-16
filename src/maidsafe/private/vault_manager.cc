@@ -48,10 +48,10 @@ namespace priv {
 
   VaultManager::~VaultManager() {}
 
-  void VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
+  /*void VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
-    int_fast32_t p_id;
+    std::string p_id;
     std::cout << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
               << chunkstore_capacity << std::endl;
 
@@ -76,11 +76,11 @@ namespace priv {
     }
   }
 
-  void VaultManager::RestartVault(int32_t id) {
+  void VaultManager::RestartVault(std::string id) {
     manager_.RestartProcess(id);
   }
 
-  void VaultManager::StopVault(int32_t id) {
+  void VaultManager::StopVault(std::string id) {
 //     manager_.KillProcess(p_id_vector_[id]);
     manager_.StopProcess(p_id_vector_[id]);  // This is to be put in function when the
 //     new model od process manager will work properly
@@ -167,7 +167,7 @@ namespace priv {
 
   int32_t VaultManager::get_process_vector_size() {
     return process_vector_.size();
-  }
+  }*/
 
   std::pair<std::string, std::string> VaultManager::FindLatestLocalVersion(std::string name,
                                                                            std::string platform,

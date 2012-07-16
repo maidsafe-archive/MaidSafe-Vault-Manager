@@ -39,8 +39,6 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace bi = boost::interprocess;
-
 enum class ProcessStatus {
   Running,
   Stopped,
@@ -69,8 +67,7 @@ class VaultController {
  public:
   VaultController();
   ~VaultController();
-  bool Start(std::string shared_mem_name, std::string pid_string,
-             std::function<void()> stop_callback);
+  bool Start(std::string pid_string, std::function<void()> stop_callback);
   bool GetKeys(std::string* keys);
 
  private:

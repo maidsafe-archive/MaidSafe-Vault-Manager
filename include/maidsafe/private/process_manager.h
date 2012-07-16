@@ -80,13 +80,13 @@ class Process {
 };
 
 struct ProcessInfo {
-  ProcessInfo() : process(), thread(), id(0), restart_count(0), done(false) {}
+  ProcessInfo() : process(), thread(), id(), restart_count(0), done(false) {}
   // move constructor
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
   Process process;
   std::thread thread;
-  int32_t id;
+  std::string id;
   int32_t restart_count;
   bool done;
 };
@@ -95,37 +95,34 @@ class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  int AddProcess(Process process);
+  std::string AddProcess(Process process);
   int32_t NumberOfProcesses();
   int32_t NumberOfLiveProcesses();
   int32_t NumberOfSleepingProcesses();
   void StopAndRemoveProcess(Process &process);
   ProcessStatus GetProcessStatus(Process &process);
-  void StartProcess(int32_t id);
-  void LetProcessDie(int32_t id);
+  void StartProcess(std::string id);
+  void LetProcessDie(std::string id);
   void WaitForProcesses();
-  void KillProcess(int32_t id);
-  void StopProcess(int32_t id);
-  void RestartProcess(int32_t id);
+  void KillProcess(std::string id);
+  void StopProcess(std::string id);
+  void RestartProcess(std::string id);
 
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
-  std::vector<ProcessInfo>::iterator FindProcess(int32_t num);
-  void RunProcess(int32_t id, bool restart, bool logging);
+  std::vector<ProcessInfo>::iterator FindProcess(std::string num);
+  void RunProcess(std::string id, bool restart, bool logging);
   void RunAll();
   void MonitorAll();
   void TerminateAll();
-  bool AddStatus(int32_t id, ProcessManagerStruct status);
-  bool SetInstruction(int32_t id, ProcessInstruction instruction);
-  ProcessInstruction CheckInstruction(int32_t id);
+  bool AddStatus(std::string id, ProcessManagerStruct status);
+  bool SetInstruction(std::string id, ProcessInstruction instruction);
+  ProcessInstruction CheckInstruction(std::string id);
   std::vector<ProcessInfo> processes_;
   boost::mutex process_info_mutex_;
   uint32_t process_count_;
   bool done_;
-  int32_t process_id_;
-  std::string shared_mem_name_;
-  boost::interprocess::managed_shared_memory shared_mem_;
 };
 
 }  // namespace maidsafe

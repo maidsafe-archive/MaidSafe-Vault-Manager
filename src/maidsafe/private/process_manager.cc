@@ -50,22 +50,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "boost/filesystem/fstream.hpp"
 #include "boost/filesystem/operations.hpp"
 
+#include "boost/asio.hpp"
+
 namespace maidsafe {
 
   namespace bp = boost::process;
-  namespace bi = boost::interprocess;
-
-  /*typedef bi::allocator<TerminateStatus,
-      bi::managed_shared_memory::segment_manager> TerminateAlloc;
-  typedef bi::vector<TerminateStatus, TerminateAlloc> TerminateVector;*/
-
-  typedef bi::allocator<std::pair<const int32_t, ProcessManagerStruct>,
-      bi::managed_shared_memory::segment_manager> StructAlloc;
-  typedef bi::map<int32_t, ProcessManagerStruct, std::less<int32_t>, StructAlloc> StructMap;
-
-/*  typedef bi::allocator<char,
-      bi::managed_shared_memory::segment_manager> StringAlloc;
-  typedef bi::basic_string<char, std::char_traits<char>, StringAlloc> SharedString;*/
+  namespace bai = boost::asio::ip;
 
   bool Process::SetProcessName(std::string process_name) {
     std::string path_string(boost::filesystem::current_path().string());
@@ -95,7 +85,7 @@ namespace maidsafe {
   }
 
   ProcessInfo::ProcessInfo(ProcessInfo&& other) :
-    process(), thread(), id(0), restart_count(0), done(false) {
+    process(), thread(), id(), restart_count(0), done(false) {
     process = std::move(other.process);
     thread = std::move(other.thread);
     id = std::move(other.id);
@@ -115,37 +105,28 @@ namespace maidsafe {
   ProcessManager::ProcessManager() :
     processes_(),
     process_count_(0),
-    done_(false),
-    process_id_(),
-    shared_mem_name_(RandomAlphaNumericString(16)),
-    shared_mem_() {
-      boost::interprocess::shared_memory_object::remove(shared_mem_name_.c_str());
-      shared_mem_ = bi::managed_shared_memory(bi::open_or_create, shared_mem_name_.c_str(), 4096);
-     // shared_mem_.construct<TerminateVector>("terminate_info")(shared_mem_.get_segment_manager());
-      shared_mem_.construct<StructMap>("process_info")(std::less<int32_t>(),
-                                                       shared_mem_.get_segment_manager());
+    done_(false) {
     }
 
   ProcessManager::~ProcessManager() {
     TerminateAll();
-    boost::interprocess::shared_memory_object::remove(shared_mem_name_.c_str());
   }
 
-  int ProcessManager::AddProcess(Process process) {
+  std::string ProcessManager::AddProcess(Process process) {
     ProcessInfo info;
-    info.id = ++process_id_;
+    std::string id(RandomAlphaNumericString(16));
+    info.id = id;
     info.done = false;
     info.restart_count = 0;
+    LOG(kInfo) << "Restart count on init: " << info.restart_count;
     process.AddArgument("--pid");
-    process.AddArgument(boost::lexical_cast<std::string>(info.id));
-    process.AddArgument("--sharedmem");
-    process.AddArgument(shared_mem_name_);
+    process.AddArgument(info.id);
     LOG(kInfo) << "Process Arguments: ";
     for (std::string i : process.Args())
       LOG(kInfo) << i;
     info.process = process;
     processes_.push_back(std::move(info));
-    return process_id_;
+    return id;
   }
 
   int32_t ProcessManager::NumberOfProcesses() {
@@ -171,13 +152,13 @@ namespace maidsafe {
     return count;
   }
 
-  void ProcessManager::RunProcess(int32_t id, bool restart, bool logging) {
+  void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
     auto i = FindProcess(id);
     if (i == processes_.end())
       return;
     if (restart) {
       boost::this_thread::sleep(boost::posix_time::milliseconds(600));
-      SetInstruction(id, ProcessInstruction::kRun);
+      // SetInstruction(id, ProcessInstruction::kRun);
       LOG(kInfo) << "THE SIZE OF THE ENVIRONMENT IS " << bp::self::get_environment().size();
       if (logging) {
         maidsafe::log::FilterMap filter;
@@ -245,34 +226,34 @@ namespace maidsafe {
     }
   }
 
-  void ProcessManager::KillProcess(int32_t id) {
+  void ProcessManager::KillProcess(std::string id) {
     auto i = FindProcess(id);
     if (i == processes_.end())
       return;
     (*i).done = true;
     LOG(kInfo) << "KillProcess: SetInstruction";
-    SetInstruction(id, ProcessInstruction::kTerminate);
+    // SetInstruction(id, ProcessInstruction::kTerminate);
   }
 
-  void ProcessManager::StopProcess(int32_t id) {
+  void ProcessManager::StopProcess(std::string id) {
     auto i = FindProcess(id);
     if (i == processes_.end())
       return;
     (*i).done = true;
     LOG(kInfo) << "StopProcess: SetInstruction";
-    SetInstruction(id, ProcessInstruction::kStop);
+    // SetInstruction(id, ProcessInstruction::kStop);
   }
 
-  void ProcessManager::RestartProcess(int32_t id) {
+  void ProcessManager::RestartProcess(std::string id) {
     auto i = FindProcess(id);
     if (i == processes_.end())
       return;
     (*i).done = false;
     LOG(kInfo) << "RestartProcess: SetInstruction";
-    SetInstruction(id, ProcessInstruction::kTerminate);
+    // SetInstruction(id, ProcessInstruction::kTerminate);
   }
 
-  void ProcessManager::StartProcess(int32_t id) {
+  void ProcessManager::StartProcess(std::string id) {
     auto i = FindProcess(id);
     if (i == processes_.end())
       return;
@@ -281,13 +262,13 @@ namespace maidsafe {
     LOG(kInfo) << "StartProcess: AddStatus. ID: " << id;
     ProcessManagerStruct status;
     status.instruction = ProcessInstruction::kRun;
-    AddStatus(id, status);
+    // AddStatus(id, status);
     /*boost::this_thread::sleep(boost::posix_time::seconds(10000));*/
     std::thread thd([=] { RunProcess(id, false, false); }); //NOLINT
     (*i).thread = std::move(thd);
   }
 
-  void ProcessManager::LetProcessDie(int32_t id) {
+  void ProcessManager::LetProcessDie(std::string id) {
     LOG(kInfo) << "LetProcessDie: ID: " << id;
     auto i = FindProcess(id);
     if (i == processes_.end())
@@ -295,9 +276,9 @@ namespace maidsafe {
     (*i).done = true;
   }
 
-  std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(int32_t num) {
+  std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
     process_info_mutex_.lock();
-    int32_t id_to_find = num;
+    std::string id_to_find = id;
     auto it = std::find_if(processes_.begin(), processes_.end(), [=] (ProcessInfo &j) {
       return (j.id == id_to_find);
     });
@@ -314,18 +295,18 @@ namespace maidsafe {
 
   void ProcessManager::TerminateAll() {
     for (auto &i : processes_) {
-      if (CheckInstruction(i.id) != ProcessInstruction::kTerminate) {
+      /*if (CheckInstruction(i.id) != ProcessInstruction::kTerminate) {
         i.done = true;
         LOG(kInfo) << "TerminateAll: SetInstruction to kTerminate";
         SetInstruction(i.id, ProcessInstruction::kTerminate);
-      }
+      }*/
       if (i.thread.joinable())
         i.thread.join();
     }
     processes_.clear();
   }
 
-  bool ProcessManager::AddStatus(int32_t id, ProcessManagerStruct status) {
+  /*bool ProcessManager::AddStatus(std::string id, ProcessManagerStruct status) {
     // std::pair<TerminateVector*, std::size_t> t =
     //    shared_mem_.find<TerminateVector>("terminate_info");
     std::pair<StructMap*, std::size_t> t =
@@ -342,7 +323,7 @@ namespace maidsafe {
     return true;
   }
 
-  bool ProcessManager::SetInstruction(int32_t id, ProcessInstruction instruction) {
+  bool ProcessManager::SetInstruction(std::string id, ProcessInstruction instruction) {
     std::pair<StructMap*, std::size_t> t =
         shared_mem_.find<StructMap>("process_info");
     if (!(t.first)) {
@@ -359,7 +340,7 @@ namespace maidsafe {
     return true;
   }
 
-  ProcessInstruction ProcessManager::CheckInstruction(int32_t id) {
+  ProcessInstruction ProcessManager::CheckInstruction(std::string id) {
     std::pair<StructMap*, std::size_t> t =
         shared_mem_.find<StructMap>("process_info");
     if (!(t.first)) {
@@ -371,7 +352,7 @@ namespace maidsafe {
       return ProcessInstruction::kInvalid;
     }
     return (*t.first)[id].instruction;
-  }
+  }*/
 
   /*bool ProcessManager::CheckTerminateFlag(int32_t id) {
     std::pair<TerminateVector*, std::size_t> t =

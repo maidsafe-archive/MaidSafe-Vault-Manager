@@ -44,21 +44,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace maidsafe {
 namespace priv {
 
-  namespace bi = boost::interprocess;
-  /*typedef bi::allocator<TerminateStatus,
-      bi::managed_shared_memory::segment_manager> TerminateAlloc;
-  typedef bi::vector<TerminateStatus, TerminateAlloc> TerminateVector;*/
-  /*typedef bi::allocator<KeysStatus,
-      bi::managed_shared_memory::segment_manager> KeysAlloc;
-  typedef bi::vector<TerminateStatus, KeysAlloc> KeysVector;*/
-  typedef bi::allocator<std::pair<int32_t, ProcessManagerStruct>,
-      bi::managed_shared_memory::segment_manager> StructAlloc;
-  typedef bi::map<int32_t, ProcessManagerStruct, std::less<int32_t>, StructAlloc> StructMap;
 
 
   VaultController::VaultController() : process_id_(),
-                                      shared_mem_name_(),
-                                      shared_mem_(),
                                       check_finished_(false),
                                       thd() {}
 
@@ -85,39 +73,39 @@ namespace priv {
     return false;
   }*/
 
-  ProcessInstruction VaultController::CheckInstruction(const int32_t& id) {
-    std::pair<StructMap*, std::size_t> t =
-        shared_mem_.find<StructMap>("process_info");
-    if (!(t.first)) {
-      LOG(kError) << "CheckInstruction: failed to access IPC shared memory";
-      return ProcessInstruction::kInvalid;
-    }
-    for (auto it((*t.first).begin()); it != (*t.first).end(); ++it)
-      LOG(kInfo) << "KEY: " << (*it).first << " VALUE: " << (*it).second.instruction;
+//   ProcessInstruction VaultController::CheckInstruction(const int32_t& id) {
+//     std::pair<StructMap*, std::size_t> t =
+//         shared_mem_.find<StructMap>("process_info");
+//     if (!(t.first)) {
+//       LOG(kError) << "CheckInstruction: failed to access IPC shared memory";
+//       return ProcessInstruction::kInvalid;
+//     }
+//     for (auto it((*t.first).begin()); it != (*t.first).end(); ++it)
+//       LOG(kInfo) << "KEY: " << (*it).first << " VALUE: " << (*it).second.instruction;
+//
+//     auto it((*t.first).begin());
+//     for (; it != (*t.first).end(); ++it) {
+//       // LOG(kInfo) << "KEY: " << (*it).first << " VALUE: " << (*it).second.instruction;
+//       if ((*it).first == id) {
+//         LOG(kInfo) << "FOUND KEY!!!! " << (*it).first << ", " << id;
+//         break;
+//       }
+//     }
+//     LOG(kInfo) << "MAP SIZE FROM CLIENT!!!!" << (*t.first).size();
+//     LOG(kInfo) << "REAL INSTRUCTION FROM CLIENT!!!!" << (*it).second.instruction;
+//     if (it == (*t.first).end()) {
+//       LOG(kInfo) << "CheckInstruction: invalid process ID " << id;
+//       return ProcessInstruction::kInvalid;
+//     }
+//     /*if ((*t.first).count(id) == 0) {
+//       LOG(kInfo) << "CheckInstruction: invalid process ID " << id;
+//       return ProcessInstruction::kInvalid;
+//     }
+//     return (*t.first)[id].instruction;*/
+//     return (*it).second.instruction;
+//   }
 
-    auto it((*t.first).begin());
-    for (; it != (*t.first).end(); ++it) {
-      // LOG(kInfo) << "KEY: " << (*it).first << " VALUE: " << (*it).second.instruction;
-      if ((*it).first == id) {
-        LOG(kInfo) << "FOUND KEY!!!! " << (*it).first << ", " << id;
-        break;
-      }
-    }
-    LOG(kInfo) << "MAP SIZE FROM CLIENT!!!!" << (*t.first).size();
-    LOG(kInfo) << "REAL INSTRUCTION FROM CLIENT!!!!" << (*it).second.instruction;
-    if (it == (*t.first).end()) {
-      LOG(kInfo) << "CheckInstruction: invalid process ID " << id;
-      return ProcessInstruction::kInvalid;
-    }
-    /*if ((*t.first).count(id) == 0) {
-      LOG(kInfo) << "CheckInstruction: invalid process ID " << id;
-      return ProcessInstruction::kInvalid;
-    }
-    return (*t.first)[id].instruction;*/
-    return (*it).second.instruction;
-  }
-
-  void VaultController::ListenForStopTerminate(std::string shared_mem_name, int32_t id,
+  /*void VaultController::ListenForStopTerminate(std::string shared_mem_name, int32_t id,
                                                std::function<void()> stop_callback) {
       shared_mem_ = bi::managed_shared_memory(bi::open_or_create,  shared_mem_name.c_str(), 4096);
       ProcessInstruction instruction = CheckInstruction(id);
@@ -131,21 +119,18 @@ namespace priv {
         stop_callback();
       else if (instruction == ProcessInstruction::kTerminate)
         exit(0);
-  }
+  }*/
 
-  bool VaultController::Start(std::string shared_mem_name, std::string pid_string,
+  bool VaultController::Start(std::string pid_string,
                               std::function<void()> stop_callback) {
     try {
-      if (shared_mem_name != "") {
-        if (pid_string == "") {
-          LOG(kInfo) << " VaultController: To use shared memory, you must supply a process id";
-          return 1;
-        }
-        int pid = boost::lexical_cast<int32_t>(pid_string);
-        thd = boost::thread([=] {
-                                   ListenForStopTerminate(shared_mem_name, pid, stop_callback);
-                                });
+      if (pid_string == "") {
+        LOG(kInfo) << " VaultController: you must supply a process id";
+        return 1;
       }
+      thd = boost::thread([=] {
+                                  /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
+                              });
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;

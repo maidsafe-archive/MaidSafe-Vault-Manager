@@ -49,10 +49,10 @@ class VaultManager {
   ~VaultManager();
   void RunVault(std::string chunkstore_path, std::string chunkstore_capacity, bool new_vault);
   bool ReadConfig();
-  void StopVault(int32_t id);
-  void EraseVault(int32_t id);
+  void StopVault(std::string id);
+  void EraseVault(std::string id);
   int32_t ListVaults(bool select);
-  void RestartVault(int32_t id);
+  void RestartVault(std::string id);
   int32_t get_process_vector_size();
   void ListenForUpdates();
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
@@ -66,7 +66,7 @@ class VaultManager {
 //   void StopVault();
 //   bool ReadConfig();
   bool WriteConfig();
-  std::vector<int32_t> p_id_vector_;
+  std::vector<std::string> p_id_vector_;
   std::vector<maidsafe::Process> process_vector_;
   maidsafe::ProcessManager manager_;
   maidsafe::DownloadManager download_manager_;

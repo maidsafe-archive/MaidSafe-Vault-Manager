@@ -110,7 +110,6 @@ int main(int ac, char* av[]) {
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
       ("pid", po::value<std::string>(), "process id")
-      ("sharedmem", po::value<std::string>(), "name of shared memory segment")
       ("randomstuff", po::value<std::string>(), "random stuff");
   try {
     po::variables_map vm;
@@ -121,15 +120,12 @@ int main(int ac, char* av[]) {
         std::cout << desc << "\n";
         return 1;
     }
-    if (vm.count("sharedmem")) {
-      std::string shared_mem_name = vm["sharedmem"].as<std::string>();
-      if (!vm.count("pid")) {
-        LOG(kInfo) << " main: To use shared memory, you must supply a process id";
-        return 1;
-      }
+    if (!vm.count("pid")) {
+      LOG(kInfo) << " main:You must supply a process id";
+      return 1;
 
       std::string id = vm["pid"].as<std::string>();
-      vc.Start(shared_mem_name.c_str(), id.c_str(), [&] { stop_handler(); });  // NOLINT
+      vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
     }
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
