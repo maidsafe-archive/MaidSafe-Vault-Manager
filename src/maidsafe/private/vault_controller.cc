@@ -59,7 +59,9 @@ namespace priv {
                                       check_finished_(false),
                                       keys_(),
                                       account_name_(),
-                                      info_received_(false) {}
+                                      info_received_(false),
+                                      mutex_(),
+                                      cond_var_() {}
 
   VaultController::~VaultController() {}
 
@@ -170,9 +172,18 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeys() {
-    std::cout << "IN ReceiveKeys " << std::endl;
+    boost::mutex::scoped_lock lock(mutex_);
+    std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
+    std::string keys_request(1, static_cast<char>(MessageType::kKeysRequestFromVault));
+    maidsafe::priv::VaultIdentityRequest request;
+    request.set_pid(process_id_);
+    keys_request += request.SerializeAsString();
+    boost::system::error_code ignored_error;
+    boost::asio::write(socket_, boost::asio::buffer(keys_request), ignored_error);
+
     std::string serialised_info;
     boost::system::error_code error = boost::asio::error::host_not_found;
+    std::cout << "ReceiveKeys, awaiting response with vault identity info" << std::endl;
     try {
       for (;;) {
         std::cout << "IN RECEIVE LOOP " << std::endl;
@@ -202,6 +213,7 @@ namespace priv {
         return;
       }
       info_received_ = true;
+      cond_var_.notify_all();
     }
     std::cout << "KEYS RECEIVED: " << std::endl;
     std::string public_key_string, private_key_string;
@@ -238,23 +250,22 @@ namespace priv {
     }
     if (thd.joinable())
       thd.join();
-
     return true;
   }
 
-  bool VaultController::GetKeys(maidsafe::rsa::Keys* keys) {
-    while (!info_received_) {}
-    keys->private_key = keys_.private_key;
-    keys->public_key = keys_.public_key;
-    keys->identity = keys_.identity;
-    keys->validation_token = keys_.validation_token;
-    return true;
-  }
-
-  bool VaultController::GetAccountName(std::string* account_name) {
-    while (!info_received_) {}
-    *account_name = account_name_;
-    return true;
+  bool VaultController::GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name) {
+    boost::mutex::scoped_lock lock(mutex_);
+    if (cond_var_.timed_wait(lock,
+                             boost::posix_time::seconds(3),
+                             [&]()->bool { return info_received_; })) {  // NOLINT (Philip)
+      keys->private_key = keys_.private_key;
+      keys->public_key = keys_.public_key;
+      keys->identity = keys_.identity;
+      keys->validation_token = keys_.validation_token;
+      *account_name = account_name_;
+      return true;
+    }
+    return false;
   }
 }  // namespace priv
 

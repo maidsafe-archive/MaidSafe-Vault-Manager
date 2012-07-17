@@ -64,6 +64,11 @@ enum class KeysStatus {
   kDoHaveKeys = 4
 };
 
+enum class MessageType {
+  kStartRequestFromClient = 1,
+  kKeysRequestFromVault = 2
+};
+
 struct ProcessManagerStruct {
   ProcessInstruction instruction;
 };
@@ -72,9 +77,9 @@ class VaultController {
  public:
   VaultController();
   ~VaultController();
+
   bool Start(std::string pid_string, std::function<void()> stop_callback);
-  bool GetKeys(maidsafe::rsa::Keys* keys);
-  bool GetAccountName(std::string* account_name);
+  bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
 
  private:
   void ListenForStopTerminate(std::string shared_mem_name,
@@ -97,6 +102,8 @@ class VaultController {
   maidsafe::rsa::Keys keys_;
   std::string account_name_;
   bool info_received_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
 };
 
 }  // namespace priv
