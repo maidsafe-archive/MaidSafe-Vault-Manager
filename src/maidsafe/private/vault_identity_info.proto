@@ -4,3 +4,7 @@ message VaultIdentityInfo {
   required bytes keys = 1;
   required bytes account_name = 2;
 }
+
+message VaultIdentityRequest {
+  required bytes pid = 1;
+}

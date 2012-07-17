@@ -56,7 +56,10 @@ namespace priv {
                                       query_("", ""),
                                       endpoint_iterator_(),
                                       socket_(io_service_),
-                                      check_finished_(false) {}
+                                      check_finished_(false),
+                                      keys_(),
+                                      account_name_(),
+                                      info_received_(false) {}
 
   VaultController::~VaultController() {}
 
@@ -129,17 +132,35 @@ namespace priv {
         exit(0);
   }*/
 
+  void VaultController::PrintResult(std::string serv,
+    boost::asio::ip::tcp::resolver::iterator iter,
+    const boost::system::error_code& ec) {
+    if (ec)
+        std::cout << "service: '" << serv << "' FAIL: " << ec.message() << "\n";
+    else
+    {
+        std::cout << "service: '" << serv << "' OK\n";
+        std::cout << "endpoint: " << iter->endpoint() << "\n";
+    }
+  }
+
   void VaultController::ConnectToManager() {
     try {
       // resolver_ = bai::tcp::resolver(io_service_);
+      std::cout << "IN ConnectToManager " << std::endl;
+      std::cout << "PORT: " << boost::lexical_cast<std::string>(port_) << std::endl;
       query_ = bai::tcp::resolver::query("127.0.0.1", boost::lexical_cast<std::string>(port_));
-      endpoint_iterator_ = resolver_.resolve(query_);
+      boost::system::error_code ec;
+      endpoint_iterator_ = resolver_.resolve(query_, ec);
+      PrintResult(boost::lexical_cast<std::string>(port_), endpoint_iterator_, ec);
       bai::tcp::resolver::iterator end;
       // socket_ = bai::tcp::socket(io_service_);
       boost::system::error_code error = boost::asio::error::host_not_found;
       while (error && endpoint_iterator_ != end) {
+        std::cout << "IN CONNECT LOOP " << std::endl;
         socket_.close();
-        socket_.connect(*endpoint_iterator_++, error);
+        socket_.connect(*endpoint_iterator_, error);
+        ++endpoint_iterator_;
       }
       if (error)
         throw boost::system::system_error(error);
@@ -149,25 +170,51 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeys() {
-    std::string serialised_keys;
+    std::cout << "IN ReceiveKeys " << std::endl;
+    std::string serialised_info;
     boost::system::error_code error = boost::asio::error::host_not_found;
-    for (;;) {
-      boost::array<char, 128> buf;
-      size_t len = socket_.read_some(boost::asio::buffer(buf), error);
-      if (error == boost::asio::error::eof)
-        break;  // Connection closed cleanly by peer.
-      else if (error)
-        throw boost::system::system_error(error);
-      serialised_keys.append(buf.data(), len);
+    try {
+      for (;;) {
+        std::cout << "IN RECEIVE LOOP " << std::endl;
+        boost::array<char, 128> buf;
+        size_t len = socket_.read_some(boost::asio::buffer(buf), error);
+        std::cout << "AFTER READ SOME " << std::endl;
+        if (error == boost::asio::error::eof)
+          break;  // Connection closed cleanly by peer.
+        else if (error)
+          throw boost::system::system_error(error);
+        serialised_info.append(buf.data(), len);
+      }
+    } catch(std::exception& e) {
+      std::cout << "ERROR: " << e.what() << std::endl;
     }
     VaultIdentityInfo info;
-    info.ParseFromString(serialised_keys);
-    /*maidsafe::rsa::KeysContainer container;
-    container.ParseFromString(info.keys());*/
+    info.ParseFromString(serialised_info);
+    if (!maidsafe::rsa::ParseKeys(info.keys(), keys_)) {
+      std::cout << "ReceiveKeys: failed to parse keys. " << std::endl;
+      info_received_ = false;
+      return;
+    } else {
+      account_name_ = info.account_name();
+      if (account_name_ == "") {
+        std::cout << "ReceiveKeys: account name is empty. " << std::endl;
+        info_received_ = false;
+        return;
+      }
+      info_received_ = true;
+    }
+    std::cout << "KEYS RECEIVED: " << std::endl;
+    std::string public_key_string, private_key_string;
+    rsa::EncodePublicKey(keys_.public_key, &public_key_string);
+    std::cout << "PUBLIC KEY" << public_key_string << std::endl;
+    rsa::EncodePrivateKey(keys_.private_key, &private_key_string);
+    std::cout << "PRIVATE KEY" << private_key_string << std::endl;
+    std::cout << "Message received from manager: " << serialised_info << std::endl;
   }
 
   bool VaultController::Start(std::string pid_string,
                               std::function<void()> /*stop_callback*/) {
+    std::cout << "IN VaultController Start" << std::endl;
     try {
       if (pid_string == "") {
         LOG(kInfo) << " VaultController: you must supply a process id";
@@ -179,40 +226,34 @@ namespace priv {
       process_id_ = (*it);
       ++it;
       port_ = boost::lexical_cast<uint32_t>(*it);
+      std::cout << "PORT: " << port_ << std::endl;
       thd = boost::thread([=] {
                                 ConnectToManager();
+                                ReceiveKeys();
                                   /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
                               });
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;
     }
+    if (thd.joinable())
+      thd.join();
 
     return true;
   }
 
-  bool VaultController::GetKeys(std::string* /*keys*/) {
-    /*std::pair<KeysVector*, std::size_t> t = shared_mem_.find<KeysVector>("keys_info");
-    bi::named_mutex mtx(bi::open_or_create, "keys_mutex");
-    bi::named_condition cnd(bi::open_or_create, "keys_cond");
-    boost::interprocess::scoped_lock<bi::named_mutex> lock(mtx);
-    size_t size(0);
-    if (t.first) {
-      size = (*t.first).size();
-    } else {
-      std::cout << "GetKeys: failed to access IPC shared memory";
-      return false;
-    }
-    if (size <= static_cast<size_t>(process_id_ - 1) || process_id_ - 1 < 0) {
-      std::cout << "GetKeys: given process id is invalid or outwith range of "
-                << "keys vector";
-      return false;
-    }
-    (*t.first) = KeysStatus::kNeedKeys;
-    while ((*t.first) == KeysStatus::kNeedKeys) {
-      cnd.wait(lock);
-      cnd.notify_all();
-    }*/
+  bool VaultController::GetKeys(maidsafe::rsa::Keys* keys) {
+    while (!info_received_) {}
+    keys->private_key = keys_.private_key;
+    keys->public_key = keys_.public_key;
+    keys->identity = keys_.identity;
+    keys->validation_token = keys_.validation_token;
+    return true;
+  }
+
+  bool VaultController::GetAccountName(std::string* account_name) {
+    while (!info_received_) {}
+    *account_name = account_name_;
     return true;
   }
 }  // namespace priv

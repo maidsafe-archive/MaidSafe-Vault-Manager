@@ -36,6 +36,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
+#include "maidsafe/common/rsa.h"
+
 namespace maidsafe {
 
 namespace priv {
@@ -71,12 +73,15 @@ class VaultController {
   VaultController();
   ~VaultController();
   bool Start(std::string pid_string, std::function<void()> stop_callback);
-  bool GetKeys(std::string* keys);
+  bool GetKeys(maidsafe::rsa::Keys* keys);
+  bool GetAccountName(std::string* account_name);
 
  private:
   void ListenForStopTerminate(std::string shared_mem_name,
                               int id,
                               std::function<void()> stop_handler);
+  void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
+                   const boost::system::error_code& ec);
   void ConnectToManager();
   void ReceiveKeys();
   ProcessInstruction CheckInstruction(const int32_t& id);
@@ -89,6 +94,9 @@ class VaultController {
   bai::tcp::resolver::iterator endpoint_iterator_;
   bai::tcp::socket socket_;
   bool check_finished_;
+  maidsafe::rsa::Keys keys_;
+  std::string account_name_;
+  bool info_received_;
 };
 
 }  // namespace priv

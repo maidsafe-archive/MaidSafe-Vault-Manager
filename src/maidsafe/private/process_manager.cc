@@ -39,11 +39,14 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <maidsafe/common/log.h>
 #include <maidsafe/common/utils.h>
+#include <maidsafe/common/rsa.h>
 
 #include <string>
 #include <vector>
 #include <utility>
 #include <algorithm>
+
+#include "maidsafe/private/vault_identity_info.pb.h"
 
 #include "boost/archive/text_oarchive.hpp"
 #include "boost/archive/text_iarchive.hpp"
@@ -182,12 +185,36 @@ namespace maidsafe {
 
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
-    acceptor.accept(socket);
-
     bp::pistream& is = c.get_stdout();
-    // bp::pistream& is2 = c.get_stderr();
+    bp::pistream& is2 = c.get_stderr();
     std::string result;
     std::string line;
+
+    acceptor.accept(socket);
+    maidsafe::rsa::Keys keys;
+    maidsafe::rsa::GenerateKeyPair(&keys);
+    std::string keys_string, account_name("account1");
+    maidsafe::rsa::SerialiseKeys(keys, keys_string);
+    maidsafe::priv::VaultIdentityInfo info;
+    info.set_keys(keys_string);
+    info.set_account_name(account_name);
+    boost::system::error_code ignored_error;
+    boost::asio::write(socket, boost::asio::buffer("hello"), ignored_error);
+    socket.close();
+    // LOG(kInfo) << is.rdbuf() << std::endl;
+    while (std::getline(is, line)) {
+      result += line;
+      result += "\n";
+      LOG(kInfo) << line;
+      LOG(kInfo) << "\n";
+    }
+    result += "\nstd::err: ";
+    while (std::getline(is2, line)) {
+      result += line;
+      result += "\n";
+      // LOG(kInfo) << "Error "<< line;
+      // LOG(kInfo) << "\n";
+    }
 
     if (logging) {
       fs::path filename("Logging.txt");
@@ -199,20 +226,6 @@ namespace maidsafe {
          content += line + "\n";
       oa & content;
     }
-    // LOG(kInfo) << is.rdbuf() << std::endl;
-    /*while (std::getline(is, line)) {
-      result += line;
-      result += "\n";
-      // LOG(kInfo) << line;
-      // LOG(kInfo) << "\n";
-    }
-    result += "\nstd::err: ";
-    while (std::getline(is2, line)) {
-      result += line;
-      result += "\n";
-      // LOG(kInfo) << "Error "<< line;
-      // LOG(kInfo) << "\n";      
-    }*/
     c.wait();
     i = FindProcess(id);
     LOG(kInfo) << "Process " << id << " completes. Output: ";
@@ -300,7 +313,8 @@ namespace maidsafe {
   void ProcessManager::WaitForProcesses() {
     for (auto &i : processes_) {
       while (!i.done) {}
-      i.thread.join();
+      if (i.thread.joinable())
+        i.thread.join();
     }
   }
 

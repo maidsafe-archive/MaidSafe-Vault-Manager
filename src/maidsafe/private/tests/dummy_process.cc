@@ -123,17 +123,17 @@ int main(int ac, char* av[]) {
     if (!vm.count("pid")) {
       LOG(kInfo) << " main:You must supply a process id";
       return 1;
-
-      std::string id = vm["pid"].as<std::string>();
-      vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
     }
+    std::string id = vm["pid"].as<std::string>();
+    std::cout << "Starting VaultController." << std::endl;
+    vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
         std::cout << "Running for " << runtime << " seconds. \n";
         std::this_thread::sleep_for(std::chrono::seconds(runtime));
         if (vm.count("nocrash")) {
           check_finished = true;
-          std::cout << "Process finishing normally. ";
+          std::cout << "Process finishing normally. " << std::endl;
           if (thd.joinable())
             thd.join();
           return 0;
