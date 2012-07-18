@@ -43,6 +43,14 @@ namespace maidsafe {
 
 namespace priv {
 
+enum class MessageType {
+  kHelloFromClient = 1,
+  kHelloResponseToClient = 2,
+  kStartRequestFromClient = 3,
+  kIndentityInfoRequestFromVault = 4,
+  kIndentityInfoToVault = 5
+};
+
 class VaultManager {
  public:
   VaultManager();
