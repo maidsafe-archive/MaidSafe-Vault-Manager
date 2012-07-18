@@ -42,13 +42,15 @@ class R;
 namespace maidsafe {
 
 namespace priv {
+  
+namespace bai = boost::asio::ip;
 
 enum class MessageType {
   kHelloFromClient = 1,
   kHelloResponseToClient = 2,
   kStartRequestFromClient = 3,
-  kIndentityInfoRequestFromVault = 4,
-  kIndentityInfoToVault = 5
+  kIdentityInfoRequestFromVault = 4,
+  kIdentityInfoToVault = 5
 };
 
 class VaultManager {
@@ -57,12 +59,14 @@ class VaultManager {
   ~VaultManager();
   void RunVault(std::string chunkstore_path, std::string chunkstore_capacity, bool new_vault);
   bool ReadConfig();
-  void StopVault(std::string id);
-  void EraseVault(std::string id);
+  void StopVault(int32_t id);
+  void EraseVault(int32_t id);
   int32_t ListVaults(bool select);
   void RestartVault(std::string id);
   int32_t get_process_vector_size();
   void ListenForUpdates();
+  void ListenForMessages();
+  void MessageHandler();
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
                                                              std::string cpu_size);
@@ -78,6 +82,9 @@ class VaultManager {
   std::vector<maidsafe::Process> process_vector_;
   maidsafe::ProcessManager manager_;
   maidsafe::DownloadManager download_manager_;
+  boost::asio::io_service io_service_;
+  bai::tcp::acceptor acceptor_;
+  bai::tcp::socket socket_;
 };
 
 }  // namespace private
