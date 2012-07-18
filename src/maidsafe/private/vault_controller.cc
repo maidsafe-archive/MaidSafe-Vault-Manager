@@ -38,6 +38,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 
 #include "maidsafe/private/vault_controller.h"
+#include "maidsafe/private/vault_manager.h"
 #include "maidsafe/private/vault_identity_info.pb.h"
 
 #include "maidsafe/common/log.h"
@@ -174,7 +175,8 @@ namespace priv {
   void VaultController::ReceiveKeys() {
     boost::mutex::scoped_lock lock(mutex_);
     std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
-    std::string keys_request(1, static_cast<char>(MessageType::kKeysRequestFromVault));
+    char message_type(static_cast<char>(MessageType::kIndentityInfoRequestFromVault));
+    std::string keys_request(1, message_type);
     maidsafe::priv::VaultIdentityRequest request;
     request.set_pid(process_id_);
     keys_request += request.SerializeAsString();
