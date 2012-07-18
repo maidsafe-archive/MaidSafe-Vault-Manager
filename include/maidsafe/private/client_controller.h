@@ -25,16 +25,13 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
-#define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
+#ifndef MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
+#define MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/process.hpp>
-#include <boost/thread.hpp>
 #include <boost/asio.hpp>
-#include <thread>
+#include <boost/thread.hpp>
+
 #include <string>
-#include <vector>
 
 #include "maidsafe/common/rsa.h"
 
@@ -44,65 +41,34 @@ namespace priv {
 
 namespace bai = boost::asio::ip;
 
-enum class ProcessStatus {
-  Running,
-  Stopped,
-  Crashed
-};
-
-enum ProcessInstruction {
-  kRun = 1,
-  kStop = 2,
-  kTerminate = 3,
-  kInvalid = 4
-};
-
-enum class KeysStatus {
-  kDoNotNeedKeys = 1,
-  kNeedKeys = 2,
-  kCanHaveKeys = 3,
-  kDoHaveKeys = 4
-};
-
-struct ProcessManagerStruct {
-  ProcessInstruction instruction;
-};
-
-class VaultController {
+class ClientController {
  public:
-  VaultController();
-  ~VaultController();
+  ClientController();
+  ~ClientController();
 
-  bool Start(std::string pid_string, std::function<void()> stop_callback);
-  bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
+  // Blocking call to start a vault with the specified identity information and account name.
+  bool StartVault(const maidsafe::asymm::Keys& keys, const std::string& account_name);
+
+  // Blocking call to stop the vault with the specified identity. For authentication, provide data
+  // signed wth the vault's private key.
+  bool StopVault(const maidsafe::asymm::PlainText& data,
+                 const maidsafe::asymm::Signature& signature,
+                 const maidsafe::asymm::Identity& identity);
 
  private:
-  void ListenForStopTerminate(std::string shared_mem_name,
-                              int id,
-                              std::function<void()> stop_handler);
-  void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
-                   const boost::system::error_code& ec);
   void ConnectToManager();
-  void ReceiveKeys();
-  ProcessInstruction CheckInstruction(const int32_t& id);
-  std::string process_id_;
+
   uint32_t port_;
-  boost::thread thd;
+  boost::thread thd_;
   boost::asio::io_service io_service_;
   bai::tcp::resolver resolver_;
   bai::tcp::resolver::query query_;
   bai::tcp::resolver::iterator endpoint_iterator_;
   bai::tcp::socket socket_;
-  bool check_finished_;
-  maidsafe::rsa::Keys keys_;
-  std::string account_name_;
-  bool info_received_;
-  boost::mutex mutex_;
-  boost::condition_variable cond_var_;
 };
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
+#endif  // MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
