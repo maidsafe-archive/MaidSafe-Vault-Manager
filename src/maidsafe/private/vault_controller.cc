@@ -175,7 +175,7 @@ namespace priv {
   void VaultController::ReceiveKeys() {
     boost::mutex::scoped_lock lock(mutex_);
     std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
-    char message_type(static_cast<char>(MessageType::kIndentityInfoRequestFromVault));
+    char message_type(static_cast<char>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
     std::string keys_request(1, message_type);
     maidsafe::priv::VaultIdentityRequest request;
     request.set_pid(process_id_);

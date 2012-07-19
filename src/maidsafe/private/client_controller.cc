@@ -78,7 +78,7 @@ namespace priv {
         LOG(kError) << "expection thrown in ConnectToManager: " << e.what();
       }
       // ATTEMPT HELLO
-      char message_type(static_cast<char>(MessageType::kHelloFromClient));
+      char message_type(static_cast<char>(VaultManagerMessageType::kHelloFromClient));
       std::string hello_string(1, message_type);
       maidsafe::priv::ClientHello hello;
       hello.set_hello("hello");
@@ -103,8 +103,8 @@ namespace priv {
       } catch(std::exception& e) {
         std::cout << "ERROR: " << e.what() << std::endl;
       }
-      if (static_cast<MessageType>(hello_response_string[0])
-          == MessageType::kHelloResponseToClient) {
+      if (static_cast<VaultManagerMessageType>(hello_response_string[0])
+          == VaultManagerMessageType::kHelloResponseToClient) {
         ClientHelloResponse response;
         if (response.ParseFromString(hello_response_string.substr(1))) {
           if (response.hello_response() == "hello response")

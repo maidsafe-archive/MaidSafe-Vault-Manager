@@ -35,20 +35,29 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include "boost/tokenizer.hpp"
 #include "boost/thread.hpp"
+#include "boost/array.hpp"
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/private/message_handler.h"
 
 namespace maidsafe {
 
 namespace priv {
 
+  namespace bai = boost::asio::ip;
+
   VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_(),
-                                 download_manager_() {}
+                                 download_manager_(), io_service_() {}
 
   VaultManager::~VaultManager() {}
 
-  /*void VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
+  VaultManager::VaultManager(const maidsafe::priv::VaultManager& /*vman*/) : p_id_vector_(),
+                                                                        process_vector_(),
+                                                                        manager_(),
+                                                                        download_manager_(),
+                                                                        io_service_()  {}
+  void VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
     std::string p_id;
@@ -80,7 +89,7 @@ namespace priv {
     manager_.RestartProcess(id);
   }
 
-  void VaultManager::StopVault(std::string id) {
+  void VaultManager::StopVault(int32_t id) {
 //     manager_.KillProcess(p_id_vector_[id]);
     manager_.StopProcess(p_id_vector_[id]);  // This is to be put in function when the
 //     new model od process manager will work properly
@@ -167,7 +176,7 @@ namespace priv {
 
   int32_t VaultManager::get_process_vector_size() {
     return process_vector_.size();
-  }*/
+  }
 
   std::pair<std::string, std::string> VaultManager::FindLatestLocalVersion(std::string name,
                                                                            std::string platform,
@@ -293,6 +302,55 @@ namespace priv {
     }
   }
 
+  void VaultManager::ListenForMessages() {
+//     boost::system::error_code error = boost::asio::error::host_not_found;
+//     bai::tcp::acceptor acceptor(io_service_, bai::tcp::endpoint(bai::tcp::v4(), 5483));
+//     acceptor.accept(socket_);
+//
+//     for(;;) {
+//       std::string serialised_info = "";
+//       try {
+//         for (;;) {
+//           std::cout << "IN RECEIVE LOOP " << std::endl;
+//           boost::array<char, 128> buf;
+//           size_t len = socket_.read_some(boost::asio::buffer(buf), error);
+//           std::cout << "AFTER READ SOME " << std::endl;
+//           if (error == boost::asio::error::eof)
+//             break;  // Connection closed cleanly by peer.
+//           else if (error)
+//             throw boost::system::system_error(error);
+//           serialised_info.append(buf.data(), len);
+//         }
+//       } catch(std::exception& e) {
+//         std::cout << "ERROR: " << e.what() << std::endl;
+//       }
+//
+//       MessageType message_type = boost::numeric_cast<MessageType>(serialised_info[0]);
+//       serialised_info.erase(0, 1); // remove the origin information
+//
+//       switch (message_type) {
+//         case MessageType::kHelloFromClient:
+//           std::cout << "kHelloFromClient" << std::endl;
+//
+//           // FORM A MESSAGE TO RETURN TO CLIENT ON THE SAME PORT
+//
+//         case MessageType::kIdentityInfoRequestFromVault:
+//           std::cout << "kIndentityInfoRequestFromVault" << std::endl;
+//
+//         case MessageType::kIdentityInfoToVault:
+//           std::cout << "kIndentityInfoToVault" << std::endl;
+//
+//         case MessageType::kStartRequestFromClient:
+//           std::cout << "kStartRequestFromClient" << std::endl;
+//         default:
+//           std::cout << "DEFAULT" << std::endl;
+//       }
+//     }
+  }
+
+  void VaultManager::MessageHandler(int /*type*/, std::string /*payload*/) {
+  }
+
 }       // namespace priv
 }       // namespace maidsafe
 
@@ -301,6 +359,13 @@ int main(int /*argc*/, char **/*argv*/) {
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   maidsafe::ProcessManager manager;
   maidsafe::priv::VaultManager vman;
+
+  maidsafe::priv::MessageHandler msg_handler;
+  msg_handler.SetCallback(boost::bind(&maidsafe::priv::VaultManager::MessageHandler, vman, _1, _2));
+
+  std::string request;
+
+//   std::bind(&MessageHandler::OnMessageReceived, msg_handler, &request);
 
   /*vman.ReadConfig();*/
 
@@ -346,9 +411,13 @@ int main(int /*argc*/, char **/*argv*/) {
     }
   }*/
 
-  std::thread thd( [&] { vman.ListenForUpdates(); } ); // NOLINT
-  if (thd.joinable())
-    thd.join();
+  std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
+  if (updates_thread.joinable())
+    updates_thread.join();
+
+  std::thread mediator_thread( [&] { vman.ListenForMessages(); } ); // NOLINT
+  if (mediator_thread.joinable())
+    mediator_thread.join();
 
   std::cout << "Exiting..." << std::endl;
 //  int32_t p_id;

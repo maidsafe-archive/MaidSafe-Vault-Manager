@@ -68,12 +68,12 @@ enum MessageType {
 namespace protobuf {
 class Endpoint;
 class WrapperMessage;
-} // namespace protobuf
+}  // namespace protobuf
 
 namespace test {
 class TransportMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test;
 class RudpMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test;
-} // namespace test
+}  // namespace test
 
 // Highest possible message type ID, use as offset for type extensions.
 const int kMaxMessageType(1000);
@@ -84,23 +84,22 @@ class MessageHandler {
                                            const Endpoint&)>>
           ErrorSigPtr;
 
-  explicit MessageHandler(PrivateKeyPtr private_key)
-    : private_key_(private_key),
-      on_error_(new ErrorSigPtr::element_type) {}
-  virtual ~MessageHandler() {}
+  MessageHandler() : on_error_(new ErrorSigPtr::element_type),
+                     callback_() {}
+  ~MessageHandler() {}
 
   void OnMessageReceived(const std::string &request,
-                         const Info &info,
-                         std::string *response,
-                         Timeout *timeout);
+                         const Info /*&info*/,
+                         std::string */*response*/,
+                         Timeout */*timeout*/);
   void OnError(const TransportCondition &transport_condition,
                const Endpoint &remote_endpoint);
 
-
+  void SetCallback(boost::function<void(int, std::string)> callback);
   ErrorSigPtr on_error() { return on_error_; }
 
  protected:
-  virtual void ProcessSerialisedMessage(const int &message_type,
+  void ProcessSerialisedMessage(const int &message_type,
                                         const std::string &payload,
                                         const SecurityType &security_type,
                                         const std::string &message_signature,
@@ -112,19 +111,16 @@ class MessageHandler {
       const std::string &payload,
       SecurityType security_type,
       const PublicKey &recipient_public_key);
-  PrivateKeyPtr private_key_;
 
  private:
-  friend class test::TransportMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test; // NOLINT
-  friend class test::RudpMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test; // NOLINT
   MessageHandler(const MessageHandler&);
   MessageHandler& operator=(const MessageHandler&);
-
   ErrorSigPtr on_error_;
+  boost::function<void(int, std::string)> callback_;
 };
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_MESSAGE_HANDLER_H_
+#endif  // MAIDSAFE_PRIVATE_MESSAGE_HANDLER_H_
