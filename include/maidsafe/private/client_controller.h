@@ -62,6 +62,14 @@ class ClientController {
   void ConnectToManager(uint16_t port);
   void ConnectToManagerCallback(const int &type, const std::string& hello_response_string,
                                 const Info& sender_info);
+  void OnConnectError(const TransportCondition &transport_condition,
+                      const Endpoint &remote_endpoint);
+  void OnStartVaultError(const TransportCondition &transport_condition,
+                         const Endpoint &remote_endpoint);
+  void StartVaultRequest(const maidsafe::asymm::Keys& keys, const std::string& account_name);
+  void StartVaultRequestCallback(const int &type,
+                                 const std::string& hello_response_string,
+                                 const Info& sender_info);
 
   uint16_t port_;
   boost::thread thd_;
@@ -70,8 +78,12 @@ class ClientController {
   bai::tcp::resolver::query query_;
   bai::tcp::resolver::iterator endpoint_iterator_;
   bai::tcp::socket socket_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
   TcpTransport transport_;
   MessageHandler message_handler_;
+  bool connected_to_manager_;
+  bool vault_started_;
 };
 
 }  // namespace priv

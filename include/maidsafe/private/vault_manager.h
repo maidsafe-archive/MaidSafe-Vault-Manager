@@ -49,8 +49,9 @@ enum class VaultManagerMessageType {
   kHelloFromClient = 1,
   kHelloResponseToClient = 2,
   kStartRequestFromClient = 3,
-  kIdentityInfoRequestFromVault = 4,
-  kIdentityInfoToVault = 5
+  kStartResponseToClient = 4,
+  kIdentityInfoRequestFromVault = 5,
+  kIdentityInfoToVault = 6
 };
 
 class VaultManager {

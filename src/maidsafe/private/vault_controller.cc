@@ -150,6 +150,10 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeys() {
+     transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                            &message_handler_, _1, _2, _3, _4));
+     message_handler_.SetCallback(
+          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3));
     std::string full_request;
     maidsafe::priv::VaultIdentityRequest request;
     Endpoint endpoint("127.0.0.1", port_);
@@ -160,10 +164,6 @@ namespace priv {
       request.set_pid(process_id_);
       full_request = message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                   request.SerializeAsString());
-      transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
-                                                            &message_handler_, _1, _2, _3, _4));
-      message_handler_.SetCallback(
-          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3));
     }
     transport_.Send(full_request, endpoint, boost::posix_time::milliseconds(50));
   }
