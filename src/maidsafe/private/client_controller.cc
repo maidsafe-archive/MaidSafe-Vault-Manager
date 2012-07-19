@@ -49,71 +49,43 @@ namespace priv {
                                          resolver_(io_service_),
                                          query_("", ""),
                                          endpoint_iterator_(),
-                                         socket_(io_service_) {}
+                                         socket_(io_service_),
+                                         transport_(io_service_),
+                                         message_handler_() {}
 
   ClientController::~ClientController() {}
 
 
-  void ClientController::ConnectToManager() {
+  void ClientController::ConnectToManager(uint16_t port) {
     // resolver_ = bai::tcp::resolver(io_service_);
     std::cout << "IN ConnectToManager " << std::endl;
-    while (true) {
-      try {
-        std::cout << "PORT: " << boost::lexical_cast<std::string>(port_) << std::endl;
-        query_ = bai::tcp::resolver::query("127.0.0.1", boost::lexical_cast<std::string>(port_));
-        boost::system::error_code ec;
-        endpoint_iterator_ = resolver_.resolve(query_, ec);
-        bai::tcp::resolver::iterator end;
-        // socket_ = bai::tcp::socket(io_service_);
-        boost::system::error_code error = boost::asio::error::host_not_found;
-        while (error && endpoint_iterator_ != end) {
-          std::cout << "IN CONNECT LOOP " << std::endl;
-          socket_.close();
-          socket_.connect(*endpoint_iterator_, error);
-          ++endpoint_iterator_;
-        }
-        if (error)
-          throw boost::system::system_error(error);
-        } catch(std::exception& e) {
-        LOG(kError) << "expection thrown in ConnectToManager: " << e.what();
-      }
-      // ATTEMPT HELLO
-      char message_type(static_cast<char>(VaultManagerMessageType::kHelloFromClient));
-      std::string hello_string(1, message_type);
-      maidsafe::priv::ClientHello hello;
-      hello.set_hello("hello");
-      hello_string += hello.SerializeAsString();
-      boost::system::error_code ignored_error;
-      boost::asio::write(socket_, boost::asio::buffer(hello_string), ignored_error);
-      std::string hello_response_string;
-      boost::system::error_code error = boost::asio::error::host_not_found;
-      std::cout << "Hello attempt on " << port_ << ", awaiting response" << std::endl;
-      try {
-        for (;;) {
-          std::cout << "IN RECEIVE LOOP " << std::endl;
-          boost::array<char, 128> buf;
-          size_t len = socket_.read_some(boost::asio::buffer(buf), error);
-          std::cout << "AFTER READ SOME " << std::endl;
-          if (error == boost::asio::error::eof)
-            break;  // Connection closed cleanly by peer.
-          else if (error)
-            throw boost::system::system_error(error);
-          hello_response_string.append(buf.data(), len);
-        }
-      } catch(std::exception& e) {
-        std::cout << "ERROR: " << e.what() << std::endl;
-      }
-      if (static_cast<VaultManagerMessageType>(hello_response_string[0])
-          == VaultManagerMessageType::kHelloResponseToClient) {
-        ClientHelloResponse response;
-        if (response.ParseFromString(hello_response_string.substr(1))) {
-          if (response.hello_response() == "hello response")
-            break;
+    message_handler_.SetCallback(
+        boost::bind(&maidsafe::priv::ClientController::ConnectToManagerCallback, this, _1, _2, _3));
+    transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                          &message_handler_, _1, _2, _3, _4));
+    Endpoint endpoint("127.0.0.1", port);
+    int message_type(static_cast<int>(VaultManagerMessageType::kHelloFromClient));
+    std::string hello_string;
+    maidsafe::priv::ClientHello hello;
+    hello.set_hello("hello");
+    hello_string = message_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                                  hello.SerializeAsString());
+    transport_.Send(hello_string, endpoint, boost::posix_time::milliseconds(50));
+  }
+
+  void ClientController::ConnectToManagerCallback(const int &type,
+                                                  const std::string& hello_response_string,
+                                                  const Info& sender_info) {
+    if (type == static_cast<int>(VaultManagerMessageType::kHelloResponseToClient)) {
+      ClientHelloResponse response;
+      if (response.ParseFromString(hello_response_string)) {
+        if (response.hello_response() == "hello response") {
+          port_ = sender_info.endpoint.port;
+          return;
         }
       }
-      // IF SUCCESSFUL
-      //   BREAK
     }
+    ConnectToManager(sender_info.endpoint.port + 1);
   }
 
   bool ClientController::StartVault(const maidsafe::asymm::Keys& /*keys*/,
@@ -121,7 +93,7 @@ namespace priv {
     std::cout << "IN VaultController Start" << std::endl;
     try {
       thd_ = boost::thread([=] {
-                                ConnectToManager();
+                                ConnectToManager(port_);
                                   /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
                               });
     } catch(std::exception& e)  {

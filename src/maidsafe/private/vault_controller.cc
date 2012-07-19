@@ -163,12 +163,13 @@ namespace priv {
       transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                             &message_handler_, _1, _2, _3, _4));
       message_handler_.SetCallback(
-          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2));
+          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3));
     }
     transport_.Send(full_request, endpoint, boost::posix_time::milliseconds(50));
   }
 
-  void VaultController::ReceiveKeysCallback(int type, std::string serialised_info) {
+  void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,
+                                            const Info& /*sender_info*/) {
     boost::mutex::scoped_lock lock(mutex_);
     if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
       std::cout << "ReceiveKeysCallback: response message is of incorrect type." << std::endl;

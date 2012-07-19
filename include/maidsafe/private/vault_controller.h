@@ -82,7 +82,8 @@ class VaultController {
   void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
                    const boost::system::error_code& ec);
   void ReceiveKeys();
-  void ReceiveKeysCallback(int type, std::string payload);
+  void ReceiveKeysCallback(const int& type, const std::string& payload,
+                           const Info& /*sender_info*/);
   void OnMessageReceived(const std::string &request,
                          const Info /*&info*/,
                          std::string */*response*/,

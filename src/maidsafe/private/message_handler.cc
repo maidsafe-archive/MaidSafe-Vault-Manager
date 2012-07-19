@@ -39,12 +39,12 @@ namespace maidsafe {
 namespace priv {
 
 void MessageHandler::OnMessageReceived(const std::string &request,
-                                       const Info /*&info*/,
+                                       const Info &info,
                                        std::string */*response*/,
                                        Timeout */*timeout*/) {
   protobuf::WrapperMessage wrapper;
   if (wrapper.ParseFromString(request) && wrapper.IsInitialized()) {
-    callback_(wrapper.msg_type(), wrapper.payload());
+    callback_(wrapper.msg_type(), wrapper.payload(), info);
   }
 }
 
@@ -71,7 +71,8 @@ std::string MessageHandler::MakeSerialisedWrapperMessage(const int &message_type
   return wrapper_message.SerializeAsString();
 }
 
-void MessageHandler::SetCallback(boost::function<void(int, std::string)> callback) {
+void MessageHandler::SetCallback(
+    boost::function<void(const int&, const std::string&, const Info&)> callback) {
   callback_ = callback;
 }
 

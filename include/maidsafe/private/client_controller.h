@@ -35,6 +35,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/tcp_transport.h"
+
 namespace maidsafe {
 
 namespace priv {
@@ -56,15 +59,19 @@ class ClientController {
                  const maidsafe::asymm::Identity& identity);
 
  private:
-  void ConnectToManager();
+  void ConnectToManager(uint16_t port);
+  void ConnectToManagerCallback(const int &type, const std::string& hello_response_string,
+                                const Info& sender_info);
 
-  uint32_t port_;
+  uint16_t port_;
   boost::thread thd_;
   boost::asio::io_service io_service_;
   bai::tcp::resolver resolver_;
   bai::tcp::resolver::query query_;
   bai::tcp::resolver::iterator endpoint_iterator_;
   bai::tcp::socket socket_;
+  TcpTransport transport_;
+  MessageHandler message_handler_;
 };
 
 }  // namespace priv
