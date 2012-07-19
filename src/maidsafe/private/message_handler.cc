@@ -63,62 +63,12 @@ void MessageHandler::ProcessSerialisedMessage(
     std::string* /*message_response*/,
     Timeout* /*timeout*/) {}
 
-std::string MessageHandler::MakeSerialisedWrapperMessage(
-    const int &message_type,
-    const std::string &payload,
-    SecurityType security_type,
-    const PublicKey &/*recipient_public_key*/) {
+std::string MessageHandler::MakeSerialisedWrapperMessage(const int &message_type,
+                                                         const std::string &payload) {
   protobuf::WrapperMessage wrapper_message;
   wrapper_message.set_msg_type(message_type);
   wrapper_message.set_payload(payload);
-  std::string final_message(1, security_type);
-
-  // No security.
-//  if (security_type == kNone) {
-    final_message += wrapper_message.SerializeAsString();
-//  } else {
-    // If we asked for security but provided no securifier, fail.
-//     if (security_type && !private_key_) {
-//       LOG(kError) << "MakeSerialisedWrapperMessage - type " << message_type
-//                   << " - PrivateKey Validation Failed.";
-//       return "";
-//     }
-
-    // Handle signing
-//     if (security_type & kSign) {
-//       std::string signature;
-//       if (asymm::Sign(boost::lexical_cast<std::string>(message_type) + payload,
-//                      *private_key_,
-//                      &signature) != kSuccess) {
-//        LOG(kError) << "MakeSerialisedWrapperMessage - type " << message_type
-//                    << " - Sign Failed.";
-//        return "";
-//       }
-//       wrapper_message.set_message_signature(signature);
-//     }
-
-    // Handle encryption
-    /*if (security_type & kAsymmetricEncrypt) {
-      if (!asymm::ValidateKey(recipient_public_key)) {
-        LOG(kError) << "MakeSerialisedWrapperMessage - type " << message_type
-                    << " - PublicKey Validation Failed.";
-        return "";
-      }
-
-      std::string encrypted_message;
-      if (asymm::Encrypt(wrapper_message.SerializeAsString(),
-                         recipient_public_key,
-                         &encrypted_message) != kSuccess) {
-        LOG(kError) << "MakeSerialisedWrapperMessage - type " << message_type
-                    << " - Encryption Failed.";
-        return "";
-      }
-      final_message += encrypted_message;
-    } else {
-      final_message += wrapper_message.SerializeAsString();
-    }*/
-//   }
-  return final_message;
+  return wrapper_message.SerializeAsString();
 }
 
 void MessageHandler::SetCallback(boost::function<void(int, std::string)> callback) {

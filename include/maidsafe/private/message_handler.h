@@ -98,6 +98,8 @@ class MessageHandler {
   void SetCallback(boost::function<void(int, std::string)> callback);
   ErrorSigPtr on_error() { return on_error_; }
 
+  std::string MakeSerialisedWrapperMessage(const int &message_type, const std::string &payload);
+
  protected:
   void ProcessSerialisedMessage(const int &message_type,
                                         const std::string &payload,
@@ -106,11 +108,6 @@ class MessageHandler {
                                         const Info &info,
                                         std::string *message_response,
                                         Timeout *timeout);
-  std::string MakeSerialisedWrapperMessage(
-      const int &message_type,
-      const std::string &payload,
-      SecurityType security_type,
-      const PublicKey &recipient_public_key);
 
  private:
   MessageHandler(const MessageHandler&);

@@ -62,7 +62,9 @@ namespace priv {
                                       account_name_(),
                                       info_received_(false),
                                       mutex_(),
-                                      cond_var_() {}
+                                      cond_var_(),
+                                      transport_(io_service_),
+                                      message_handler_() {}
 
   VaultController::~VaultController() {}
 
@@ -147,70 +149,41 @@ namespace priv {
     }
   }
 
-  void VaultController::ConnectToManager() {
-    try {
-      // resolver_ = bai::tcp::resolver(io_service_);
-      std::cout << "IN ConnectToManager " << std::endl;
-      std::cout << "PORT: " << boost::lexical_cast<std::string>(port_) << std::endl;
-      query_ = bai::tcp::resolver::query("127.0.0.1", boost::lexical_cast<std::string>(port_));
-      boost::system::error_code ec;
-      endpoint_iterator_ = resolver_.resolve(query_, ec);
-      PrintResult(boost::lexical_cast<std::string>(port_), endpoint_iterator_, ec);
-      bai::tcp::resolver::iterator end;
-      // socket_ = bai::tcp::socket(io_service_);
-      boost::system::error_code error = boost::asio::error::host_not_found;
-      while (error && endpoint_iterator_ != end) {
-        std::cout << "IN CONNECT LOOP " << std::endl;
-        socket_.close();
-        socket_.connect(*endpoint_iterator_, error);
-        ++endpoint_iterator_;
-      }
-      if (error)
-        throw boost::system::system_error(error);
-    } catch(std::exception& e) {
-      LOG(kError) << "expection thrown in ConnectToManager: " << e.what();
+  void VaultController::ReceiveKeys() {
+    std::string full_request;
+    maidsafe::priv::VaultIdentityRequest request;
+    Endpoint endpoint("127.0.0.1", port_);
+    {
+      boost::mutex::scoped_lock lock(mutex_);
+      std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
+      int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
+      request.set_pid(process_id_);
+      full_request = message_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                                  request.SerializeAsString());
+      transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                            &message_handler_, _1, _2, _3, _4));
+      message_handler_.SetCallback(
+          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2));
     }
+    transport_.Send(full_request, endpoint, boost::posix_time::milliseconds(50));
   }
 
-  void VaultController::ReceiveKeys() {
+  void VaultController::ReceiveKeysCallback(int type, std::string serialised_info) {
     boost::mutex::scoped_lock lock(mutex_);
-    std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
-    char message_type(static_cast<char>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
-    std::string keys_request(1, message_type);
-    maidsafe::priv::VaultIdentityRequest request;
-    request.set_pid(process_id_);
-    keys_request += request.SerializeAsString();
-    boost::system::error_code ignored_error;
-    boost::asio::write(socket_, boost::asio::buffer(keys_request), ignored_error);
-
-    std::string serialised_info;
-    boost::system::error_code error = boost::asio::error::host_not_found;
-    std::cout << "ReceiveKeys, awaiting response with vault identity info" << std::endl;
-    try {
-      for (;;) {
-        std::cout << "IN RECEIVE LOOP " << std::endl;
-        boost::array<char, 128> buf;
-        size_t len = socket_.read_some(boost::asio::buffer(buf), error);
-        std::cout << "AFTER READ SOME " << std::endl;
-        if (error == boost::asio::error::eof)
-          break;  // Connection closed cleanly by peer.
-        else if (error)
-          throw boost::system::system_error(error);
-        serialised_info.append(buf.data(), len);
-      }
-    } catch(std::exception& e) {
-      std::cout << "ERROR: " << e.what() << std::endl;
+    if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
+      std::cout << "ReceiveKeysCallback: response message is of incorrect type." << std::endl;
+      return;
     }
     VaultIdentityInfo info;
     info.ParseFromString(serialised_info);
     if (!maidsafe::rsa::ParseKeys(info.keys(), keys_)) {
-      std::cout << "ReceiveKeys: failed to parse keys. " << std::endl;
+      std::cout << "ReceiveKeysCallback: failed to parse keys. " << std::endl;
       info_received_ = false;
       return;
     } else {
       account_name_ = info.account_name();
       if (account_name_ == "") {
-        std::cout << "ReceiveKeys: account name is empty. " << std::endl;
+        std::cout << "ReceiveKeysCallback: account name is empty. " << std::endl;
         info_received_ = false;
         return;
       }
@@ -239,10 +212,9 @@ namespace priv {
       auto it(tok.begin());
       process_id_ = (*it);
       ++it;
-      port_ = boost::lexical_cast<uint32_t>(*it);
+      port_ = boost::lexical_cast<uint16_t>(*it);
       std::cout << "PORT: " << port_ << std::endl;
       thd = boost::thread([=] {
-                                ConnectToManager();
                                 ReceiveKeys();
                                   /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
                               });

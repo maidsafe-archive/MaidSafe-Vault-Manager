@@ -38,6 +38,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/tcp_transport.h"
+#include "maidsafe/private/message_handler.h"
+
 namespace maidsafe {
 
 namespace priv {
@@ -64,10 +67,6 @@ enum class KeysStatus {
   kDoHaveKeys = 4
 };
 
-struct ProcessManagerStruct {
-  ProcessInstruction instruction;
-};
-
 class VaultController {
  public:
   VaultController();
@@ -82,11 +81,15 @@ class VaultController {
                               std::function<void()> stop_handler);
   void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
                    const boost::system::error_code& ec);
-  void ConnectToManager();
   void ReceiveKeys();
+  void ReceiveKeysCallback(int type, std::string payload);
+  void OnMessageReceived(const std::string &request,
+                         const Info /*&info*/,
+                         std::string */*response*/,
+                         Timeout */*timeout*/);
   ProcessInstruction CheckInstruction(const int32_t& id);
   std::string process_id_;
-  uint32_t port_;
+  uint16_t port_;
   boost::thread thd;
   boost::asio::io_service io_service_;
   bai::tcp::resolver resolver_;
@@ -99,6 +102,8 @@ class VaultController {
   bool info_received_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
+  TcpTransport transport_;
+  MessageHandler message_handler_;
 };
 
 }  // namespace priv
