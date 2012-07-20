@@ -37,6 +37,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "boost/filesystem/fstream.hpp"
 #include "boost/filesystem/operations.hpp"
 
+#include "maidsafe/private/transport.h"
+#include "maidsafe/private/message_handler.h"
+
 class R;
 class R;
 namespace maidsafe {
@@ -68,7 +71,8 @@ class VaultManager {
   int32_t get_process_vector_size();
   void ListenForUpdates();
   void ListenForMessages();
-  void MessageHandler(int type, std::string payload);
+  void MessageHandler(const int& type, const std::string& payload, const Info& info);
+  void OnError(const TransportCondition &transport_condition, const Endpoint &remote_endpoint);
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
                                                              std::string cpu_size);

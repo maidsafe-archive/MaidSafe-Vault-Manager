@@ -348,7 +348,12 @@ namespace priv {
 //     }
   }
 
-  void VaultManager::MessageHandler(int /*type*/, std::string /*payload*/) {
+  void VaultManager::MessageHandler(const int& /*type*/, const std::string& /*payload*/,
+                                    const Info& /*info*/) {
+  }
+
+  void VaultManager::OnError(const TransportCondition &/*transport_condition*/,
+                             const Endpoint &/*remote_endpoint*/) {
   }
 
 }       // namespace priv
@@ -361,8 +366,8 @@ int main(int /*argc*/, char **/*argv*/) {
   maidsafe::priv::VaultManager vman;
 
   maidsafe::priv::MessageHandler msg_handler;
-  msg_handler.SetCallback(boost::bind(&maidsafe::priv::VaultManager::MessageHandler, vman, _1, _2));
-
+  msg_handler.SetCallback(boost::bind(&maidsafe::priv::VaultManager::MessageHandler,
+                                      vman, _1, _2, _3));
   std::string request;
 
 //   std::bind(&MessageHandler::OnMessageReceived, msg_handler, &request);
