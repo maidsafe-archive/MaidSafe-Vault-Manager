@@ -253,6 +253,9 @@ namespace priv {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     std::cout << current_path << std::endl;
     while (true) {
+      download_manager_.SetFileToDownload("lifestufflocal_linux_32_5_4");
+      download_manager_.VerifySignature();
+
       std::cout << "FINDING LATEST LOCAL VERSION OF " << name << std::endl;
       version_and_patchlevel = FindLatestLocalVersion(name, platform,
                                                       boost::lexical_cast<std::string>(cpu_size));
@@ -292,8 +295,8 @@ namespace priv {
         } else {
           std::cout << "Invalid Signature - Removing downloaded files" << std::endl;
           // Remove the signature_file
-//           boost::filesystem::remove(current_path / signature_file);
-//           boost::filesystem::remove(current_path / file_to_download);
+          boost::filesystem::remove(current_path / signature_file);
+          boost::filesystem::remove(current_path / file_to_download);
         }
       } else {
         std::cout << "LATEST FILE NOT FOUND, " << std::endl;

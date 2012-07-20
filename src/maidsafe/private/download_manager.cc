@@ -44,7 +44,7 @@ DownloadManager::DownloadManager()
   current_patchlevel_(),
   protocol_(),
   file_to_download_(),
-  maidsafe_public_key_(DecodeFromHex("308201080282010100bce669239b27e494d9dfd51c543d689092b094948d532c716622ce8ad4d022df8372742284c18953064e0bcb2e19d8797038d898b0180fc042948fb32ad209c88cbff58550107b6e0504db6c6bcc237877a0e2781c9de1ccc3604c1a58fe1057c70f71dd6b556456366b0d9961956542451160a89af4c2490a5c011719d578790aa5459e73cf0ef0c3e0a04ed3e9685572095781937392f09e2de5f1824b53cc307c5076c828771381ffad3145cfc17575084831dab072c90396b0e786709ae845cfa690f190f80733cf9c8939b074911365c19a48ab1ae1de9b7b538d3d444eabe41e7787f664fd07df014d08a608020ab6b71e53a853240054365dad1d758d020111")) {}  // NOLINT
+  maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
 
 DownloadManager::DownloadManager(std::string site,
                                  std::string location,
@@ -61,7 +61,8 @@ DownloadManager::DownloadManager(std::string site,
   current_version_(current_version),
   current_patchlevel_(current_patchlevel),
   protocol_("http"),
-  file_to_download_() {}
+  file_to_download_(),
+  maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
 
 bool DownloadManager::FileIsValid(std::string file) {
   boost::char_separator<char> sep("_");
@@ -213,17 +214,21 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
   // Try each endpoint until we successfully establish a connection.
   bai::tcp::socket socket(io_service);
   boost::asio::connect(socket, endpoint_iterator);
+
   if (file_to_download_ == "") {
     LOG(kError) << "UpdateCurrentFile: The file to be downloaded has not yet been found, use"
                 << " FindLatestFile() to find it";
     return false;
   }
+
+  std::vector<char> char_buffer(1024);
   boost::asio::streambuf current_file_buffer(1024);
   std::istream current_file_stream(&current_file_buffer);
   if (!GetFileBuffer("/" + location_ + "/" + file_to_download_, &current_file_buffer,
       &current_file_stream, &socket)) {
     return false;
   }
+
   try {
     boost::filesystem::ofstream file_out(directory / file_to_download_,
                                         std::ios::out | std::ios::trunc | std::ios::binary);
@@ -234,16 +239,18 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
     }
     boost::system::error_code error;
     // Read until EOF, copies 1024 byte chunks of file into memory at a time before adding to file
-    while (boost::asio::read(socket, current_file_buffer, error)) {
+    std::size_t size;
+    int length = current_file_stream.readsome(&char_buffer[0], 1024);
+    std::string current_block(char_buffer.begin(), char_buffer.begin() + length);
+    file_out.write(current_block.c_str(), current_block.size());
+
+    while (size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error)) {
       if (error && error != boost::asio::error::eof) {
         LOG(kError) << "UpdateCurrentFile: Error downloading file " << file_to_download_ << ": "
                     << error.message();
         return false;
       }
-      std::string current_block;
-      std::ostringstream current_block_stream;
-      current_block_stream << current_file_stream.rdbuf();
-      current_block = current_block_stream.str();
+      current_block.assign(char_buffer.begin(), char_buffer.begin() + size);
       file_out.write(current_block.c_str(), current_block.size());
     }
     LOG(kInfo) << "UpdateCurrentFile: Finished downloading file " << file_to_download_
@@ -265,20 +272,20 @@ bool DownloadManager::VerifySignature() {
   std::string signature, data;
 
   if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
-    std::cout << "error reading file\n";
+    std::cout << "Verify Signature - error reading file\n";
     return false;
   }
   asymm::PublicKey public_key;
   asymm::DecodePublicKey(maidsafe_public_key_, &public_key);
 
   if (!maidsafe::rsa::ValidateKey(public_key)) {
-    std::cout << "public key invalid, aborting!!\n";
+    std::cout << "Verify Signature - public key invalid, aborting!!\n";
   }
 
   if (maidsafe::rsa::CheckSignature(data, signature, public_key) == 0)  {
-    std::cout << "Signature valid\n";
+    std::cout << "Verify Signature - Signature valid\n";
   } else {
-    std::cout << "Invalid signature !! \n";
+    std::cout << "Verify Signature - Invalid signature !! \n";
     return false;
   }
   // SEE WHAT TO RETURN
