@@ -279,20 +279,21 @@ namespace priv {
 
         // Download the client file
         file_to_download = file_to_download +  extension;
-        std::cout << "FILE FOUND TO BE DOWNLOADED, " << file_to_download  << std::endl;
+        std::cout << "CLIENT FILE IS, " << file_to_download  << std::endl;
         download_manager_.SetFileToDownload(file_to_download);
         download_manager_.UpdateCurrentFile(current_path);
         std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
+        std::cout << "CLIENT FILE " << file_to_download << " HAS BEEN DOWNLOADED" << std::endl;
 
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
           std::cout << "REMOVING SIGNATURE FILE" << std::endl;
           boost::filesystem::remove(current_path / signature_file);
         } else {
-          std::cout << "Invalid Signature" << std::endl;
+          std::cout << "Invalid Signature - Removing downloaded files" << std::endl;
           // Remove the signature_file
-          boost::filesystem::remove(current_path / signature_file);
-          boost::filesystem::remove(current_path / file_to_download);
+//           boost::filesystem::remove(current_path / signature_file);
+//           boost::filesystem::remove(current_path / file_to_download);
         }
       } else {
         std::cout << "LATEST FILE NOT FOUND, " << std::endl;
@@ -303,59 +304,34 @@ namespace priv {
   }
 
   void VaultManager::ListenForMessages() {
-//     boost::system::error_code error = boost::asio::error::host_not_found;
-//     bai::tcp::acceptor acceptor(io_service_, bai::tcp::endpoint(bai::tcp::v4(), 5483));
-//     acceptor.accept(socket_);
-//
-//     for(;;) {
-//       std::string serialised_info = "";
-//       try {
-//         for (;;) {
-//           std::cout << "IN RECEIVE LOOP " << std::endl;
-//           boost::array<char, 128> buf;
-//           size_t len = socket_.read_some(boost::asio::buffer(buf), error);
-//           std::cout << "AFTER READ SOME " << std::endl;
-//           if (error == boost::asio::error::eof)
-//             break;  // Connection closed cleanly by peer.
-//           else if (error)
-//             throw boost::system::system_error(error);
-//           serialised_info.append(buf.data(), len);
-//         }
-//       } catch(std::exception& e) {
-//         std::cout << "ERROR: " << e.what() << std::endl;
-//       }
-//
-//       MessageType message_type = boost::numeric_cast<MessageType>(serialised_info[0]);
-//       serialised_info.erase(0, 1); // remove the origin information
-//
-//       switch (message_type) {
-//         case MessageType::kHelloFromClient:
-//           std::cout << "kHelloFromClient" << std::endl;
-//
-//           // FORM A MESSAGE TO RETURN TO CLIENT ON THE SAME PORT
-//
-//         case MessageType::kIdentityInfoRequestFromVault:
-//           std::cout << "kIndentityInfoRequestFromVault" << std::endl;
-//
-//         case MessageType::kIdentityInfoToVault:
-//           std::cout << "kIndentityInfoToVault" << std::endl;
-//
-//         case MessageType::kStartRequestFromClient:
-//           std::cout << "kStartRequestFromClient" << std::endl;
-//         default:
-//           std::cout << "DEFAULT" << std::endl;
-//       }
-//     }
-  }
-
-  void VaultManager::MessageHandler(const int& /*type*/, const std::string& /*payload*/,
-                                    const Info& /*info*/) {
   }
 
   void VaultManager::OnError(const TransportCondition &/*transport_condition*/,
                              const Endpoint &/*remote_endpoint*/) {
   }
 
+  void VaultManager::MessageHandler(const int& type, const std::string& /*payload*/,
+                                    const Info& /*info*/) {
+    VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
+//     serialised_info.erase(0, 1); // remove the origin information
+    switch (message_type) {
+        case VaultManagerMessageType::kHelloFromClient:
+          std::cout << "kHelloFromClient" << std::endl;
+
+          // FORM A MESSAGE TO RETURN TO CLIENT ON THE SAME PORT
+
+        case VaultManagerMessageType::kIdentityInfoRequestFromVault:
+          std::cout << "kIndentityInfoRequestFromVault" << std::endl;
+
+        case VaultManagerMessageType::kIdentityInfoToVault:
+          std::cout << "kIndentityInfoToVault" << std::endl;
+
+        case VaultManagerMessageType::kStartRequestFromClient:
+          std::cout << "kStartRequestFromClient" << std::endl;
+        default:
+          std::cout << "DEFAULT" << std::endl;
+      }
+  }
 }       // namespace priv
 }       // namespace maidsafe
 
@@ -420,9 +396,9 @@ int main(int /*argc*/, char **/*argv*/) {
   if (updates_thread.joinable())
     updates_thread.join();
 
-  std::thread mediator_thread( [&] { vman.ListenForMessages(); } ); // NOLINT
-  if (mediator_thread.joinable())
-    mediator_thread.join();
+//   std::thread mediator_thread( [&] { vman.ListenForMessages(); } ); // NOLINT
+//   if (mediator_thread.joinable())
+//     mediator_thread.join();
 
   std::cout << "Exiting..." << std::endl;
 //  int32_t p_id;
