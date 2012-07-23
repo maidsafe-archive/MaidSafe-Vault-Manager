@@ -103,7 +103,7 @@ class VaultController {
   bool info_received_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
-  TcpTransport transport_;
+  std::shared_ptr<TcpTransport> transport_;
   MessageHandler message_handler_;
 };
 

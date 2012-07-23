@@ -57,6 +57,8 @@ TcpTransport::~TcpTransport() {
 }
 
 TransportCondition TcpTransport::StartListening(const Endpoint &endpoint) {
+  LOG(kError) << "StartListening (port "
+                << listening_port_ << ").";
   if (listening_port_ != 0) {
     LOG(kError) << "StartListening - Already listening (port "
                 << listening_port_ << ").";
@@ -149,6 +151,7 @@ void TcpTransport::CloseAcceptor(AcceptorPtr acceptor) {
 void TcpTransport::HandleAccept(AcceptorPtr acceptor,
                                 ConnectionPtr connection,
                                 const bs::error_code &ec) {
+  std::cout << "TRANSPORT: MESSAGE RECEIVED" << std::endl;
   if (!acceptor->is_open())
     return;
 
@@ -209,6 +212,6 @@ void TcpTransport::DoRemoveConnection(ConnectionPtr connection) {
   connections_.erase(connection);
 }
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe

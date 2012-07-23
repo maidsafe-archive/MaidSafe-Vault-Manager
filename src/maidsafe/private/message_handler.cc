@@ -42,6 +42,7 @@ void MessageHandler::OnMessageReceived(const std::string &request,
                                        const Info &info,
                                        std::string */*response*/,
                                        Timeout */*timeout*/) {
+  std::cout << "MESSAGE RECEIVED" << std::endl;
   protobuf::WrapperMessage wrapper;
   if (wrapper.ParseFromString(request) && wrapper.IsInitialized()) {
     callback_(wrapper.msg_type(), wrapper.payload(), info);

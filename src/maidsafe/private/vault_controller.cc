@@ -63,7 +63,7 @@ namespace priv {
                                       info_received_(false),
                                       mutex_(),
                                       cond_var_(),
-                                      transport_(io_service_),
+                                      transport_(new TcpTransport(io_service_)),
                                       message_handler_() {}
 
   VaultController::~VaultController() {}
@@ -150,13 +150,13 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeys() {
-     transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                             &message_handler_, _1, _2, _3, _4));
      message_handler_.SetCallback(
           boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3));
     std::string full_request;
     maidsafe::priv::VaultIdentityRequest request;
-    Endpoint endpoint("127.0.0.1", port_);
+    Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
     {
       boost::mutex::scoped_lock lock(mutex_);
       std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
@@ -165,7 +165,7 @@ namespace priv {
       full_request = message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                   request.SerializeAsString());
     }
-    transport_.Send(full_request, endpoint, boost::posix_time::milliseconds(50));
+    transport_->Send(full_request, endpoint, boost::posix_time::milliseconds(50));
   }
 
   void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,

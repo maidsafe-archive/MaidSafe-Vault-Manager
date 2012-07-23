@@ -82,8 +82,9 @@ ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_
 ms_add_executable(TESTprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc")
 ms_add_executable(TESTdownload "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc") 
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
+ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vault_manager.cc")
+ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vault_manager_test.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
@@ -91,6 +92,7 @@ target_link_libraries(TESTprocess maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(TESTdownload maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(vault-manager maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYclient maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 rename_outdated_built_exes()
 

@@ -127,6 +127,19 @@ int main(int ac, char* av[]) {
     std::string id = vm["pid"].as<std::string>();
     std::cout << "Starting VaultController." << std::endl;
     vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
+    maidsafe::asymm::Keys keys;
+    std::string account_name;
+    vc.GetIdentity(&keys, &account_name);
+    keys.identity = maidsafe::RandomAlphaNumericString(64);
+    keys.validation_token = maidsafe::RandomAlphaNumericString(64);
+    std::cout << "Identity: " << (keys.identity) << std::endl;
+    std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
+    std::string public_key_string;
+    maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
+    std::string private_key_string;
+    maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
+    std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
+    std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
         std::cout << "Running for " << runtime << " seconds. \n";

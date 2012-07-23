@@ -40,6 +40,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/vault_identity_info.pb.h"
 
 namespace maidsafe {
 
@@ -47,32 +48,52 @@ namespace priv {
 
   namespace bai = boost::asio::ip;
 
+  WaitingVaultInfo::WaitingVaultInfo(const WaitingVaultInfo& other)
+      : vault_pid(), client_endpoint(), account_name(), keys() {
+    vault_pid = other.vault_pid;
+    client_endpoint = other.client_endpoint;
+    account_name = other.account_name;
+    keys = other.keys;
+  }
+
   VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_(),
-                                 download_manager_(), io_service_() {}
+                                 download_manager_(), io_service_(), msg_handler_(),
+                                 transport_(new TcpTransport(io_service_)), local_port_(5483),
+                                 client_started_vault_pids_(), config_file_vault_pids_() {}
 
   VaultManager::~VaultManager() {}
 
   VaultManager::VaultManager(const maidsafe::priv::VaultManager& /*vman*/) : p_id_vector_(),
-                                                                        process_vector_(),
-                                                                        manager_(),
-                                                                        download_manager_(),
-                                                                        io_service_()  {}
-  void VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
+                                                                       process_vector_(),
+                                                                       manager_(),
+                                                                       download_manager_(),
+                                                                       io_service_(),
+                                                                       msg_handler_(),
+                                                          transport_(new TcpTransport(io_service_)),
+                                                                       local_port_(5483),
+                                                                       client_started_vault_pids_(),
+                                                                       config_file_vault_pids_() {}
+  std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
     std::string p_id;
     std::cout << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
               << chunkstore_capacity << std::endl;
 
-    process.SetProcessName("pd-vault");
+    /*process.SetProcessName("pd-vault");
     process.AddArgument("pd-vault");
     process.AddArgument("--chunkstore_path");
     process.AddArgument(chunkstore_path);
     process.AddArgument("--chunkstore_capacity");
     process.AddArgument(chunkstore_capacity);
-    process.AddArgument("--vault_id_path");
-    process.AddArgument("/home/nikola/idpath.txt");
-    process.AddArgument("--start");
+    process.AddArgument("--start");*/
+
+    process.SetProcessName("DUMMYprocess");
+    process.AddArgument("DUMMYprocess");
+    process.AddArgument("--runtime");
+    process.AddArgument("10");
+    process.AddArgument("--nocrash");
+
     process_vector_.push_back(process);
 
     p_id = manager_.AddProcess(process);
@@ -83,6 +104,7 @@ namespace priv {
     if (new_vault) {
       WriteConfig();
     }
+    return p_id;
   }
 
   void VaultManager::RestartVault(std::string id) {
@@ -301,177 +323,157 @@ namespace priv {
   }
 
   void VaultManager::ListenForMessages() {
-  }
-
-  void VaultManager::OnError(const TransportCondition &/*transport_condition*/,
-                             const Endpoint &/*remote_endpoint*/) {
-  }
-
-  void VaultManager::MessageHandler(const int& type, const std::string& /*payload*/,
-                                    const Info& /*info*/) {
-    VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
-//     serialised_info.erase(0, 1); // remove the origin information
-    switch (message_type) {
-        case VaultManagerMessageType::kHelloFromClient:
-          std::cout << "kHelloFromClient" << std::endl;
-
-          // FORM A MESSAGE TO RETURN TO CLIENT ON THE SAME PORT
-
-        case VaultManagerMessageType::kIdentityInfoRequestFromVault:
-          std::cout << "kIndentityInfoRequestFromVault" << std::endl;
-
-        case VaultManagerMessageType::kIdentityInfoToVault:
-          std::cout << "kIndentityInfoToVault" << std::endl;
-
-        case VaultManagerMessageType::kStartRequestFromClient:
-          std::cout << "kStartRequestFromClient" << std::endl;
-        default:
-          std::cout << "DEFAULT" << std::endl;
+    transport_->StopListening();
+    while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
+        local_port_)) != kSuccess) {
+      /*transport_->StopListening();*/
+      ++local_port_;
+      if (local_port_ > 6483) {
+        std::cout << "ListenForMessages: Listening failed on all ports in range" << std::endl;
+        return;
       }
+    }
+    std::cout << "ListenForMessages: Listening on: " << local_port_ << std::endl;
+    while (true) {}
+  }
+
+  void VaultManager::OnError(const TransportCondition &transport_condition,
+                             const Endpoint &/*remote_endpoint*/) {
+    std::cout << "Error " << transport_condition << "sending message." << std::endl;
+  }
+
+  void VaultManager::HandleIncomingMessage(const int& type, const std::string& payload,
+                                    const Info& info) {
+    std::cout << "HandleIncomingMessage: message type " << type << " received." << std::endl;
+    VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
+    switch (message_type) {
+      case VaultManagerMessageType::kHelloFromClient:
+        std::cout << "kHelloFromClient" << std::endl;
+        HandleClientHello(payload, info);
+        break;
+      case VaultManagerMessageType::kIdentityInfoRequestFromVault:
+        std::cout << "kIndentityInfoRequestFromVault" << std::endl;
+        HandleVaultInfoRequest(payload, info);
+        break;
+      case VaultManagerMessageType::kStartRequestFromClient:
+        std::cout << "kStartRequestFromClient" << std::endl;
+        HandleClientStartVaultRequest(payload, info);
+        break;
+      default:
+        std::cout << "Incorrect message type" << std::endl;
+    }
+    transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(), local_port_));
+  }
+
+  void VaultManager::HandleClientHello(const std::string& hello_string, const Info& info) {
+    ClientHello hello;
+    if (hello.ParseFromString(hello_string)) {
+      if (hello.hello() == "hello") {
+        Endpoint return_endpoint(info.endpoint.ip, info.endpoint.port);
+        int message_type(static_cast<int>(VaultManagerMessageType::kHelloResponseToClient));
+        std::string response;
+        response = msg_handler_.MakeSerialisedWrapperMessage(message_type, "hello response");
+        transport_->Send(response, return_endpoint, boost::posix_time::milliseconds(50));
+        return;
+      }
+    }
+    std::cout << "HandleClientHello: Problem parsing client's hello message" << std::endl;
+  }
+
+  void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_string,
+                                                   const Info& info) {
+    ClientStartVaultRequest request;
+    if (request.ParseFromString(start_vault_string)) {
+      asymm::Keys keys;
+      asymm::ParseKeys(request.keys(), keys);
+      std::string account_name(request.account_name());
+      Endpoint return_endpoint(info.endpoint.ip, info.endpoint.port);
+      std::string pid;
+      pid = RunVault((GetSystemAppDir()/"TestVault").string() + RandomAlphaNumericString(5) + "/",
+                     0, true);
+      WaitingVaultInfo current_vault_info;
+      current_vault_info.vault_pid = pid;
+      current_vault_info.client_endpoint = return_endpoint;
+      current_vault_info.account_name = account_name;
+      current_vault_info.keys = keys;
+      client_started_vault_pids_.push_back(current_vault_info);
+    }
+    std::cout << "HandleClientStartVaultRequest: Problem parsing client's start vault message"
+              << std::endl;
+  }
+
+  void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_string,
+                                            const Info& info) {
+      // GET INFO REQUEST
+     VaultIdentityRequest request;
+     bool new_vault(false);
+     auto client_it(client_started_vault_pids_.begin());
+     auto config_it(config_file_vault_pids_.begin());
+     if (request.ParseFromString(vault_info_request_string)) {
+       std::string pid(request.pid());
+       for (; client_it != client_started_vault_pids_.end(); ++client_it) {
+         if ((*client_it).vault_pid == pid) {
+           new_vault = true;
+           break;
+         }
+       }
+       if (!new_vault) {
+         for (; config_it != config_file_vault_pids_.end(); ++config_it) {
+           if ((*config_it).vault_pid == pid) {
+             break;
+           }
+         }
+       }
+     }
+    // SEND INFO TO VAULT
+    VaultIdentityInfo vault_info;
+    std::string keys_string;
+    WaitingVaultInfo waiting_vault_info;
+    if (new_vault)
+      waiting_vault_info = *client_it;
+    else
+      waiting_vault_info = *config_it;
+
+    vault_info.set_account_name(waiting_vault_info.account_name);
+    asymm::SerialiseKeys(waiting_vault_info.keys, keys_string);
+    vault_info.set_keys(keys_string);
+
+    int message_type(static_cast<int>(VaultManagerMessageType::kStartResponseToClient));
+    std::string vault_info_string;
+    vault_info_string = msg_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                                  vault_info.SerializeAsString());
+    transport_->Send(vault_info_string, info.endpoint, boost::posix_time::milliseconds(50));
+
+    // IF NEW VAULT, SEND RESPONSE TO CLIENT
+    if (new_vault) {
+      ClientStartVaultResponse response;
+      response.set_result(true);
+      int message_type(static_cast<int>(VaultManagerMessageType::kStartResponseToClient));
+      std::string response_string;
+      response_string = msg_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                                  response.SerializeAsString());
+      transport_->Send(response_string, waiting_vault_info.client_endpoint,
+                      boost::posix_time::milliseconds(50));
+    }
+  }
+
+  void VaultManager::StartListening() {
+     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                          &msg_handler_, _1, _2, _3, _4));
+    transport_->on_error()->connect(boost::bind(&MessageHandler::OnError,
+                                               &msg_handler_, _1, _2));
+    msg_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
+    msg_handler_.SetCallback(boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3));
+    std::string request;
+
+    /*std::thread updates_thread( [&] { ListenForUpdates(); } ); // NOLINT
+    if (updates_thread.joinable())
+      updates_thread.join();*/
+
+    std::thread mediator_thread( [&] { ListenForMessages(); } ); // NOLINT
+    /*if (mediator_thread.joinable())*/
+      mediator_thread.join();
+    transport_->StopListening();
   }
 }       // namespace priv
 }       // namespace maidsafe
-
-int main(int /*argc*/, char **/*argv*/) {
-  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-  maidsafe::ProcessManager manager;
-  maidsafe::priv::VaultManager vman;
-
-  maidsafe::priv::MessageHandler msg_handler;
-  msg_handler.SetCallback(boost::bind(&maidsafe::priv::VaultManager::MessageHandler,
-                                      vman, _1, _2, _3));
-  std::string request;
-
-//   std::bind(&MessageHandler::OnMessageReceived, msg_handler, &request);
-
-  /*vman.ReadConfig();*/
-
-  // sint32_t stdinput;
-  std::string options = "1. (Start a new vault)\n";
-  options.append("2. (Start a stopped vault)\n");
-  options.append("3. (Stop a vault)\n");
-  options.append("4. (Erase a vault)\n");
-  options.append("5. (List all vaults)\n");
-  options.append("6. (Quit)\n");
-
-  // bool exit = false;
-
-  std::string size;
-  std::string option = "";
-  /*while (!exit && (std::cout << options) && (std::cin >> stdinput))
-  {
-    switch (stdinput) {
-      case 1:
-        std::cout << "Enter vault capacity: ";
-        std::cin >> size;
-        vman.RunVault((maidsafe::GetSystemAppDir()/"TestVault").string() +
-                        maidsafe::RandomAlphaNumericString(5) + "/", size, true);
-        break;
-      case 2:
-        vman.RestartVault(vman.ListVaults(true));
-        break;
-      case 3:
-        vman.StopVault(vman.ListVaults(true));
-        std::cout << "Wait for this!\n";
-        break;
-      case 4:
-        vman.EraseVault(vman.ListVaults(true));
-        break;
-      case 5:
-        vman.ListVaults(false);
-        std::cout << "Number of currently active vaults: " << vman.get_process_vector_size()
-                  << "\n\n";
-        break;
-      case 6:
-        exit = true;
-        break;
-    }
-  }*/
-  std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
-  if (updates_thread.joinable())
-    updates_thread.join();
-
-//   std::thread mediator_thread( [&] { vman.ListenForMessages(); } ); // NOLINT
-//   if (mediator_thread.joinable())
-//     mediator_thread.join();
-
-  std::cout << "Exiting..." << std::endl;
-//  int32_t p_id;
-//  std::vector<int32_t> p_idd;
-//  fs::path filename ("/home/nikola/idpath.txt");
-//  maidsafe::rsa::Keys key;
-//  key.identity = maidsafe::RandomString(64);
-//  maidsafe::rsa::GenerateKeyPair(&key);
-//  try {
-//
-//     if (!fs::exists(filename.parent_path()))
-//       LOG(kInfo) << "PATH DOESN'T EXIST" <<std::endl;
-//
-//     fs::ofstream ofs(filename);
-//     LOG(kInfo) << "POSLE2" <<std::endl;
-//     boost::archive::text_oarchive oa(ofs);
-//     oa & key.identity;
-//     oa & key.public_key;
-//     oa & key.private_key;
-//
-//     LOG(kInfo) << "Updated vault identity." << std::endl;
-//
-//   for (int i = 0; i < 1; i++)
-//   {
-//     maidsafe::Process process, process2;
-//     std::cout<<"CREATING A PROCESS "<< i+1 <<std::endl;
-//
-//     std::cout<<"VAULT"<<std::endl;
-//     process.SetProcessName("pd-vault");
-//     process.AddArgument("pd-vault");
-//     process.AddArgument("--chunkstore_path");
-//     process.AddArgument("/home/nikola/test/");
-// //     process.AddArgument((maidsafe::GetSystemAppDir()/"TestVault").string() +
-//                               maidsafe::IntToString(i));
-//     process.AddArgument("--chunkstore_capacity");
-//     process.AddArgument("0");
-//     process.AddArgument("--vault_id_path");
-//     process.AddArgument("/home/nikola/idpath.txt");
-//     process.AddArgument("--start");
-//
-//     p_id = manager.AddProcess(process);
-//     p_idd.push_back(p_id);
-//     manager.StartProcess(p_id);
-//
-// //     std::cout<<"DUMMY with vault controller"<<std::endl;
-// //     process2.SetProcessName("DUMMYprocess");
-// //     process2.AddArgument("DUMMYprocess");
-// //     process2.AddArgument("--runtime");
-// //     process2.AddArgument("365");
-// //     process2.AddArgument("--nocrash");
-// //
-// //     p_id = manager.AddProcess(process2);
-// //     p_idd.push_back(p_id);
-// //     std::cout<<"STARTING PROCESS WITH PROCESS ID: " << p_id <<std::endl;
-// //     manager.StartProcess(p_id);
-//
-//     boost::this_thread::sleep(boost::posix_time::seconds(1));
-//   }
-//
-//   for (int i = 0; i < 450; i++) {
-//     boost::this_thread::sleep(boost::posix_time::seconds(1));
-//     std::cout << "\nRUNNNIG FOR: " << i << " SECONDS" << std::endl;
-//   }
-//
-//     std::cout << "ID VECTOR SIZE IS: " << p_idd.size() << std::endl;
-//   for(int i = 0 ; i < 1; i++)
-//   {
-//     std::cout<<"KILLING PROCESS: "<< i << " WITH PROCESS ID: " << p_idd[i] << std::endl;
-//     manager.KillProcess(p_idd[i]);
-//   }
-//
-//    manager.KillProcess(0);
-//    manager.KillProcess(1);
-// }
-//   catch(std::exception& e)  {
-//     std::cout << "EEEEEERRRROOOR" << e.what() << "\n";
-//     return false;
-//   }
-  return 0;
-}

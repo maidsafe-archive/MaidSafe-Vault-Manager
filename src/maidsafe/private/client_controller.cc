@@ -52,7 +52,7 @@ namespace priv {
                                          socket_(io_service_),
                                          mutex_(),
                                          cond_var_(),
-                                         transport_(io_service_),
+                                         transport_(new TcpTransport(io_service_)),
                                          message_handler_(),
                                          connected_to_manager_(false),
                                          vault_started_(false) {}
@@ -61,39 +61,30 @@ namespace priv {
 
 
   void ClientController::ConnectToManager(uint16_t port) {
-    transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
-                                                          &message_handler_, _1, _2, _3, _4));
-    transport_.on_error()->connect(boost::bind(&MessageHandler::OnError,
-                                               &message_handler_, _1, _2));
-    message_handler_.on_error()->connect(boost::bind(&ClientController::OnConnectError,
-                                                     this, _1, _2));
-    message_handler_.SetCallback(
-          boost::bind(&ClientController::ConnectToManagerCallback, this, _1, _2, _3));
     std::string hello_string;
-    Endpoint endpoint("127.0.0.1", port);
-    std::cout << "IN ConnectToManager " << std::endl;
+    Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port);
+    std::cout << "IN ConnectToManager: trying port " << port << std::endl;
     int message_type(static_cast<int>(VaultManagerMessageType::kHelloFromClient));
     maidsafe::priv::ClientHello hello;
     hello.set_hello("hello");
     hello_string = message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                   hello.SerializeAsString());
-    transport_.Send(hello_string, endpoint, boost::posix_time::milliseconds(50));
+    transport_->Send(hello_string, endpoint, boost::posix_time::milliseconds(1000));
+    std::cout << "ConnectToManager: sending hello to: " << endpoint.ip.to_string() << ", "
+              << endpoint.port << std::endl;
   }
 
-  void ClientController::ConnectToManagerCallback(const int &type,
-                                                  const std::string& hello_response_string,
+  void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
                                                   const Info& sender_info) {
     {
-      boost::mutex::scoped_lock lock(mutex_);
-      if (type == static_cast<int>(VaultManagerMessageType::kHelloResponseToClient)) {
-        ClientHelloResponse response;
-        if (response.ParseFromString(hello_response_string)) {
-          if (response.hello_response() == "hello response") {
-            port_ = sender_info.endpoint.port;
-            connected_to_manager_ = true;
-            cond_var_.notify_all();
-            return;
-          }
+    boost::mutex::scoped_lock lock(mutex_);
+      ClientHelloResponse response;
+      if (response.ParseFromString(hello_response_string)) {
+        if (response.hello_response() == "hello response") {
+          port_ = sender_info.endpoint.port;
+          connected_to_manager_ = true;
+          cond_var_.notify_all();
+          return;
         }
       }
       if (!connected_to_manager_) {
@@ -101,6 +92,24 @@ namespace priv {
                   << sender_info.endpoint.port + 1 << std::endl;
         ConnectToManager(sender_info.endpoint.port + 1);
       }
+    }
+    std::cout << "ConnectToManagerCallback: Successfully connected to manager." << std::endl;
+  }
+
+  void ClientController::HandleIncomingMessage(const int& type, const std::string& payload,
+                                           const Info& info) {
+    VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
+    switch (message_type) {
+      case VaultManagerMessageType::kHelloResponseToClient:
+        std::cout << "kHelloResponseToClient" << std::endl;
+        ConnectToManagerCallback(payload, info);
+        break;
+      case VaultManagerMessageType::kStartResponseToClient:
+        std::cout << "kStartResponseToClient" << std::endl;
+        StartVaultRequestCallback(payload, info);
+        break;
+      default:
+        std::cout << "Incorrect message type" << std::endl;
     }
   }
 
@@ -124,10 +133,6 @@ namespace priv {
 
   void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
                                            const std::string& account_name) {
-    message_handler_.on_error()->connect(boost::bind(&ClientController::OnStartVaultError,
-                                                     this, _1, _2));
-    message_handler_.SetCallback(
-        boost::bind(&ClientController::StartVaultRequestCallback, this, _1, _2, _3));
     int message_type(static_cast<int>(VaultManagerMessageType::kStartRequestFromClient));
     maidsafe::priv::ClientStartVaultRequest request;
     std::string keys_string;
@@ -137,23 +142,20 @@ namespace priv {
     std::string request_string;
     request_string = message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                    request.SerializeAsString());
-    Endpoint endpoint("127.0.0.1", port_);
-    transport_.Send(request_string, endpoint, boost::posix_time::milliseconds(50));
+    Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
+    transport_->Send(request_string, endpoint, boost::posix_time::milliseconds(50));
   }
 
-  void ClientController::StartVaultRequestCallback(const int &type,
-                                                   const std::string& start_response_string,
+  void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
                                                    const Info& /*sender_info*/) {
     {
       boost::mutex::scoped_lock lock(mutex_);
-      if (type == static_cast<int>(VaultManagerMessageType::kStartResponseToClient)) {
-        ClientStartVaultResponse response;
-        if (response.ParseFromString(start_response_string)) {
-          if (response.result() == true) {
-            vault_started_ = true;
-            cond_var_.notify_all();
-            return;
-          }
+      ClientStartVaultResponse response;
+      if (response.ParseFromString(start_response_string)) {
+        if (response.result() == true) {
+          vault_started_ = true;
+          cond_var_.notify_all();
+          return;
         }
       }
     }
@@ -161,9 +163,17 @@ namespace priv {
 
   bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
                                     const std::string& account_name) {
+    transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                          &message_handler_, _1, _2, _3, _4));
+    transport_->on_error()->connect(boost::bind(&MessageHandler::OnError,
+                                               &message_handler_, _1, _2));
+    message_handler_.on_error()->connect(boost::bind(&ClientController::OnConnectError,
+                                                     this, _1, _2));
+    message_handler_.SetCallback(
+          boost::bind(&ClientController::HandleIncomingMessage, this, _1, _2, _3));
     std::cout << "IN ClientController StartVault" << std::endl;
     try {
-      thd_ = boost::thread([=] { ConnectToManager(port_); });  // NOLINT (Philip)
+      thd_ = boost::thread([&] { ConnectToManager(port_); });  // NOLINT (Philip)
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;
@@ -177,10 +187,12 @@ namespace priv {
           thd_.join();
       }
     }
-    if (!connected_to_manager_)
+    if (!connected_to_manager_) {
+      std::cout << "ClientController::StartVault: connection to manager failed" << std::endl;
       return false;
+    }
     try {
-      thd_ = boost::thread([=] { StartVaultRequest(keys, account_name); });  // NOLINT (Philip)
+      thd_ = boost::thread([&] { StartVaultRequest(keys, account_name); });  // NOLINT (Philip)
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;

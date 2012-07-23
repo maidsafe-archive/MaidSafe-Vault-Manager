@@ -90,8 +90,8 @@ class TcpTransport : public Transport,
   boost::asio::io_service::strand strand_;
 };
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_TCP_TRANSPORT_H_
+#endif  // MAIDSAFE_PRIVATE_TCP_TRANSPORT_H_
