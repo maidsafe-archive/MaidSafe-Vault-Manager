@@ -95,17 +95,17 @@ TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion_SmallerPatchLevel) {
   std::shared_ptr<boost::filesystem::path> test_dir_
       (maidsafe::test::CreateTestPath("TestDownloadManager"));
   std::string extension = "";
-  
+
   #ifdef _WINDOWS
     extension = ".exe"
   #endif
-    
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux", "32", "4",
-                                    "6");
+
+  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+                                    "32", "4", "6");
   // Download a version of lifestuff
   manager.SetFileToDownload("lifestufflocal_linux_32_4_6" + extension);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
-  
+
   // Try to find the latest version which has bigger version than the current one but has smaller
   // patch level
   EXPECT_TRUE(manager.FindLatestFile());
@@ -121,26 +121,26 @@ TEST(DownloadManagerTest, BEH_VerificationOfFiles) {
   #ifdef _WINDOWS
     extension = ".exe"
   #endif
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux", "32", "1",
-                                    "1");
+  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+                                    "32", "1", "1");
   // Find the latest file and donwload it together with its signature file
   EXPECT_TRUE(manager.FindLatestFile());
   EXPECT_EQ("lifestufflocal_linux_32_5_4" + extension, manager.file_to_download() + extension);
-  
+
   std::string signature_file = "lifestufflocal_linux_32_5_4" + extension + ".sig";
   manager.SetFileToDownload(signature_file);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / signature_file));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / signature_file));
-  
+
   std::string file_to_download = "lifestufflocal_linux_32_5_4" + extension;
   manager.SetFileToDownload(file_to_download);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / file_to_download));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / file_to_download));
-  
+
   EXPECT_TRUE(manager.VerifySignature());
-  
+
   boost::filesystem::remove(current_path / signature_file);
   boost::filesystem::remove(current_path / file_to_download);
 }
@@ -151,23 +151,23 @@ TEST(DownloadManagerTest, BEH_VerificationFail) {
   #ifdef _WINDOWS
     extension = ".exe"
   #endif
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux", "32", "1",
-                                    "1");
-   
+  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+                                    "32", "1", "1");
+
   std::string signature_file = "lifestufflocal_linux_32_5_3" + extension + ".sig";
   manager.SetFileToDownload(signature_file);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / signature_file));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / signature_file));
-  
+
   std::string file_to_download = "lifestufflocal_linux_32_5_3" + extension;
   manager.SetFileToDownload(file_to_download);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / file_to_download));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / file_to_download));
-  
+
   EXPECT_FALSE(manager.VerifySignature());
-  
+
   boost::filesystem::remove(current_path / signature_file);
   boost::filesystem::remove(current_path / file_to_download);
 }

@@ -193,38 +193,27 @@ namespace priv {
       auto it(tok.begin());
 
       std::string current_name(*it);
-      std::cout << "name " << name << std::endl;
-      std::cout << "current_name " <<current_name << std::endl;
+      LOG(kInfo) << "name " << name;
+      LOG(kInfo) << "current_name " << current_name;
       if (name != current_name)
         continue;
 
       std::string current_platform(*(++it));
-      std::cout << "platform " << platform << std::endl;
-      std::cout << "current_platform " << current_platform << std::endl;
+      LOG(kInfo) << "platform " << platform;
+      LOG(kInfo) << "current_platform " << current_platform;
       if (platform != current_platform)
         continue;
 
       std::string current_cpu_size(*(++it));
-      std::cout << "cpu_size " << cpu_size << std::endl;
-      std::cout << "current_cpu_size " << current_cpu_size << std::endl;
+      LOG(kInfo) << "cpu_size " << cpu_size;
+      LOG(kInfo) << "current_cpu_size " << current_cpu_size;
       if (cpu_size != current_cpu_size)
         continue;
-      std::cout << "(*dir_it).path().stem().string(): " << (*dir_it).path().stem().string()
-                << std::endl;
-      std::cout << "latest_file: " << latest_file << std::endl;
-
-//       std::string maxversion2 (*(++it));
-//       std::string maxpatch2 (*(++it));
-//       std::cout << "max_version2: " << maxversion2 << std::endl;
-//       std::cout << "maxpatch2: " << maxpatch2 << std::endl;
 
       std::string temp_max_version = *(++it);
       std::string temp_max_patchlevel = *(++it);
 
-//       if (download_manager_.FileIsLaterThan((*dir_it).path().filename().string(), latest_file)) {
       if (download_manager_.FileIsLaterThan((*dir_it).path().stem().string(), latest_file)) {
-        std::cout << "(*dir_it).path().stem().string() FOR SECOND TIME: "
-                  << (*dir_it).path().stem().string() << std::endl;
         latest_file = (*dir_it).path().stem().string();
         max_version = temp_max_version;
         max_patchlevel = temp_max_patchlevel;
@@ -251,62 +240,62 @@ namespace priv {
     std::string current_version, current_patchlevel;
     std::pair<std::string, std::string> version_and_patchlevel;
     boost::filesystem::path current_path(boost::filesystem::current_path());
-    std::cout << current_path << std::endl;
     while (true) {
-      std::cout << "FINDING LATEST LOCAL VERSION OF " << name << std::endl;
+      LOG(kInfo) << "Searching for latest local version of " << name;
       version_and_patchlevel = FindLatestLocalVersion(name, platform,
                                                       boost::lexical_cast<std::string>(cpu_size));
-      std::cout << "CPU SIZE: " << cpu_size << std::endl;
+      LOG(kInfo) << "Cpu size: " << cpu_size;
       current_version = version_and_patchlevel.first;
       current_patchlevel = version_and_patchlevel.second;
-      std::cout << "LATEST LOCAL VERSION OF " << name << " IS "
+      LOG(kInfo) << "Latest local version of " << name << " is "
                                               << version_and_patchlevel.first << "_"
-                                              << version_and_patchlevel.second << std::endl;
+                                              << version_and_patchlevel.second;
       download_manager_ = DownloadManager("dash.maidsafe.net", "~phil", name,
                                           platform, boost::lexical_cast<std::string>(cpu_size),
                                           current_version, current_patchlevel);
 
-      std::cout << "INITIALISED DOWNLOAD MANAGER" << std::endl;
+      LOG(kInfo) << "Initialise Download Manager";
       if (download_manager_.FindLatestFile()) {
         std::string file_to_download(download_manager_.file_to_download());
 
         // Download the signature file
         std::string signature_file = file_to_download + extension + ".sig";
-        std::cout << "SIGNATURE FILE IS " << signature_file << std::endl;
+        LOG(kInfo) << "Signatuer file is " << signature_file;
         download_manager_.SetFileToDownload(signature_file);
-        
+
         if (download_manager_.UpdateCurrentFile(current_path)) {
-          std::cout << "SIGNATURE FILE " << signature_file << " HAS BEEN DOWNLOADED." << std::endl;
+          LOG(kInfo) << "Signature file " << signature_file << " has been downloaded!";
         } else {
-          std::cout << "ERROR!!! - SIGNATURE FILE " << signature_file << " HAS NOT BEEN DOWNLOADED!!!" << std::endl;
+          LOG(kInfo) << "ERROR!!! - signature file " << signature_file
+                    << " has not been downloaded!!!";
         }
-        
+
         // Download the client file
         file_to_download = file_to_download +  extension;
-        std::cout << "CLIENT FILE IS, " << file_to_download  << std::endl;
+        LOG(kInfo) << "Client file is " << file_to_download;
         download_manager_.SetFileToDownload(file_to_download);
-        
+
         if (download_manager_.UpdateCurrentFile(current_path)) {
-          std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
-          std::cout << "CLIENT FILE " << file_to_download << " HAS BEEN DOWNLOADED" << std::endl;
+          std::cout << "Client file " << file_to_download << " has been downloaded!" << std::endl;
         } else {
-          std::cout << "ERROR!!! - CLIENT FILE " << file_to_download << " HAS NOT BEEN DOWNLOADED!!!" << std::endl;
+          LOG(kInfo) << "ERROR!!! - client file " << file_to_download
+                    << " has not been downloaded!!!";
         }
 
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
-          std::cout << "REMOVING SIGNATURE FILE" << std::endl;
+          LOG(kInfo) << "Removing signature file";
           boost::filesystem::remove(current_path / signature_file);
         } else {
-          std::cout << "Invalid Signature - Removing downloaded files" << std::endl;
+          LOG(kInfo) << "Removing downloaded files";
           // Remove the signature_file
           boost::filesystem::remove(current_path / signature_file);
           boost::filesystem::remove(current_path / file_to_download);
         }
       } else {
-        std::cout << "LATEST FILE NOT FOUND, " << std::endl;
+        LOG(kInfo) << "No later file has been found!!!";
       }
-      std::cout << "Sleeping for five minutes! " << std::endl;
+      LOG(kInfo) << "Sleeping for five minutes!";
       boost::this_thread::sleep(boost::posix_time::minutes(5));
     }
   }
@@ -399,9 +388,6 @@ int main(int /*argc*/, char **/*argv*/) {
         break;
     }
   }*/
-  
-  std::cout << "VAULT MANAGER " << std::endl;
-
   std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
   if (updates_thread.joinable())
     updates_thread.join();

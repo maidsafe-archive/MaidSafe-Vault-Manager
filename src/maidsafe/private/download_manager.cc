@@ -157,7 +157,7 @@ bool DownloadManager::FileIsUseful(std::string file) {
   uint32_t current_patchlevel(boost::lexical_cast<uint32_t>(current_patchlevel_));
   if (version == current_version && patchlevel <= current_patchlevel)
     return false;
-  
+
   LOG(kInfo) << "THE FILE " << file << " IS USEFUL AND WE ARE RETURNING TRUE!";
   return true;
 }
@@ -282,20 +282,20 @@ bool DownloadManager::VerifySignature() {
   std::string signature, data;
 
   if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
-    std::cout << "Verify Signature - error reading file\n";
+    LOG(kInfo) << "Verify Signature - error reading file";
     return false;
   }
   asymm::PublicKey public_key;
   asymm::DecodePublicKey(maidsafe_public_key_, &public_key);
 
   if (!maidsafe::rsa::ValidateKey(public_key)) {
-    std::cout << "Verify Signature - public key invalid, aborting!!\n";
+    LOG(kInfo) << "Verify Signature - public key invalid, aborting!!";
   }
 
   if (maidsafe::rsa::CheckSignature(data, signature, public_key) == 0)  {
-    std::cout << "Verify Signature - Signature valid\n";
+    LOG(kInfo) << "Verify Signature - Signature valid";
   } else {
-    std::cout << "Verify Signature - Invalid signature !! \n";
+    LOG(kInfo) << "Verify Signature - Invalid signature !!!";
     return false;
   }
   return true;
