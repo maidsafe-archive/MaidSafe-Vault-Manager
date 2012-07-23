@@ -80,12 +80,13 @@ bool DownloadManager::FileIsValid(std::string file) {
 
 
 bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) {
-  // LOG(kInfo) << "BEFORE CHECKING";
+  LOG(kInfo) << "FILE 1 " << file1;
+  LOG(kInfo) << "FILE 2 " << file2;
   if (file2 == "" || !FileIsValid(file2))
     return true;
   else if (file1 == "" || !FileIsValid(file1))
     return false;
-  // LOG(kInfo) << "BOTH FILES ARE OKAY";
+  LOG(kInfo) << "BOTH FILES ARE OKAY. FILE1 IS " << file1 << " FILE2 IS " << file2;
   boost::char_separator<char> sep("_");
   boost::tokenizer<boost::char_separator<char>> tok1(file1, sep);
   auto it1(tok1.begin());
@@ -119,17 +120,22 @@ bool DownloadManager::FileIsUseful(std::string file) {
   boost::tokenizer<boost::char_separator<char>> tok(file, sep);
   auto it(tok.begin());
   std::string name(*it);
-  LOG(kInfo) << "HERE 1";
-  if (name_ != name)
+  if (name_ != name) {
+    LOG(kInfo) << "WRONG NAME";
     return false;
+  }
   LOG(kInfo) << "NAME IS OK";
   std::string platform(*(++it));
-  if (platform_ != platform)
+  if (platform_ != platform) {
+    LOG(kInfo) << "WRONG PLATFORM";
     return false;
+  }
   LOG(kInfo) << "PLATFORM IS OK";
   std::string cpu_size(*(++it));
-  if (cpu_size_ != cpu_size)
+  if (cpu_size_ != cpu_size) {
+    LOG(kInfo) << "WRONG CPU SIZE";
     return false;
+  }
   LOG(kInfo) << "CPU SIZE IS OK";
 
   uint32_t version(boost::lexical_cast<uint32_t>(*(++it)));
@@ -138,8 +144,8 @@ bool DownloadManager::FileIsUseful(std::string file) {
     return true;
   }
   uint32_t current_version(boost::lexical_cast<uint32_t>(current_version_));
-  LOG(kInfo) << "BEFORE CHECKING WHICH VERSION CURRENT IS " << current_version
-             << " VERSION THAT IS CHECKED IS " << version;
+  LOG(kInfo) << "LATEST VERSION IS " << current_version
+             << " THE ONE THAT WE ARE TESTING IS " << version;
   if (version < current_version)
     return false;
   uint32_t patchlevel(boost::lexical_cast<uint32_t>(*(++it)));
@@ -149,9 +155,10 @@ bool DownloadManager::FileIsUseful(std::string file) {
     return true;
   }
   uint32_t current_patchlevel(boost::lexical_cast<uint32_t>(current_patchlevel_));
-  LOG(kInfo) << "HERE 6";
   if (version == current_version && patchlevel <= current_patchlevel)
     return false;
+  
+  LOG(kInfo) << "THE FILE " << file << " IS USEFUL AND WE ARE RETURNING TRUE!";
   return true;
 }
 
@@ -188,12 +195,15 @@ bool DownloadManager::FindLatestFile() {
     next_file = *it;
     // THIS WILL PROBABLY CHANGE IF THERE ARE PROBLEMS WITH MACs
     boost::erase_all(next_file, "*exe");
+    LOG(kInfo) << "\n\n";
     LOG(kInfo) << "LATEST FILE: " << latest_file << " CURRENT FILE: " << next_file;  //  (*it);
-    LOG(kInfo) << "FILE IS LATER THAN " << ((FileIsLaterThan(/**it*/ next_file, latest_file))
-                ? "TRUE" : "FALSE");
-    LOG(kInfo) << "FILE IS USEFUL " << ((FileIsUseful(/**it*/next_file)) ? "TRUE" : "FALSE");
-    if (FileIsUseful(/**it*/next_file) && FileIsLaterThan(/**it*/ next_file, latest_file))
-      latest_file = next_file;/**it*/
+//     LOG(kInfo) << "FILE IS LATER THAN " << ((FileIsLaterThan(/**it*/ next_file, latest_file))
+//                 ? "TRUE" : "FALSE");
+//     LOG(kInfo) << "FILE IS USEFUL " << ((FileIsUseful(/**it*/next_file)) ? "TRUE" : "FALSE");
+    if (FileIsUseful(next_file) && FileIsLaterThan(next_file, latest_file)) {
+      latest_file = next_file;
+      LOG(kInfo) << "FILE " << latest_file << " IS USEFUL AND IT IS THE LATEST ";
+    }
   }
   if (latest_file == "") {
     LOG(kWarning) << "FindLatestFile: No more recent version of requested file " << name_
@@ -288,7 +298,6 @@ bool DownloadManager::VerifySignature() {
     std::cout << "Verify Signature - Invalid signature !! \n";
     return false;
   }
-  // SEE WHAT TO RETURN
   return true;
 }
 

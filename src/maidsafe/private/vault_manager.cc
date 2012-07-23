@@ -253,9 +253,6 @@ namespace priv {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     std::cout << current_path << std::endl;
     while (true) {
-      download_manager_.SetFileToDownload("lifestufflocal_linux_32_5_4");
-      download_manager_.VerifySignature();
-
       std::cout << "FINDING LATEST LOCAL VERSION OF " << name << std::endl;
       version_and_patchlevel = FindLatestLocalVersion(name, platform,
                                                       boost::lexical_cast<std::string>(cpu_size));
@@ -277,16 +274,24 @@ namespace priv {
         std::string signature_file = file_to_download + extension + ".sig";
         std::cout << "SIGNATURE FILE IS " << signature_file << std::endl;
         download_manager_.SetFileToDownload(signature_file);
-        download_manager_.UpdateCurrentFile(current_path);
-        std::cout << "SIGNATURE FILE " << signature_file << " HAS BEEN DOWNLOADED." << std::endl;
-
+        
+        if (download_manager_.UpdateCurrentFile(current_path)) {
+          std::cout << "SIGNATURE FILE " << signature_file << " HAS BEEN DOWNLOADED." << std::endl;
+        } else {
+          std::cout << "ERROR!!! - SIGNATURE FILE " << signature_file << " HAS NOT BEEN DOWNLOADED!!!" << std::endl;
+        }
+        
         // Download the client file
         file_to_download = file_to_download +  extension;
         std::cout << "CLIENT FILE IS, " << file_to_download  << std::endl;
         download_manager_.SetFileToDownload(file_to_download);
-        download_manager_.UpdateCurrentFile(current_path);
-        std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
-        std::cout << "CLIENT FILE " << file_to_download << " HAS BEEN DOWNLOADED" << std::endl;
+        
+        if (download_manager_.UpdateCurrentFile(current_path)) {
+          std::cout << "UPDATED " << name << " TO " << file_to_download << std::endl;
+          std::cout << "CLIENT FILE " << file_to_download << " HAS BEEN DOWNLOADED" << std::endl;
+        } else {
+          std::cout << "ERROR!!! - CLIENT FILE " << file_to_download << " HAS NOT BEEN DOWNLOADED!!!" << std::endl;
+        }
 
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
@@ -394,6 +399,8 @@ int main(int /*argc*/, char **/*argv*/) {
         break;
     }
   }*/
+  
+  std::cout << "VAULT MANAGER " << std::endl;
 
   std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
   if (updates_thread.joinable())
