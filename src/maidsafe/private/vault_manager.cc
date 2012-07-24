@@ -210,9 +210,12 @@ namespace priv {
     for (fs::directory_iterator dir_it(current_path); dir_it != end; ++dir_it) {
       if (!download_manager_.FileIsValid((*dir_it).path().stem().string()))
         continue;
-      boost::char_separator<char> sep("_");
-      boost::tokenizer<boost::char_separator<char>> tok((*dir_it).path().stem().string(), sep);
-      auto it(tok.begin());
+
+      std::string filename((*dir_it).path().stem().string());
+      typedef boost::tokenizer<boost::char_separator<char> > name_tokenizer;
+      boost::char_separator<char> delimiter("_");
+      name_tokenizer tok(filename, delimiter);
+      name_tokenizer::iterator it = tok.begin();
 
       std::string current_name(*it);
       LOG(kInfo) << "name " << name;
@@ -266,6 +269,10 @@ namespace priv {
       LOG(kInfo) << "Searching for latest local version of " << name;
       version_and_patchlevel = FindLatestLocalVersion(name, platform,
                                                       boost::lexical_cast<std::string>(cpu_size));
+      std::string latest_local_file = name + "_" + platform + "_"
+                                    + boost::lexical_cast<std::string>(cpu_size) + "_"
+                                    + version_and_patchlevel.first + "_"
+                                    + version_and_patchlevel.second + extension;
       LOG(kInfo) << "Cpu size: " << cpu_size;
       current_version = version_and_patchlevel.first;
       current_patchlevel = version_and_patchlevel.second;
@@ -307,7 +314,22 @@ namespace priv {
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
           LOG(kInfo) << "Removing signature file";
+          boost::filesystem::path symlink(current_path / "lifestuff_client_symlink");
           boost::filesystem::remove(current_path / signature_file);
+          boost::filesystem::remove(symlink);
+
+          boost::filesystem::create_symlink(file_to_download, symlink);
+          LOG(kInfo) << "Symbolic link " << symlink.string()
+                     << " to the client file has been created!";
+
+          // Remove the previous client file
+          while (boost::filesystem::exists(current_path / latest_local_file)) {
+            if (boost::filesystem::remove(current_path / latest_local_file)) {
+              continue;
+            }
+            boost::this_thread::sleep(boost::posix_time::minutes(2));
+          }
+
         } else {
           LOG(kInfo) << "Removing downloaded files";
           // Remove the signature_file
