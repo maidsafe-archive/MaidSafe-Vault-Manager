@@ -99,15 +99,13 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) {
   }
   uint32_t version1(boost::lexical_cast<uint32_t>(*it1));
   uint32_t version2(boost::lexical_cast<uint32_t>(*it2));
-  // LOG(kInfo) << "FILE (1) " << file1 << " IS VERSION " << version1;
-  // LOG(kInfo) << "FILE (2) " << file2 << " IS VERSION " << version2;
+
   if (version2 < version1)
     return true;
 
   uint32_t patchlevel1(boost::lexical_cast<uint32_t>(*(++it1)));
   uint32_t patchlevel2(boost::lexical_cast<uint32_t>(*(++it2)));
-  // LOG(kInfo) << "FILE (1) " << file1 << " IS PATCHLEVEL " << patchlevel1;
-  // LOG(kInfo) << "FILE (2) " << file2 << " IS PATCHLEVEL " << patchlevel2;
+
   if (patchlevel2 < patchlevel1)
     return true;
   return false;
@@ -197,9 +195,7 @@ bool DownloadManager::FindLatestFile() {
     boost::erase_all(next_file, "*exe");
     LOG(kInfo) << "\n\n";
     LOG(kInfo) << "LATEST FILE: " << latest_file << " CURRENT FILE: " << next_file;  //  (*it);
-//     LOG(kInfo) << "FILE IS LATER THAN " << ((FileIsLaterThan(/**it*/ next_file, latest_file))
-//                 ? "TRUE" : "FALSE");
-//     LOG(kInfo) << "FILE IS USEFUL " << ((FileIsUseful(/**it*/next_file)) ? "TRUE" : "FALSE");
+
     if (FileIsUseful(next_file) && FileIsLaterThan(next_file, latest_file)) {
       latest_file = next_file;
       LOG(kInfo) << "FILE " << latest_file << " IS USEFUL AND IT IS THE LATEST ";

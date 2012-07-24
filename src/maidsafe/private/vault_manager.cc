@@ -49,11 +49,14 @@ namespace priv {
   namespace bai = boost::asio::ip;
 
   WaitingVaultInfo::WaitingVaultInfo(const WaitingVaultInfo& other)
-      : vault_pid(), client_endpoint(), account_name(), keys() {
+      : vault_pid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
+        chunkstore_capacity() {
     vault_pid = other.vault_pid;
     client_endpoint = other.client_endpoint;
     account_name = other.account_name;
     keys = other.keys;
+    chunkstore_path = other.chunkstore_path;
+    chunkstore_capacity = other.chunkstore_capacity;
   }
 
   VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_(),
@@ -73,6 +76,7 @@ namespace priv {
                                                                        local_port_(5483),
                                                                        client_started_vault_pids_(),
                                                                        config_file_vault_pids_() {}
+
   std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
@@ -133,14 +137,28 @@ namespace priv {
 
     std::string content = "";
 
-    for (size_t i = 0; i < process_vector_.size(); i++) {
+    for (size_t i = 0; i < config_file_vault_pids_.size(); i++) {
       if (i != 0)
       {
         content += "\n";
       }
-      vault_info = process_vector_[i].Args();
-      content += vault_info[2] + " " + vault_info[4];
-      vault_info.clear();
+      std::string serialized_keys = "";
+      maidsafe::rsa::SerialiseKeys(config_file_vault_pids_[i].keys, serialized_keys);
+      content += config_file_vault_pids_[i].chunkstore_path + " "
+                  + config_file_vault_pids_[i].chunkstore_capacity + " " + serialized_keys + " "
+                  + config_file_vault_pids_[i].account_name;
+    }
+
+    for (size_t i = 0; i < client_started_vault_pids_.size(); i++) {
+      if (i != 0)
+      {
+        content += "\n";
+      }
+      std::string serialized_keys = "";
+      maidsafe::rsa::SerialiseKeys(client_started_vault_pids_[i].keys, serialized_keys);
+      content += client_started_vault_pids_[i].chunkstore_path + " "
+                  + client_started_vault_pids_[i].chunkstore_capacity + " " + serialized_keys + " "
+                  + client_started_vault_pids_[i].account_name;
     }
 
     return maidsafe::WriteFile(path, content);
@@ -153,17 +171,34 @@ namespace priv {
     maidsafe::ReadFile(path, &content);
 
     typedef boost::tokenizer<boost::char_separator<char> > vault_tokenizer;
-    boost::char_separator<char> delimiter("\n", "", boost::keep_empty_tokens);
+    boost::char_separator<char> delimiter("\n");
     vault_tokenizer tok(content, delimiter);
 
     for (vault_tokenizer::iterator iterator = tok.begin(); iterator != tok.end(); ++iterator) {
-       std::string argument = *iterator;
+      std::string argument = *iterator;
 
-       typedef boost::tokenizer<boost::char_separator<char> > argument_tokenizer;
-       boost::char_separator<char> argument_delimiter(" ", "", boost::keep_empty_tokens);
-       argument_tokenizer arg_tokenizer(argument, argument_delimiter);
-       std::vector<std::string> vault(arg_tokenizer.begin(), arg_tokenizer.end());
-       RunVault(vault[0], vault[1], false);
+      typedef boost::tokenizer<boost::char_separator<char> > argument_tokenizer;
+      boost::char_separator<char> argument_delimiter(" ", "", boost::keep_empty_tokens);
+      argument_tokenizer arg_tokenizer(argument, argument_delimiter);
+      std::vector<std::string> vault_item(arg_tokenizer.begin(), arg_tokenizer.end());
+      std::cout << "Location: " << vault_item[0] << std::endl;
+      std::cout << "Size: " << vault_item[1] << std::endl;
+      std::cout << "Serialized: " << vault_item[2] << std::endl;
+      std::cout << "Account name: " << vault_item[3] << std::endl;
+
+      asymm::Keys keys;
+      if (!maidsafe::rsa::ParseKeys(vault_item[2], keys))
+        LOG(kInfo) << "Error parsing the keys!!!";
+
+      WaitingVaultInfo vault_info;
+      vault_info.keys = keys;
+      vault_info.account_name = vault_item[3];
+
+      std::string pid;
+      pid = RunVault(vault_item[0], vault_item[1], false);
+
+      vault_info.vault_pid = pid;
+      config_file_vault_pids_.push_back(vault_info);
     }
     return true;
   }
@@ -411,13 +446,16 @@ namespace priv {
       std::string account_name(request.account_name());
       Endpoint return_endpoint(info.endpoint.ip, info.endpoint.port);
       std::string pid;
-      pid = RunVault((GetSystemAppDir()/"TestVault").string() + RandomAlphaNumericString(5) + "/",
-                     0, true);
+      std::string chunkstore_path = (GetSystemAppDir()/"TestVault").string()
+                                      + RandomAlphaNumericString(5) + "/";
+      pid = RunVault(chunkstore_path, 0, true);
       WaitingVaultInfo current_vault_info;
       current_vault_info.vault_pid = pid;
       current_vault_info.client_endpoint = return_endpoint;
       current_vault_info.account_name = account_name;
       current_vault_info.keys = keys;
+      current_vault_info.chunkstore_path = chunkstore_path;
+      current_vault_info.chunkstore_capacity = "0";
       client_started_vault_pids_.push_back(current_vault_info);
     }
     std::cout << "HandleClientStartVaultRequest: Problem parsing client's start vault message"

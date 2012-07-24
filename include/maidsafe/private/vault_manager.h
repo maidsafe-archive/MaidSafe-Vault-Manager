@@ -58,12 +58,15 @@ enum class VaultManagerMessageType {
 };
 
 struct WaitingVaultInfo {
-  WaitingVaultInfo() : vault_pid(), client_endpoint(), account_name(), keys() {}
+  WaitingVaultInfo() : vault_pid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
+                       chunkstore_capacity() {}
   WaitingVaultInfo(const WaitingVaultInfo& other);
   std::string vault_pid;
   Endpoint client_endpoint;
   std::string account_name;
   asymm::Keys keys;
+  std::string chunkstore_path;
+  std::string chunkstore_capacity;
 };
 
 class VaultManager {
