@@ -101,7 +101,8 @@ void stop_handler() {
 }
 
 int main(int ac, char* av[]) {
-  std::thread thd;
+  std::cout << "Starting DUMMYprocess." << std::endl;
+  boost::thread thd;
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   maidsafe::priv::VaultController vc;
   po::options_description desc("Allowed options");
@@ -130,9 +131,7 @@ int main(int ac, char* av[]) {
     maidsafe::asymm::Keys keys;
     std::string account_name;
     vc.GetIdentity(&keys, &account_name);
-    keys.identity = maidsafe::RandomAlphaNumericString(64);
-    keys.validation_token = maidsafe::RandomAlphaNumericString(64);
-    std::cout << "Identity: " << (keys.identity) << std::endl;
+    std::cout << "DUMMYprocess: Identity: " << (keys.identity) << std::endl;
     std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
     std::string public_key_string;
     maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
@@ -143,7 +142,7 @@ int main(int ac, char* av[]) {
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
         std::cout << "Running for " << runtime << " seconds. \n";
-        std::this_thread::sleep_for(std::chrono::seconds(runtime));
+        boost::this_thread::sleep(boost::posix_time::seconds(runtime));
         if (vm.count("nocrash")) {
           check_finished = true;
           std::cout << "Process finishing normally. " << std::endl;

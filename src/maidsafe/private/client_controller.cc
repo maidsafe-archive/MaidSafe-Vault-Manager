@@ -38,6 +38,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+namespace bai = boost::asio::ip;
+
 namespace maidsafe {
 namespace priv {
 
@@ -45,17 +47,17 @@ namespace priv {
 
   ClientController::ClientController() : port_(5483),
                                          thd_(),
-                                         io_service_(),
-                                         resolver_(io_service_),
+                                         asio_service_(new AsioService(3)),
+                                         resolver_(asio_service_->service()),
                                          query_("", ""),
                                          endpoint_iterator_(),
-                                         socket_(io_service_),
+                                         socket_(asio_service_->service()),
                                          mutex_(),
                                          cond_var_(),
-                                         transport_(new TcpTransport(io_service_)),
-                                         message_handler_(),
                                          connected_to_manager_(false),
-                                         vault_started_(false) {}
+                                         vault_started_(false) {
+                                           asio_service_->Start();
+                                        }
 
   ClientController::~ClientController() {}
 
@@ -67,19 +69,25 @@ namespace priv {
     int message_type(static_cast<int>(VaultManagerMessageType::kHelloFromClient));
     maidsafe::priv::ClientHello hello;
     hello.set_hello("hello");
-    hello_string = message_handler_.MakeSerialisedWrapperMessage(message_type,
-                                                                  hello.SerializeAsString());
-    transport_->Send(hello_string, endpoint, boost::posix_time::milliseconds(1000));
+    std::shared_ptr<TcpTransport> transport;
+    std::shared_ptr<MessageHandler> message_handler;
+    ResetTransport(transport, message_handler);
+    hello_string = message_handler->MakeSerialisedWrapperMessage(message_type,
+                                                                hello.SerializeAsString());
+    transport->Send(hello_string, endpoint, boost::posix_time::milliseconds(1000));
     std::cout << "ConnectToManager: sending hello to: " << endpoint.ip.to_string() << ", "
               << endpoint.port << std::endl;
   }
 
   void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
-                                                  const Info& sender_info) {
+                                                  const Info& sender_info,
+                                                  std::string* /*response*/) {
+    std::cout << "IN ConnectToManagerCallback" << std::endl;
     {
     boost::mutex::scoped_lock lock(mutex_);
       ClientHelloResponse response;
       if (response.ParseFromString(hello_response_string)) {
+        std::cout << "HELLO RESPONSE: " << response.hello_response() << std::endl;
         if (response.hello_response() == "hello response") {
           port_ = sender_info.endpoint.port;
           connected_to_manager_ = true;
@@ -97,16 +105,18 @@ namespace priv {
   }
 
   void ClientController::HandleIncomingMessage(const int& type, const std::string& payload,
-                                           const Info& info) {
+                                           const Info& info, std::string* response,
+                                           std::shared_ptr<TcpTransport> /*transport*/,
+                                           std::shared_ptr<MessageHandler> /*message_handler*/) {
     VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
     switch (message_type) {
       case VaultManagerMessageType::kHelloResponseToClient:
         std::cout << "kHelloResponseToClient" << std::endl;
-        ConnectToManagerCallback(payload, info);
+        ConnectToManagerCallback(payload, info, response);
         break;
       case VaultManagerMessageType::kStartResponseToClient:
         std::cout << "kStartResponseToClient" << std::endl;
-        StartVaultRequestCallback(payload, info);
+        StartVaultRequestCallback(payload, info, response);
         break;
       default:
         std::cout << "Incorrect message type" << std::endl;
@@ -119,7 +129,7 @@ namespace priv {
     if (!connected_to_manager_) {
       std::cout << "OnConnectError: Error sending or receiving connect message. Trying next port: "
                 << remote_endpoint.port + 1 << std::endl;
-      ConnectToManager(remote_endpoint.port + 1);
+      /*ConnectToManager(remote_endpoint.port + 1);*/
     }
   }
 
@@ -137,17 +147,30 @@ namespace priv {
     maidsafe::priv::ClientStartVaultRequest request;
     std::string keys_string;
     asymm::SerialiseKeys(keys, keys_string);
+    std::cout << "StartVaultRequest: keys: " << EncodeToBase64(keys_string) << "length: "
+              << keys_string.length() << std::endl;
     request.set_keys(keys_string);
     request.set_account_name(account_name);
+    maidsafe::asymm::Keys new_keys;
+    if (asymm::ParseKeys(keys_string, new_keys)) {
+      std::cout << "StartVaultRequest: parse successful" << std::endl;
+    } else {
+      std::cout << "StartVaultRequest: parse failure" << std::endl;
+    }
     std::string request_string;
-    request_string = message_handler_.MakeSerialisedWrapperMessage(message_type,
-                                                                   request.SerializeAsString());
+    std::shared_ptr<TcpTransport> transport;
+    std::shared_ptr<MessageHandler> message_handler;
+    ResetTransport(transport, message_handler);
+    request_string = message_handler->MakeSerialisedWrapperMessage(message_type,
+                                                                  request.SerializeAsString());
     Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
-    transport_->Send(request_string, endpoint, boost::posix_time::milliseconds(50));
+    std::cout << "StartVaultRequest: Send: " << port_ << std::endl;
+    transport->Send(request_string, endpoint, boost::posix_time::milliseconds(10000));
   }
 
   void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
-                                                   const Info& /*sender_info*/) {
+                                                   const Info& /*sender_info*/,
+                                                   std::string* /*response*/) {
     {
       boost::mutex::scoped_lock lock(mutex_);
       ClientStartVaultResponse response;
@@ -161,16 +184,23 @@ namespace priv {
     }
   }
 
+  void ClientController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                                        std::shared_ptr<MessageHandler>& message_handler ) {
+    transport.reset(new TcpTransport(asio_service_->service()));
+    message_handler.reset(new MessageHandler());
+    transport->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                          message_handler.get(), _1, _2, _3, _4));
+    transport->on_error()->connect(boost::bind(&MessageHandler::OnError,
+                                               message_handler.get(), _1, _2));
+    message_handler->on_error()->connect(boost::bind(&ClientController::OnConnectError,
+                                                     this, _1, _2));
+    message_handler->SetCallback(
+          boost::bind(&ClientController::HandleIncomingMessage, this, _1, _2, _3, _4, transport,
+                      message_handler));
+  }
+
   bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
                                     const std::string& account_name) {
-    transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
-                                                          &message_handler_, _1, _2, _3, _4));
-    transport_->on_error()->connect(boost::bind(&MessageHandler::OnError,
-                                               &message_handler_, _1, _2));
-    message_handler_.on_error()->connect(boost::bind(&ClientController::OnConnectError,
-                                                     this, _1, _2));
-    message_handler_.SetCallback(
-          boost::bind(&ClientController::HandleIncomingMessage, this, _1, _2, _3));
     std::cout << "IN ClientController StartVault" << std::endl;
     try {
       thd_ = boost::thread([&] { ConnectToManager(port_); });  // NOLINT (Philip)

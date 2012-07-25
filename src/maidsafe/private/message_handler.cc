@@ -40,12 +40,16 @@ namespace priv {
 
 void MessageHandler::OnMessageReceived(const std::string &request,
                                        const Info &info,
-                                       std::string */*response*/,
-                                       Timeout */*timeout*/) {
-  std::cout << "MESSAGE RECEIVED" << std::endl;
+                                       std::string *response,
+                                       Timeout *timeout) {
+  std::cout << "OnMessageReceived: MESSAGE RECEIVED" << std::endl;
   protobuf::WrapperMessage wrapper;
+  *timeout = kImmediateTimeout;
   if (wrapper.ParseFromString(request) && wrapper.IsInitialized()) {
-    callback_(wrapper.msg_type(), wrapper.payload(), info);
+    std::cout << "OnMessageReceived: succeeded in parsing message" << std::endl;
+    callback_(wrapper.msg_type(), wrapper.payload(), info, response);
+  } else {
+    std::cout << "OnMessageReceived: failed to parse message" << std::endl;
   }
 }
 
@@ -73,7 +77,7 @@ std::string MessageHandler::MakeSerialisedWrapperMessage(const int &message_type
 }
 
 void MessageHandler::SetCallback(
-    boost::function<void(const int&, const std::string&, const Info&)> callback) {
+    boost::function<void(const int&, const std::string&, const Info&, std::string*)> callback) {
   callback_ = callback;
 }
 

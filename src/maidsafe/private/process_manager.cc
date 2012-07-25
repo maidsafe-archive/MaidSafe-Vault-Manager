@@ -162,8 +162,10 @@ namespace maidsafe {
 
   void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
     auto i = FindProcess(id);
-    if (i == processes_.end())
+    if (i == processes_.end()) {
+      std::cout << "CAN'T FIND PROCESS" << std::endl;
       return;
+    }
     if (restart) {
       boost::this_thread::sleep(boost::posix_time::milliseconds(600));
       // SetInstruction(id, ProcessInstruction::kRun);
@@ -180,8 +182,6 @@ namespace maidsafe {
     ctx.environment = bp::self::get_environment();
     ctx.stderr_behavior = bp::capture_stream();
     ctx.stdout_behavior = bp::capture_stream();
-    bai::tcp::acceptor acceptor(io_service_, bai::tcp::endpoint(bai::tcp::v4(), (*i).port));
-    bai::tcp::socket socket(io_service_);
 
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
@@ -189,8 +189,6 @@ namespace maidsafe {
     bp::pistream& is2 = c.get_stderr();
     std::string result;
     std::string line;
-
-    acceptor.accept(socket);
     maidsafe::rsa::Keys keys;
     maidsafe::rsa::GenerateKeyPair(&keys);
     std::string keys_string, account_name("account1");
@@ -198,15 +196,14 @@ namespace maidsafe {
     maidsafe::priv::VaultIdentityInfo info;
     info.set_keys(keys_string);
     info.set_account_name(account_name);
-    boost::system::error_code ignored_error;
-    boost::asio::write(socket, boost::asio::buffer("hello"), ignored_error);
-    socket.close();
     // LOG(kInfo) << is.rdbuf() << std::endl;
     while (std::getline(is, line)) {
       result += line;
       result += "\n";
-      LOG(kInfo) << line;
-      LOG(kInfo) << "\n";
+      /*LOG(kInfo) << line;
+      LOG(kInfo) << "\n";*/
+      std::cout << line << std::endl;
+      /*LOG(kInfo) << "\n";*/
     }
     result += "\nstd::err: ";
     while (std::getline(is2, line)) {
@@ -288,7 +285,7 @@ namespace maidsafe {
     // status.instruction = ProcessInstruction::kRun;
     // AddStatus(id, status);
     /*boost::this_thread::sleep(boost::posix_time::seconds(10000));*/
-    std::thread thd([=] { RunProcess(id, false, false); }); //NOLINT
+    boost::thread thd([=] { RunProcess(id, false, false); }); //NOLINT
     (*i).thread = std::move(thd);
   }
 

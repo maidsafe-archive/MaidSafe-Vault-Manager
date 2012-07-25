@@ -37,6 +37,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/utils.h"
 
 namespace asio = boost::asio;
 namespace bs = boost::system;
@@ -88,6 +89,7 @@ void TcpConnection::StartReceiving() {
 }
 
 void TcpConnection::DoStartReceiving() {
+  std::cout << "TcpConnection: DoStartReceiving: StartReadSize..." << std::endl;
   StartReadSize();
   bs::error_code ignored_ec;
   CheckTimeout(ignored_ec);
@@ -95,13 +97,19 @@ void TcpConnection::DoStartReceiving() {
 
 void TcpConnection::StartSending(const std::string &data,
                                  const Timeout &timeout) {
+  std::cout << "TcpConnection:  StartSending..." << std::endl;
   EncodeData(data);
   timeout_for_response_ = timeout;
+  std::cout << "TcpConnection:  StartSending before dispatch..." << std::endl;
   strand_.dispatch(std::bind(&TcpConnection::DoStartSending,
-                             shared_from_this()));
+                               shared_from_this()));
+  std::cout << "TcpConnection:  StartSending after dispatch..." << std::endl;
+  /*std::shared_ptr<TcpTransport> shared_transport = transport_.lock();
+  shared_transport->StopAsio();*/
 }
 
 void TcpConnection::DoStartSending() {
+  std::cout << "TcpConnection:  DoStartSending..." << std::endl;
   StartConnect();
 }
 
@@ -131,7 +139,8 @@ void TcpConnection::CheckTimeout(const bs::error_code &ec) {
 
 void TcpConnection::StartReadSize() {
   assert(socket_.is_open());
-
+  std::cout << "StartReadSize, address: " << socket_.remote_endpoint().address().to_string()
+            << ", port: " << socket_.remote_endpoint().port() << std::endl;
   asio::async_read(socket_, asio::buffer(size_buffer_),
                    strand_.wrap(std::bind(&TcpConnection::HandleReadSize,
                                           shared_from_this(), args::_1)));
@@ -143,7 +152,8 @@ void TcpConnection::StartReadSize() {
 
 void TcpConnection::HandleReadSize(const bs::error_code &ec) {
   if (ec) {
-// LOG(kError) << "HandleReadSize - Failed: " << ec.message();
+  std::cout << "HandleReadSize - Failed: " << ec.message() << std::endl;
+  LOG(kError) << "HandleReadSize - Failed: " << ec.message();
     return CloseOnError(kReceiveFailure);
   }
 
@@ -167,7 +177,8 @@ void TcpConnection::HandleReadSize(const bs::error_code &ec) {
 
 void TcpConnection::StartReadData() {
   assert(socket_.is_open());
-
+  std::cout << "StartReadData, address: " << socket_.remote_endpoint().address().to_string()
+            << ", port: " << socket_.remote_endpoint().port() << std::endl;
   size_t buffer_size = data_received_;
   buffer_size += std::min(static_cast<size_t>(kMaxTransportChunkSize),
                           data_size_ - data_received_);
@@ -221,7 +232,8 @@ void TcpConnection::DispatchMessage() {
     std::string response;
     Timeout response_timeout(kImmediateTimeout);
     Info info;
-    // TODO(Fraser#5#): 2011-01-18 - Add info details.
+    info.endpoint.ip = socket_.remote_endpoint().address();
+    info.endpoint.port = socket_.remote_endpoint().port();
     (*transport->on_message_received_)(std::string(data_buffer_.begin(),
                                                    data_buffer_.end()),
                                        info,
@@ -251,24 +263,27 @@ void TcpConnection::EncodeData(const std::string &data) {
 }
 
 void TcpConnection::StartConnect() {
+  std::cout << "TcpConnection: before connecting..." << std::endl;
   assert(!socket_.is_open());
-
   socket_.async_connect(remote_endpoint_,
                         strand_.wrap(std::bind(&TcpConnection::HandleConnect,
                                                shared_from_this(), args::_1)));
-
+  std::cout << "TcpConnection: after connecting..." << std::endl;
   timer_.expires_from_now(kDefaultInitialTimeout);
 }
 
 void TcpConnection::HandleConnect(const bs::error_code &ec) {
+  std::cout << "TcpConnection: HandleConnect..." << std::endl;
   if (ec) {
     LOG(kError) << "HandleConnect - Failed: " << ec.message();
+    std::cout << "HandleConnect - Failed: " << ec.message() << std::endl;
     return CloseOnError(kSendFailure);
   }
 
   // If the socket is closed, it means the timeout has been triggered.
   if (!socket_.is_open()) {
     LOG(kError) << "HandleConnect - Socket not open anymore.";
+    std::cout << "HandleConnect - Socket not open anymore." << std::endl;
     return CloseOnError(kSendTimeout);
   }
 
@@ -277,7 +292,7 @@ void TcpConnection::HandleConnect(const bs::error_code &ec) {
 
 void TcpConnection::StartWrite() {
   assert(socket_.is_open());
-
+  std::cout << "TcpConnection: StartWrite..." << std::endl;
 // timeout_for_response_ = kImmediateTimeout;
   Timeout tm_out(bptime::milliseconds(std::max(
       static_cast<int64_t>(data_buffer_.size() * kTimeoutFactor),
@@ -296,19 +311,24 @@ void TcpConnection::StartWrite() {
 }
 
 void TcpConnection::HandleWrite(const bs::error_code &ec) {
+  std::string same(RandomAlphaNumericString(4));
+  std::cout << "TcpConnection: HandleWrite..." << same << std::endl;
   if (ec) {
     LOG(kError) << "HandleWrite - Failed: " << ec.message();
+    std::cout << "HandleWrite - Failed: " << ec.message() << std::endl;
     return CloseOnError(kSendFailure);
   }
 
   // If the socket is closed, it means the timeout has been triggered.
   if (!socket_.is_open()) {
     LOG(kError) << "HandleWrite - Socket not open anymore.";
+    std::cout << "HandleWrite - Socket not open anymore: " << std::endl;
     return CloseOnError(kSendTimeout);
   }
 
   // Start receiving response
   if (timeout_for_response_ != kImmediateTimeout) {
+    std::cout << "TcpConnection: HandleWrite: StartReadSize..." << same << std::endl;
     StartReadSize();
   } else {
     DoClose();
@@ -326,6 +346,6 @@ void TcpConnection::CloseOnError(const TransportCondition &error) {
   DoClose();
 }
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe

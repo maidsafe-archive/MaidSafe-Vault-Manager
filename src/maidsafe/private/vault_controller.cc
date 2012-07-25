@@ -44,6 +44,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+namespace bai = boost::asio::ip;
+
 namespace maidsafe {
 namespace priv {
 
@@ -52,19 +54,16 @@ namespace priv {
   VaultController::VaultController() : process_id_(),
                                       port_(0),
                                       thd(),
-                                      io_service_(),
-                                      resolver_(io_service_),
-                                      query_("", ""),
-                                      endpoint_iterator_(),
-                                      socket_(io_service_),
+                                      asio_service_(new AsioService(10)),
                                       check_finished_(false),
                                       keys_(),
                                       account_name_(),
                                       info_received_(false),
                                       mutex_(),
                                       cond_var_(),
-                                      transport_(new TcpTransport(io_service_)),
-                                      message_handler_() {}
+                                      started_(false) {
+                                        asio_service_->Start();
+                                      }
 
   VaultController::~VaultController() {}
 
@@ -150,26 +149,27 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeys() {
-     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
-                                                            &message_handler_, _1, _2, _3, _4));
-     message_handler_.SetCallback(
-          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3));
     std::string full_request;
-    maidsafe::priv::VaultIdentityRequest request;
     Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
-    {
-      boost::mutex::scoped_lock lock(mutex_);
-      std::cout << "ReceiveKeys, sending request for vault identity info" << std::endl;
-      int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
-      request.set_pid(process_id_);
-      full_request = message_handler_.MakeSerialisedWrapperMessage(message_type,
+    std::cout << "IN ReceiveKeys: port " << port_ << std::endl;
+    int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
+    maidsafe::priv::VaultIdentityRequest request;
+    request.set_pid(process_id_);
+    std::shared_ptr<TcpTransport> transport;
+    std::shared_ptr<MessageHandler> message_handler;
+    ResetTransport(transport, message_handler);
+    full_request = message_handler->MakeSerialisedWrapperMessage(message_type,
                                                                   request.SerializeAsString());
-    }
-    transport_->Send(full_request, endpoint, boost::posix_time::milliseconds(50));
+    transport->Send(full_request, endpoint, boost::posix_time::milliseconds(1000));
+    std::cout << "ReceiveKeys, sending request for vault identity info to: "
+              << endpoint.ip.to_string() << ", " << endpoint.port << std::endl;
   }
 
   void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,
-                                            const Info& /*sender_info*/) {
+                                            const Info& /*sender_info*/,
+                                            std::string* /*response*/,
+                                            std::shared_ptr<TcpTransport> /*transport*/,
+                                            std::shared_ptr<MessageHandler> /*message_handler*/) {
     boost::mutex::scoped_lock lock(mutex_);
     if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
       std::cout << "ReceiveKeysCallback: response message is of incorrect type." << std::endl;
@@ -191,13 +191,26 @@ namespace priv {
       info_received_ = true;
       cond_var_.notify_all();
     }
-    std::cout << "KEYS RECEIVED: " << std::endl;
+    /*std::cout << "KEYS RECEIVED: " << std::endl;
     std::string public_key_string, private_key_string;
     rsa::EncodePublicKey(keys_.public_key, &public_key_string);
     std::cout << "PUBLIC KEY" << public_key_string << std::endl;
     rsa::EncodePrivateKey(keys_.private_key, &private_key_string);
     std::cout << "PRIVATE KEY" << private_key_string << std::endl;
-    std::cout << "Message received from manager: " << serialised_info << std::endl;
+    std::cout << "Message received from manager: " << serialised_info << std::endl;*/
+  }
+
+  void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                                        std::shared_ptr<MessageHandler>& message_handler) {
+    transport.reset(new TcpTransport(asio_service_->service()));
+    message_handler.reset(new MessageHandler());
+    transport->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+                                                          message_handler.get(), _1, _2, _3, _4));
+    transport->on_error()->connect(boost::bind(&MessageHandler::OnError,
+                                               message_handler.get(), _1, _2));
+     message_handler->SetCallback(
+          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3, _4,
+                      transport, message_handler));
   }
 
   bool VaultController::Start(std::string pid_string,
@@ -223,12 +236,13 @@ namespace priv {
       std::cout << e.what() << "\n";
       return false;
     }
-    if (thd.joinable())
-      thd.join();
+    started_ = true;
     return true;
   }
 
   bool VaultController::GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name) {
+    if (!started_)
+      return false;
     boost::mutex::scoped_lock lock(mutex_);
     if (cond_var_.timed_wait(lock,
                              boost::posix_time::seconds(3),

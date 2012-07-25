@@ -57,8 +57,6 @@ TcpTransport::~TcpTransport() {
 }
 
 TransportCondition TcpTransport::StartListening(const Endpoint &endpoint) {
-  LOG(kError) << "StartListening (port "
-                << listening_port_ << ").";
   if (listening_port_ != 0) {
     LOG(kError) << "StartListening - Already listening (port "
                 << listening_port_ << ").";
@@ -128,6 +126,7 @@ TransportCondition TcpTransport::StartListening(const Endpoint &endpoint) {
                           strand_.wrap(std::bind(&TcpTransport::HandleAccept,
                                                  shared_from_this(), acceptor_,
                                                  new_connection, args::_1)));
+  std::cout << "ACCEPTING CONNECTIONS...." << std::endl;
   return kSuccess;
 }
 
@@ -151,7 +150,7 @@ void TcpTransport::CloseAcceptor(AcceptorPtr acceptor) {
 void TcpTransport::HandleAccept(AcceptorPtr acceptor,
                                 ConnectionPtr connection,
                                 const bs::error_code &ec) {
-  std::cout << "TRANSPORT: MESSAGE RECEIVED" << std::endl;
+  std::cout << "TRANSPORT: CONNECTION ESTABLISHED" << std::endl;
   if (!acceptor->is_open())
     return;
 
@@ -178,6 +177,7 @@ void TcpTransport::Send(const std::string &data,
                         const Endpoint &endpoint,
                         const Timeout &timeout) {
   DataSize msg_size(static_cast<DataSize>(data.size()));
+  std::cout << "TcpTransport: Send..." << std::endl;
   if (msg_size > kMaxTransportMessageSize()) {
     LOG(kError) << "Send - Data size " << msg_size
                 << " bytes (exceeds limit of " << kMaxTransportMessageSize()
@@ -186,12 +186,15 @@ void TcpTransport::Send(const std::string &data,
     (*on_error_)(kMessageSizeTooLarge, ep);
     return;
   }
-
+  std::cout << "TcpTransport: Send message size correct..." << std::endl;
   ip::tcp::endpoint tcp_endpoint(endpoint.ip, endpoint.port);
   ConnectionPtr connection(new TcpConnection(shared_from_this(),
                                              tcp_endpoint));
+  std::cout << "TcpTransport: Send before insert connection..." << std::endl;
   InsertConnection(connection);
+  std::cout << "TcpTransport: Send before start sending..." << std::endl;
   connection->StartSending(data, timeout);
+  std::cout << "TcpTransport: Send after start sending..." << std::endl;
 }
 
 void TcpTransport::InsertConnection(ConnectionPtr connection) {

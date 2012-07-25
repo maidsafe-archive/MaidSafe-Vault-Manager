@@ -48,7 +48,7 @@ int main(int /*argc*/, char **/*argv*/) {
   maidsafe::ProcessManager manager;
   maidsafe::priv::VaultManager vman;
 
-//   vman.StartListening();
+  vman.StartListening();
 
   /*vman.ReadConfig();*/
 
@@ -94,10 +94,10 @@ int main(int /*argc*/, char **/*argv*/) {
     }
   }*/
 
-//   std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
+//   boost::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
 //   if (updates_thread.joinable())
 //       updates_thread.join();
-  vman.ReadConfig();
+  // vman.ReadConfig();
   std::cout << "Exiting..." << std::endl;
 //  int32_t p_id;
 //  std::vector<int32_t> p_idd;

@@ -35,14 +35,14 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/common/asio_service.h"
+
 #include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/tcp_transport.h"
 
 namespace maidsafe {
 
 namespace priv {
-
-namespace bai = boost::asio::ip;
 
 class ClientController {
  public:
@@ -60,26 +60,30 @@ class ClientController {
 
  private:
   void ConnectToManager(uint16_t port);
-  void ConnectToManagerCallback(const std::string& hello_response_string, const Info& sender_info);
+  void ConnectToManagerCallback(const std::string& hello_response_string, const Info& sender_info,
+                                std::string* response);
   void OnConnectError(const TransportCondition &transport_condition,
                       const Endpoint &remote_endpoint);
   void OnStartVaultError(const TransportCondition &transport_condition,
                          const Endpoint &remote_endpoint);
   void StartVaultRequest(const maidsafe::asymm::Keys& keys, const std::string& account_name);
-  void StartVaultRequestCallback(const std::string& hello_response_string, const Info& sender_info);
-  void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info);
+  void StartVaultRequestCallback(const std::string& hello_response_string, const Info& sender_info,
+                                 std::string* response);
+  void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info,
+                             std::string* response, std::shared_ptr<TcpTransport> transport,
+                             std::shared_ptr<MessageHandler> message_handler);
+  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                      std::shared_ptr<MessageHandler>& message_handler);
 
   uint16_t port_;
   boost::thread thd_;
-  boost::asio::io_service io_service_;
-  bai::tcp::resolver resolver_;
-  bai::tcp::resolver::query query_;
-  bai::tcp::resolver::iterator endpoint_iterator_;
-  bai::tcp::socket socket_;
+  std::shared_ptr<maidsafe::AsioService> asio_service_;
+  boost::asio::ip::tcp::resolver resolver_;
+  boost::asio::ip::tcp::resolver::query query_;
+  boost::asio::ip::tcp::resolver::iterator endpoint_iterator_;
+  boost::asio::ip::tcp::socket socket_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
-  std::shared_ptr<TcpTransport> transport_;
-  MessageHandler message_handler_;
   bool connected_to_manager_;
   bool vault_started_;
 };

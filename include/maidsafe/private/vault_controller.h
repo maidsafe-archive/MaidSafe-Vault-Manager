@@ -37,6 +37,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/asio_service.h"
 
 #include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/private/message_handler.h"
@@ -45,15 +46,13 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace bai = boost::asio::ip;
-
-enum class ProcessStatus {
+/*enum class ProcessStatus {
   Running,
   Stopped,
   Crashed
 };
 
-enum ProcessInstruction {
+enum class ProcessInstruction {
   kRun = 1,
   kStop = 2,
   kTerminate = 3,
@@ -65,7 +64,7 @@ enum class KeysStatus {
   kNeedKeys = 2,
   kCanHaveKeys = 3,
   kDoHaveKeys = 4
-};
+};*/
 
 class VaultController {
  public:
@@ -76,35 +75,34 @@ class VaultController {
   bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
 
  private:
-  void ListenForStopTerminate(std::string shared_mem_name,
+  /*void ListenForStopTerminate(std::string shared_mem_name,
                               int id,
-                              std::function<void()> stop_handler);
+                              std::function<void()> stop_handler);*/
   void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
                    const boost::system::error_code& ec);
   void ReceiveKeys();
   void ReceiveKeysCallback(const int& type, const std::string& payload,
-                           const Info& /*sender_info*/);
+                           const Info& /*sender_info*/, std::string* response,
+                           std::shared_ptr<TcpTransport> transport,
+                           std::shared_ptr<MessageHandler> message_handler);
   void OnMessageReceived(const std::string &request,
                          const Info /*&info*/,
                          std::string */*response*/,
                          Timeout */*timeout*/);
-  ProcessInstruction CheckInstruction(const int32_t& id);
+  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                      std::shared_ptr<MessageHandler>& message_handler);
+  /*ProcessInstruction CheckInstruction(const int32_t& id);*/
   std::string process_id_;
   uint16_t port_;
   boost::thread thd;
-  boost::asio::io_service io_service_;
-  bai::tcp::resolver resolver_;
-  bai::tcp::resolver::query query_;
-  bai::tcp::resolver::iterator endpoint_iterator_;
-  bai::tcp::socket socket_;
+  std::shared_ptr<AsioService> asio_service_;
   bool check_finished_;
   maidsafe::rsa::Keys keys_;
   std::string account_name_;
   bool info_received_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
-  std::shared_ptr<TcpTransport> transport_;
-  MessageHandler message_handler_;
+  bool started_;
 };
 
 }  // namespace priv

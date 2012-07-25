@@ -32,6 +32,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <utility>
 
+#include "maidsafe/common/asio_service.h"
+
 #include "maidsafe/private/process_manager.h"
 #include "maidsafe/private/download_manager.h"
 #include "boost/filesystem/fstream.hpp"
@@ -40,13 +42,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/private/message_handler.h"
 
-class R;
-class R;
 namespace maidsafe {
 
 namespace priv {
-
-namespace bai = boost::asio::ip;
 
 enum class VaultManagerMessageType {
   kHelloFromClient = 1,
@@ -59,7 +57,7 @@ enum class VaultManagerMessageType {
 
 struct WaitingVaultInfo {
   WaitingVaultInfo() : vault_pid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
-                       chunkstore_capacity() {}
+                       chunkstore_capacity(), mutex_(), cond_var_(), vault_requested_(false) {}
   WaitingVaultInfo(const WaitingVaultInfo& other);
   std::string vault_pid;
   Endpoint client_endpoint;
@@ -67,12 +65,14 @@ struct WaitingVaultInfo {
   asymm::Keys keys;
   std::string chunkstore_path;
   std::string chunkstore_capacity;
+  std::shared_ptr<boost::mutex> mutex_;
+  std::shared_ptr<boost::condition_variable> cond_var_;
+  bool vault_requested_;
 };
 
 class VaultManager {
  public:
   VaultManager();
-  VaultManager(const maidsafe::priv::VaultManager&);
   ~VaultManager();
   std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                        bool new_vault);
@@ -85,10 +85,13 @@ class VaultManager {
   int32_t get_process_vector_size();
   void ListenForUpdates();
   void ListenForMessages();
-  void HandleClientHello(const std::string& hello_string, const Info& info);
-  void HandleClientStartVaultRequest(const std::string& start_vault_string, const Info& info);
-  void HandleVaultInfoRequest(const std::string& vault_info_string, const Info& info);
-  void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info);
+  void HandleClientHello(const std::string& hello_string, const Info& info, std::string* response);
+  void HandleClientStartVaultRequest(const std::string& start_vault_string, const Info& info,
+                                     std::string* response);
+  void HandleVaultInfoRequest(const std::string& vault_info_string, const Info& info,
+                              std::string* response);
+  void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info,
+                             std::string* response);
   void OnError(const TransportCondition &transport_condition, const Endpoint &remote_endpoint);
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
@@ -100,19 +103,20 @@ class VaultManager {
 //                     bool new_vault);
 //   void StopVault();
 //   bool ReadConfig();
+  explicit VaultManager(const maidsafe::priv::VaultManager&);
+  VaultManager operator=(const maidsafe::priv::VaultManager&);
+
   bool WriteConfig();
   std::vector<std::string> p_id_vector_;
   std::vector<maidsafe::Process> process_vector_;
   ProcessManager manager_;
   DownloadManager download_manager_;
-  boost::asio::io_service io_service_;
+  std::shared_ptr<AsioService> asio_service_;
   priv::MessageHandler msg_handler_;
   std::shared_ptr<TcpTransport> transport_;
   uint16_t local_port_;
   std::vector<WaitingVaultInfo> client_started_vault_pids_;
   std::vector<WaitingVaultInfo> config_file_vault_pids_;
-//   bai::tcp::acceptor acceptor_;
-//   bai::tcp::socket socket_;
 };
 
 }  // namespace private

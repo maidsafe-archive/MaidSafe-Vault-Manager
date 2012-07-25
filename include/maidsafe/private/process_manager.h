@@ -30,7 +30,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/process.hpp>
-#include <boost/thread/pthread/mutex.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <thread>
 #include <string>
@@ -38,9 +39,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace maidsafe {
 
-namespace bp = boost::process;
-
-enum class ProcessStatus {
+/*enum class ProcessStatus {
   Running,
   Stopped,
   Crashed
@@ -53,7 +52,7 @@ enum ProcessInstruction {
   kInvalid = 4
 };
 
-/*enum class TerminateStatus {
+enum class TerminateStatus {
   kTerminate = 1,
   kNoTerminate = 2
 };
@@ -61,12 +60,12 @@ enum ProcessInstruction {
 enum class StopStatus {
   kStop = 1,
   kNoStop = 2
-};*/
+};
 
 
 struct ProcessManagerStruct {
   ProcessInstruction instruction;
-};
+};*/
 
 class Process {
  public:
@@ -86,7 +85,7 @@ struct ProcessInfo {
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
   Process process;
-  std::thread thread;
+  boost::thread thread;
   std::string id;
   uint32_t port;
   int32_t restart_count;
@@ -102,7 +101,7 @@ class ProcessManager {
   int32_t NumberOfLiveProcesses();
   int32_t NumberOfSleepingProcesses();
   void StopAndRemoveProcess(Process &process);
-  ProcessStatus GetProcessStatus(Process &process);
+  /*ProcessStatus GetProcessStatus(Process &process);*/
   void StartProcess(std::string id);
   void LetProcessDie(std::string id);
   void WaitForProcesses();
@@ -118,9 +117,9 @@ class ProcessManager {
   void RunAll();
   void MonitorAll();
   void TerminateAll();
-  bool AddStatus(std::string id, ProcessManagerStruct status);
+  /*bool AddStatus(std::string id, ProcessManagerStruct status);
   bool SetInstruction(std::string id, ProcessInstruction instruction);
-  ProcessInstruction CheckInstruction(std::string id);
+  ProcessInstruction CheckInstruction(std::string id);*/
   std::vector<ProcessInfo> processes_;
   boost::mutex process_info_mutex_;
   uint32_t process_count_;

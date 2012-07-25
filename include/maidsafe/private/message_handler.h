@@ -95,7 +95,8 @@ class MessageHandler {
   void OnError(const TransportCondition &transport_condition,
                const Endpoint &remote_endpoint);
 
-  void SetCallback(boost::function<void(const int&, const std::string&, const Info&)> callback);
+  void SetCallback(boost::function<void(const int&, const std::string&,
+                                        const Info&, std::string*)> callback);
   ErrorSigPtr on_error() { return on_error_; }
 
   std::string MakeSerialisedWrapperMessage(const int &message_type, const std::string &payload);
@@ -113,7 +114,7 @@ class MessageHandler {
   MessageHandler(const MessageHandler&);
   MessageHandler& operator=(const MessageHandler&);
   ErrorSigPtr on_error_;
-  boost::function<void(const int&, const std::string&, const Info&)> callback_;
+  boost::function<void(const int&, const std::string&, const Info&, std::string*)> callback_;
 };
 
 }  // namespace priv
