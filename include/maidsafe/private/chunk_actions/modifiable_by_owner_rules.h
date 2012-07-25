@@ -48,6 +48,10 @@ bool IsModifiable<kModifiableByOwner>();
 template <>
 bool DoesModifyReplace<kModifiableByOwner>();
 
+// Returns false.
+template <>
+bool IsPayable<kModifiableByOwner>();
+
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kModifiableByOwner>(

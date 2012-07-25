@@ -43,6 +43,9 @@ template <>
 bool DoesModifyReplace<kModifiableByOwner>() { return true; }
 
 template <>
+bool IsPayable<kModifiableByOwner>() { return false; }
+
+template <>
 bool IsValidChunk<kModifiableByOwner>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {

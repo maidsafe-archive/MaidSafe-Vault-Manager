@@ -69,16 +69,13 @@ void Echo(bool enable = true) {
 #endif
 }
 
-std::string GetPasswd() {
+std::string GetPasswd(bool repeat = true) {
   std::string passwd("r"), passwd2("s");
-  Echo(false);
-  while (passwd != passwd2) {
-    std::cout << "please Enter passwd \n";
-    std::getline(std::cin, passwd);
-    std::cout << "please Re-Enter same passwd \n";
-    std::getline(std::cin, passwd2);
-  }
-  Echo(true);
+  do {
+    passwd = Get<std::string>("please Enter passwd \n", false);
+    if (repeat)
+      passwd2 = Get<std::string>("please Re-Enter same passwd \n", false);
+  }  while ((passwd != passwd2) && (repeat));
   return maidsafe::crypto::Hash<maidsafe::crypto::SHA512>(passwd);
 }
 
@@ -258,6 +255,7 @@ void CreateKeyGroup() {
     std::cout << "smallest required group is 2";
     return;
   }
+  std::string location = Get<std::string>("please enter location of files");
   if (!have_private_key) {
     std::cout << " No Private key found, creating now\n";
     CreateKeys();
@@ -287,7 +285,7 @@ void CreateKeyGroup() {
     } else {
       std::string key = passwd.substr(0, 32);
       std::string iv = passwd.substr(32, 48);
-      fs::path file(name + ".keyfile");
+      fs::path file(location + name + ".keyfile");
       if (!maidsafe::WriteFile(file, maidsafe::crypto::SymmEncrypt(chunks.at(i), key, iv))) {
         std::cout << "error writing file\n";
         --i;
@@ -303,35 +301,31 @@ void CreateKeyGroup() {
 
 void GroupSignIn() {
   std::string total;
-  std::cout << "please Enter total number of people \n";
-  std::getline(std::cin, total);
   std::string quorum;
   std::cout << "please Enter number of people required to sign\n";
   std::getline(std::cin, quorum);
-  int max = atoi(total.c_str());
   int min = atoi(quorum.c_str());
   std::vector<std::string> chunks;
   std::string enc_data;
   std::string priv_key;
+  std::string location = Get<std::string>("please enter location of files");
 
   for(int i =0; i < min; ++i) {
     enc_data.clear();
-    std::string name;
-    std::cout << "please Enter name \n";
-    std::getline(std::cin, name);
-    std::string passwd = GetPasswd();
-     if (i < max - 1)
-      std::cout << "Password captured next person please\n ==================================\n";
+    std::string name = Get<std::string>("please Enter name \n");
+    std::string passwd = GetPasswd(false);
+    std::cout << "Password captured next person please\n ==================================\n";
+    
     std::string key = passwd.substr(0, 32);
     std::string iv = passwd.substr(32, 48);
-    fs::path file(name + ".keyfile");
+    fs::path file(location + name + ".keyfile");
     if (!maidsafe::ReadFile(file, &enc_data)) {
       std::cout << "error reading file\n";
       --i;
       std::cout << "Error, are you sure you used a correct name/password, retry !\n";
     } else {
       chunks.push_back(maidsafe::crypto::SymmDecrypt(enc_data, key, iv));
-      //enc_data.clear();
+      enc_data.clear();
     }
   }
   maidsafe::crypto::SecretRecoverData(min, chunks, &priv_key);

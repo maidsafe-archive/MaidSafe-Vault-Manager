@@ -93,6 +93,7 @@ class ChunkActionAuthority {
   bool Cacheable(const std::string &name) const;
   bool Modifiable(const std::string &name) const;
   bool ModifyReplaces(const std::string &name) const;
+  bool Payable(const std::string &name) const;
   bool ValidChunk(const std::string &name) const;
   std::string Version(const std::string &name) const;
 
