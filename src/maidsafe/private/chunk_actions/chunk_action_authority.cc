@@ -310,6 +310,18 @@ bool ChunkActionAuthority::ModifyReplaces(const std::string &name) const {
   }
 }
 
+bool ChunkActionAuthority::Payable(const std::string &name) const {
+  switch (GetDataType(name)) {
+    case kDefaultType: return IsPayable<kDefaultType>();
+    case kAppendableByAll: return IsPayable<kAppendableByAll>();
+    case kModifiableByOwner: return IsPayable<kModifiableByOwner>();
+    case kSignaturePacket: return IsPayable<kSignaturePacket>();
+    case kUnknownType:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetDataType(name));
+             return false;
+  }
+}
+
 bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
   switch (GetDataType(name)) {
     case kDefaultType: return IsValidChunk<kDefaultType>(name, chunk_store_);

@@ -48,6 +48,10 @@ bool IsModifiable<kAppendableByAll>();
 template <>
 bool DoesModifyReplace<kAppendableByAll>();
 
+// Returns false.
+template <>
+bool IsPayable<kAppendableByAll>();
+
 // Returns true if the chunk exists.
 template <>
 bool IsValidChunk<kAppendableByAll>(

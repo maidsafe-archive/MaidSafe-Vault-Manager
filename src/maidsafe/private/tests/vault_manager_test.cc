@@ -45,12 +45,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 int main(int /*argc*/, char **/*argv*/) {
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-  maidsafe::ProcessManager manager;
-  maidsafe::priv::VaultManager vman;
 
-  vman.StartListening();
+  maidsafe::ProcessManager process_manager;
+  maidsafe::priv::VaultManager vault_manager;
 
-  /*vman.ReadConfig();*/
+  /*vault_manager.ReadConfig();*/
+
+  vault_manager.StartListening();
 
   // sint32_t stdinput;
   std::string options = "1. (Start a new vault)\n";

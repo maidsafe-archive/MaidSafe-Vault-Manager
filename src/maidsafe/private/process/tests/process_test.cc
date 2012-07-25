@@ -25,16 +25,16 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <boost/program_options.hpp>
-#include <boost/process.hpp>
+//#include <boost/program_options.hpp>
+//#include <boost/process.hpp>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <iterator>
-#include <sys/wait.h>
-namespace po = boost::program_options;
-namespace bp = ::boost::process;
+//// #include <sys/wait.h>
+//namespace po = boost::program_options;
+//namespace bp = ::boost::process;
 
 //bp::child start_child() {
 //    std::string exec = "protoc";
@@ -138,13 +138,13 @@ int GetOptions(int /*ac*/, char* /*av*/[]) {
   return 0;
 }
 
-#include <boost/process.hpp>
-#include <boost/thread.hpp>
-#include <boost/assign/list_of.hpp>
+//#include <boost/process.hpp>
+//#include <boost/thread.hpp>
+//#include <boost/assign/list_of.hpp>
 #include <string>
 #include <vector>
 
-using namespace boost::process;
+//using namespace boost::process;
 
 int main(int /*ac*/, char* /*av*/[])
 {

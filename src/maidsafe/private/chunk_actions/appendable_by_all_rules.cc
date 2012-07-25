@@ -44,6 +44,9 @@ template <>
 bool DoesModifyReplace<kAppendableByAll>() { return false; }
 
 template <>
+bool IsPayable<kAppendableByAll>() { return false; }
+
+template <>
 bool IsValidChunk<kAppendableByAll>(
     const std::string &name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
