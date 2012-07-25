@@ -32,7 +32,7 @@ message ClientStartVaultResponse {
 // VaultManager receives this from Vault. Vault expects a VaultIdentityInfo response.
 
 message VaultIdentityRequest {
-  required bytes pid = 1;
+  required bytes vmid = 1;
 }
 
 // VaultManager sends this to a requesting Vault. It contains the identity that the Vault can

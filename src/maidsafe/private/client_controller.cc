@@ -149,14 +149,9 @@ namespace priv {
     asymm::SerialiseKeys(keys, keys_string);
     std::cout << "StartVaultRequest: keys: " << EncodeToBase64(keys_string) << "length: "
               << keys_string.length() << std::endl;
+    std::cout << "StartVaultRequest: identity: " << keys.identity << std::endl;
     request.set_keys(keys_string);
     request.set_account_name(account_name);
-    maidsafe::asymm::Keys new_keys;
-    if (asymm::ParseKeys(keys_string, new_keys)) {
-      std::cout << "StartVaultRequest: parse successful" << std::endl;
-    } else {
-      std::cout << "StartVaultRequest: parse failure" << std::endl;
-    }
     std::string request_string;
     std::shared_ptr<TcpTransport> transport;
     std::shared_ptr<MessageHandler> message_handler;

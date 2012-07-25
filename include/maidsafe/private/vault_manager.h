@@ -56,17 +56,16 @@ enum class VaultManagerMessageType {
 };
 
 struct WaitingVaultInfo {
-  WaitingVaultInfo() : vault_pid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
+  WaitingVaultInfo() : vault_vmid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
                        chunkstore_capacity(), mutex_(), cond_var_(), vault_requested_(false) {}
-  WaitingVaultInfo(const WaitingVaultInfo& other);
-  std::string vault_pid;
+  std::string vault_vmid;
   Endpoint client_endpoint;
   std::string account_name;
   asymm::Keys keys;
   std::string chunkstore_path;
   std::string chunkstore_capacity;
-  std::shared_ptr<boost::mutex> mutex_;
-  std::shared_ptr<boost::condition_variable> cond_var_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
   bool vault_requested_;
 };
 
@@ -107,7 +106,7 @@ class VaultManager {
   VaultManager operator=(const maidsafe::priv::VaultManager&);
 
   bool WriteConfig();
-  std::vector<std::string> p_id_vector_;
+  std::vector<std::string> vmid_vector_;
   std::vector<maidsafe::Process> process_vector_;
   ProcessManager manager_;
   DownloadManager download_manager_;
@@ -115,8 +114,8 @@ class VaultManager {
   priv::MessageHandler msg_handler_;
   std::shared_ptr<TcpTransport> transport_;
   uint16_t local_port_;
-  std::vector<WaitingVaultInfo> client_started_vault_pids_;
-  std::vector<WaitingVaultInfo> config_file_vault_pids_;
+  std::vector<std::shared_ptr<WaitingVaultInfo>> client_started_vault_vmids_;
+  std::vector<std::shared_ptr<WaitingVaultInfo>> config_file_vault_vmids_;
 };
 
 }  // namespace private

@@ -125,9 +125,9 @@ namespace maidsafe {
     info.id = id;
     info.done = false;
     info.restart_count = 0;
-    info.port = current_port_++;
+    info.port = current_port_;
     LOG(kInfo) << "Restart count on init: " << info.restart_count;
-    process.AddArgument("--pid");
+    process.AddArgument("--vmid");
     process.AddArgument(info.id + "-" + boost::lexical_cast<std::string>(info.port));
     LOG(kInfo) << "Process Arguments: ";
     for (std::string i : process.Args())
