@@ -92,17 +92,17 @@ namespace priv {
     std::cout << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
               << chunkstore_capacity << std::endl;
 
-    /*process.SetProcessName("pd-vault");
+    process.SetProcessName("pd-vault");
     process.AddArgument("pd-vault");
-    process.AddArgument("--chunkstore_path");
+    process.AddArgument("--chunk_path");
     process.AddArgument(chunkstore_path);
-    process.AddArgument("--chunkstore_capacity");
+    process.AddArgument("--chunk_capacity");
     process.AddArgument(chunkstore_capacity);
-    process.AddArgument("--start");*/
+    process.AddArgument("--start");
 
-    process.SetProcessName("DUMMYprocess");
+    /*process.SetProcessName("DUMMYprocess");
     process.AddArgument("DUMMYprocess");
-    process.AddArgument("--nocrash");
+    process.AddArgument("--nocrash");*/
 
     process_vector_.push_back(process);
 
