@@ -45,12 +45,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 int main(int /*argc*/, char **/*argv*/) {
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-  maidsafe::ProcessManager manager;
-  maidsafe::priv::VaultManager vman;
-
-//   vman.StartListening();
-
-  /*vman.ReadConfig();*/
+  maidsafe::ProcessManager process_manager;
+  maidsafe::priv::VaultManager vault_manager;
 
   // sint32_t stdinput;
   std::string options = "1. (Start a new vault)\n";
@@ -97,8 +93,8 @@ int main(int /*argc*/, char **/*argv*/) {
 //   std::thread updates_thread( [&] { vman.ListenForUpdates(); } ); // NOLINT
 //   if (updates_thread.joinable())
 //       updates_thread.join();
-  vman.ReadConfig();
-  std::cout << "Exiting..." << std::endl;
+
+std::cout << "Exiting..." << std::endl;
 //  int32_t p_id;
 //  std::vector<int32_t> p_idd;
 //  fs::path filename ("/home/nikola/idpath.txt");

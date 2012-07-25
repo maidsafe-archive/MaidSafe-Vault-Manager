@@ -165,9 +165,9 @@ namespace priv {
   }
 
   bool VaultManager::ReadConfig() {
-    fs::path path("TestConfig.txt");
+    fs::path path((GetSystemAppDir()/"config.txt"));
     std::string content;
-
+    LOG(kInfo) << path.string();
     maidsafe::ReadFile(path, &content);
 
     typedef boost::tokenizer<boost::char_separator<char> > vault_tokenizer;
@@ -204,7 +204,7 @@ namespace priv {
   }
 
   int32_t VaultManager::ListVaults(bool select) {
-    fs::path path("TestConfig.txt");
+    fs::path path((GetSystemAppDir()/"config.txt"));
     std::string content;
 
     maidsafe::ReadFile(path, &content);
@@ -283,10 +283,15 @@ namespace priv {
   }
 
   void VaultManager::ListenForUpdates() {
-    std::string name("lifestufflocal");
+//     std::string name("lifestufflocal");
     int32_t cpu_size(maidsafe::CpuSize());
     std::string platform;
     std::string extension = "";
+
+    std::string filetypes[] = {"lifestufflocal", "pd-vault"};
+    std::vector<std::string> download_type(filetypes, filetypes + sizeof(filetypes)
+                                                     / sizeof(std::string));
+    std::vector<std::string>::iterator download_type_iterator = download_type.begin();
 
     #ifdef _WINDOWS
     platform = "win";
@@ -301,6 +306,7 @@ namespace priv {
     std::pair<std::string, std::string> version_and_patchlevel;
     boost::filesystem::path current_path(boost::filesystem::current_path());
     while (true) {
+      std::string name(*download_type_iterator);
       LOG(kInfo) << "Searching for latest local version of " << name;
       version_and_patchlevel = FindLatestLocalVersion(name, platform,
                                                       boost::lexical_cast<std::string>(cpu_size));
@@ -324,7 +330,7 @@ namespace priv {
 
         // Download the signature file
         std::string signature_file = file_to_download + extension + ".sig";
-        LOG(kInfo) << "Signatuer file is " << signature_file;
+        LOG(kInfo) << "Signature file is " << signature_file;
         download_manager_.SetFileToDownload(signature_file);
 
         if (download_manager_.UpdateCurrentFile(current_path)) {
@@ -374,8 +380,15 @@ namespace priv {
       } else {
         LOG(kInfo) << "No later file has been found!!!";
       }
-      LOG(kInfo) << "Sleeping for five minutes!";
-      boost::this_thread::sleep(boost::posix_time::minutes(5));
+
+      if (download_type_iterator !=download_type.end()) {
+        ++download_type_iterator;
+        continue;
+      } else {
+        download_type_iterator = download_type.begin();
+        LOG(kInfo) << "Sleeping for five minutes!";
+        boost::this_thread::sleep(boost::posix_time::minutes(5));
+      }
     }
   }
 
