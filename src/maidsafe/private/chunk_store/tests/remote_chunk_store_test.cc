@@ -276,8 +276,8 @@ class RemoteChunkStoreTest: public testing::Test {
     InitMockManagerChunkStore(&mock_manager_chunk_store_,
                               chunk_dir_,
                               asio_service_.service());
-    maidsafe::rsa::GenerateKeyPair(keys_.get());
-    maidsafe::rsa::GenerateKeyPair(alternate_keys_.get());
+    asymm::GenerateKeyPair(keys_.get());
+    asymm::GenerateKeyPair(alternate_keys_.get());
     signed_data_.set_data(RandomString(50));
     asymm::Sign(signed_data_.data(), keys_->private_key,
             signed_data_.mutable_signature());
@@ -408,8 +408,8 @@ class RemoteChunkStoreTest: public testing::Test {
 
   bs2::connection rcs_pending_ops_conn_;
 
-  std::shared_ptr<maidsafe::rsa::Keys> keys_;
-  std::shared_ptr<maidsafe::rsa::Keys> alternate_keys_;
+  std::shared_ptr<asymm::Keys> keys_;
+  std::shared_ptr<asymm::Keys> alternate_keys_;
   priv::chunk_actions::SignedData signed_data_;
   std::function<void(bool)> store_failed_callback_;  // NOLINT (Philip)
   std::function<void(bool)> store_success_callback_;  // NOLINT (Philip)

@@ -30,6 +30,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 
 #include "maidsafe/common/test.h"
+#include "maidsafe/common/utils.h"
+
 #include "maidsafe/private/process_manager.h"
 
 namespace maidsafe {
@@ -453,7 +455,8 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
     manager.LetProcessDie(*it);
   LOG(kInfo) << "HELLO4";
-  std::this_thread::sleep_for(std::chrono::seconds(6));
+  Sleep(boost::posix_time::seconds(6));
+//  std::this_thread::sleep_for(std::chrono::seconds(6));
 
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(process_ids_10.size(), manager.NumberOfLiveProcesses());
@@ -461,7 +464,8 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
     manager.LetProcessDie(*it);
   LOG(kInfo) << "HELLO5";
-  std::this_thread::sleep_for(std::chrono::seconds(6));
+  Sleep(boost::posix_time::seconds(6));
+//  std::this_thread::sleep_for(std::chrono::seconds(6));
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   LOG(kInfo) << "HELLO6";
