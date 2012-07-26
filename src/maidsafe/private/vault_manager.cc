@@ -400,7 +400,7 @@ namespace priv {
 
   bool HandleBootstrapFile(asymm::Identity identity) {
     try {
-      fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap.vault_manager");
+      fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap.manager");
       if (!fs::exists(manager_bootstrap_path)) {
         LOG(kError) << "Error: Main bootstrap file doesn't exist at " << manager_bootstrap_path;
         return false;
