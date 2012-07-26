@@ -243,10 +243,12 @@ namespace priv {
       else
         LOG(kError) << " VaultController: Invalid Vault Manager ID";
       std::cout << "PORT: " << port_ << std::endl;
+      if (port_ != 0) {
       thd = boost::thread([=] {
                                 ReceiveKeys();
                                   /*ListenForStopTerminate(shared_mem_name, vmid, stop_callback);*/
                               });
+      }
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
       return false;
@@ -257,6 +259,8 @@ namespace priv {
 
   bool VaultController::GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name) {
     if (!started_)
+      return false;
+    if (port_ == 0)
       return false;
     boost::mutex::scoped_lock lock(mutex_);
     if (cond_var_.timed_wait(lock,

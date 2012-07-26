@@ -247,7 +247,7 @@ TEST(ProcessManagerTest, BEH_StartSingleProcess) {
   EXPECT_EQ(0, manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
-  std::string id = manager.AddProcess(test);
+  std::string id = manager.AddProcess(test, 0);
   auto start(boost::posix_time::microsec_clock::universal_time());
   manager.StartProcess(id);
   EXPECT_NE(id, "");
@@ -380,9 +380,9 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
   EXPECT_EQ(0, manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
-  std::string id = manager.AddProcess(test);
-  std::string id1 = manager.AddProcess(test1);
-  std::string id2 = manager.AddProcess(test2);
+  std::string id = manager.AddProcess(test, 0);
+  std::string id1 = manager.AddProcess(test1, 0);
+  std::string id2 = manager.AddProcess(test2, 0);
   auto start(boost::posix_time::microsec_clock::universal_time());
   manager.StartProcess(id);
   manager.StartProcess(id1);
@@ -434,7 +434,7 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   std::vector<std::string> process_ids_5, process_ids_10;
   for (size_t i(0); i < processes_5.size(); ++i) {
     LOG(kInfo) << "HELLO21";
-    std::string id = manager.AddProcess(processes_5.at(i));
+    std::string id = manager.AddProcess(processes_5.at(i), 0);
     EXPECT_NE(id, "");
     LOG(kInfo) << "HELLO22";
     process_ids_5.push_back(id);
@@ -443,7 +443,7 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   }
   LOG(kInfo) << "HELLO3";
   for (size_t i(0); i < processes_10.size(); ++i) {
-    std::string id = manager.AddProcess(processes_10.at(i));
+    std::string id = manager.AddProcess(processes_10.at(i), 0);
     EXPECT_NE(id, "");
     manager.StartProcess(id);
     process_ids_10.push_back(id);
