@@ -48,20 +48,6 @@ namespace maidsafe {
 
 namespace priv {
 
-  /*WaitingVaultInfo::WaitingVaultInfo(const WaitingVaultInfo& other)
-      : vault_vmid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
-        chunkstore_capacity(), mutex_(), cond_var_(), vault_requested_() {
-    vault_vmid = other.vault_vmid;
-    client_endpoint = other.client_endpoint;
-    account_name = other.account_name;
-    keys = other.keys;
-    chunkstore_path = other.chunkstore_path;
-    chunkstore_capacity = other.chunkstore_capacity;
-    mutex_ = other.mutex_;
-    cond_var_ = other.cond_var_;
-    vault_requested_ = other.vault_requested_;
-  }*/
-
   VaultManager::VaultManager() : vmid_vector_(), process_vector_(), manager_(),
                                  download_manager_(), asio_service_(new AsioService(3)),
                                  msg_handler_(),
@@ -73,24 +59,12 @@ namespace priv {
 
   VaultManager::~VaultManager() {}
 
-//   VaultManager::VaultManager(const maidsafe::priv::VaultManager& /*vman*/)
-//       : vmid_vector_(),
-//         process_vector_(),
-//         manager_(),
-//         download_manager_(),
-//         asio_service_(new AsioService(10)),
-//         msg_handler_(),
-//         transport_(new TcpTransport(asio_service_->service())),
-//         local_port_(5483),
-//         client_started_vault_vmids_(),
-//         config_file_vault_vmids_() {}
-
   std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
     std::string vmid;
-    std::cout << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
-              << chunkstore_capacity << std::endl;
+    LOG(kInfo) << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
+               << chunkstore_capacity << std::endl;
 
     process.SetProcessName("pd-vault");
     process.AddArgument("pd-vault");
@@ -131,9 +105,9 @@ namespace priv {
       process_vector_.erase(process_vector_.begin() + (id - 1));
       manager_.KillProcess(vmid_vector_[id - 1]);
       vmid_vector_.erase(vmid_vector_.begin() + (id - 1));
-      std::cout << "Erasing vault..." << std::endl;
+      LOG(kInfo) << "Erasing vault...";
       if (WriteConfig()) {
-        std::cout << "Done!\n" << std::endl;
+        LOG(kInfo) << "Done!";
       }
   }
 
@@ -171,7 +145,11 @@ namespace priv {
   }
 
   bool VaultManager::ReadConfig() {
-    fs::path path((GetSystemAppDir()/"config.txt"));
+    fs::path path((GetSystemAppDir() / "vault_manager_config.txt"));
+    if (!fs::exists(path)) {
+      fs::create_directories(path);
+      return true;
+    }
     std::string content;
     LOG(kInfo) << path.string();
     maidsafe::ReadFile(path, &content);
@@ -187,10 +165,10 @@ namespace priv {
       boost::char_separator<char> argument_delimiter(" ", "", boost::keep_empty_tokens);
       argument_tokenizer arg_tokenizer(argument, argument_delimiter);
       std::vector<std::string> vault_item(arg_tokenizer.begin(), arg_tokenizer.end());
-      std::cout << "Location: " << vault_item[0] << std::endl;
-      std::cout << "Size: " << vault_item[1] << std::endl;
-      std::cout << "Serialized: " << vault_item[2] << std::endl;
-      std::cout << "Account name: " << vault_item[3] << std::endl;
+      LOG(kInfo) << "Location: " << vault_item[0];
+      LOG(kInfo) << "Size: " << vault_item[1];
+      LOG(kInfo) << "Serialized: " << vault_item[2];
+      LOG(kInfo) << "Account name: " << vault_item[3];
 
       asymm::Keys keys;
       if (!maidsafe::rsa::ParseKeys(vault_item[2], keys))
@@ -220,16 +198,16 @@ namespace priv {
     vault_tokenizer tok(content, delimiter);
 
     int32_t i = 1;
-    std::cout << "\n************************************************************\n" << std::endl;
+    LOG(kInfo) << "************************************************************";
     for (vault_tokenizer::iterator iterator = tok.begin(); iterator != tok.end(); ++iterator) {
-      std::cout << i << ". " << *iterator << std::endl;
+      LOG(kInfo) << i << ". " << *iterator;
       i++;
     }
-    std::cout << "\n************************************************************\n" << std::endl;
+    LOG(kInfo) << "************************************************************";
 
     if (select) {
       int32_t option;
-      std::cout << "Select an item: ";
+      LOG(kInfo) << "Select an item: ";
       std::cin >> option;
       return option;
     }
@@ -342,8 +320,8 @@ namespace priv {
         if (download_manager_.UpdateCurrentFile(current_path)) {
           LOG(kInfo) << "Signature file " << signature_file << " has been downloaded!";
         } else {
-          LOG(kInfo) << "ERROR!!! - signature file " << signature_file
-                    << " has not been downloaded!!!";
+          LOG(kError) << "ERROR! - signature file " << signature_file
+                    << " has not been downloaded!";
         }
 
         // Download the client file
@@ -352,10 +330,10 @@ namespace priv {
         download_manager_.SetFileToDownload(file_to_download);
 
         if (download_manager_.UpdateCurrentFile(current_path)) {
-          std::cout << "Client file " << file_to_download << " has been downloaded!" << std::endl;
+          LOG(kInfo) << "Client file " << file_to_download << " has been downloaded!" << std::endl;
         } else {
-          LOG(kInfo) << "ERROR!!! - client file " << file_to_download
-                    << " has not been downloaded!!!";
+          LOG(kError) << "ERROR! - client file " << file_to_download
+                    << " has not been downloaded!";
         }
 
         if (download_manager_.VerifySignature()) {
@@ -423,42 +401,42 @@ namespace priv {
         local_port_)) != kSuccess) {
       ++local_port_;
       if (local_port_ > 6483) {
-        std::cout << "ListenForMessages: Listening failed on all ports in range" << std::endl;
+        LOG(kError) << "ListenForMessages: Listening failed on all ports in range";
         return;
       }
     }
-    std::cout << "ListenForMessages: Listening on: " << local_port_ << std::endl;
+    LOG(kInfo) << "ListenForMessages: Listening on port " << local_port_;
     for (;;) {}
   }
 
   void VaultManager::OnError(const TransportCondition &transport_condition,
                              const Endpoint &/*remote_endpoint*/) {
-    std::cout << "Error " << transport_condition << "sending message." << std::endl;
+    LOG(kError) << "Error " << transport_condition << " when sending message." << std::endl;
   }
 
   void VaultManager::HandleIncomingMessage(const int& type, const std::string& payload,
                                     const Info& info, std::string* response) {
-    std::cout << "HandleIncomingMessage: message type " << type << " received." << std::endl;
+    LOG(kInfo) << "HandleIncomingMessage: message type " << type << " received.";
     if (info.endpoint.ip.to_string() != "127.0.0.1") {
-      std::cout << "HandleIncomingMessage: message is not of local origin." << std::endl;
+      LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
       return;
     }
     VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
     switch (message_type) {
       case VaultManagerMessageType::kHelloFromClient:
-        std::cout << "kHelloFromClient" << std::endl;
+        LOG(kInfo) << "kHelloFromClient";
         HandleClientHello(payload, info, response);
         break;
       case VaultManagerMessageType::kIdentityInfoRequestFromVault:
-        std::cout << "kIndentityInfoRequestFromVault" << std::endl;
+        LOG(kInfo) << "kIndentityInfoRequestFromVault";
         HandleVaultInfoRequest(payload, info, response);
         break;
       case VaultManagerMessageType::kStartRequestFromClient:
-        std::cout << "kStartRequestFromClient" << std::endl;
+        LOG(kInfo) << "kStartRequestFromClient";
         HandleClientStartVaultRequest(payload, info, response);
         break;
       default:
-        std::cout << "Incorrect message type" << std::endl;
+        LOG(kError) << "Invalid message type";
     }
   }
 
@@ -476,27 +454,16 @@ namespace priv {
         return;
       }
     }
-    std::cout << "HandleClientHello: Problem parsing client's hello message" << std::endl;
+    LOG(kError) <<  "HandleClientHello: Problem parsing client's hello message";
   }
 
   void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_string,
                                                    const Info& /*info*/, std::string* response) {
-    std::cout << "HandleClientStartVaultRequest" << std::endl;
     ClientStartVaultRequest request;
     if (request.ParseFromString(start_vault_string)) {
       asymm::Keys keys;
       asymm::ParseKeys(request.keys(), keys);
-      std::cout << "VaultManager: Identity: " << (keys.identity) << std::endl;
-      std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
-      std::string public_key_string;
-      maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
-      std::string private_key_string;
-      maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
-      std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
-      std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
-      std::string account_name(request.account_name());
-      std::cout << "Account name: " << account_name << std::endl;
-      std::string vmid;
+      std::string account_name(request.account_name()), vmid;
       std::string chunkstore_path = (GetSystemAppDir()/"TestVault").string()
                                       + RandomAlphaNumericString(5) + "/";
       if (!HandleBootstrapFile(keys.identity)) {
@@ -506,17 +473,14 @@ namespace priv {
       vmid = RunVault(chunkstore_path, "0", true);
       std::shared_ptr<WaitingVaultInfo> current_vault_info(new WaitingVaultInfo());
       current_vault_info->vault_vmid = vmid;
-      std::cout << "Client request: Vault vmid: " << vmid << std::endl;
-      /*current_vault_info.client_endpoint = return_endpoint;*/
       current_vault_info->account_name = account_name;
       current_vault_info->keys = keys;
       current_vault_info->chunkstore_path = chunkstore_path;
       current_vault_info->chunkstore_capacity = "0";
-      std::cout << "Client request: struct address: " << current_vault_info << std::endl;
       client_started_vault_vmids_.push_back(current_vault_info);
 
       boost::mutex::scoped_lock lock(current_vault_info->mutex_);
-      std::cout << "HandleClientStartVaultRequest: waiting for Vault" << std::endl;
+      LOG(kInfo) << "HandleClientStartVaultRequest: waiting for Vault";
       if (current_vault_info->cond_var_.timed_wait(lock,
                              boost::posix_time::seconds(3),
                              [&]()->bool { return current_vault_info->vault_requested_; })) {  // NOLINT (Philip)
@@ -526,19 +490,16 @@ namespace priv {
         int message_type(static_cast<int>(VaultManagerMessageType::kStartResponseToClient));
         *response = msg_handler_.MakeSerialisedWrapperMessage(
             message_type, start_vault_response.SerializeAsString());
-        std::cout << "HandleClientStartVaultRequest: wait for Vault succeeded" << std::endl;
         return;
       }
-      std::cout << "HandleClientStartVaultRequest: wait for Vault timed out" << std::endl;
+      LOG(kError) << "HandleClientStartVaultRequest: wait for Vault timed out";
     } else {
-    std::cout << "HandleClientStartVaultRequest: Problem parsing client's start vault message"
-              << std::endl;
+      LOG(kError) << "HandleClientStartVaultRequest: Problem parsing client's start vault message";
     }
   }
 
   void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_string,
                                             const Info& /*info*/, std::string* vault_info_string) {
-     std::cout << "HandleVaultInfoRequest" << std::endl;
      // GET INFO REQUEST
      VaultIdentityRequest request;
      bool new_vault(false);
@@ -546,11 +507,10 @@ namespace priv {
      auto config_it(config_file_vault_vmids_.begin());
      if (request.ParseFromString(vault_info_request_string)) {
        std::string vmid(request.vmid());
-       std::cout << "Vault request: Vault vmid: " << vmid << std::endl;
        for (; client_it != client_started_vault_vmids_.end(); ++client_it) {
          if ((*client_it)->vault_vmid == vmid) {
            new_vault = true;
-           std::cout << "Found ID in client_started_vault_vmids_" << std::endl;
+           LOG(kInfo) << "HandleVaultInfoRequest: request is from vault recently started by client";
            break;
          }
        }
@@ -577,12 +537,9 @@ namespace priv {
     boost::mutex::scoped_lock lock(waiting_vault_info->mutex_);
     waiting_vault_info->vault_requested_ = true;
     waiting_vault_info->cond_var_.notify_all();
-    std::cout << "Vault request: struct address: " << waiting_vault_info << std::endl;
-    std::cout << "HandleVaultInfoRequest: notify all called" << std::endl;
   }
 
   void VaultManager::StartListening() {
-    std::cout << GetSystemAppDir() << std::endl;
     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                           &msg_handler_, _1, _2, _3, _4));
     transport_->on_error()->connect(boost::bind(&MessageHandler::OnError,

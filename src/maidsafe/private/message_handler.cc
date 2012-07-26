@@ -42,14 +42,12 @@ void MessageHandler::OnMessageReceived(const std::string &request,
                                        const Info &info,
                                        std::string *response,
                                        Timeout *timeout) {
-  std::cout << "OnMessageReceived: MESSAGE RECEIVED" << std::endl;
   protobuf::WrapperMessage wrapper;
   *timeout = kImmediateTimeout;
   if (wrapper.ParseFromString(request) && wrapper.IsInitialized()) {
-    std::cout << "OnMessageReceived: succeeded in parsing message" << std::endl;
     callback_(wrapper.msg_type(), wrapper.payload(), info, response);
   } else {
-    std::cout << "OnMessageReceived: failed to parse message" << std::endl;
+    LOG(kError) << "OnMessageReceived: failed to parse message";
   }
 }
 

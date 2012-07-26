@@ -42,14 +42,14 @@ int main(int /*ac*/, char* /*av*/[]) {
   keys.identity = maidsafe::RandomAlphaNumericString(64);
   keys.validation_token = maidsafe::RandomAlphaNumericString(64);
   client.StartVault(keys, account_name);
-  std::cout << "Identity: " << (keys.identity) << std::endl;
-  std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
+  LOG(kInfo) << "Identity: " << (keys.identity);
+  LOG(kInfo) << "Validation Token: " << (keys.validation_token);
   std::string public_key_string;
   maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
   std::string private_key_string;
   maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
-  std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
-  std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
-  std::cout << "Account name: " << account_name << std::endl;
+  LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
+  LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
+  LOG(kInfo) << "Account name: " << account_name;
   return 0;
 }

@@ -163,13 +163,12 @@ namespace maidsafe {
   void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
     auto i = FindProcess(id);
     if (i == processes_.end()) {
-      std::cout << "CAN'T FIND PROCESS" << std::endl;
+      LOG(kError) << "RunProcess: process with specified VMID cannot be found";
       return;
     }
     if (restart) {
       boost::this_thread::sleep(boost::posix_time::milliseconds(600));
       // SetInstruction(id, ProcessInstruction::kRun);
-      LOG(kInfo) << "THE SIZE OF THE ENVIRONMENT IS " << bp::self::get_environment().size();
       if (logging) {
         maidsafe::log::FilterMap filter;
         filter["*"] = maidsafe::log::kVerbose;
@@ -182,23 +181,6 @@ namespace maidsafe {
     ctx.environment = bp::self::get_environment();
     ctx.stderr_behavior = bp::capture_stream();
     ctx.stdout_behavior = bp::capture_stream();
-    /*std::cout << "CONTEXT" << std::endl;
-    for (auto it(ctx.environment.begin()); it != ctx.environment.end(); ++it) {
-      std::cout << (*it).first << " " << (*it).second << std::endl;
-      if ((*it).first == "USER" || (*it).first == "USERNAME" || (*it).first == "LOGNAME")
-        (*it).second = "philip";
-      if ((*it).first == "MAIL")
-        (*it).second = (*it).second.substr(0, (*it).second.length() - 4) + "philip";
-      std::cout << (*it).first.substr(0, 4) << std::endl;
-      if ((*it).first.substr(0, 4) == "SUDO") {
-        ctx.environment.erase(it);
-        --it;
-      }
-    }
-    std::cout << "MODIFIED CONTEXT" << std::endl;
-    for (auto it(ctx.environment.begin()); it != ctx.environment.end(); ++it) {
-      std::cout << (*it).first << " " << (*it).second << std::endl;
-    }*/
 
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
@@ -213,21 +195,14 @@ namespace maidsafe {
     maidsafe::priv::VaultIdentityInfo info;
     info.set_keys(keys_string);
     info.set_account_name(account_name);
-    // LOG(kInfo) << is.rdbuf() << std::endl;
     while (std::getline(is, line)) {
       result += line;
       result += "\n";
-      /*LOG(kInfo) << line;
-      LOG(kInfo) << "\n";*/
-      std::cout << line << std::endl;
-      /*LOG(kInfo) << "\n";*/
     }
     result += "\nstd::err: ";
     while (std::getline(is2, line)) {
       result += line;
       result += "\n";
-      // LOG(kInfo) << "Error "<< line;
-      // LOG(kInfo) << "\n";
     }
 
     if (logging) {
@@ -246,19 +221,16 @@ namespace maidsafe {
     LOG(kInfo) << result;
 
     LOG(kInfo) << "Restart count = " << (*i).restart_count;
-    LOG(kInfo) << "BEFORE THE IF GROUPS";
     if (!(*i).done) {
       if ((*i).restart_count > 4) {
         LOG(kInfo) << "A process is consistently failing. Exiting... Restart count = "
-          << (*i).restart_count;
+                   << (*i).restart_count;
         exit(0);
       }
       if (((*i).restart_count < 3)) {
-        LOG(kInfo) << "INSIDE SECOND IF";
         (*i).restart_count = (*i).restart_count + 1;
         RunProcess(id, true, false);
       } else {
-        LOG(kInfo) << "INSIDE ELSE";
         (*i).restart_count = (*i).restart_count + 1;
         RunProcess(id, true, true);
       }
@@ -270,7 +242,6 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = true;
-    LOG(kInfo) << "KillProcess: SetInstruction";
     // SetInstruction(id, ProcessInstruction::kTerminate);
   }
 
@@ -279,7 +250,6 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = true;
-    LOG(kInfo) << "StopProcess: SetInstruction";
     // SetInstruction(id, ProcessInstruction::kStop);
   }
 
@@ -288,7 +258,6 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = false;
-    LOG(kInfo) << "RestartProcess: SetInstruction";
     // SetInstruction(id, ProcessInstruction::kTerminate);
   }
 
@@ -302,7 +271,6 @@ namespace maidsafe {
     // ProcessManagerStruct status;
     // status.instruction = ProcessInstruction::kRun;
     // AddStatus(id, status);
-    /*boost::this_thread::sleep(boost::posix_time::seconds(10000));*/
     boost::thread thd([=] { RunProcess(id, false, false); }); //NOLINT
     (*i).thread = std::move(thd);
   }
@@ -392,25 +360,5 @@ namespace maidsafe {
       return ProcessInstruction::kInvalid;
     }
     return (*t.first)[id].instruction;
-  }*/
-
-  /*bool ProcessManager::CheckTerminateFlag(int32_t id) {
-    std::pair<TerminateVector*, std::size_t> t =
-        shared_mem_.find<TerminateVector>("terminate_info");
-    size_t size(0);
-    if (t.first) {
-      size = (*t.first).size();
-    } else {
-      LOG(kError) << "CheckTerminateFlag: failed to access IPC shared memory";
-      return false;
-    }
-    if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
-      LOG(kError) << "CheckTerminateFlag: given process id is invalid or outwith range of "
-                  << "terminate vector. Vector size: " << size << ", index: " << id - 1;
-      return false;
-    }
-    if ((*t.first).at(id - 1) == TerminateStatus::kTerminate)
-      return true;
-    return false;
   }*/
 }  // namespace maidsafe

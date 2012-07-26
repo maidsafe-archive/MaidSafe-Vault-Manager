@@ -136,22 +136,10 @@ namespace priv {
         exit(0);
   }*/
 
-  void VaultController::PrintResult(std::string serv,
-    boost::asio::ip::tcp::resolver::iterator iter,
-    const boost::system::error_code& ec) {
-    if (ec)
-        std::cout << "service: '" << serv << "' FAIL: " << ec.message() << "\n";
-    else
-    {
-        std::cout << "service: '" << serv << "' OK\n";
-        std::cout << "endpoint: " << iter->endpoint() << "\n";
-    }
-  }
-
   void VaultController::ReceiveKeys() {
     std::string full_request;
     Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
-    std::cout << "IN ReceiveKeys: port " << port_ << std::endl;
+    LOG(kInfo) << "ReceiveKeys: sending keys request to port " << port_;
     int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
     maidsafe::priv::VaultIdentityRequest request;
     request.set_vmid(process_id_);
@@ -160,9 +148,8 @@ namespace priv {
     ResetTransport(transport, message_handler);
     full_request = message_handler->MakeSerialisedWrapperMessage(message_type,
                                                                   request.SerializeAsString());
+    LOG(kInfo) << "ReceiveKeys: Sending request for vault identity info to port" << endpoint.port;
     transport->Send(full_request, endpoint, boost::posix_time::milliseconds(1000));
-    std::cout << "ReceiveKeys, sending request for vault identity info to: "
-              << endpoint.ip.to_string() << ", " << endpoint.port << std::endl;
   }
 
   void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,
@@ -171,37 +158,30 @@ namespace priv {
                                             std::shared_ptr<TcpTransport> /*transport*/,
                                             std::shared_ptr<MessageHandler> /*message_handler*/) {
     if (sender_info.endpoint.ip.to_string() != "127.0.0.1") {
-      std::cout << "HandleIncomingMessage: message is not of local origin." << std::endl;
+      LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
       return;
     }
     boost::mutex::scoped_lock lock(mutex_);
     if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
-      std::cout << "ReceiveKeysCallback: response message is of incorrect type." << std::endl;
+      LOG(kError) << "ReceiveKeysCallback: response message is of incorrect type.";
       return;
     }
     VaultIdentityInfo info;
     info.ParseFromString(serialised_info);
     if (!maidsafe::rsa::ParseKeys(info.keys(), keys_)) {
-      std::cout << "ReceiveKeysCallback: failed to parse keys. " << std::endl;
+      LOG(kError) << "ReceiveKeysCallback: failed to parse keys. ";
       info_received_ = false;
       return;
     } else {
       account_name_ = info.account_name();
       if (account_name_ == "") {
-        std::cout << "ReceiveKeysCallback: account name is empty. " << std::endl;
+        LOG(kError) << "ReceiveKeysCallback: account name is empty. ";
         info_received_ = false;
         return;
       }
       info_received_ = true;
       cond_var_.notify_all();
     }
-    /*std::cout << "KEYS RECEIVED: " << std::endl;
-    std::string public_key_string, private_key_string;
-    rsa::EncodePublicKey(keys_.public_key, &public_key_string);
-    std::cout << "PUBLIC KEY" << public_key_string << std::endl;
-    rsa::EncodePrivateKey(keys_.private_key, &private_key_string);
-    std::cout << "PRIVATE KEY" << private_key_string << std::endl;
-    std::cout << "Message received from manager: " << serialised_info << std::endl;*/
   }
 
   void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
@@ -219,10 +199,9 @@ namespace priv {
 
   bool VaultController::Start(std::string vmid_string,
                               std::function<void()> /*stop_callback*/) {
-    std::cout << "IN VaultController Start" << std::endl;
     try {
       if (vmid_string == "") {
-        LOG(kInfo) << " VaultController: you must supply a process id";
+        LOG(kInfo) << " VaultController: Start: You must supply a process id";
         return false;
       }
       boost::char_separator<char> sep("-");
@@ -242,7 +221,6 @@ namespace priv {
         port_ = boost::lexical_cast<uint16_t>(*it);
       else
         LOG(kError) << " VaultController: Invalid Vault Manager ID";
-      std::cout << "PORT: " << port_ << std::endl;
       if (port_ != 0) {
       thd = boost::thread([=] {
                                 ReceiveKeys();
@@ -250,7 +228,7 @@ namespace priv {
                               });
       }
     } catch(std::exception& e)  {
-      std::cout << e.what() << "\n";
+      LOG(kError) << "VaultController: Start: Error receiving keys" << e.what();
       return false;
     }
     started_ = true;

@@ -96,12 +96,12 @@ struct ProcessManagerStruct {
 // }
 
 void stop_handler() {
-  std::cout << "Process stopping, asked to stop by parent." << std::endl;
+  LOG(kInfo) << "Process stopping, asked to stop by parent.";
   exit(0);
 }
 
 int main(int ac, char* av[]) {
-  std::cout << "Starting DUMMYprocess." << std::endl;
+  LOG(kInfo) << "Starting DUMMYprocess.";
   boost::thread thd;
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   maidsafe::priv::VaultController vc;
@@ -110,43 +110,42 @@ int main(int ac, char* av[]) {
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
-      ("vmid", po::value<std::string>(), "vault manager id")
-      ("randomstuff", po::value<std::string>(), "random stuff");
+      ("vmid", po::value<std::string>(), "vault manager ID");
   try {
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
     po::notify(vm);
 
     if (vm.count("help")) {
-        std::cout << desc << "\n";
+        LOG(kInfo) << desc;
         return 1;
     }
     if (!vm.count("vmid")) {
-      LOG(kInfo) << " main:You must supply a process id";
+      LOG(kInfo) << "DUMMYprocess: You must supply a vault manager ID";
       return 1;
     }
     std::string id = vm["vmid"].as<std::string>();
-    std::cout << "Starting VaultController." << std::endl;
+    LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
     vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
     maidsafe::asymm::Keys keys;
     std::string account_name;
     vc.GetIdentity(&keys, &account_name);
-    std::cout << "DUMMYprocess: Identity: " << (keys.identity) << std::endl;
-    std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
+    LOG(kInfo) << "DUMMYprocess: Identity: " << (keys.identity);
+    LOG(kInfo) << "Validation Token: " << (keys.validation_token);
     std::string public_key_string;
     maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
     std::string private_key_string;
     maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
-    std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
-    std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
-    std::cout << "Account name: " << account_name << std::endl;
+    LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
+    LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
+    LOG(kInfo) << "Account name: " << account_name;
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
-        std::cout << "Running for " << runtime << " seconds. \n";
+        LOG(kInfo) << "Running for " << runtime << " seconds.";
         boost::this_thread::sleep(boost::posix_time::seconds(runtime));
         if (vm.count("nocrash")) {
           check_finished = true;
-          std::cout << "Process finishing normally. " << std::endl;
+          LOG(kInfo) << "DUMMYprocess: Process finishing normally. ";
           if (thd.joinable())
             thd.join();
           return 0;
@@ -156,41 +155,10 @@ int main(int ac, char* av[]) {
     } else {
       while (true)
         maidsafe::Sleep(boost::posix_time::seconds(1));
-        // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } catch(std::exception& e)  {
-    std::cout << "WE'RE DEFINITELY HERE " << e.what() << " WE'RE HERE\n";
+    LOG(kError) << "Error: " << e.what();
     return 1;
   }
   return 0;
 }
-
-/*#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/thread.hpp>
-#include <string>
-#include <iostream>
-
-namespace bi = boost::interprocess;
-
-struct Struct {
-  int32_t integer;
-};
-
-int main(int ac, char* av[]) {
-  typedef boost::interprocess::allocator<std::pair<const int32_t, Struct>,
-    boost::interprocess::managed_shared_memory::segment_manager> StructAlloc;
-  typedef boost::interprocess::map<int32_t, Struct, std::less<int32_t>, StructAlloc> StructMap;
-  std::string shared_mem_name("hello");
-
-  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
-
-  boost::interprocess::managed_shared_memory shared_mem(boost::interprocess::open_or_create, shared_mem_name.c_str(), 4096);
-  std::pair<StructMap*, std::size_t> map_pair(shared_mem.find<StructMap>("struct_map"));
-  for (auto it((map_pair.first)->begin()); it != (map_pair.first)->end(); ++it)
-    std::cout << "KEY: " << (*it).first << " VALUE: " << (*it).second.integer << std::endl;
-  for (int i(1); i < 11; ++i)
-    std::cout << "KEY " << i << " HAS " << (*map_pair.first).count(i) << " VALUE(S)" << std::endl;
-  return 0;
-}*/

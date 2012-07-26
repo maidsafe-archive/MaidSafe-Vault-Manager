@@ -513,37 +513,3 @@ int main(int argc, char **argv) {
   filter["*"] = maidsafe::log::kInfo;
   return ExecuteMain(argc, argv, filter);
 }
-
-/*#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/thread.hpp>
-#include <string>
-#include <iostream>
-
-namespace bi = boost::interprocess;
-
-struct Struct {
-  int32_t integer;
-};
-
-int main(int ac, char* av[]) {
-  typedef boost::interprocess::allocator<std::pair<const int32_t, Struct>,
-    boost::interprocess::managed_shared_memory::segment_manager> StructAlloc;
-  typedef boost::interprocess::map<int32_t, Struct, std::less<int32_t>, StructAlloc> StructMap;
-  std::string shared_mem_name("hello");
-
-  boost::interprocess::shared_memory_object::remove(shared_mem_name.c_str());
-  boost::interprocess::managed_shared_memory shared_mem(boost::interprocess::open_or_create, shared_mem_name.c_str(), 4096);
-  StructMap* map = shared_mem.construct<StructMap>("struct_map")(std::less<int32_t>(), shared_mem.get_segment_manager());
-  for (int i(1); i < 11; ++i)
-    (*map)[i].integer = 5;
-  for (auto it(map->begin()); it != map->end(); ++it)
-    std::cout << "KEY: " << (*it).first << " VALUE: " << (*it).second.integer << std::endl;
-  for (int i(1); i < 11; ++i) {
-
-    std::cout << "KEY " << i <<  " HAS " << (*map).count(i) << " VALUE(S)" << std::endl;
-  }
-  boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
-  return 0;
-}*/
