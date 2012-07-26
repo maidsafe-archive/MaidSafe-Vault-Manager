@@ -95,7 +95,7 @@ ms_add_executable(TESTdownload "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsa
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vault_manager_test.cc")
+ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vault_manager_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)

@@ -301,8 +301,8 @@ namespace priv {
 
     #ifdef _WINDOWS
     platform = "win";
-    extension = ".exe"
-    #elifdef _APPLE_
+    extension = ".exe";
+    #elif _APPLE_
     platform = "osx";
     #else
     platform = "linux";
@@ -413,7 +413,7 @@ namespace priv {
       return true;
     } catch(const std::exception& e) {
       LOG(kError) << "Error creating/accessing bootstrap file: " << e.what();
-      return false;
+      // return false;
     }
     return false;
   }

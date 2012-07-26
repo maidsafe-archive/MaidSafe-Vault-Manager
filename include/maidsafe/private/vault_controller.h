@@ -87,8 +87,8 @@ class VaultController {
                            std::shared_ptr<MessageHandler> message_handler);
   void OnMessageReceived(const std::string &request,
                          const Info /*&info*/,
-                         std::string */*response*/,
-                         Timeout */*timeout*/);
+                         std::string* /*response*/,
+                         Timeout* /*timeout*/);
   void ResetTransport(std::shared_ptr<TcpTransport>& transport,
                       std::shared_ptr<MessageHandler>& message_handler);
   /*ProcessInstruction CheckInstruction(const int32_t& id);*/
