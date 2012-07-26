@@ -249,8 +249,8 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
     int length = current_file_stream.readsome(&char_buffer[0], 1024);
     std::string current_block(char_buffer.begin(), char_buffer.begin() + length);
     file_out.write(current_block.c_str(), current_block.size());
-
-    while (size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error)) {
+    size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
+    while (size > 0) {
       if (error && error != boost::asio::error::eof) {
         LOG(kError) << "UpdateCurrentFile: Error downloading file " << file_to_download_ << ": "
                     << error.message();
@@ -258,6 +258,7 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
       }
       current_block.assign(char_buffer.begin(), char_buffer.begin() + size);
       file_out.write(current_block.c_str(), current_block.size());
+      size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     }
     LOG(kInfo) << "UpdateCurrentFile: Finished downloading file " << file_to_download_
                << ", closing file.";
