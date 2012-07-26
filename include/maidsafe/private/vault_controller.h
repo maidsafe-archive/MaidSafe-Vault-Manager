@@ -71,7 +71,7 @@ class VaultController {
   VaultController();
   ~VaultController();
 
-  bool Start(std::string pid_string, std::function<void()> stop_callback);
+  bool Start(std::string vmid_string, std::function<void()> stop_callback);
   bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
 
  private:

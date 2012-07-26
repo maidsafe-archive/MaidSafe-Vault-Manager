@@ -48,10 +48,10 @@ namespace maidsafe {
 
 namespace priv {
 
-  WaitingVaultInfo::WaitingVaultInfo(const WaitingVaultInfo& other)
-      : vault_pid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
+  /*WaitingVaultInfo::WaitingVaultInfo(const WaitingVaultInfo& other)
+      : vault_vmid(), client_endpoint(), account_name(), keys(), chunkstore_path(),
         chunkstore_capacity(), mutex_(), cond_var_(), vault_requested_() {
-    vault_pid = other.vault_pid;
+    vault_vmid = other.vault_vmid;
     client_endpoint = other.client_endpoint;
     account_name = other.account_name;
     keys = other.keys;
@@ -60,21 +60,21 @@ namespace priv {
     mutex_ = other.mutex_;
     cond_var_ = other.cond_var_;
     vault_requested_ = other.vault_requested_;
-  }
+  }*/
 
-  VaultManager::VaultManager() : p_id_vector_(), process_vector_(), manager_(),
+  VaultManager::VaultManager() : vmid_vector_(), process_vector_(), manager_(),
                                  download_manager_(), asio_service_(new AsioService(3)),
                                  msg_handler_(),
                                  transport_(new TcpTransport(asio_service_->service())),
-                                 local_port_(5483), client_started_vault_pids_(),
-                                 config_file_vault_pids_() {
+                                 local_port_(5483), client_started_vault_vmids_(),
+                                 config_file_vault_vmids_() {
                                    asio_service_->Start();
                                 }
 
   VaultManager::~VaultManager() {}
 
 //   VaultManager::VaultManager(const maidsafe::priv::VaultManager& /*vman*/)
-//       : p_id_vector_(),
+//       : vmid_vector_(),
 //         process_vector_(),
 //         manager_(),
 //         download_manager_(),
@@ -82,39 +82,39 @@ namespace priv {
 //         msg_handler_(),
 //         transport_(new TcpTransport(asio_service_->service())),
 //         local_port_(5483),
-//         client_started_vault_pids_(),
-//         config_file_vault_pids_() {}
+//         client_started_vault_vmids_(),
+//         config_file_vault_vmids_() {}
 
   std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
                               bool new_vault) {
     maidsafe::Process process;
-    std::string p_id;
+    std::string vmid;
     std::cout << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
               << chunkstore_capacity << std::endl;
 
-    /*process.SetProcessName("pd-vault");
+    process.SetProcessName("pd-vault");
     process.AddArgument("pd-vault");
-    process.AddArgument("--chunkstore_path");
+    process.AddArgument("--chunk_path");
     process.AddArgument(chunkstore_path);
-    process.AddArgument("--chunkstore_capacity");
+    process.AddArgument("--chunk_capacity");
     process.AddArgument(chunkstore_capacity);
-    process.AddArgument("--start");*/
+    process.AddArgument("--start");
 
-    process.SetProcessName("DUMMYprocess");
+    /*process.SetProcessName("DUMMYprocess");
     process.AddArgument("DUMMYprocess");
-    process.AddArgument("--nocrash");
+    process.AddArgument("--nocrash");*/
 
     process_vector_.push_back(process);
 
-    p_id = manager_.AddProcess(process);
-    p_id_vector_.push_back(p_id);
+    vmid = manager_.AddProcess(process);
+    vmid_vector_.push_back(vmid);
 
-    manager_.StartProcess(p_id);
+    manager_.StartProcess(vmid);
 
     if (new_vault) {
       // WriteConfig();
     }
-    return p_id;
+    return vmid;
   }
 
   void VaultManager::RestartVault(std::string id) {
@@ -122,15 +122,15 @@ namespace priv {
   }
 
   void VaultManager::StopVault(int32_t id) {
-//     manager_.KillProcess(p_id_vector_[id]);
-    manager_.StopProcess(p_id_vector_[id]);  // This is to be put in function when the
+//     manager_.KillProcess(vmid_vector_[id]);
+    manager_.StopProcess(vmid_vector_[id]);  // This is to be put in function when the
 //     new model od process manager will work properly
   }
 
   void VaultManager::EraseVault(int32_t id) {
       process_vector_.erase(process_vector_.begin() + (id - 1));
-      manager_.KillProcess(p_id_vector_[id - 1]);
-      p_id_vector_.erase(p_id_vector_.begin() + (id - 1));
+      manager_.KillProcess(vmid_vector_[id - 1]);
+      vmid_vector_.erase(vmid_vector_.begin() + (id - 1));
       std::cout << "Erasing vault..." << std::endl;
       if (WriteConfig()) {
         std::cout << "Done!\n" << std::endl;
@@ -143,28 +143,28 @@ namespace priv {
 
     std::string content = "";
 
-    for (size_t i = 0; i < config_file_vault_pids_.size(); i++) {
+    for (size_t i = 0; i < config_file_vault_vmids_.size(); i++) {
       if (i != 0)
       {
         content += "\n";
       }
       std::string serialized_keys = "";
-      maidsafe::rsa::SerialiseKeys(config_file_vault_pids_[i].keys, serialized_keys);
-      content += config_file_vault_pids_[i].chunkstore_path + " "
-                  + config_file_vault_pids_[i].chunkstore_capacity + " " + serialized_keys + " "
-                  + config_file_vault_pids_[i].account_name;
+      maidsafe::rsa::SerialiseKeys(config_file_vault_vmids_[i]->keys, serialized_keys);
+      content += config_file_vault_vmids_[i]->chunkstore_path + " "
+                  + config_file_vault_vmids_[i]->chunkstore_capacity + " " + serialized_keys + " "
+                  + config_file_vault_vmids_[i]->account_name;
     }
 
-    for (size_t i = 0; i < client_started_vault_pids_.size(); i++) {
+    for (size_t i = 0; i < client_started_vault_vmids_.size(); i++) {
       if (i != 0)
       {
         content += "\n";
       }
       std::string serialized_keys = "";
-      maidsafe::rsa::SerialiseKeys(client_started_vault_pids_[i].keys, serialized_keys);
-      content += client_started_vault_pids_[i].chunkstore_path + " "
-                  + client_started_vault_pids_[i].chunkstore_capacity + " " + serialized_keys + " "
-                  + client_started_vault_pids_[i].account_name;
+      maidsafe::rsa::SerialiseKeys(client_started_vault_vmids_[i]->keys, serialized_keys);
+      content += client_started_vault_vmids_[i]->chunkstore_path + " "
+                  + client_started_vault_vmids_[i]->chunkstore_capacity + " " + serialized_keys
+                  + " " + client_started_vault_vmids_[i]->account_name;
     }
 
     return maidsafe::WriteFile(path, content);
@@ -196,15 +196,15 @@ namespace priv {
       if (!maidsafe::rsa::ParseKeys(vault_item[2], keys))
         LOG(kInfo) << "Error parsing the keys!!!";
 
-      WaitingVaultInfo vault_info;
-      vault_info.keys = keys;
-      vault_info.account_name = vault_item[3];
+      std::shared_ptr<WaitingVaultInfo> vault_info(new WaitingVaultInfo());
+      vault_info->keys = keys;
+      vault_info->account_name = vault_item[3];
 
-      std::string pid;
-      pid = RunVault(vault_item[0], vault_item[1], false);
+      std::string vmid;
+      vmid = RunVault(vault_item[0], vault_item[1], false);
 
-      vault_info.vault_pid = pid;
-      config_file_vault_pids_.push_back(vault_info);
+      vault_info->vault_vmid = vmid;
+      config_file_vault_vmids_.push_back(vault_info);
     }
     return true;
   }
@@ -471,33 +471,34 @@ namespace priv {
       std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
       std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
       std::string account_name(request.account_name());
-      std::string pid;
+      std::cout << "Account name: " << account_name << std::endl;
+      std::string vmid;
       std::string chunkstore_path = (GetSystemAppDir()/"TestVault").string()
                                       + RandomAlphaNumericString(5) + "/";
-      pid = RunVault(chunkstore_path, "0", true);
-      WaitingVaultInfo current_vault_info;
-      current_vault_info.vault_pid = pid;
-      std::cout << "Client request: Vault pid: " << pid << std::endl;
+      vmid = RunVault(chunkstore_path, "0", true);
+      std::shared_ptr<WaitingVaultInfo> current_vault_info(new WaitingVaultInfo());
+      current_vault_info->vault_vmid = vmid;
+      std::cout << "Client request: Vault vmid: " << vmid << std::endl;
       /*current_vault_info.client_endpoint = return_endpoint;*/
-      current_vault_info.account_name = account_name;
-      current_vault_info.keys = keys;
-      current_vault_info.chunkstore_path = chunkstore_path;
-      current_vault_info.chunkstore_capacity = "0";
-      current_vault_info.mutex_ = std::shared_ptr<boost::mutex>(new boost::mutex());
-      current_vault_info.cond_var_ =
-        std::shared_ptr<boost::condition_variable>(new boost::condition_variable());
-      client_started_vault_pids_.push_back(current_vault_info);
+      current_vault_info->account_name = account_name;
+      current_vault_info->keys = keys;
+      current_vault_info->chunkstore_path = chunkstore_path;
+      current_vault_info->chunkstore_capacity = "0";
+      std::cout << "Client request: struct address: " << current_vault_info << std::endl;
+      client_started_vault_vmids_.push_back(current_vault_info);
 
-      boost::mutex::scoped_lock lock(*current_vault_info.mutex_);
-      if (current_vault_info.cond_var_->timed_wait(lock,
+      boost::mutex::scoped_lock lock(current_vault_info->mutex_);
+      std::cout << "HandleClientStartVaultRequest: waiting for Vault" << std::endl;
+      if (current_vault_info->cond_var_.timed_wait(lock,
                              boost::posix_time::seconds(3),
-                             [&]()->bool { return current_vault_info.vault_requested_; })) {  // NOLINT (Philip)
+                             [&]()->bool { return current_vault_info->vault_requested_; })) {  // NOLINT (Philip)
         // SEND RESPONSE TO CLIENT
         ClientStartVaultResponse start_vault_response;
         start_vault_response.set_result(true);
         int message_type(static_cast<int>(VaultManagerMessageType::kStartResponseToClient));
         *response = msg_handler_.MakeSerialisedWrapperMessage(
             message_type, start_vault_response.SerializeAsString());
+        std::cout << "HandleClientStartVaultRequest: wait for Vault succeeded" << std::endl;
         return;
       }
       std::cout << "HandleClientStartVaultRequest: wait for Vault timed out" << std::endl;
@@ -513,21 +514,21 @@ namespace priv {
      // GET INFO REQUEST
      VaultIdentityRequest request;
      bool new_vault(false);
-     auto client_it(client_started_vault_pids_.begin());
-     auto config_it(config_file_vault_pids_.begin());
+     auto client_it(client_started_vault_vmids_.begin());
+     auto config_it(config_file_vault_vmids_.begin());
      if (request.ParseFromString(vault_info_request_string)) {
-       std::string pid(request.pid());
-       std::cout << "Vault request: Vault pid: " << pid << std::endl;
-       for (; client_it != client_started_vault_pids_.end(); ++client_it) {
-         if ((*client_it).vault_pid == pid) {
+       std::string vmid(request.vmid());
+       std::cout << "Vault request: Vault vmid: " << vmid << std::endl;
+       for (; client_it != client_started_vault_vmids_.end(); ++client_it) {
+         if ((*client_it)->vault_vmid == vmid) {
            new_vault = true;
-           std::cout << "Found ID in client_started_vault_pids_" << std::endl;
+           std::cout << "Found ID in client_started_vault_vmids_" << std::endl;
            break;
          }
        }
        if (!new_vault) {
-         for (; config_it != config_file_vault_pids_.end(); ++config_it) {
-           if ((*config_it).vault_pid == pid) {
+         for (; config_it != config_file_vault_vmids_.end(); ++config_it) {
+           if ((*config_it)->vault_vmid == vmid) {
              break;
            }
          }
@@ -536,22 +537,20 @@ namespace priv {
     // SEND INFO TO VAULT
     VaultIdentityInfo vault_info;
     std::string keys_string;
-    WaitingVaultInfo waiting_vault_info;
-    if (new_vault)
-      waiting_vault_info = *client_it;
-    else
-      waiting_vault_info = *config_it;
+    std::shared_ptr<WaitingVaultInfo> waiting_vault_info(new_vault ? *client_it : *config_it);
 
-    vault_info.set_account_name(waiting_vault_info.account_name);
-    asymm::SerialiseKeys(waiting_vault_info.keys, keys_string);
+    vault_info.set_account_name(waiting_vault_info->account_name);
+    asymm::SerialiseKeys(waiting_vault_info->keys, keys_string);
     vault_info.set_keys(keys_string);
 
     int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault));
     *vault_info_string = msg_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                    vault_info.SerializeAsString());
-    boost::mutex::scoped_lock lock(*waiting_vault_info.mutex_);
-    waiting_vault_info.vault_requested_ = true;
-    waiting_vault_info.cond_var_->notify_all();
+    boost::mutex::scoped_lock lock(waiting_vault_info->mutex_);
+    waiting_vault_info->vault_requested_ = true;
+    waiting_vault_info->cond_var_.notify_all();
+    std::cout << "Vault request: struct address: " << waiting_vault_info << std::endl;
+    std::cout << "HandleVaultInfoRequest: notify all called" << std::endl;
   }
 
   void VaultManager::StartListening() {

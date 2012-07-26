@@ -39,9 +39,9 @@ int main(int /*ac*/, char* /*av*/[]) {
   maidsafe::asymm::Keys keys;
   std::string account_name("ACCOUNT1");
   maidsafe::asymm::GenerateKeyPair(&keys);
-  client.StartVault(keys, account_name);
   keys.identity = maidsafe::RandomAlphaNumericString(64);
   keys.validation_token = maidsafe::RandomAlphaNumericString(64);
+  client.StartVault(keys, account_name);
   std::cout << "Identity: " << (keys.identity) << std::endl;
   std::cout << "Validation Token: " << (keys.validation_token) << std::endl;
   std::string public_key_string;
@@ -50,6 +50,6 @@ int main(int /*ac*/, char* /*av*/[]) {
   maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
   std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
   std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
-  while (true) {}
+  std::cout << "Account name: " << account_name << std::endl;
   return 0;
 }

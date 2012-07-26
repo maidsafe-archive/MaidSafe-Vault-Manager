@@ -110,7 +110,7 @@ int main(int ac, char* av[]) {
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
-      ("pid", po::value<std::string>(), "process id")
+      ("vmid", po::value<std::string>(), "vault manager id")
       ("randomstuff", po::value<std::string>(), "random stuff");
   try {
     po::variables_map vm;
@@ -121,11 +121,11 @@ int main(int ac, char* av[]) {
         std::cout << desc << "\n";
         return 1;
     }
-    if (!vm.count("pid")) {
+    if (!vm.count("vmid")) {
       LOG(kInfo) << " main:You must supply a process id";
       return 1;
     }
-    std::string id = vm["pid"].as<std::string>();
+    std::string id = vm["vmid"].as<std::string>();
     std::cout << "Starting VaultController." << std::endl;
     vc.Start(id.c_str(), [&] { stop_handler(); });  // NOLINT
     maidsafe::asymm::Keys keys;
@@ -139,6 +139,7 @@ int main(int ac, char* av[]) {
     maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
     std::cout << "Public Key: " << maidsafe::Base64Substr(public_key_string) << std::endl;
     std::cout << "Private Key: " << maidsafe::Base64Substr(private_key_string) << std::endl;
+    std::cout << "Account name: " << account_name << std::endl;
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
         std::cout << "Running for " << runtime << " seconds. \n";
@@ -154,7 +155,8 @@ int main(int ac, char* av[]) {
         }
     } else {
       while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        maidsafe::Sleep(boost::posix_time::seconds(1));
+        // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } catch(std::exception& e)  {
     std::cout << "WE'RE DEFINITELY HERE " << e.what() << " WE'RE HERE\n";

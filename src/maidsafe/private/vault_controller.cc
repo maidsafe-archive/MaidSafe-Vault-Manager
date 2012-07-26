@@ -154,7 +154,7 @@ namespace priv {
     std::cout << "IN ReceiveKeys: port " << port_ << std::endl;
     int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
     maidsafe::priv::VaultIdentityRequest request;
-    request.set_pid(process_id_);
+    request.set_vmid(process_id_);
     std::shared_ptr<TcpTransport> transport;
     std::shared_ptr<MessageHandler> message_handler;
     ResetTransport(transport, message_handler);
@@ -213,16 +213,16 @@ namespace priv {
                       transport, message_handler));
   }
 
-  bool VaultController::Start(std::string pid_string,
+  bool VaultController::Start(std::string vmid_string,
                               std::function<void()> /*stop_callback*/) {
     std::cout << "IN VaultController Start" << std::endl;
     try {
-      if (pid_string == "") {
+      if (vmid_string == "") {
         LOG(kInfo) << " VaultController: you must supply a process id";
         return 1;
       }
       boost::char_separator<char> sep("-");
-      boost::tokenizer<boost::char_separator<char>> tok(pid_string, sep);
+      boost::tokenizer<boost::char_separator<char>> tok(vmid_string, sep);
       auto it(tok.begin());
       process_id_ = (*it);
       ++it;
@@ -230,7 +230,7 @@ namespace priv {
       std::cout << "PORT: " << port_ << std::endl;
       thd = boost::thread([=] {
                                 ReceiveKeys();
-                                  /*ListenForStopTerminate(shared_mem_name, pid, stop_callback);*/
+                                  /*ListenForStopTerminate(shared_mem_name, vmid, stop_callback);*/
                               });
     } catch(std::exception& e)  {
       std::cout << e.what() << "\n";
