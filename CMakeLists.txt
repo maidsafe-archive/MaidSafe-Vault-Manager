@@ -60,6 +60,14 @@ source_group("Chunk Store Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE
 source_group("Chunk Store Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR})
 source_group("Chunk Store API Files" FILES ${API_FILES_PRIVATE_CHUNK_STORE_DIR})
 
+file(GLOB SOURCE_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.cc")
+file(GLOB HEADER_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.h")
+file(GLOB API_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/utils/*.h")
+set(ALL_FILES_PRIVATE_UTILS_DIR ${SOURCE_FILES_PRIVATE_UTILS_DIR} ${HEADER_FILES_PRIVATE_UTILS_DIR} ${API_FILES_PRIVATE_UTILS_DIR})
+source_group("Utilities Source Files" FILES ${SOURCE_FILES_PRIVATE_UTILS_DIR})
+source_group("Utilities Header Files" FILES ${HEADER_FILES_PRIVATE_UTILS_DIR})
+source_group("Utilities API Files" FILES ${API_FILES_PRIVATE_UTILS_DIR})
+
 ####    TESTS    ####
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
 file(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.h")
@@ -77,10 +85,13 @@ source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR}
+                              ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
+                              ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
+                              ${ALL_FILES_PRIVATE_UTILS_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc")
-ms_add_executable(TESTdownload "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc") 
+ms_add_executable(TESTdownload "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc")
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
