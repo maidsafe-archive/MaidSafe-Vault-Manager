@@ -108,6 +108,10 @@ namespace priv {
                                            const Info& info, std::string* response,
                                            std::shared_ptr<TcpTransport> /*transport*/,
                                            std::shared_ptr<MessageHandler> /*message_handler*/) {
+    if (info.endpoint.ip.to_string() != "127.0.0.1") {
+      std::cout << "HandleIncomingMessage: message is not of local origin." << std::endl;
+      return;
+    }
     VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
     switch (message_type) {
       case VaultManagerMessageType::kHelloResponseToClient:

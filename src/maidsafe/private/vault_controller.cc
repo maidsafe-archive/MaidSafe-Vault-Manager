@@ -166,10 +166,14 @@ namespace priv {
   }
 
   void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,
-                                            const Info& /*sender_info*/,
+                                            const Info& sender_info,
                                             std::string* /*response*/,
                                             std::shared_ptr<TcpTransport> /*transport*/,
                                             std::shared_ptr<MessageHandler> /*message_handler*/) {
+    if (sender_info.endpoint.ip.to_string() != "127.0.0.1") {
+      std::cout << "HandleIncomingMessage: message is not of local origin." << std::endl;
+      return;
+    }
     boost::mutex::scoped_lock lock(mutex_);
     if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
       std::cout << "ReceiveKeysCallback: response message is of incorrect type." << std::endl;
@@ -219,14 +223,25 @@ namespace priv {
     try {
       if (vmid_string == "") {
         LOG(kInfo) << " VaultController: you must supply a process id";
-        return 1;
+        return false;
       }
       boost::char_separator<char> sep("-");
       boost::tokenizer<boost::char_separator<char>> tok(vmid_string, sep);
+      int size(0);
+      for (auto it(tok.begin()); it != tok.end(); ++it, ++size) {}
+      if (size != 2) {
+        LOG(kError) << " VaultController: Invalid Vault Manager ID";
+      }
       auto it(tok.begin());
-      process_id_ = (*it);
+      if ((*it).length() > 0)
+        process_id_ = (*it);
+      else
+        LOG(kError) << " VaultController: Invalid Vault Manager ID";
       ++it;
-      port_ = boost::lexical_cast<uint16_t>(*it);
+      if ((*it).length() > 0)
+        port_ = boost::lexical_cast<uint16_t>(*it);
+      else
+        LOG(kError) << " VaultController: Invalid Vault Manager ID";
       std::cout << "PORT: " << port_ << std::endl;
       thd = boost::thread([=] {
                                 ReceiveKeys();

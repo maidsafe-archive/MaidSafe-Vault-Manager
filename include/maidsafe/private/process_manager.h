@@ -96,7 +96,7 @@ class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  std::string AddProcess(Process process);
+  std::string AddProcess(Process process, uint16_t port);
   int32_t NumberOfProcesses();
   int32_t NumberOfLiveProcesses();
   int32_t NumberOfSleepingProcesses();

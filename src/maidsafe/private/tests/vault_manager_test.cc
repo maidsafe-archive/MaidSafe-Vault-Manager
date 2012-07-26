@@ -50,7 +50,6 @@ int main(int /*argc*/, char **/*argv*/) {
   maidsafe::priv::VaultManager vault_manager;
 
   /*vault_manager.ReadConfig();*/
-
   vault_manager.StartListening();
 
   // sint32_t stdinput;

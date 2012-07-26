@@ -119,13 +119,13 @@ namespace maidsafe {
     TerminateAll();
   }
 
-  std::string ProcessManager::AddProcess(Process process) {
+  std::string ProcessManager::AddProcess(Process process, uint16_t port) {
     ProcessInfo info;
     std::string id(RandomAlphaNumericString(16));
     info.id = id;
     info.done = false;
     info.restart_count = 0;
-    info.port = current_port_;
+    info.port = port;
     LOG(kInfo) << "Restart count on init: " << info.restart_count;
     process.AddArgument("--vmid");
     process.AddArgument(info.id + "-" + boost::lexical_cast<std::string>(info.port));
@@ -182,6 +182,23 @@ namespace maidsafe {
     ctx.environment = bp::self::get_environment();
     ctx.stderr_behavior = bp::capture_stream();
     ctx.stdout_behavior = bp::capture_stream();
+    /*std::cout << "CONTEXT" << std::endl;
+    for (auto it(ctx.environment.begin()); it != ctx.environment.end(); ++it) {
+      std::cout << (*it).first << " " << (*it).second << std::endl;
+      if ((*it).first == "USER" || (*it).first == "USERNAME" || (*it).first == "LOGNAME")
+        (*it).second = "philip";
+      if ((*it).first == "MAIL")
+        (*it).second = (*it).second.substr(0, (*it).second.length() - 4) + "philip";
+      std::cout << (*it).first.substr(0, 4) << std::endl;
+      if ((*it).first.substr(0, 4) == "SUDO") {
+        ctx.environment.erase(it);
+        --it;
+      }
+    }
+    std::cout << "MODIFIED CONTEXT" << std::endl;
+    for (auto it(ctx.environment.begin()); it != ctx.environment.end(); ++it) {
+      std::cout << (*it).first << " " << (*it).second << std::endl;
+    }*/
 
     bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
@@ -232,7 +249,8 @@ namespace maidsafe {
     LOG(kInfo) << "BEFORE THE IF GROUPS";
     if (!(*i).done) {
       if ((*i).restart_count > 4) {
-        LOG(kInfo) << "System is failing. Exiting... Restart count = " << (*i).restart_count;
+        LOG(kInfo) << "A process is consistently failing. Exiting... Restart count = "
+          << (*i).restart_count;
         exit(0);
       }
       if (((*i).restart_count < 3)) {

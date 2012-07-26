@@ -106,7 +106,7 @@ namespace priv {
 
     process_vector_.push_back(process);
 
-    vmid = manager_.AddProcess(process);
+    vmid = manager_.AddProcess(process, local_port_);
     vmid_vector_.push_back(vmid);
 
     manager_.StartProcess(vmid);
@@ -398,6 +398,26 @@ namespace priv {
     }
   }
 
+  bool HandleBootstrapFile(asymm::Identity identity) {
+    try {
+      fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap.processmanager");
+      if (!fs::exists(manager_bootstrap_path)) {
+        LOG(kError) << "Error: Main bootstrap file doesn't exist at " << manager_bootstrap_path;
+        return false;
+      }
+      fs::path vault_bootstrap_path(GetSystemAppDir() / ("bootstrap." + EncodeToBase32(identity)));
+      if (!fs::exists(vault_bootstrap_path)) {
+        fs::copy_file(manager_bootstrap_path, vault_bootstrap_path);
+        // SET PERMISSIONS
+      }
+      return true;
+    } catch(const std::exception& e) {
+      LOG(kError) << "Error creating/accessing bootstrap file: " << e.what();
+      return false;
+    }
+    return false;
+  }
+
   void VaultManager::ListenForMessages() {
     while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
         local_port_)) != kSuccess) {
@@ -419,6 +439,10 @@ namespace priv {
   void VaultManager::HandleIncomingMessage(const int& type, const std::string& payload,
                                     const Info& info, std::string* response) {
     std::cout << "HandleIncomingMessage: message type " << type << " received." << std::endl;
+    if (info.endpoint.ip.to_string() != "127.0.0.1") {
+      std::cout << "HandleIncomingMessage: message is not of local origin." << std::endl;
+      return;
+    }
     VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
     switch (message_type) {
       case VaultManagerMessageType::kHelloFromClient:
@@ -475,6 +499,10 @@ namespace priv {
       std::string vmid;
       std::string chunkstore_path = (GetSystemAppDir()/"TestVault").string()
                                       + RandomAlphaNumericString(5) + "/";
+      if (!HandleBootstrapFile(keys.identity)) {
+        // LOG(kError) << "failed to set bootstrap file for vault " << keys.identity;
+        // return;
+      }
       vmid = RunVault(chunkstore_path, "0", true);
       std::shared_ptr<WaitingVaultInfo> current_vault_info(new WaitingVaultInfo());
       current_vault_info->vault_vmid = vmid;
@@ -554,7 +582,8 @@ namespace priv {
   }
 
   void VaultManager::StartListening() {
-     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+    std::cout << GetSystemAppDir() << std::endl;
+    transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                           &msg_handler_, _1, _2, _3, _4));
     transport_->on_error()->connect(boost::bind(&MessageHandler::OnError,
                                                &msg_handler_, _1, _2));
