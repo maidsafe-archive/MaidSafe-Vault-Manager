@@ -49,7 +49,8 @@ void ChunkStoreOperationCallback(const bool &response,
 
 int WaitForResults(boost::mutex& mutex,
                    boost::condition_variable& cond_var,
-                   std::vector<int>& results);
+                   std::vector<int>& results,
+                   boost::posix_time::seconds interval = boost::posix_time::seconds(1));
 
 }  // namespace utilities
 
