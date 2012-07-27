@@ -25,6 +25,11 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __MSVC__
+# pragma warning(push)
+# pragma warning(disable: 4250)
+#endif
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
@@ -194,3 +199,7 @@ int main(int ac, char* av[]) {
     std::cout << "KEY " << i << " HAS " << (*map_pair.first).count(i) << " VALUE(S)" << std::endl;
   return 0;
 }*/
+
+#ifdef __MSVC__
+# pragma warning(pop)
+#endif

@@ -40,7 +40,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 namespace bai = boost::asio::ip;
 

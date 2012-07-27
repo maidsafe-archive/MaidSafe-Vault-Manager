@@ -246,8 +246,8 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
     boost::system::error_code error;
     // Read until EOF, copies 1024 byte chunks of file into memory at a time before adding to file
     std::size_t size;
-    int length = current_file_stream.readsome(&char_buffer[0], 1024);
-    std::string current_block(char_buffer.begin(), char_buffer.begin() + length);
+    std::streamsize length = current_file_stream.readsome(&char_buffer[0], std::streamsize(1024));
+    std::string current_block(char_buffer.begin(), char_buffer.begin() + static_cast<int>(length));
     file_out.write(current_block.c_str(), current_block.size());
     size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     while (size > 0) {

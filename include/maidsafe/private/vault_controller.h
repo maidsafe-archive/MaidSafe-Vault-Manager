@@ -28,8 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/process.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <thread>

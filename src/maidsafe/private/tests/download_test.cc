@@ -97,7 +97,7 @@ TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion_SmallerPatchLevel) {
   std::string extension = "";
 
   #ifdef _WINDOWS
-    extension = ".exe"
+    extension = ".exe";
   #endif
 
   maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
@@ -119,7 +119,7 @@ TEST(DownloadManagerTest, BEH_VerificationOfFiles) {
   boost::filesystem::path current_path(boost::filesystem::current_path());
   std::string extension = "";
   #ifdef _WINDOWS
-    extension = ".exe"
+    extension = ".exe";
   #endif
   maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");
@@ -149,7 +149,7 @@ TEST(DownloadManagerTest, BEH_VerificationFail) {
   boost::filesystem::path current_path(boost::filesystem::current_path());
   std::string extension = "";
   #ifdef _WINDOWS
-    extension = ".exe"
+    extension = ".exe";
   #endif
   maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");

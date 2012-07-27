@@ -42,11 +42,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 #ifdef WIN32
 
 #include <windows.h>
+
+enum {
+  MAIDSAFE_VAULT_MANAGER_STD_EXCEPTION = 0x1,
+  MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION
+};
 
 boost::mutex mutex_;
 boost::condition_variable cond_var_;
@@ -77,13 +82,7 @@ void ControlHandler(DWORD request);
 
 #endif
 
-int main(int /*argc*/, char **/*argv*/) {
-  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-
-  maidsafe::ProcessManager process_manager;
-  maidsafe::priv::VaultManager vault_manager;
-
+int main(int /*argc*/, char ** /*argv*/) {
 #ifdef WIN32
 
   SERVICE_TABLE_ENTRY service_table[2];
@@ -94,11 +93,16 @@ int main(int /*argc*/, char **/*argv*/) {
   service_table[1].lpServiceProc = NULL;
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
+#else
+  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
-#endif
+  maidsafe::ProcessManager process_manager;
+  maidsafe::priv::VaultManager vault_manager;
+
   /*vault_manager.ReadConfig();*/
   vault_manager.StartListening();
-
+#endif
   return 0;
 }
 
@@ -142,6 +146,36 @@ void ServiceMain() {
   g_service_status_handle = RegisterServiceCtrlHandler(g_service_name,
       reinterpret_cast<LPHANDLER_FUNCTION>(ControlHandler));
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
+
+  //maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
+  //maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+
+  //maidsafe::ProcessManager process_manager;
+  //maidsafe::priv::VaultManager vault_manager;
+
+  ///*vault_manager.ReadConfig();*/
+  //vault_manager.StartListening();
+
+  try {
+    boost::mutex::scoped_lock lock(mutex_);
+    g_service_status.dwCurrentState = SERVICE_RUNNING;
+    SetServiceStatus(g_service_status_handle, &g_service_status);
+    while (!shutdown_service) {
+      cond_var_.timed_wait(lock, bptime::minutes(1));
+    }
+    StopService(0, 0);
+    return;
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << "Exception: " << e.what();
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, MAIDSAFE_VAULT_MANAGER_STD_EXCEPTION);
+    return;
+  }
+  catch(...) {
+    LOG(kError) << "Exception of unknown type!";
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION);
+  }
+
 }
 
 #endif
