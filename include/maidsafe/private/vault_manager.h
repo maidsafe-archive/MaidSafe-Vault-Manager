@@ -73,8 +73,7 @@ class VaultManager {
  public:
   VaultManager();
   ~VaultManager();
-  std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
-                       bool new_vault);
+  std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity);
   void StartListening();
   bool ReadConfig();
   void StopVault(int32_t id);

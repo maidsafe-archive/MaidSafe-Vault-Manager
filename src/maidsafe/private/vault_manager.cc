@@ -59,8 +59,7 @@ namespace priv {
 
   VaultManager::~VaultManager() {}
 
-  std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
-                              bool new_vault) {
+  std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity) {
     maidsafe::Process process;
     std::string vmid;
     LOG(kInfo) << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
@@ -84,10 +83,6 @@ namespace priv {
     vmid_vector_.push_back(vmid);
 
     manager_.StartProcess(vmid);
-
-    if (new_vault) {
-      // WriteConfig();
-    }
     return vmid;
   }
 
@@ -97,8 +92,7 @@ namespace priv {
 
   void VaultManager::StopVault(int32_t id) {
 //     manager_.KillProcess(vmid_vector_[id]);
-    manager_.StopProcess(vmid_vector_[id]);  // This is to be put in function when the
-//     new model od process manager will work properly
+    manager_.StopProcess(vmid_vector_[id]);
   }
 
   void VaultManager::EraseVault(int32_t id) {
@@ -114,45 +108,43 @@ namespace priv {
   bool VaultManager::WriteConfig() {
     std::vector<std::string> vault_info;
     fs::path path("TestConfig.txt");
-
-    std::string content = "";
+    std::string content, serialized_keys;
 
     for (size_t i = 0; i < config_file_vault_vmids_.size(); i++) {
-      if (i != 0)
-      {
-        content += "\n";
-      }
-      std::string serialized_keys = "";
+      serialized_keys.clear();
       maidsafe::rsa::SerialiseKeys(config_file_vault_vmids_[i]->keys, serialized_keys);
       content += config_file_vault_vmids_[i]->chunkstore_path + " "
-                  + config_file_vault_vmids_[i]->chunkstore_capacity + " " + serialized_keys + " "
-                  + config_file_vault_vmids_[i]->account_name;
+                  + config_file_vault_vmids_[i]->chunkstore_capacity + " "
+                  + EncodeToBase32(serialized_keys) + " "
+                  + EncodeToBase32(config_file_vault_vmids_[i]->account_name)
+                  + "\n";
     }
-
     for (size_t i = 0; i < client_started_vault_vmids_.size(); i++) {
-      if (i != 0)
-      {
-        content += "\n";
-      }
-      std::string serialized_keys = "";
+      serialized_keys.clear();
       maidsafe::rsa::SerialiseKeys(client_started_vault_vmids_[i]->keys, serialized_keys);
       content += client_started_vault_vmids_[i]->chunkstore_path + " "
-                  + client_started_vault_vmids_[i]->chunkstore_capacity + " " + serialized_keys
-                  + " " + client_started_vault_vmids_[i]->account_name;
+                  + client_started_vault_vmids_[i]->chunkstore_capacity + " "
+                  + EncodeToBase32(serialized_keys)
+                  + " " + EncodeToBase32(client_started_vault_vmids_[i]->account_name)
+                  + "\n";
     }
-
     return maidsafe::WriteFile(path, content);
   }
 
   bool VaultManager::ReadConfig() {
-    fs::path path((GetSystemAppDir() / "vault_manager_config.txt"));
-    if (!fs::exists(path)) {
-      fs::create_directories(path);
+    fs::path path(/*GetSystemAppDir() / "vault_manager_config.txt"*/ "TestConfig.txt");
+    if (path.parent_path() != "" && !fs::exists(path.parent_path())) {
+      fs::create_directories(path.parent_path());
       return true;
     }
+    if (!fs::exists(path))
+      return true;
     std::string content;
     LOG(kInfo) << path.string();
-    maidsafe::ReadFile(path, &content);
+    if (!maidsafe::ReadFile(path, &content)) {
+      LOG(kError) << "ReadConfig: problem reading config file " << path;
+      return false;
+    }
 
     typedef boost::tokenizer<boost::char_separator<char> > vault_tokenizer;
     boost::char_separator<char> delimiter("\n");
@@ -167,19 +159,21 @@ namespace priv {
       std::vector<std::string> vault_item(arg_tokenizer.begin(), arg_tokenizer.end());
       LOG(kInfo) << "Location: " << vault_item[0];
       LOG(kInfo) << "Size: " << vault_item[1];
-      LOG(kInfo) << "Serialized: " << vault_item[2];
+      LOG(kInfo) << "Serialized Keys: " << vault_item[2];
       LOG(kInfo) << "Account name: " << vault_item[3];
 
       asymm::Keys keys;
-      if (!maidsafe::rsa::ParseKeys(vault_item[2], keys))
+      if (!maidsafe::rsa::ParseKeys(DecodeFromBase32(vault_item[2]), keys))
         LOG(kInfo) << "Error parsing the keys!!!";
 
       std::shared_ptr<WaitingVaultInfo> vault_info(new WaitingVaultInfo());
       vault_info->keys = keys;
-      vault_info->account_name = vault_item[3];
+      vault_info->account_name = DecodeFromBase32(vault_item[3]);
+      vault_info->chunkstore_path = vault_item[0];
+      vault_info->chunkstore_capacity = vault_item[1];
 
       std::string vmid;
-      vmid = RunVault(vault_item[0], vault_item[1], false);
+      vmid = RunVault(vault_item[0], vault_item[1]);
 
       vault_info->vault_vmid = vmid;
       config_file_vault_vmids_.push_back(vault_info);
@@ -464,23 +458,25 @@ namespace priv {
       asymm::Keys keys;
       asymm::ParseKeys(request.keys(), keys);
       std::string account_name(request.account_name()), vmid;
-      std::string chunkstore_path = (GetSystemAppDir()/"TestVault").string()
+      std::string chunkstore_path = (/*GetSystemAppDir() /*/ "TestVault")/*.string()*/
                                       + RandomAlphaNumericString(5) + "/";
       if (!HandleBootstrapFile(keys.identity)) {
         // LOG(kError) << "failed to set bootstrap file for vault " << keys.identity;
         // return;
       }
-      vmid = RunVault(chunkstore_path, "0", true);
       std::shared_ptr<WaitingVaultInfo> current_vault_info(new WaitingVaultInfo());
-      current_vault_info->vault_vmid = vmid;
       current_vault_info->account_name = account_name;
       current_vault_info->keys = keys;
       current_vault_info->chunkstore_path = chunkstore_path;
       current_vault_info->chunkstore_capacity = "0";
       client_started_vault_vmids_.push_back(current_vault_info);
+      vmid = RunVault(current_vault_info->chunkstore_path,
+                      current_vault_info->chunkstore_capacity);
+      current_vault_info->vault_vmid = vmid;
+      WriteConfig();
 
       boost::mutex::scoped_lock lock(current_vault_info->mutex_);
-      LOG(kInfo) << "HandleClientStartVaultRequest: waiting for Vault";
+      LOG(kInfo) << "HandleClientStartVaultRequest: waiting for Vault" << vmid;
       if (current_vault_info->cond_var_.timed_wait(lock,
                              boost::posix_time::seconds(3),
                              [&]()->bool { return current_vault_info->vault_requested_; })) {  // NOLINT (Philip)
