@@ -87,8 +87,7 @@ int main(int /*argc*/, char ** /*argv*/) {
 
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
-  service_table[0].lpServiceProc =
-      reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
+  service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
   service_table[1].lpServiceName = NULL;
   service_table[1].lpServiceProc = NULL;
   // Start the control dispatcher thread for our service
@@ -111,16 +110,14 @@ int main(int /*argc*/, char ** /*argv*/) {
 void ControlHandler(DWORD request) {
   switch (request) {
     case SERVICE_CONTROL_STOP:
-      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_STOP received - "
-                    "service stopping.";
+      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_STOP received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
       shutdown();
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     case SERVICE_CONTROL_SHUTDOWN:
-      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_SHUTDOWN received - "
-                    "service stopping.";
+      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_SHUTDOWN received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
       shutdown();
@@ -136,8 +133,7 @@ void ControlHandler(DWORD request) {
 void ServiceMain() {
   g_service_status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
   g_service_status.dwCurrentState = SERVICE_START_PENDING;
-  g_service_status.dwControlsAccepted = SERVICE_ACCEPT_STOP |
-                                        SERVICE_ACCEPT_SHUTDOWN;
+  g_service_status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
   g_service_status.dwWin32ExitCode = 0;
   g_service_status.dwServiceSpecificExitCode = 0;
   g_service_status.dwCheckPoint = 0;
@@ -147,19 +143,18 @@ void ServiceMain() {
       reinterpret_cast<LPHANDLER_FUNCTION>(ControlHandler));
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
 
-  //maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  //maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  // maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
+  // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
-  //maidsafe::ProcessManager process_manager;
-  //maidsafe::priv::VaultManager vault_manager;
-
-  ///*vault_manager.ReadConfig();*/
-  //vault_manager.StartListening();
+  maidsafe::ProcessManager process_manager;
+  maidsafe::priv::VaultManager vault_manager;
 
   try {
     boost::mutex::scoped_lock lock(mutex_);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
+    /*vault_manager.ReadConfig();*/
+    // vault_manager.StartListening();
     while (!shutdown_service) {
       cond_var_.timed_wait(lock, bptime::minutes(1));
     }
