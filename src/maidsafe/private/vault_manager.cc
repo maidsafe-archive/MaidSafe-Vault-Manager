@@ -53,7 +53,9 @@ namespace priv {
                                  msg_handler_(),
                                  transport_(new TcpTransport(asio_service_->service())),
                                  local_port_(5483), client_started_vault_vmids_(),
-                                 config_file_vault_vmids_() {
+                                 config_file_vault_vmids_(), mediator_thread_(), updates_thread_(),
+                                 mutex_(), cond_var_(), stop_listening_for_messages_(false),
+                                 stop_listening_for_updates_(false) {
                                    asio_service_->Start();
                                 }
 
@@ -357,7 +359,11 @@ namespace priv {
             if (boost::filesystem::remove(current_path / latest_local_file)) {
               continue;
             }
-            boost::this_thread::sleep(boost::posix_time::minutes(2));
+            boost::mutex::scoped_lock lock(mutex_);
+            cond_var_.timed_wait(lock, boost::posix_time::minutes(2),
+                                 [&] { return stop_listening_for_updates_; });
+            if (stop_listening_for_updates_)
+              return;
           }
           if (name == "vault-manager" || name == "pd-vault")
             RestartVaultManager(file_to_download, name);
@@ -371,13 +377,17 @@ namespace priv {
         LOG(kInfo) << "No later file has been found!!!";
       }
 
-      if (download_type_iterator !=download_type.end()) {
+      if (download_type_iterator != download_type.end()) {
         ++download_type_iterator;
         continue;
       } else {
         download_type_iterator = download_type.begin();
         LOG(kInfo) << "Sleeping for five minutes!";
-        boost::this_thread::sleep(boost::posix_time::minutes(5));
+        boost::mutex::scoped_lock lock(mutex_);
+        cond_var_.timed_wait(lock, boost::posix_time::minutes(5),
+                             [&] { return stop_listening_for_updates_; });
+        if (stop_listening_for_updates_)
+          return;
       }
     }
   }
@@ -403,6 +413,7 @@ namespace priv {
   }
 
   void VaultManager::ListenForMessages() {
+    boost::mutex::scoped_lock lock(mutex_);
     while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
         local_port_)) != kSuccess) {
       ++local_port_;
@@ -412,7 +423,7 @@ namespace priv {
       }
     }
     LOG(kInfo) << "ListenForMessages: Listening on port " << local_port_;
-    for (;;) {}
+    cond_var_.wait(lock, [&]{ return stop_listening_for_messages_; });  // NOLINT
   }
 
   void VaultManager::OnError(const TransportCondition &transport_condition,
@@ -555,15 +566,20 @@ namespace priv {
     msg_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
     msg_handler_.SetCallback(boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3,
                                          _4));
-    std::string request;
+    updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT
+    mediator_thread_ = boost::thread( [&] { ListenForMessages(); } ); // NOLINT
+  }
 
-    boost::thread updates_thread( [&] { ListenForUpdates(); } ); // NOLINT
-    if (updates_thread.joinable())
-      updates_thread.join();
-
-    boost::thread mediator_thread( [&] { ListenForMessages(); } ); // NOLINT
-    if (mediator_thread.joinable())
-      mediator_thread.join();
+  void VaultManager::StopListening() {
+    mutex_.lock();
+    stop_listening_for_messages_ = true;
+    stop_listening_for_updates_ = true;
+    cond_var_.notify_all();
+    mutex_.unlock();
+    if (mediator_thread_.joinable())
+      mediator_thread_.join();
+    if (updates_thread_.joinable())
+      updates_thread_.join();
     transport_->StopListening();
   }
 }       // namespace priv

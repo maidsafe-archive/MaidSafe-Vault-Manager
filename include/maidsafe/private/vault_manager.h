@@ -75,6 +75,7 @@ class VaultManager {
   ~VaultManager();
   std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity);
   void StartListening();
+  void StopListening();
   bool ReadConfig();
   void StopVault(int32_t id);
   void EraseVault(int32_t id);
@@ -116,6 +117,12 @@ class VaultManager {
   uint16_t local_port_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> client_started_vault_vmids_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> config_file_vault_vmids_;
+  boost::thread mediator_thread_;
+  boost::thread updates_thread_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
+  bool stop_listening_for_messages_;
+  bool stop_listening_for_updates_;
 };
 
 }  // namespace private

@@ -51,6 +51,7 @@ int main(int /*argc*/, char **/*argv*/) {
 
   vault_manager.ReadConfig();
   vault_manager.StartListening();
+  for (;;) {}
 
   // sint32_t stdinput;
   std::string options = "1. (Start a new vault)\n";
