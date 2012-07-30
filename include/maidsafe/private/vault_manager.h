@@ -80,6 +80,7 @@ class VaultManager {
   void EraseVault(int32_t id);
   int32_t ListVaults(bool select);
   void RestartVault(std::string id);
+  void RestartVaultManager(std::string latest_file, std::string executable_name);
   int32_t get_process_vector_size();
   void ListenForUpdates();
   void ListenForMessages();

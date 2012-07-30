@@ -59,9 +59,19 @@ namespace priv {
 
   VaultManager::~VaultManager() {}
 
+  void VaultManager::RestartVaultManager(std::string latest_file, std::string executable_name) {
+#ifdef WIN32
+    std::string command("./restart_vm.bat " + latest_file + " " + executable_name);
+    system(command.c_str());
+#else
+    // system("/etc/init.d/mvm restart");
+    std::string command("./restart_vm.sh " + latest_file + " " + executable_name);
+    system(command.c_str());
+#endif
+  }
+
   std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity) {
     maidsafe::Process process;
-    std::string vmid;
     LOG(kInfo) << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
                << chunkstore_capacity << std::endl;
 
@@ -79,7 +89,7 @@ namespace priv {
 
     process_vector_.push_back(process);
 
-    vmid = manager_.AddProcess(process, local_port_);
+    std::string vmid(manager_.AddProcess(process, local_port_));
     vmid_vector_.push_back(vmid);
 
     manager_.StartProcess(vmid);
@@ -273,7 +283,7 @@ namespace priv {
 
     #ifdef _WINDOWS
     platform = "win";
-    extension = ".exe"
+    extension = ".exe";
     #elifdef _APPLE_
     platform = "osx";
     #else
@@ -333,14 +343,15 @@ namespace priv {
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
           LOG(kInfo) << "Removing signature file";
-          boost::filesystem::path symlink(current_path / name);
           boost::filesystem::remove(current_path / signature_file);
+#ifndef WIN32
+          boost::filesystem::path symlink(current_path / name);
           boost::filesystem::remove(symlink);
 
           boost::filesystem::create_symlink(file_to_download, symlink);
           LOG(kInfo) << "Symbolic link " << symlink.string()
                      << " to the client file has been created!";
-
+#endif
           // Remove the previous client file
           while (boost::filesystem::exists(current_path / latest_local_file)) {
             if (boost::filesystem::remove(current_path / latest_local_file)) {
@@ -348,7 +359,8 @@ namespace priv {
             }
             boost::this_thread::sleep(boost::posix_time::minutes(2));
           }
-
+          if (name == "vault-manager" || name == "pd-vault")
+            RestartVaultManager(file_to_download, name);
         } else {
           LOG(kInfo) << "Removing downloaded files";
           // Remove the signature_file
@@ -545,9 +557,9 @@ namespace priv {
                                          _4));
     std::string request;
 
-    /*boost::thread updates_thread( [&] { ListenForUpdates(); } ); // NOLINT
+    boost::thread updates_thread( [&] { ListenForUpdates(); } ); // NOLINT
     if (updates_thread.joinable())
-      updates_thread.join();*/
+      updates_thread.join();
 
     boost::thread mediator_thread( [&] { ListenForMessages(); } ); // NOLINT
     if (mediator_thread.joinable())
