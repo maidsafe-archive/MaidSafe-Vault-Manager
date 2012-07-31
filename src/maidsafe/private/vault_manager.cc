@@ -570,6 +570,7 @@ namespace priv {
   }
 
   void VaultManager::StopListening() {
+    manager_.LetAllProcessesDie();
     mutex_.lock();
     stop_listening_for_messages_ = true;
     stop_listening_for_updates_ = true;

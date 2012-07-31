@@ -30,9 +30,20 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thread>
 #include <boost/graph/graph_concepts.hpp>
 
+#ifdef WIN32
+
+#include <windows.h>
+
+#else
+
+#include <signal.h>
+
+#endif
+
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "boost/tokenizer.hpp"
 #include "boost/thread.hpp"
 #include "boost/thread/condition_variable.hpp"
@@ -46,16 +57,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WIN32
 
-#include <windows.h>
-
 enum {
   MAIDSAFE_VAULT_MANAGER_STD_EXCEPTION = 0x1,
   MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION
-};
-
-#else
-
-#include <signal.h>
+}
 
 #endif
 
@@ -182,7 +187,6 @@ void ServiceMain() {
     LOG(kError) << "Exception of unknown type!";
     StopService(ERROR_SERVICE_SPECIFIC_ERROR, MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION);
   }
-
 }
 
 #endif

@@ -102,6 +102,7 @@ class ProcessManager {
   /*ProcessStatus GetProcessStatus(Process &process);*/
   void StartProcess(std::string id);
   void LetProcessDie(std::string id);
+  void LetAllProcessesDie();
   void WaitForProcesses();
   void KillProcess(std::string id);
   void StopProcess(std::string id);

@@ -287,6 +287,11 @@ namespace maidsafe {
     (*i).done = true;
   }
 
+  void ProcessManager::LetAllProcessesDie() {
+    for (auto i(processes_.begin()); i != processes_.end(); ++i)
+      (*i).done = true;
+  }
+
   std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
     process_info_mutex_.lock();
     std::string id_to_find = id;

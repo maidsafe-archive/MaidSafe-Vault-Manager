@@ -58,8 +58,8 @@ uint32_t IpAsciiToNet(const char *buffer);
 // Return all local addresses
 std::vector<IP> GetLocalAddresses();
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_UTILS_H_
+#endif  // MAIDSAFE_PRIVATE_UTILS_H_
