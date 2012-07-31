@@ -25,6 +25,14 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __MSVC__
+# pragma warning(push)
+# pragma warning(disable: 4250)
+#endif
+
+#include "maidsafe/private/vault_controller.h"
+
+#include <boost/process.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
@@ -37,9 +45,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <chrono>
 #include <iostream>
 
-#include "maidsafe/private/vault_controller.h"
 #include "maidsafe/private/vault_manager.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -257,3 +264,6 @@ namespace priv {
 
 }  // namespace maidsafe
 
+#ifdef __MSVC__
+# pragma warning(pop)
+#endif

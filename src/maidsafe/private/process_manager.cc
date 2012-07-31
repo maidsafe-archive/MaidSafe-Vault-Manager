@@ -25,18 +25,22 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __MSVC__
+# pragma warning(push)
+# pragma warning(disable: 4250)
+#endif
+
 #include "maidsafe/private/process_manager.h"
 
 #include <thread>
 #include <chrono>
-
 #include <boost/process.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/filesystem.hpp>
-
 #include <maidsafe/common/log.h>
 #include <maidsafe/common/utils.h>
 #include <maidsafe/common/rsa.h>
@@ -46,7 +50,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utility>
 #include <algorithm>
 
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 #include "boost/archive/text_oarchive.hpp"
 #include "boost/archive/text_iarchive.hpp"
@@ -362,3 +366,7 @@ namespace maidsafe {
     return (*t.first)[id].instruction;
   }*/
 }  // namespace maidsafe
+
+#ifdef __MSVC__
+# pragma warning(pop)
+#endif

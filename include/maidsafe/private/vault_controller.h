@@ -28,8 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/process.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <thread>
@@ -87,8 +85,8 @@ class VaultController {
                            std::shared_ptr<MessageHandler> message_handler);
   void OnMessageReceived(const std::string &request,
                          const Info /*&info*/,
-                         std::string */*response*/,
-                         Timeout */*timeout*/);
+                         std::string* /*response*/,
+                         Timeout* /*timeout*/);
   void ResetTransport(std::shared_ptr<TcpTransport>& transport,
                       std::shared_ptr<MessageHandler>& message_handler);
   /*ProcessInstruction CheckInstruction(const int32_t& id);*/

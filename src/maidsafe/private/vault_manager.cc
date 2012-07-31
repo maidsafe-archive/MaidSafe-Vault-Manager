@@ -40,7 +40,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 namespace bai = boost::asio::ip;
 
@@ -278,15 +278,15 @@ namespace priv {
     std::string platform;
     std::string extension = "";
 
-    std::string filetypes[] = {"lifestufflocal", "pd-vault"};
-    std::vector<std::string> download_type(filetypes, filetypes + sizeof(filetypes)
-                                                     / sizeof(std::string));
+    std::vector<std::string> download_type;
+    download_type.push_back("lifestufflocal");
+    download_type.push_back("pd-vault");
     std::vector<std::string>::iterator download_type_iterator = download_type.begin();
 
     #ifdef _WINDOWS
     platform = "win";
     extension = ".exe";
-    #elifdef _APPLE_
+    #elif _APPLE_
     platform = "osx";
     #else
     platform = "linux";
@@ -376,9 +376,8 @@ namespace priv {
       } else {
         LOG(kInfo) << "No later file has been found!!!";
       }
-
+      ++download_type_iterator;
       if (download_type_iterator != download_type.end()) {
-        ++download_type_iterator;
         continue;
       } else {
         download_type_iterator = download_type.begin();
@@ -407,7 +406,7 @@ namespace priv {
       return true;
     } catch(const std::exception& e) {
       LOG(kError) << "Error creating/accessing bootstrap file: " << e.what();
-      return false;
+      // return false;
     }
     return false;
   }

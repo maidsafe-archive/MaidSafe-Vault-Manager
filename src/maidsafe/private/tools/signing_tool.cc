@@ -17,6 +17,8 @@
 
 #ifdef WIN32
 #include <windows.h>
+# pragma warning(push)
+# pragma warning(disable: 4701)
 #else
 #include <termio.h>
 #include <unistd.h>
@@ -439,4 +441,6 @@ int main() {
   }
 }
 
-
+#ifdef WIN32
+# pragma warning(pop)
+#endif
