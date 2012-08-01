@@ -60,7 +60,7 @@ namespace priv {
 
   VaultController::VaultController() : process_id_(),
                                       port_(0),
-                                      thd(),
+                                      thread_(),
                                       asio_service_(new AsioService(10)),
                                       check_finished_(false),
                                       keys_(),
@@ -68,7 +68,11 @@ namespace priv {
                                       info_received_(false),
                                       mutex_(),
                                       cond_var_(),
-                                      started_(false) {
+                                      started_(false),
+                                      shutdown_mutex_(),
+                                      shutdown_cond_var_(),
+                                      shutdown_confirmed_(),
+                                      stop_callback_() {
                                         asio_service_->Start();
                                       }
 
@@ -144,6 +148,7 @@ namespace priv {
   }*/
 
   void VaultController::ReceiveKeys() {
+    LOG(kInfo) << "VaultController: ReceiveKeys";
     std::string full_request;
     Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
     LOG(kInfo) << "ReceiveKeys: sending keys request to port " << port_;
@@ -159,22 +164,12 @@ namespace priv {
     transport->Send(full_request, endpoint, boost::posix_time::milliseconds(1000));
   }
 
-  void VaultController::ReceiveKeysCallback(const int& type, const std::string& serialised_info,
-                                            const Info& sender_info,
-                                            std::string* /*response*/,
-                                            std::shared_ptr<TcpTransport> /*transport*/,
-                                            std::shared_ptr<MessageHandler> /*message_handler*/) {
-    if (sender_info.endpoint.ip.to_string() != "127.0.0.1") {
-      LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
-      return;
-    }
-    boost::mutex::scoped_lock lock(mutex_);
-    if (type != static_cast<int>(VaultManagerMessageType::kIdentityInfoToVault)) {
-      LOG(kError) << "ReceiveKeysCallback: response message is of incorrect type.";
-      return;
-    }
+  void VaultController::ReceiveKeysCallback(const std::string& serialised_info,
+                                            const Info& /*sender_info*/,
+                                            std::string* /*response*/) {
     VaultIdentityInfo info;
     info.ParseFromString(serialised_info);
+    boost::mutex::scoped_lock lock(mutex_);
     if (!maidsafe::rsa::ParseKeys(info.keys(), keys_)) {
       LOG(kError) << "ReceiveKeysCallback: failed to parse keys. ";
       info_received_ = false;
@@ -191,6 +186,73 @@ namespace priv {
     }
   }
 
+  void VaultController::ListenForShutdown() {
+    std::string full_request;
+    Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
+    LOG(kInfo) << "ListenForShutdown: sending shutdown request to port " << port_;
+    int message_type(static_cast<int>(VaultManagerMessageType::kShutdownRequestFromVault));
+    maidsafe::priv::VaultShutdownRequest request;
+    request.set_vmid(process_id_);
+    std::shared_ptr<TcpTransport> transport;
+    std::shared_ptr<MessageHandler> message_handler;
+    ResetTransport(transport, message_handler);
+    full_request = message_handler->MakeSerialisedWrapperMessage(message_type,
+                                                                 request.SerializeAsString());
+    while (true) {
+      boost::mutex::scoped_lock lock(shutdown_mutex_);
+      shutdown_cond_var_.timed_wait(lock, boost::posix_time::seconds(2),
+                                    [&] { return shutdown_confirmed_; });  // NOLINT
+      if (shutdown_confirmed_) {
+        return;
+      } else {
+        lock.unlock();
+        transport->Send(full_request, endpoint, boost::posix_time::milliseconds(1000));
+      }
+    }
+  }
+
+  void VaultController::ListenForShutdownCallback(const std::string& serialised_response,
+                                                  const Info& /*sender_info*/,
+                                                  std::string* /*response*/) {
+    LOG(kInfo) << "ListenForShutdownCallback";
+    VaultShutdownResponse response;
+    if (response.ParseFromString(serialised_response)) {
+      if (response.shutdown()) {
+        boost::mutex::scoped_lock lock(shutdown_mutex_);
+        shutdown_confirmed_ = true;
+        LOG(kInfo) << "ListenForShutdownCallback: Shutdown confirmation received";
+        shutdown_cond_var_.notify_one();
+        lock.unlock();
+        stop_callback_();
+      }
+    }
+  }
+
+  void VaultController::HandleIncomingMessage(const int& type, const std::string& payload,
+                                               const Info& info, std::string* response,
+                                               std::shared_ptr<TcpTransport> /*transport*/,
+                                               std::shared_ptr<MessageHandler>
+                                               /*message_handler*/) {
+    LOG(kInfo) << "VaultController: HandleIncomingMessage";
+    if (info.endpoint.ip.to_string() != "127.0.0.1") {
+      LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
+      return;
+    }
+    VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
+    switch (message_type) {
+      case VaultManagerMessageType::kIdentityInfoToVault:
+        LOG(kInfo) << "kIdentityInfoToVault";
+        ReceiveKeysCallback(payload, info, response);
+        break;
+      case VaultManagerMessageType::kShutdownResponseToVault:
+        LOG(kInfo) << "kShutdownResponseToVault";
+        ListenForShutdownCallback(payload, info, response);
+        break;
+      default:
+        LOG(kInfo) << "Incorrect message type";
+    }
+  }
+
   void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
                                         std::shared_ptr<MessageHandler>& message_handler) {
     transport.reset(new TcpTransport(asio_service_->service()));
@@ -200,12 +262,13 @@ namespace priv {
     transport->on_error()->connect(boost::bind(&MessageHandler::OnError,
                                                message_handler.get(), _1, _2));
      message_handler->SetCallback(
-          boost::bind(&maidsafe::priv::VaultController::ReceiveKeysCallback, this, _1, _2, _3, _4,
+          boost::bind(&maidsafe::priv::VaultController::HandleIncomingMessage, this, _1, _2, _3, _4,
                       transport, message_handler));
   }
 
   bool VaultController::Start(std::string vmid_string,
-                              std::function<void()> /*stop_callback*/) {
+                              std::function<void()> stop_callback) {
+    stop_callback_ = stop_callback;
     try {
       if (vmid_string == "") {
         LOG(kInfo) << " VaultController: Start: You must supply a process id";
@@ -229,10 +292,9 @@ namespace priv {
       else
         LOG(kError) << " VaultController: Invalid Vault Manager ID";
       if (port_ != 0) {
-      thd = boost::thread([=] {
-                                ReceiveKeys();
-                                  /*ListenForStopTerminate(shared_mem_name, vmid, stop_callback);*/
-                              });
+        thread_ = boost::thread([=] { ReceiveKeys();
+                                      ListenForShutdown();
+        });
       }
     } catch(std::exception& e)  {
       LOG(kError) << "VaultController: Start: Error receiving keys" << e.what();
@@ -249,7 +311,7 @@ namespace priv {
       return false;
     boost::mutex::scoped_lock lock(mutex_);
     if (cond_var_.timed_wait(lock,
-                             boost::posix_time::seconds(3),
+                             boost::posix_time::seconds(10),
                              [&]()->bool { return info_received_; })) {  // NOLINT (Philip)
       keys->private_key = keys_.private_key;
       keys->public_key = keys_.public_key;

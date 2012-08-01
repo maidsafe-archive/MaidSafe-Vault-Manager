@@ -75,6 +75,7 @@ namespace maidsafe {
     if (ec)
       return false;
     std::string exec = bp::find_executable_in_path(process_name, path_string);
+    LOG(kInfo) << "Executable found at " << exec;
     process_name_ = exec;
     return true;
   }
@@ -219,17 +220,27 @@ namespace maidsafe {
          content += line + "\n";
       oa & content;
     }
-    c.wait();
+    bp::posix_status s = c.wait();
     i = FindProcess(id);
     LOG(kInfo) << "Process " << id << " completes. Output: ";
     LOG(kInfo) << result;
-
+    if (s.exited()) {
+      LOG(kInfo) << "Program returned exit code " << s.exit_status();
+    } else if (s.stopped()) {
+      LOG(kInfo) << "Program stopped by signal " << s.stop_signal();
+    } else if (s.signaled()) {
+      LOG(kInfo) << "Program received signal " << s.term_signal();
+      if (s.dumped_core())
+        LOG(kInfo) << "Program also dumped core";
+    } else {
+      LOG(kInfo) << "Program terminated for unknown reason";
+    }
     LOG(kInfo) << "Restart count = " << (*i).restart_count;
     if (!(*i).done) {
       if ((*i).restart_count > 4) {
-        LOG(kInfo) << "A process is consistently failing. Exiting... Restart count = "
-                   << (*i).restart_count;
-        exit(0);
+        LOG(kInfo) << "A process " << (*i).id << " is consistently failing. Stopping..." <<
+        " Restart count = " << (*i).restart_count;
+        return;
       }
       if (((*i).restart_count < 3)) {
         (*i).restart_count = (*i).restart_count + 1;

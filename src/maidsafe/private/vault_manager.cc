@@ -55,7 +55,8 @@ namespace priv {
                                  local_port_(5483), client_started_vault_vmids_(),
                                  config_file_vault_vmids_(), mediator_thread_(), updates_thread_(),
                                  mutex_(), cond_var_(), stop_listening_for_messages_(false),
-                                 stop_listening_for_updates_(false) {
+                                 stop_listening_for_updates_(false), shutdown_requested_(false),
+                                 stopped_vaults_(0) {
                                    asio_service_->Start();
                                 }
 
@@ -84,6 +85,7 @@ namespace priv {
     process.AddArgument("--chunk_capacity");
     process.AddArgument(chunkstore_capacity);
     process.AddArgument("--start");
+    LOG(kInfo) << "Process Name: " << process.ProcessName();
 
     /*process.SetProcessName("DUMMYprocess");
     process.AddArgument("DUMMYprocess");
@@ -119,7 +121,7 @@ namespace priv {
 
   bool VaultManager::WriteConfig() {
     std::vector<std::string> vault_info;
-    fs::path path("TestConfig.txt");
+    fs::path path(/*GetSystemAppDir() / "vault_manager_config.txt"*/ "TestConfig.txt");
     std::string content, serialized_keys;
 
     for (size_t i = 0; i < config_file_vault_vmids_.size(); i++) {
@@ -422,7 +424,10 @@ namespace priv {
       }
     }
     LOG(kInfo) << "ListenForMessages: Listening on port " << local_port_;
-    cond_var_.wait(lock, [&]{ return stop_listening_for_messages_; });  // NOLINT
+    cond_var_.wait(lock, [&]{ return shutdown_requested_; });  // NOLINT
+    cond_var_.timed_wait(lock, boost::posix_time::seconds(10),
+                         [&]{ return manager_.NumberOfLiveProcesses() == 0; });  // NOLINT
+    LOG(kInfo) << "ListenForMessages: FINISHED Listening on port " << local_port_;
   }
 
   void VaultManager::OnError(const TransportCondition &transport_condition,
@@ -444,12 +449,16 @@ namespace priv {
         HandleClientHello(payload, info, response);
         break;
       case VaultManagerMessageType::kIdentityInfoRequestFromVault:
-        LOG(kInfo) << "kIndentityInfoRequestFromVault";
+        LOG(kInfo) << "kIdentityInfoRequestFromVault";
         HandleVaultInfoRequest(payload, info, response);
         break;
       case VaultManagerMessageType::kStartRequestFromClient:
         LOG(kInfo) << "kStartRequestFromClient";
         HandleClientStartVaultRequest(payload, info, response);
+        break;
+      case VaultManagerMessageType::kShutdownRequestFromVault:
+        LOG(kInfo) << "kShutdownRequestFromVault";
+        HandleVaultShutdownRequest(payload, info, response);
         break;
       default:
         LOG(kError) << "Invalid message type";
@@ -517,7 +526,8 @@ namespace priv {
   }
 
   void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_string,
-                                            const Info& /*info*/, std::string* vault_info_string) {
+                                            const Info& /*info*/,
+                                            std::string* vault_info_string) {
      // GET INFO REQUEST
      VaultIdentityRequest request;
      bool new_vault(false);
@@ -557,6 +567,30 @@ namespace priv {
     waiting_vault_info->cond_var_.notify_all();
   }
 
+  void VaultManager::HandleVaultShutdownRequest(const std::string& vault_shutdown_string,
+                                                const Info& /*info*/,
+                                                std::string* response) {
+    LOG(kInfo) <<  "HandleVaultShutdownRequest";
+    VaultShutdownRequest request;
+    if (request.ParseFromString(vault_shutdown_string)) {
+      int message_type(static_cast<int>(VaultManagerMessageType::kShutdownResponseToVault));
+      VaultShutdownResponse shutdown_response;
+      boost::mutex::scoped_lock lock(mutex_);
+      shutdown_response.set_shutdown(shutdown_requested_);
+      LOG(kInfo) <<  "HandleVaultShutdownRequest: shutdown requested"
+                 << std::boolalpha << shutdown_requested_;
+      *response = msg_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                            shutdown_response.SerializeAsString());
+     if (shutdown_requested_) {
+       LOG(kInfo) << "Shutting down a vault.";
+       ++stopped_vaults_;
+       cond_var_.notify_all();
+     }
+      return;
+    }
+    LOG(kError) <<  "HandleVaultShutdownRequest: Problem parsing client's shutdown request";
+  }
+
   void VaultManager::StartListening() {
     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                           &msg_handler_, _1, _2, _3, _4));
@@ -565,21 +599,24 @@ namespace priv {
     msg_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
     msg_handler_.SetCallback(boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3,
                                          _4));
-    updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT
+    /*updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT*/
     mediator_thread_ = boost::thread( [&] { ListenForMessages(); } ); // NOLINT
   }
 
   void VaultManager::StopListening() {
+    LOG(kInfo) << "Starting VaultManager shutdown sequence.";
     manager_.LetAllProcessesDie();
-    mutex_.lock();
-    stop_listening_for_messages_ = true;
+    boost::mutex::scoped_lock lock(mutex_);
     stop_listening_for_updates_ = true;
+    LOG(kInfo) << "VaultManager: setting shutdown_requested_ to true";
+    shutdown_requested_ = true;
     cond_var_.notify_all();
-    mutex_.unlock();
+    lock.unlock();
     if (mediator_thread_.joinable())
       mediator_thread_.join();
-    if (updates_thread_.joinable())
-      updates_thread_.join();
+    LOG(kInfo) << "After VaultManager vaults shutdown";
+    /*if (updates_thread_.joinable())
+      updates_thread_.join();*/
     transport_->StopListening();
   }
 }       // namespace priv

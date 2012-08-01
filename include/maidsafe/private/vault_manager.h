@@ -52,7 +52,9 @@ enum class VaultManagerMessageType {
   kStartRequestFromClient = 3,
   kStartResponseToClient = 4,
   kIdentityInfoRequestFromVault = 5,
-  kIdentityInfoToVault = 6
+  kIdentityInfoToVault = 6,
+  kShutdownRequestFromVault = 7,
+  kShutdownResponseToVault = 8
 };
 
 struct WaitingVaultInfo {
@@ -90,12 +92,15 @@ class VaultManager {
                                      std::string* response);
   void HandleVaultInfoRequest(const std::string& vault_info_string, const Info& info,
                               std::string* response);
+  void HandleVaultShutdownRequest(const std::string& vault_shutdown_string, const Info& info,
+                              std::string* response);
   void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info,
                              std::string* response);
   void OnError(const TransportCondition &transport_condition, const Endpoint &remote_endpoint);
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
                                                              std::string cpu_size);
+  void ProcessStopHandler();
 
  private:
 //   It should be decided if the following three methods are going to be private or public
@@ -123,6 +128,8 @@ class VaultManager {
   boost::condition_variable cond_var_;
   bool stop_listening_for_messages_;
   bool stop_listening_for_updates_;
+  bool shutdown_requested_;
+  uint16_t stopped_vaults_;
 };
 
 }  // namespace private
