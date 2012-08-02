@@ -46,6 +46,9 @@ namespace maidsafe {
 
 namespace priv {
 
+const uint16_t VaultManager::kMinPort(5483);
+const uint16_t VaultManager::kMaxPort(5582);
+
 VaultManager::VaultManager() : vmid_vector_(),
                                process_vector_(),
                                manager_(),
@@ -53,7 +56,7 @@ VaultManager::VaultManager() : vmid_vector_(),
                                asio_service_(new AsioService(3)),
                                msg_handler_(),
                                transport_(new TcpTransport(asio_service_->service())),
-                               local_port_(5483),
+                               local_port_(kMinPort),
                                client_started_vault_vmids_(),
                                config_file_vault_vmids_(),
                                mediator_thread_(),
@@ -425,8 +428,9 @@ void VaultManager::ListenForMessages() {
   while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
       local_port_)) != kSuccess) {
     ++local_port_;
-    if (local_port_ > 6483) {
-      LOG(kError) << "ListenForMessages: Listening failed on all ports in range";
+    if (local_port_ > kMaxPort) {
+      LOG(kError) << "ListenForMessages: Listening failed on all ports in range " << kMinPort
+                  << " to " << kMaxPort;
       return;
     }
   }

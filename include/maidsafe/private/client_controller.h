@@ -46,46 +46,52 @@ namespace priv {
 
 class ClientController {
  public:
+  enum State {
+    kInitialising,
+    kVerified,
+    kFailed
+  };
+
   ClientController();
   ~ClientController();
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const maidsafe::asymm::Keys& keys, const std::string& account_name);
+  bool StartVault(const maidsafe::asymm::Keys &keys, const std::string &account_name);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.
-  bool StopVault(const maidsafe::asymm::PlainText& data,
-                 const maidsafe::asymm::Signature& signature,
-                 const maidsafe::asymm::Identity& identity);
+  bool StopVault(const maidsafe::asymm::PlainText &data,
+                 const maidsafe::asymm::Signature &signature,
+                 const maidsafe::asymm::Identity &identity);
 
  private:
-  void ConnectToManager(uint16_t port);
-  void ConnectToManagerCallback(const std::string& hello_response_string, const Info& sender_info,
-                                std::string* response);
-  void OnConnectError(const TransportCondition &transport_condition,
-                      const Endpoint &remote_endpoint);
-  void OnStartVaultError(const TransportCondition &transport_condition,
-                         const Endpoint &remote_endpoint);
-  void StartVaultRequest(const maidsafe::asymm::Keys& keys, const std::string& account_name);
-  void StartVaultRequestCallback(const std::string& hello_response_string, const Info& sender_info,
-                                 std::string* response);
-  void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info,
-                             std::string* response, std::shared_ptr<TcpTransport> transport,
-                             std::shared_ptr<MessageHandler> message_handler);
-  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
-                      std::shared_ptr<MessageHandler>& message_handler);
+  void ConnectToManager();
+  void ConnectToManagerCallback(const std::string &hello_response_string,
+                                const Info &sender_info);
+  void OnSendError(const TransportCondition &transport_condition,
+                   const Endpoint &remote_endpoint,
+                   const std::function<void(bool)> &callback);
+  void StartVaultRequest(const maidsafe::asymm::Keys &keys,
+                         const std::string &account_name,
+                         const std::function<void(bool)> &callback);
+  void StartVaultRequestCallback(const std::string &hello_response_string,
+                                 const Info &sender_info,
+                                 const std::function<void(bool)> &callback);
+  void HandleIncomingMessage(const int &type,
+                             const std::string &payload,
+                             const Info &info,
+                             std::shared_ptr<TcpTransport> transport,
+                             std::shared_ptr<MessageHandler> message_handler,
+                             const std::function<void(bool)> &callback);
+  void ResetTransport(std::shared_ptr<TcpTransport> &transport,
+                      std::shared_ptr<MessageHandler> &message_handler,
+                      const std::function<void(bool)> &callback);
 
   uint16_t port_;
-  boost::thread thd_;
   std::shared_ptr<maidsafe::AsioService> asio_service_;
-  boost::asio::ip::tcp::resolver resolver_;
-  boost::asio::ip::tcp::resolver::query query_;
-  boost::asio::ip::tcp::resolver::iterator endpoint_iterator_;
-  boost::asio::ip::tcp::socket socket_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
-  bool connected_to_manager_;
-  bool vault_started_;
+  State state_;
 };
 
 }  // namespace priv

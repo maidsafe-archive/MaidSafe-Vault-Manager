@@ -73,8 +73,11 @@ struct WaitingVaultInfo {
 
 class VaultManager {
  public:
+  static const uint16_t kMinPort, kMaxPort;
+
   VaultManager();
   ~VaultManager();
+
   std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity);
   void StartListening();
   void StopListening();
