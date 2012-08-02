@@ -172,7 +172,7 @@ namespace maidsafe {
       return;
     }
     if (restart) {
-      boost::this_thread::sleep(boost::posix_time::milliseconds(600));
+      Sleep(boost::posix_time::milliseconds(600));
       // SetInstruction(id, ProcessInstruction::kRun);
       if (logging) {
         maidsafe::log::FilterMap filter;

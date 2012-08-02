@@ -94,7 +94,7 @@ struct ProcessManagerStruct {
 //                                                           shared_mem_name.c_str(),
 //                                                           1024);
 //     while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem) && !check_finished)
-//       boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+//       maidsafe::Sleep(boost::posix_time::milliseconds(500));
 //     if (check_finished)
 //       return;
 //     exit(0);
@@ -147,7 +147,7 @@ int main(int ac, char* av[]) {
     if (vm.count("runtime")) {
       int runtime = vm["runtime"].as<int>();
         LOG(kInfo) << "Running for " << runtime << " seconds.";
-        boost::this_thread::sleep(boost::posix_time::seconds(runtime));
+        maidsafe::Sleep(boost::posix_time::seconds(runtime));
         if (vm.count("nocrash")) {
           check_finished = true;
           LOG(kInfo) << "DUMMYprocess: Process finishing normally. ";

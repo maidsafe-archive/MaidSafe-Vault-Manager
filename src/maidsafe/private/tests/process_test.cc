@@ -110,7 +110,7 @@ namespace test {
 //   manager.StartProcess(num);
 //   EXPECT_GT(num, 0);
 //   manager.RestartProcess(num);
-//   boost::this_thread::sleep(boost::posix_time::millisec(2000));
+//   Sleep(boost::posix_time::millisec(2000));
 //   manager.LetProcessDie(num);
 //   manager.WaitForProcesses();
 //   auto end(boost::posix_time::microsec_clock::universal_time());
@@ -161,7 +161,7 @@ namespace test {
 //   manager.RestartProcess(num);
 //   manager.RestartProcess(num1);
 //   manager.RestartProcess(num2);
-//   boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+//   Sleep(boost::posix_time::milliseconds(2000));
 //   manager.LetProcessDie(num);
 //   manager.LetProcessDie(num1);
 //   manager.LetProcessDie(num2);
@@ -219,7 +219,7 @@ namespace test {
 //   for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
 //     manager.LetProcessDie(*it);
 //
-//   std::this_thread::sleep_for(std::chrono::seconds(6));
+//   Sleep(boost::posix_time::seconds(6));
 //
 //   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
 //   EXPECT_EQ(process_ids_10.size(), manager.NumberOfLiveProcesses());
@@ -227,7 +227,7 @@ namespace test {
 //   for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
 //     manager.LetProcessDie(*it);
 //
-//   std::this_thread::sleep_for(std::chrono::seconds(6));
+//   Sleep(boost::posix_time::seconds(6));
 //   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
 //   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
 //   manager.WaitForProcesses();
@@ -339,7 +339,7 @@ TEST(ProcessManagerTest, BEH_StartSingleProcess) {
 //   manager.StartProcess(id);
 //   EXPECT_NE(id, "");
 //   manager.RestartProcess(id);
-//   boost::this_thread::sleep(boost::posix_time::millisec(800));
+//   Sleep(boost::posix_time::millisec(800));
 //   manager.LetProcessDie(id);
 //   manager.WaitForProcesses();
 //   auto end(boost::posix_time::microsec_clock::universal_time());
@@ -390,7 +390,7 @@ TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
   manager.RestartProcess(id);
   manager.RestartProcess(id1);
   manager.RestartProcess(id2);
-  boost::this_thread::sleep(boost::posix_time::milliseconds(800));
+  Sleep(boost::posix_time::milliseconds(800));
   manager.LetProcessDie(id);
   manager.LetProcessDie(id1);
   manager.LetProcessDie(id2);
@@ -456,7 +456,6 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     manager.LetProcessDie(*it);
   LOG(kInfo) << "HELLO4";
   Sleep(boost::posix_time::seconds(6));
-//  std::this_thread::sleep_for(std::chrono::seconds(6));
 
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(process_ids_10.size(), manager.NumberOfLiveProcesses());
@@ -465,7 +464,6 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     manager.LetProcessDie(*it);
   LOG(kInfo) << "HELLO5";
   Sleep(boost::posix_time::seconds(6));
-//  std::this_thread::sleep_for(std::chrono::seconds(6));
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   LOG(kInfo) << "HELLO6";
@@ -489,7 +487,7 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 //   auto start(boost::posix_time::microsec_clock::universal_time());
 //   manager.StartProcess(num);
 //   EXPECT_GT(num, 0);
-//   boost::this_thread::sleep(boost::posix_time::seconds(400));
+//   Sleep(boost::posix_time::seconds(400));
 //   /*manager.LetProcessDie(num);
 // manager.WaitForProcesses();*/
 //   manager.KillProcess(num);

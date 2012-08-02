@@ -136,7 +136,7 @@ namespace priv {
       shared_mem_ = bi::managed_shared_memory(bi::open_or_create,  shared_mem_name.c_str(), 4096);
       ProcessInstruction instruction = CheckInstruction(id);
       while (instruction == ProcessInstruction::kRun && !check_finished_) {
-        boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+        Sleep(boost::posix_time::milliseconds(500));
         instruction = CheckInstruction(static_cast<int32_t>(id));
       }
       if (check_finished_)
