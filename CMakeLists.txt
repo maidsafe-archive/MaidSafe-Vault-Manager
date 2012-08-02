@@ -21,11 +21,13 @@ project(private)
 
 set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
-unset(RAN_PROTOC)
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
-if(${RAN_PROTOC})
+
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h")
   file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h"
               "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/appendable_by_all.pb.h")
+endif()
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h")
   file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h"
               "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/chunk.pb.h")
 endif()
