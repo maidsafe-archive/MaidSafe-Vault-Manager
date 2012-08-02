@@ -288,12 +288,13 @@ namespace priv {
     #ifdef _WINDOWS
     platform = "win";
     extension = ".exe";
-    #elif _APPLE_
+    #else
+    #ifdef __APPLE__
     platform = "osx";
     #else
     platform = "linux";
     #endif
-
+    #endif
     std::string current_version, current_patchlevel;
     std::pair<std::string, std::string> version_and_patchlevel;
     boost::filesystem::path current_path(boost::filesystem::current_path());
