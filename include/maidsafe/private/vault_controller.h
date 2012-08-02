@@ -28,11 +28,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
-#include <boost/thread.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <string>
 #include <vector>
+
+#include "boost/thread.hpp"
+#include "boost/asio.hpp"
 
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"

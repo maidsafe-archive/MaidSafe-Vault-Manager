@@ -28,10 +28,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
 
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-
 #include <string>
+
+#include "boost/asio.hpp"
+#include "boost/thread.hpp"
 
 #include "maidsafe/common/rsa.h"
 

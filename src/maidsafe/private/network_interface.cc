@@ -281,6 +281,6 @@ defined(MAIDSAFE_POSIX) || defined(__MACH__)
   return ret;
 }
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe

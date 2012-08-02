@@ -30,25 +30,17 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # pragma warning(disable: 4250)
 #endif
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/program_options.hpp>
 #include <thread>
 #include <chrono>
 #include <iostream>
+
+#include "boost/program_options.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/vault_controller.h"
 #include "maidsafe/common/utils.h"
 
 namespace po = boost::program_options;
-namespace bi = boost::interprocess;
-
-enum class TerminateStatus {
-  kTerminate = 1,
-  kNoTerminate = 2
-};
 
 enum ProcessInstruction {
   kRun = 1,
@@ -60,10 +52,6 @@ enum ProcessInstruction {
 struct ProcessManagerStruct {
   ProcessInstruction instruction;
 };
-
-  typedef bi::allocator<TerminateStatus,
-      bi::managed_shared_memory::segment_manager> TerminateAlloc;
-  typedef bi::vector<TerminateStatus, TerminateAlloc> TerminateVector;
 
   static bool check_finished(false);
 

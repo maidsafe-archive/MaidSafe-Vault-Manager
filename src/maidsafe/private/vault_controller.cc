@@ -32,18 +32,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/vault_controller.h"
 
-#include <boost/process.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
-#include <boost/interprocess/sync/named_condition.hpp>
-#include <boost/program_options.hpp>
-#include <boost/array.hpp>
 #include <thread>
 #include <chrono>
 #include <iostream>
+
+#include "boost/process.hpp"
+#include "boost/array.hpp"
 
 #include "maidsafe/private/vault_manager.h"
 #include "maidsafe/private/vault_identity_info_pb.h"

@@ -28,12 +28,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 
-#include <boost/thread/mutex.hpp>
-#include <boost/thread.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <string>
 #include <vector>
+
+#include "boost/thread/mutex.hpp"
+#include "boost/thread.hpp"
+#include "boost/asio.hpp"
 
 namespace maidsafe {
 

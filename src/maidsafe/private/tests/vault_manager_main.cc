@@ -28,7 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/private/vault_manager.h"
 
 #include <thread>
-#include <boost/graph/graph_concepts.hpp>
 
 #ifdef WIN32
 

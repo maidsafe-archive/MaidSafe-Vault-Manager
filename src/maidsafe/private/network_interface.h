@@ -126,8 +126,8 @@ struct NetworkInterface {
   char name[64];
 };
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_NETWORK_INTERFACE_H_
+#endif  // MAIDSAFE_PRIVATE_NETWORK_INTERFACE_H_
