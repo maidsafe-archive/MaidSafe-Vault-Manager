@@ -187,19 +187,12 @@ namespace maidsafe {
     ctx.stderr_behavior = bp::capture_stream();
     ctx.stdout_behavior = bp::capture_stream();
 
-    bp::child c(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
+    bp::child child(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
 
-    bp::pistream& is = c.get_stdout();
-    bp::pistream& is2 = c.get_stderr();
+    bp::pistream& is = child.get_stdout();
+    bp::pistream& is2 = child.get_stderr();
     std::string result;
     std::string line;
-    maidsafe::rsa::Keys keys;
-    maidsafe::rsa::GenerateKeyPair(&keys);
-    std::string keys_string, account_name("account1");
-    maidsafe::rsa::SerialiseKeys(keys, keys_string);
-    maidsafe::priv::VaultIdentityInfo info;
-    info.set_keys(keys_string);
-    info.set_account_name(account_name);
     while (std::getline(is, line)) {
       result += line;
       result += "\n";
@@ -220,21 +213,27 @@ namespace maidsafe {
          content += line + "\n";
       oa & content;
     }
-    bp::posix_status s = c.wait();
+#ifdef WIN32
+    child.wait();
+#else
+    bp::posix_status status = child.wait();
+#endif
     i = FindProcess(id);
     LOG(kInfo) << "Process " << id << " completes. Output: ";
     LOG(kInfo) << result;
-    if (s.exited()) {
-      LOG(kInfo) << "Program returned exit code " << s.exit_status();
-    } else if (s.stopped()) {
-      LOG(kInfo) << "Program stopped by signal " << s.stop_signal();
-    } else if (s.signaled()) {
-      LOG(kInfo) << "Program received signal " << s.term_signal();
-      if (s.dumped_core())
+#ifndef WIN32
+    if (status.exited()) {
+      LOG(kInfo) << "Program returned exit code " << status.exit_status();
+    } else if (status.stopped()) {
+      LOG(kInfo) << "Program stopped by signal " << status.stop_signal();
+    } else if (status.signaled()) {
+      LOG(kInfo) << "Program received signal " << status.term_signal();
+      if (status.dumped_core())
         LOG(kInfo) << "Program also dumped core";
     } else {
       LOG(kInfo) << "Program terminated for unknown reason";
     }
+#endif
     LOG(kInfo) << "Restart count = " << (*i).restart_count;
     if (!(*i).done) {
       if ((*i).restart_count > 4) {
