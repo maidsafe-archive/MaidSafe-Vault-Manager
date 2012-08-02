@@ -30,7 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef __MSVC__
 # pragma warning(push)
-# pragma warning(disable: 4127 4244)
+# pragma warning(disable: 4127 4244 4267)
 #endif
 #include "maidsafe/private/vault_identity_info.pb.h"
 #ifdef __MSVC__

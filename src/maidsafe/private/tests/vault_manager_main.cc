@@ -57,9 +57,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WIN32
 
 enum {
-  MAIDSAFE_VAULT_MANAGER_STD_EXCEPTION = 0x1,
-  MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION
-}
+  kMaidSafeVaultManagerStdException = 0x1,
+  kMaidSafeVaultServiceUnknownException
+};
 
 #endif
 
@@ -179,12 +179,12 @@ void ServiceMain() {
   }
   catch(const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
-    StopService(ERROR_SERVICE_SPECIFIC_ERROR, MAIDSAFE_VAULT_MANAGER_STD_EXCEPTION);
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultManagerStdException);
     return;
   }
   catch(...) {
     LOG(kError) << "Exception of unknown type!";
-    StopService(ERROR_SERVICE_SPECIFIC_ERROR, MAIDSAFE_VAULT_SERVICE_UNKNOWN_EXCEPTION);
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultServiceUnknownException);
   }
 }
 

@@ -78,13 +78,13 @@ int WaitForResults(boost::mutex& mutex,
                    std::vector<int>& results,
                    boost::posix_time::seconds interval) {
   assert(results.size() < 129U);  // Arbitrary decision
-  size_t size(results.size());
+  int size(static_cast<int>(results.size()));
   try {
     boost::mutex::scoped_lock lock(mutex);
     if (!cond_var.timed_wait(lock,
-                            interval * size,
+                             interval * size,
                              [&]()->bool {
-                               for (size_t i(0); i < size; ++i) {
+                               for (int i(0); i < size; ++i) {
                                  if (results.at(i) == kPendingResult) {
                                    LOG(kError) << "Element " << i << " still pending.";
                                    return false;
@@ -93,7 +93,7 @@ int WaitForResults(boost::mutex& mutex,
                                return true;
                              })) {
       LOG(kError) << "Timed out during waiting response: ";
-      for (size_t n(0); n < size; ++n)
+      for (int n(0); n < size; ++n)
         LOG(kError) << results[n] << " - ";
       return kOperationTimeOut;
     }
