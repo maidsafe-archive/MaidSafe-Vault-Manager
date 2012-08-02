@@ -90,8 +90,8 @@ class MessageHandler {
 
   void OnMessageReceived(const std::string &request,
                          const Info &info,
-                         std::string */*response*/,
-                         Timeout */*timeout*/);
+                         std::string * /*response*/,
+                         Timeout * /*timeout*/);
   void OnError(const TransportCondition &transport_condition,
                const Endpoint &remote_endpoint);
 

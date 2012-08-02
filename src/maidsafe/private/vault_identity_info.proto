@@ -42,3 +42,16 @@ message VaultIdentityInfo {
   required bytes keys = 1;
   required bytes account_name = 2;
 }
+
+// VaultManager receives this periodically from Vault. Vault expects a VaultIdentityInfo response.
+
+message VaultShutdownRequest {
+  required bytes vmid = 1;
+}
+
+// VaultManager sends this to a requesting Vault. It contains a boolean incdicating whether or not
+// the vault should shut down.
+
+message VaultShutdownResponse {
+  required bool shutdown = 1;
+}

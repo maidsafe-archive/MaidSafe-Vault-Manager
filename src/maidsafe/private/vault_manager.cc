@@ -40,7 +40,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 namespace bai = boost::asio::ip;
 
@@ -53,15 +53,28 @@ namespace priv {
                                  msg_handler_(),
                                  transport_(new TcpTransport(asio_service_->service())),
                                  local_port_(5483), client_started_vault_vmids_(),
-                                 config_file_vault_vmids_() {
+                                 config_file_vault_vmids_(), mediator_thread_(), updates_thread_(),
+                                 mutex_(), cond_var_(), stop_listening_for_messages_(false),
+                                 stop_listening_for_updates_(false), shutdown_requested_(false),
+                                 stopped_vaults_(0) {
                                    asio_service_->Start();
                                 }
 
   VaultManager::~VaultManager() {}
 
+  void VaultManager::RestartVaultManager(std::string latest_file, std::string executable_name) {
+#ifdef WIN32
+    std::string command("./restart_vm.bat " + latest_file + " " + executable_name);
+    system(command.c_str());
+#else
+    // system("/etc/init.d/mvm restart");
+    std::string command("./restart_vm.sh " + latest_file + " " + executable_name);
+    system(command.c_str());
+#endif
+  }
+
   std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity) {
     maidsafe::Process process;
-    std::string vmid;
     LOG(kInfo) << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
                << chunkstore_capacity << std::endl;
 
@@ -72,6 +85,7 @@ namespace priv {
     process.AddArgument("--chunk_capacity");
     process.AddArgument(chunkstore_capacity);
     process.AddArgument("--start");
+    LOG(kInfo) << "Process Name: " << process.ProcessName();
 
     /*process.SetProcessName("DUMMYprocess");
     process.AddArgument("DUMMYprocess");
@@ -79,7 +93,7 @@ namespace priv {
 
     process_vector_.push_back(process);
 
-    vmid = manager_.AddProcess(process, local_port_);
+    std::string vmid(manager_.AddProcess(process, local_port_));
     vmid_vector_.push_back(vmid);
 
     manager_.StartProcess(vmid);
@@ -107,7 +121,7 @@ namespace priv {
 
   bool VaultManager::WriteConfig() {
     std::vector<std::string> vault_info;
-    fs::path path("TestConfig.txt");
+    fs::path path(/*GetSystemAppDir() / "vault_manager_config.txt"*/ "TestConfig.txt");
     std::string content, serialized_keys;
 
     for (size_t i = 0; i < config_file_vault_vmids_.size(); i++) {
@@ -266,20 +280,21 @@ namespace priv {
     std::string platform;
     std::string extension = "";
 
-    std::string filetypes[] = {"lifestufflocal", "pd-vault"};
-    std::vector<std::string> download_type(filetypes, filetypes + sizeof(filetypes)
-                                                     / sizeof(std::string));
+    std::vector<std::string> download_type;
+    download_type.push_back("lifestufflocal");
+    download_type.push_back("pd-vault");
     std::vector<std::string>::iterator download_type_iterator = download_type.begin();
 
     #ifdef _WINDOWS
     platform = "win";
-    extension = ".exe"
-    #elifdef _APPLE_
+    extension = ".exe";
+    #else
+    #ifdef __APPLE__
     platform = "osx";
     #else
     platform = "linux";
     #endif
-
+    #endif
     std::string current_version, current_patchlevel;
     std::pair<std::string, std::string> version_and_patchlevel;
     boost::filesystem::path current_path(boost::filesystem::current_path());
@@ -333,22 +348,28 @@ namespace priv {
         if (download_manager_.VerifySignature()) {
           // Remove the signature_file
           LOG(kInfo) << "Removing signature file";
-          boost::filesystem::path symlink(current_path / name);
           boost::filesystem::remove(current_path / signature_file);
+#ifndef WIN32
+          boost::filesystem::path symlink(current_path / name);
           boost::filesystem::remove(symlink);
 
           boost::filesystem::create_symlink(file_to_download, symlink);
           LOG(kInfo) << "Symbolic link " << symlink.string()
                      << " to the client file has been created!";
-
+#endif
           // Remove the previous client file
           while (boost::filesystem::exists(current_path / latest_local_file)) {
             if (boost::filesystem::remove(current_path / latest_local_file)) {
               continue;
             }
-            boost::this_thread::sleep(boost::posix_time::minutes(2));
+            boost::mutex::scoped_lock lock(mutex_);
+            cond_var_.timed_wait(lock, boost::posix_time::minutes(2),
+                                 [&] { return stop_listening_for_updates_; });
+            if (stop_listening_for_updates_)
+              return;
           }
-
+          if (name == "vault-manager" || name == "pd-vault")
+            RestartVaultManager(file_to_download, name);
         } else {
           LOG(kInfo) << "Removing downloaded files";
           // Remove the signature_file
@@ -358,14 +379,17 @@ namespace priv {
       } else {
         LOG(kInfo) << "No later file has been found!!!";
       }
-
-      if (download_type_iterator !=download_type.end()) {
-        ++download_type_iterator;
+      ++download_type_iterator;
+      if (download_type_iterator != download_type.end()) {
         continue;
       } else {
         download_type_iterator = download_type.begin();
         LOG(kInfo) << "Sleeping for five minutes!";
-        boost::this_thread::sleep(boost::posix_time::minutes(5));
+        boost::mutex::scoped_lock lock(mutex_);
+        cond_var_.timed_wait(lock, boost::posix_time::minutes(5),
+                             [&] { return stop_listening_for_updates_; });
+        if (stop_listening_for_updates_)
+          return;
       }
     }
   }
@@ -385,12 +409,13 @@ namespace priv {
       return true;
     } catch(const std::exception& e) {
       LOG(kError) << "Error creating/accessing bootstrap file: " << e.what();
-      return false;
+      // return false;
     }
     return false;
   }
 
   void VaultManager::ListenForMessages() {
+    boost::mutex::scoped_lock lock(mutex_);
     while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
         local_port_)) != kSuccess) {
       ++local_port_;
@@ -400,7 +425,10 @@ namespace priv {
       }
     }
     LOG(kInfo) << "ListenForMessages: Listening on port " << local_port_;
-    for (;;) {}
+    cond_var_.wait(lock, [&]{ return shutdown_requested_; });  // NOLINT
+    cond_var_.timed_wait(lock, boost::posix_time::seconds(10),
+                         [&]{ return manager_.NumberOfLiveProcesses() == 0; });  // NOLINT
+    LOG(kInfo) << "ListenForMessages: FINISHED Listening on port " << local_port_;
   }
 
   void VaultManager::OnError(const TransportCondition &transport_condition,
@@ -422,12 +450,16 @@ namespace priv {
         HandleClientHello(payload, info, response);
         break;
       case VaultManagerMessageType::kIdentityInfoRequestFromVault:
-        LOG(kInfo) << "kIndentityInfoRequestFromVault";
+        LOG(kInfo) << "kIdentityInfoRequestFromVault";
         HandleVaultInfoRequest(payload, info, response);
         break;
       case VaultManagerMessageType::kStartRequestFromClient:
         LOG(kInfo) << "kStartRequestFromClient";
         HandleClientStartVaultRequest(payload, info, response);
+        break;
+      case VaultManagerMessageType::kShutdownRequestFromVault:
+        LOG(kInfo) << "kShutdownRequestFromVault";
+        HandleVaultShutdownRequest(payload, info, response);
         break;
       default:
         LOG(kError) << "Invalid message type";
@@ -495,7 +527,8 @@ namespace priv {
   }
 
   void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_string,
-                                            const Info& /*info*/, std::string* vault_info_string) {
+                                            const Info& /*info*/,
+                                            std::string* vault_info_string) {
      // GET INFO REQUEST
      VaultIdentityRequest request;
      bool new_vault(false);
@@ -535,6 +568,30 @@ namespace priv {
     waiting_vault_info->cond_var_.notify_all();
   }
 
+  void VaultManager::HandleVaultShutdownRequest(const std::string& vault_shutdown_string,
+                                                const Info& /*info*/,
+                                                std::string* response) {
+    LOG(kInfo) <<  "HandleVaultShutdownRequest";
+    VaultShutdownRequest request;
+    if (request.ParseFromString(vault_shutdown_string)) {
+      int message_type(static_cast<int>(VaultManagerMessageType::kShutdownResponseToVault));
+      VaultShutdownResponse shutdown_response;
+      boost::mutex::scoped_lock lock(mutex_);
+      shutdown_response.set_shutdown(shutdown_requested_);
+      LOG(kInfo) <<  "HandleVaultShutdownRequest: shutdown requested"
+                 << std::boolalpha << shutdown_requested_;
+      *response = msg_handler_.MakeSerialisedWrapperMessage(message_type,
+                                                            shutdown_response.SerializeAsString());
+     if (shutdown_requested_) {
+       LOG(kInfo) << "Shutting down a vault.";
+       ++stopped_vaults_;
+       cond_var_.notify_all();
+     }
+      return;
+    }
+    LOG(kError) <<  "HandleVaultShutdownRequest: Problem parsing client's shutdown request";
+  }
+
   void VaultManager::StartListening() {
     transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                           &msg_handler_, _1, _2, _3, _4));
@@ -543,15 +600,24 @@ namespace priv {
     msg_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
     msg_handler_.SetCallback(boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3,
                                          _4));
-    std::string request;
+    /*updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT*/
+    mediator_thread_ = boost::thread( [&] { ListenForMessages(); } ); // NOLINT
+  }
 
-    /*boost::thread updates_thread( [&] { ListenForUpdates(); } ); // NOLINT
-    if (updates_thread.joinable())
-      updates_thread.join();*/
-
-    boost::thread mediator_thread( [&] { ListenForMessages(); } ); // NOLINT
-    if (mediator_thread.joinable())
-      mediator_thread.join();
+  void VaultManager::StopListening() {
+    LOG(kInfo) << "Starting VaultManager shutdown sequence.";
+    manager_.LetAllProcessesDie();
+    boost::mutex::scoped_lock lock(mutex_);
+    stop_listening_for_updates_ = true;
+    LOG(kInfo) << "VaultManager: setting shutdown_requested_ to true";
+    shutdown_requested_ = true;
+    cond_var_.notify_all();
+    lock.unlock();
+    if (mediator_thread_.joinable())
+      mediator_thread_.join();
+    LOG(kInfo) << "After VaultManager vaults shutdown";
+    /*if (updates_thread_.joinable())
+      updates_thread_.join();*/
     transport_->StopListening();
   }
 }       // namespace priv

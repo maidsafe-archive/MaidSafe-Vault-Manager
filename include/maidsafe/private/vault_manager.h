@@ -52,7 +52,9 @@ enum class VaultManagerMessageType {
   kStartRequestFromClient = 3,
   kStartResponseToClient = 4,
   kIdentityInfoRequestFromVault = 5,
-  kIdentityInfoToVault = 6
+  kIdentityInfoToVault = 6,
+  kShutdownRequestFromVault = 7,
+  kShutdownResponseToVault = 8
 };
 
 struct WaitingVaultInfo {
@@ -75,11 +77,13 @@ class VaultManager {
   ~VaultManager();
   std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity);
   void StartListening();
+  void StopListening();
   bool ReadConfig();
   void StopVault(int32_t id);
   void EraseVault(int32_t id);
   int32_t ListVaults(bool select);
   void RestartVault(std::string id);
+  void RestartVaultManager(std::string latest_file, std::string executable_name);
   int32_t get_process_vector_size();
   void ListenForUpdates();
   void ListenForMessages();
@@ -88,12 +92,15 @@ class VaultManager {
                                      std::string* response);
   void HandleVaultInfoRequest(const std::string& vault_info_string, const Info& info,
                               std::string* response);
+  void HandleVaultShutdownRequest(const std::string& vault_shutdown_string, const Info& info,
+                              std::string* response);
   void HandleIncomingMessage(const int& type, const std::string& payload, const Info& info,
                              std::string* response);
   void OnError(const TransportCondition &transport_condition, const Endpoint &remote_endpoint);
   std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
                                                              std::string platform,
                                                              std::string cpu_size);
+  void ProcessStopHandler();
 
  private:
 //   It should be decided if the following three methods are going to be private or public
@@ -115,6 +122,14 @@ class VaultManager {
   uint16_t local_port_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> client_started_vault_vmids_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> config_file_vault_vmids_;
+  boost::thread mediator_thread_;
+  boost::thread updates_thread_;
+  boost::mutex mutex_;
+  boost::condition_variable cond_var_;
+  bool stop_listening_for_messages_;
+  bool stop_listening_for_updates_;
+  bool shutdown_requested_;
+  uint16_t stopped_vaults_;
 };
 
 }  // namespace private

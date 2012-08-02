@@ -32,7 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 
 #include "maidsafe/private/client_controller.h"
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 #include "maidsafe/private/vault_manager.h"
 
 #include "maidsafe/common/log.h"
@@ -238,4 +238,3 @@ namespace priv {
 }  // namespace priv
 
 }  // namespace maidsafe
-

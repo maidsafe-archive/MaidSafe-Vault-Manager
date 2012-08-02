@@ -25,18 +25,22 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __MSVC__
+# pragma warning(push)
+# pragma warning(disable: 4250)
+#endif
+
 #include "maidsafe/private/process_manager.h"
 
 #include <thread>
 #include <chrono>
-
 #include <boost/process.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/filesystem.hpp>
-
 #include <maidsafe/common/log.h>
 #include <maidsafe/common/utils.h>
 #include <maidsafe/common/rsa.h>
@@ -46,7 +50,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utility>
 #include <algorithm>
 
-#include "maidsafe/private/vault_identity_info.pb.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
 #include "boost/archive/text_oarchive.hpp"
 #include "boost/archive/text_iarchive.hpp"
@@ -71,6 +75,7 @@ namespace maidsafe {
     if (ec)
       return false;
     std::string exec = bp::find_executable_in_path(process_name, path_string);
+    LOG(kInfo) << "Executable found at " << exec;
     process_name_ = exec;
     return true;
   }
@@ -215,17 +220,27 @@ namespace maidsafe {
          content += line + "\n";
       oa & content;
     }
-    c.wait();
+    bp::posix_status s = c.wait();
     i = FindProcess(id);
     LOG(kInfo) << "Process " << id << " completes. Output: ";
     LOG(kInfo) << result;
-
+    if (s.exited()) {
+      LOG(kInfo) << "Program returned exit code " << s.exit_status();
+    } else if (s.stopped()) {
+      LOG(kInfo) << "Program stopped by signal " << s.stop_signal();
+    } else if (s.signaled()) {
+      LOG(kInfo) << "Program received signal " << s.term_signal();
+      if (s.dumped_core())
+        LOG(kInfo) << "Program also dumped core";
+    } else {
+      LOG(kInfo) << "Program terminated for unknown reason";
+    }
     LOG(kInfo) << "Restart count = " << (*i).restart_count;
     if (!(*i).done) {
       if ((*i).restart_count > 4) {
-        LOG(kInfo) << "A process is consistently failing. Exiting... Restart count = "
-                   << (*i).restart_count;
-        exit(0);
+        LOG(kInfo) << "A process " << (*i).id << " is consistently failing. Stopping..." <<
+        " Restart count = " << (*i).restart_count;
+        return;
       }
       if (((*i).restart_count < 3)) {
         (*i).restart_count = (*i).restart_count + 1;
@@ -281,6 +296,11 @@ namespace maidsafe {
     if (i == processes_.end())
       return;
     (*i).done = true;
+  }
+
+  void ProcessManager::LetAllProcessesDie() {
+    for (auto i(processes_.begin()); i != processes_.end(); ++i)
+      (*i).done = true;
   }
 
   std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
@@ -362,3 +382,7 @@ namespace maidsafe {
     return (*t.first)[id].instruction;
   }*/
 }  // namespace maidsafe
+
+#ifdef __MSVC__
+# pragma warning(pop)
+#endif

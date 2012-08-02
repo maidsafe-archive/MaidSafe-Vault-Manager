@@ -28,8 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/process.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <thread>
@@ -81,20 +79,29 @@ class VaultController {
   void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
                    const boost::system::error_code& ec);
   void ReceiveKeys();
-  void ReceiveKeysCallback(const int& type, const std::string& payload,
-                           const Info& /*sender_info*/, std::string* response,
-                           std::shared_ptr<TcpTransport> transport,
-                           std::shared_ptr<MessageHandler> message_handler);
+  void ReceiveKeysCallback(const std::string& serialised_info,
+                           const Info& sender_info,
+                           std::string* /*response*/);
+  void ListenForShutdown();
+  void ListenForShutdownCallback(const std::string& serialised_response,
+                                                  const Info& sender_info,
+                                                  std::string* /*response*/);
+  void HandleIncomingMessage(const int& type,
+                             const std::string& payload,
+                             const Info& info,
+                             std::string* response,
+                             std::shared_ptr<TcpTransport> transport,
+                             std::shared_ptr<MessageHandler> message_handler);
   void OnMessageReceived(const std::string &request,
                          const Info /*&info*/,
-                         std::string */*response*/,
-                         Timeout */*timeout*/);
+                         std::string* /*response*/,
+                         Timeout* /*timeout*/);
   void ResetTransport(std::shared_ptr<TcpTransport>& transport,
                       std::shared_ptr<MessageHandler>& message_handler);
   /*ProcessInstruction CheckInstruction(const int32_t& id);*/
   std::string process_id_;
   uint16_t port_;
-  boost::thread thd;
+  boost::thread thread_;
   std::shared_ptr<AsioService> asio_service_;
   bool check_finished_;
   maidsafe::rsa::Keys keys_;
@@ -103,6 +110,10 @@ class VaultController {
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
   bool started_;
+  boost::mutex shutdown_mutex_;
+  boost::condition_variable shutdown_cond_var_;
+  bool shutdown_confirmed_;
+  std::function<void()> stop_callback_;
 };
 
 }  // namespace priv

@@ -28,8 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/process.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
@@ -104,6 +102,7 @@ class ProcessManager {
   /*ProcessStatus GetProcessStatus(Process &process);*/
   void StartProcess(std::string id);
   void LetProcessDie(std::string id);
+  void LetAllProcessesDie();
   void WaitForProcesses();
   void KillProcess(std::string id);
   void StopProcess(std::string id);

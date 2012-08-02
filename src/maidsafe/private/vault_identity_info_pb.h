@@ -25,41 +25,16 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*******************************************************************************
-* NOTE: This header is unlikely to have any breaking changes applied. *
-* However, it should not be regarded as finalised until this notice is *
-* removed. *
-******************************************************************************/
+#ifndef MAIDSAFE_PRIVATE_VAULT_IDENTITY_INFO_PB_H_
+#define MAIDSAFE_PRIVATE_VAULT_IDENTITY_INFO_PB_H_
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_H_
-#define MAIDSAFE_PRIVATE_UTILS_H_
+#ifdef __MSVC__
+# pragma warning(push)
+# pragma warning(disable: 4127 4244)
+#endif
+#include "maidsafe/private/vault_identity_info.pb.h"
+#ifdef __MSVC__
+# pragma warning(pop)
+#endif
 
-#include <string>
-#include <vector>
-#include "maidsafe/private/transport.h"
-
-
-namespace maidsafe {
-
-namespace priv {
-
-// Convert an IP in ASCII format to IPv4 or IPv6 bytes
-std::string IpAsciiToBytes(const std::string &decimal_ip);
-
-// Convert an IPv4 or IPv6 in bytes format to ASCII format
-std::string IpBytesToAscii(const std::string &bytes_ip);
-
-// Convert an internet network address into dotted string format.
-void IpNetToAscii(uint32_t address, char *ip_buffer);
-
-// Convert a dotted string format internet address into Ipv4 format.
-uint32_t IpAsciiToNet(const char *buffer);
-
-// Return all local addresses
-std::vector<IP> GetLocalAddresses();
-
-}  // namespace priv
-
-}  // namespace maidsafe
-
-#endif  // MAIDSAFE_PRIVATE_UTILS_H_
+#endif // MAIDSAFE_PRIVATE_VAULT_IDENTITY_INFO_PB_H_
