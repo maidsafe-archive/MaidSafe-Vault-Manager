@@ -91,7 +91,7 @@ void IpNetToAscii(uint32_t address, char *ip_buffer) {
 uint32_t IpAsciiToNet(const char *buffer) {
   // net_server inexplicably doesn't have this function; so I'll just fake it
   uint32_t ret = 0;
-  int shift = 24; // fill out the MSB first
+  int shift = 24;  // fill out the MSB first
   bool startQuad = true;
   while ((shift >= 0) && (*buffer)) {
     if (startQuad) {
@@ -123,6 +123,6 @@ std::vector<IP> GetLocalAddresses() {
   return ips;
 }
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe

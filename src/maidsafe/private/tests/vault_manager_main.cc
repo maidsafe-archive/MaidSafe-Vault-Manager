@@ -96,7 +96,6 @@ void ControlHandler(DWORD request);
 
 int main(int /*argc*/, char ** /*argv*/) {
 #ifdef WIN32
-
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
   service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
@@ -108,7 +107,6 @@ int main(int /*argc*/, char ** /*argv*/) {
   signal(SIGINT, vm_shutdown);
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-
   maidsafe::priv::VaultManager vault_manager;
 
   vault_manager.ReadConfig();

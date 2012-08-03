@@ -75,10 +75,11 @@ class VaultManager {
  public:
   static const uint16_t kMinPort, kMaxPort;
 
-  VaultManager();
+  explicit VaultManager(const std::string &parent_path = "");
   ~VaultManager();
 
-  std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity);
+  std::string RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
+                       std::string bootstrap_endpoint = "");
   void StartListening();
   void StopListening();
   bool ReadConfig();
@@ -133,6 +134,7 @@ class VaultManager {
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
   uint16_t stopped_vaults_;
+  std::string parent_path_;
 };
 
 }  // namespace private

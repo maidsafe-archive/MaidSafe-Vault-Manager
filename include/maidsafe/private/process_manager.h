@@ -69,7 +69,7 @@ struct ProcessManagerStruct {
 class Process {
  public:
   Process() : args_(), process_name_() {}
-  bool SetProcessName(std::string process_name);
+  bool SetProcessName(std::string process_name, std::string parent_path = "");
   void AddArgument(std::string argument);
   std::string ProcessName() const;
   std::vector<std::string> Args() const;

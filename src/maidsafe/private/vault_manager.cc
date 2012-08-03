@@ -49,24 +49,26 @@ namespace priv {
 const uint16_t VaultManager::kMinPort(5483);
 const uint16_t VaultManager::kMaxPort(5582);
 
-VaultManager::VaultManager() : vmid_vector_(),
-                               process_vector_(),
-                               manager_(),
-                               download_manager_(),
-                               asio_service_(new AsioService(3)),
-                               msg_handler_(),
-                               transport_(new TcpTransport(asio_service_->service())),
-                               local_port_(kMinPort),
-                               client_started_vault_vmids_(),
-                               config_file_vault_vmids_(),
-                               mediator_thread_(),
-                               updates_thread_(),
-                               mutex_(),
-                               cond_var_(),
-                               stop_listening_for_messages_(false),
-                               stop_listening_for_updates_(false),
-                               shutdown_requested_(false),
-                               stopped_vaults_(0) {
+VaultManager::VaultManager(const std::string &parent_path)
+                        : vmid_vector_(),
+                          process_vector_(),
+                          manager_(),
+                          download_manager_(),
+                          asio_service_(new AsioService(3)),
+                          msg_handler_(),
+                          transport_(new TcpTransport(asio_service_->service())),
+                          local_port_(kMinPort),
+                          client_started_vault_vmids_(),
+                          config_file_vault_vmids_(),
+                          mediator_thread_(),
+                          updates_thread_(),
+                          mutex_(),
+                          cond_var_(),
+                          stop_listening_for_messages_(false),
+                          stop_listening_for_updates_(false),
+                          shutdown_requested_(false),
+                          stopped_vaults_(0),
+                          parent_path_(parent_path) {
   asio_service_->Start();
 }
 
@@ -83,13 +85,24 @@ void VaultManager::RestartVaultManager(std::string latest_file, std::string exec
 #endif
 }
 
-std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity) {
+std::string VaultManager::RunVault(std::string chunkstore_path, std::string chunkstore_capacity,
+                                   std::string bootstrap_endpoint) {
   maidsafe::Process process;
   LOG(kInfo) << "CREATING A VAULT at location: " << chunkstore_path << ", with capacity: "
              << chunkstore_capacity;
-
-  process.SetProcessName("pd-vault");
-  process.AddArgument("pd-vault");
+  if(parent_path_ != "") {
+    process.SetProcessName("pd-vault", parent_path_);
+    boost::filesystem::path exec_path(parent_path_);
+    exec_path  /= "pd-vault";
+    process.AddArgument(exec_path.string());
+  } else {
+    process.SetProcessName("pd-vault");
+    process.AddArgument("pd-vault");
+  }
+  if (bootstrap_endpoint != "") {
+    process.AddArgument("--peer");
+    process.AddArgument(bootstrap_endpoint);
+  }
   process.AddArgument("--chunk_path");
   process.AddArgument(chunkstore_path);
   process.AddArgument("--chunk_capacity");
@@ -405,12 +418,12 @@ void VaultManager::ListenForUpdates() {
 
 bool HandleBootstrapFile(asymm::Identity identity) {
   try {
-    fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap.vault_manager");
+    fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap-global.dat");
     if (!fs::exists(manager_bootstrap_path)) {
       LOG(kError) << "Error: Main bootstrap file doesn't exist at " << manager_bootstrap_path;
       return false;
     }
-    fs::path vault_bootstrap_path(GetSystemAppDir() / ("bootstrap." + EncodeToBase32(identity)));
+    fs::path vault_bootstrap_path(GetSystemAppDir() / ("bootstrap-" + EncodeToBase32(identity) + ".dat"));
     if (!fs::exists(vault_bootstrap_path)) {
       fs::copy_file(manager_bootstrap_path, vault_bootstrap_path);
       // SET PERMISSIONS
@@ -512,8 +525,9 @@ void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_
     current_vault_info->chunkstore_path = chunkstore_path;
     current_vault_info->chunkstore_capacity = "0";
     client_started_vault_vmids_.push_back(current_vault_info);
+    LOG(kInfo) << "HandleClientStartVaultRequest: bootstrap endpoint is " << request.bootstrap_endpoint();
     vmid = RunVault(current_vault_info->chunkstore_path,
-                    current_vault_info->chunkstore_capacity);
+                    current_vault_info->chunkstore_capacity, request.bootstrap_endpoint());
     current_vault_info->vault_vmid = vmid;
     WriteConfig();
 

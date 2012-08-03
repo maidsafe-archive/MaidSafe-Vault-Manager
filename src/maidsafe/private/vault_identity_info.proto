@@ -20,6 +20,7 @@ message ClientHelloResponse {
 message ClientStartVaultRequest {
   required bytes keys = 1;
   required bytes account_name = 2;
+  optional bytes bootstrap_endpoint = 3;
 }
 
 // VaultManager sends this to Client in response to a ClientStartVaultRequest. It details whether or

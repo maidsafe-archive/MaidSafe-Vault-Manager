@@ -34,6 +34,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/process_manager.h"
 
+namespace {
+  std::string parent_path_;
+}
+
 namespace maidsafe {
 
 namespace test {
@@ -238,8 +242,10 @@ namespace test {
 TEST(ProcessManagerTest, BEH_StartSingleProcess) {
   maidsafe::ProcessManager manager;
   maidsafe::Process test;
-  ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
-  test.AddArgument("DUMMYprocess");
+  ASSERT_TRUE(test.SetProcessName("DUMMYprocess", parent_path_));
+  boost::filesystem::path exec_path(parent_path_);
+  exec_path  /= "DUMMYprocess";
+  test.AddArgument(exec_path.string());
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
@@ -357,22 +363,24 @@ TEST(ProcessManagerTest, BEH_StartSingleProcess) {
 TEST(ProcessManagerTest, BEH_StartThreeProcesses) {
   maidsafe::ProcessManager manager;
   maidsafe::Process test;
-  ASSERT_TRUE(test.SetProcessName("DUMMYprocess"));
-  test.AddArgument("DUMMYprocess");
+  ASSERT_TRUE(test.SetProcessName("DUMMYprocess", parent_path_));
+  boost::filesystem::path exec_path(parent_path_);
+  exec_path  /= "DUMMYprocess";
+  test.AddArgument(exec_path.string());
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
 
   maidsafe::Process test1;
-  ASSERT_TRUE(test1.SetProcessName("DUMMYprocess"));
-  test1.AddArgument("DUMMYprocess");
+  ASSERT_TRUE(test1.SetProcessName("DUMMYprocess", parent_path_));
+  test1.AddArgument(exec_path.string());
   test1.AddArgument("--runtime");
   test1.AddArgument("2");
   test1.AddArgument("--nocrash");
 
   maidsafe::Process test2;
-  ASSERT_TRUE(test2.SetProcessName("DUMMYprocess"));
-  test2.AddArgument("DUMMYprocess");
+  ASSERT_TRUE(test2.SetProcessName("DUMMYprocess", parent_path_));
+  test2.AddArgument(exec_path.string());
   test2.AddArgument("--runtime");
   test2.AddArgument("2");
   test2.AddArgument("--nocrash");
@@ -410,51 +418,47 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   std::vector<Process> processes_5, processes_10;
   for (int i(0); i < 5; ++i) {
     maidsafe::Process test_5;
-    ASSERT_TRUE(test_5.SetProcessName("DUMMYprocess"));
-    test_5.AddArgument("DUMMYprocess");
+    ASSERT_TRUE(test_5.SetProcessName("DUMMYprocess", parent_path_));
+    boost::filesystem::path exec_path(parent_path_);
+    exec_path  /= "DUMMYprocess";
+    test_5.AddArgument(exec_path.string());
     test_5.AddArgument("--runtime");
     test_5.AddArgument("5");
     test_5.AddArgument("--nocrash");
     processes_5.push_back(test_5);
   }
-    LOG(kInfo) << "HELLO1";
   for (int i(0); i < 5; ++i) {
     maidsafe::Process test_10;
-    ASSERT_TRUE(test_10.SetProcessName("DUMMYprocess"));
-    test_10.AddArgument("DUMMYprocess");
+    ASSERT_TRUE(test_10.SetProcessName("DUMMYprocess", parent_path_));
+    boost::filesystem::path exec_path(parent_path_);
+    exec_path  /= "DUMMYprocess";
+    test_10.AddArgument(exec_path.string());
     test_10.AddArgument("--runtime");
     test_10.AddArgument("10");
     test_10.AddArgument("--nocrash");
     processes_10.push_back(test_10);
   }
-  LOG(kInfo) << "HELLO2";
   EXPECT_EQ(0, manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
   EXPECT_EQ(0, manager.NumberOfSleepingProcesses());
   std::vector<std::string> process_ids_5, process_ids_10;
   for (size_t i(0); i < processes_5.size(); ++i) {
-    LOG(kInfo) << "HELLO21";
     std::string id = manager.AddProcess(processes_5.at(i), 0);
     EXPECT_NE(id, "");
-    LOG(kInfo) << "HELLO22";
     process_ids_5.push_back(id);
     manager.StartProcess(id);
-    LOG(kInfo) << "HELLO23";
   }
-  LOG(kInfo) << "HELLO3";
   for (size_t i(0); i < processes_10.size(); ++i) {
     std::string id = manager.AddProcess(processes_10.at(i), 0);
     EXPECT_NE(id, "");
     manager.StartProcess(id);
     process_ids_10.push_back(id);
   }
-  LOG(kInfo) << "HELLO3";
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfLiveProcesses());
 
   for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
     manager.LetProcessDie(*it);
-  LOG(kInfo) << "HELLO4";
   Sleep(boost::posix_time::seconds(6));
 
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
@@ -462,13 +466,10 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
   for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
     manager.LetProcessDie(*it);
-  LOG(kInfo) << "HELLO5";
   Sleep(boost::posix_time::seconds(6));
   EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), manager.NumberOfProcesses());
   EXPECT_EQ(0, manager.NumberOfLiveProcesses());
-  LOG(kInfo) << "HELLO6";
   manager.WaitForProcesses();
-  LOG(kInfo) << "HELLO7";
 }
 
 // TEST(ProcessManagerTest, FUNC_StartSingleProcessForLongTime) {
@@ -508,6 +509,8 @@ TEST(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
 int main(int argc, char **argv) {
   maidsafe::log::FilterMap filter;
+  fs::path full_path(argv[0]);
+  parent_path_ = full_path.parent_path().string();
   filter["*"] = maidsafe::log::kInfo;
   return ExecuteMain(argc, argv, filter);
 }

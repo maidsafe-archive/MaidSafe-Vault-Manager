@@ -138,9 +138,10 @@ target_link_libraries(TESTprocess maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(TESTdownload maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(vault-manager maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
-rename_outdated_built_exes()
 
 add_dependencies(TESTprocess DUMMYprocess)
+
+rename_outdated_built_exes()
 
 ###################################################################################################
 # Set compiler and linker flags                                                                   #

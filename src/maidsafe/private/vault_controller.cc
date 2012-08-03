@@ -320,6 +320,10 @@ bool VaultController::GetIdentity(maidsafe::rsa::Keys* keys, std::string* accoun
   return false;
 }
 
+void VaultController::ConfirmJoin(bool /*joined*/) {
+  LOG(kError) << "ConfirmJoin: Not yet implemented";
+}
+
 }  // namespace priv
 
 }  // namespace maidsafe

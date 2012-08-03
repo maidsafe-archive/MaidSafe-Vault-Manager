@@ -62,19 +62,24 @@ namespace maidsafe {
 namespace bp = boost::process;
 namespace bai = boost::asio::ip;
 
-bool Process::SetProcessName(std::string process_name) {
-  std::string path_string(boost::filesystem::current_path().string());
+bool Process::SetProcessName(std::string process_name, std::string parent_path) {
+  std::string path_string;
+  if (parent_path == "")
+    path_string = boost::filesystem::current_path().string();
+  else
+    path_string = parent_path;
+  fs::path exec_path(fs::path(parent_path) / process_name);
+  LOG(kInfo) << "Executable path is " << exec_path.string();
   boost::system::error_code ec;
-  boost::filesystem3::path proc(process_name);
-  if (!boost::filesystem3::exists(proc, ec))
+  if (!boost::filesystem3::exists(exec_path, ec))
     return false;
-  if (!boost::filesystem3::is_regular_file(proc, ec))
+  if (!boost::filesystem3::is_regular_file(exec_path, ec)
+      && !boost::filesystem3::is_symlink(exec_path, ec))
     return false;
   if (ec)
     return false;
-  std::string exec = bp::find_executable_in_path(process_name, path_string);
-  LOG(kInfo) << "Executable found at " << exec;
-  process_name_ = exec;
+  LOG(kInfo) << "Executable found at " << exec_path.string();
+  process_name_ = exec_path.string();
   return true;
 }
 
@@ -90,7 +95,8 @@ std::vector<std::string> Process::Args() const {
   return args_;
 }
 
-ProcessInfo::ProcessInfo(ProcessInfo&& other) :
+ProcessInfo::ProcessInfo(ProcessInfo&& other)
+  :
   process(), thread(), id(), port(), restart_count(0), done(false) {
   process = std::move(other.process);
   thread = std::move(other.thread);
@@ -110,7 +116,8 @@ ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
   return *this;
 }
 
-ProcessManager::ProcessManager() :
+ProcessManager::ProcessManager()
+  :
   processes_(),
   process_info_mutex_(),
   process_count_(0),

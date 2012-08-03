@@ -100,8 +100,8 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   Timeout timeout_for_response_;
 };
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_TCP_CONNECTION_H_
+#endif  // MAIDSAFE_PRIVATE_TCP_CONNECTION_H_

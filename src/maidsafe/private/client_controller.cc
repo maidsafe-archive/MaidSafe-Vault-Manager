@@ -27,9 +27,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/private/client_controller.h"
 
+#include <thread>
 #include <chrono>
 #include <iostream>
-#include <thread>
 
 #include "boost/array.hpp"
 
@@ -88,8 +88,8 @@ void ClientController::ConnectToManager() {
   transport->Send(hello_string, endpoint, boost::posix_time::seconds(1));
 }
 
-void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
-                                                const Info& sender_info) {
+void ClientController::ConnectToManagerCallback(const std::string &hello_response_string,
+                                                const Info &sender_info) {
   ClientHelloResponse response;
   if (!response.ParseFromString(hello_response_string) ||
       response.hello_response() != "hello response") {
@@ -107,7 +107,7 @@ void ClientController::ConnectToManagerCallback(const std::string& hello_respons
 
 void ClientController::OnSendError(const TransportCondition &transport_condition,
                                    const Endpoint& /*remote_endpoint*/,
-                                   const std::function<void(bool)> &callback) {
+                                   const std::function<void(bool)> &callback) {  // NOLINT
   LOG(kError) << "OnSendError: Error sending/receiving connect message - " << transport_condition;
   ConnectToManager();
   if (callback)
@@ -119,7 +119,7 @@ void ClientController::HandleIncomingMessage(const int &type,
                                              const Info &info,
                                              std::shared_ptr<TcpTransport> /*transport*/,
                                              std::shared_ptr<MessageHandler> /*message_handler*/,
-                                             const std::function<void(bool)> &callback) {
+                                             const std::function<void(bool)> &callback) {  // NOLINT
   if (info.endpoint.ip.to_string() != "127.0.0.1") {
     LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
     return;
@@ -141,15 +141,22 @@ void ClientController::HandleIncomingMessage(const int &type,
   }
 }
 
-void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
-                                         const std::string& account_name,
-                                         const std::function<void(bool)> &callback) {
+void ClientController::StartVaultRequest(const maidsafe::asymm::Keys &keys,
+                                         const std::string &account_name,
+                                         const bai::udp::endpoint &bootstrap_endpoint,
+                                         const std::function<void(bool)> &callback) {  // NOLINT
   int message_type(static_cast<int>(VaultManagerMessageType::kStartRequestFromClient));
   maidsafe::priv::ClientStartVaultRequest request;
   std::string keys_string;
   asymm::SerialiseKeys(keys, keys_string);
   request.set_keys(keys_string);
   request.set_account_name(account_name);
+  if (bootstrap_endpoint != bai::udp::endpoint()) {
+    std::string endpoint_string(bootstrap_endpoint.address().to_string() + ":" +
+                                    boost::lexical_cast<std::string>(bootstrap_endpoint.port()));
+    LOG(kInfo) << "StartVaultRequest: setting bootstrap endpoint to " << endpoint_string;
+    request.set_bootstrap_endpoint(endpoint_string);
+  }
   std::string request_string;
   std::shared_ptr<TcpTransport> transport;
   std::shared_ptr<MessageHandler> message_handler;
@@ -168,7 +175,7 @@ void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
 
 void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
                                                  const Info& /*sender_info*/,
-                                                 const std::function<void(bool)> &callback) {
+                                                 const std::function<void(bool)> &callback) {  // NOLINT
   ClientStartVaultResponse response;
   if (callback)
     callback(response.ParseFromString(start_response_string) && response.result());
@@ -176,7 +183,7 @@ void ClientController::StartVaultRequestCallback(const std::string& start_respon
 
 void ClientController::ResetTransport(std::shared_ptr<TcpTransport> &transport,
                                       std::shared_ptr<MessageHandler> &message_handler,
-                                      const std::function<void(bool)> &callback) {
+                                      const std::function<void(bool)> &callback) {  // NOLINT
   transport.reset(new TcpTransport(asio_service_->service()));
   message_handler.reset(new MessageHandler());
   transport->on_message_received()->connect(boost::bind(
@@ -191,7 +198,8 @@ void ClientController::ResetTransport(std::shared_ptr<TcpTransport> &transport,
 }
 
 bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
-                                  const std::string& account_name) {
+                                  const std::string& account_name,
+                                  const bai::udp::endpoint &bootstrap_endpoint) {
   {
     boost::mutex::scoped_lock lock(mutex_);
     if (!cond_var_.timed_wait(lock, boost::posix_time::seconds(3),
@@ -209,7 +217,7 @@ bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
   boost::condition_variable local_cond_var;
   bool done(false), local_result(false);
 
-  StartVaultRequest(keys, account_name,
+  StartVaultRequest(keys, account_name, bootstrap_endpoint,
                     [&local_mutex, &local_cond_var, &done, &local_result] (bool result) {
     boost::mutex::scoped_lock lock(local_mutex);
     local_result = result;

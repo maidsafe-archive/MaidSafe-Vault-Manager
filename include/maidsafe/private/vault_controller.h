@@ -72,6 +72,7 @@ class VaultController {
 
   bool Start(std::string vmid_string, std::function<void()> stop_callback);
   bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
+  void ConfirmJoin(bool joined);
 
  private:
   /*void ListenForStopTerminate(std::string shared_mem_name,

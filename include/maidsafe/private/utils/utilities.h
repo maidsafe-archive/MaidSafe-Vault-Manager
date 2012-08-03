@@ -17,6 +17,7 @@
 #define MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
 
 #include <string>
+#include <vector>
 
 #include "boost/thread/condition_variable.hpp"
 #include "boost/thread/mutex.hpp"

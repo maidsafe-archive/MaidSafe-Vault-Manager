@@ -101,16 +101,16 @@ enum TransportCondition {
   kTransportConditionLimit = -359999
 };
 
-enum NatType { kManualPortMapped, // behind manually port-mapped router.
-               kDirectConnected, // directly connected to the net:
+enum NatType { kManualPortMapped,  // behind manually port-mapped router.
+               kDirectConnected,  // directly connected to the net:
                                    // external IP/Port == local IP/Port.
-               kNatPmp, // behind NAT-PMP port-mapped router.
-               kUPnP, // behind UPnP port-mapped router.
-               kFullCone, // behind full-cone NAT - need to continually
+               kNatPmp,  // behind NAT-PMP port-mapped router.
+               kUPnP,  // behind UPnP port-mapped router.
+               kFullCone,  // behind full-cone NAT - need to continually
                                    // ping bootstrap node to keep hole open.
-               kPortRestricted, // behind port restricted NAT - node can only
+               kPortRestricted,  // behind port restricted NAT - node can only
                                    // be contacted via its rendezvous node.
-               kNotConnected }; // behind symmetric NAT or offline.
+               kNotConnected };  // behind symmetric NAT or offline.
 
 struct Endpoint {
   Endpoint() : ip(), port(0) {}
@@ -167,7 +167,7 @@ typedef std::shared_ptr<bs2::signal<void(const TransportCondition&,
 namespace test {
   class MockNatDetectionServiceTest_BEH_FullConeDetection_Test;
   class MockNatDetectionServiceTest_BEH_PortRestrictedDetection_Test;
-} // namespace test
+}  // namespace test
 
 // Base class for all transport types.
 class Transport {
@@ -239,7 +239,7 @@ class Transport {
   OnMessageReceived on_message_received_;
   OnError on_error_;
 
-  const DataSize kMaxTransportMessageSize_; // In bytes
+  const DataSize kMaxTransportMessageSize_;  // In bytes
   TransportDetails transport_details_;
   int bootstrap_status_;
 
@@ -250,8 +250,8 @@ class Transport {
 
 typedef std::shared_ptr<Transport> TransportPtr;
 
-} // namespace priv
+}  // namespace priv
 
-} // namespace maidsafe
+}  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_TRANSPORT_H_
+#endif  // MAIDSAFE_PRIVATE_TRANSPORT_H_
