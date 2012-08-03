@@ -76,11 +76,11 @@ VaultManager::~VaultManager() {}
 
 void VaultManager::RestartVaultManager(std::string latest_file, std::string executable_name) {
 #ifdef WIN32
-  std::string command("./restart_vm.bat " + latest_file + " " + executable_name);
+  std::string command("./restart_vm_windows.bat " + latest_file + " " + executable_name);
   system(command.c_str());
 #else
   // system("/etc/init.d/mvm restart");
-  std::string command("./restart_vm.sh " + latest_file + " " + executable_name);
+  std::string command("./restart_vm_linux.sh " + latest_file + " " + executable_name);
   system(command.c_str());
 #endif
 }

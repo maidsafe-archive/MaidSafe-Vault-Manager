@@ -112,8 +112,8 @@ set(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_T
 source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
-EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm.sh ${CMAKE_BINARY_DIR}/restart_vm.sh)
-EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm.bat ${CMAKE_BINARY_DIR}/restart_vm.bat)
+EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm_linux.sh ${CMAKE_BINARY_DIR}/restart_vm_linux.sh)
+EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm_windows.bat ${CMAKE_BINARY_DIR}/restart_vm_windows.bat)
 
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
