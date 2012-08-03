@@ -113,7 +113,7 @@ source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
 EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm.sh ${CMAKE_BINARY_DIR}/restart_vm.sh)
-EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm.sh ${CMAKE_BINARY_DIR}/restart_vm.bat)
+EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/restart_vm.bat ${CMAKE_BINARY_DIR}/restart_vm.bat)
 
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
@@ -132,14 +132,15 @@ ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
+target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYclient maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(TESTprocess maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(TESTdownload maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(vault-manager maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(DUMMYclient maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 rename_outdated_built_exes()
 
+add_dependencies(TESTprocess DUMMYprocess)
 
 ###################################################################################################
 # Set compiler and linker flags                                                                   #
