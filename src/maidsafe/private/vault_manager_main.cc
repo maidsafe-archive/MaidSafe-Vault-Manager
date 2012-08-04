@@ -11,18 +11,13 @@
 
 #include "maidsafe/private/vault_manager.h"
 
-#include <thread>
-
 #ifdef WIN32
-
-#include <windows.h>
-
+#  include <windows.h>
 #else
-
-#include <signal.h>
-
+#  include <signal.h>
 #endif
 
+#include <thread>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -38,6 +33,19 @@
 #include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/vault_identity_info_pb.h"
 
+namespace {
+
+boost::mutex g_mutex;
+boost::condition_variable g_cond_var;
+bool g_shutdown_service(false);
+
+void ShutDownVaultManager(int /*signal*/) {
+  LOG(kInfo) << "Stopping vault_manager.";
+  boost::mutex::scoped_lock lock(g_mutex);
+  g_shutdown_service = true;
+  g_cond_var.notify_one();
+}
+
 #ifdef WIN32
 
 enum {
@@ -45,26 +53,9 @@ enum {
   kMaidSafeVaultServiceUnknownException
 };
 
-#endif
-
-boost::mutex mutex_;
-boost::condition_variable cond_var_;
-bool shutdown_service(false);
-
-void vm_shutdown(int /*signal*/) {
-  LOG(kInfo) << "Stopping vault_manager.";
-  boost::mutex::scoped_lock lock(mutex_);
-  shutdown_service = true;
-  cond_var_.notify_one();
-}
-
-#ifdef WIN32
-
-namespace {
-  SERVICE_STATUS g_service_status;
-  SERVICE_STATUS_HANDLE g_service_status_handle;
-  wchar_t g_service_name[21] = L"MaidSafeVaultManager";
-}  // unnamed namespace
+SERVICE_STATUS g_service_status;
+SERVICE_STATUS_HANDLE g_service_status_handle;
+wchar_t g_service_name[21] = L"MaidSafeVaultManager";
 
 void StopService(DWORD exit_code, DWORD error_code) {
   g_service_status.dwCurrentState = SERVICE_STOPPED;
@@ -73,51 +64,20 @@ void StopService(DWORD exit_code, DWORD error_code) {
   SetServiceStatus(g_service_status_handle, &g_service_status);
 }
 
-void ServiceMain();
-void ControlHandler(DWORD request);
-
-#endif
-
-int main(int /*argc*/, char ** /*argv*/) {
-#ifdef WIN32
-  SERVICE_TABLE_ENTRY service_table[2];
-  service_table[0].lpServiceName = g_service_name;
-  service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
-  service_table[1].lpServiceName = NULL;
-  service_table[1].lpServiceProc = NULL;
-  // Start the control dispatcher thread for our service
-  StartServiceCtrlDispatcher(service_table);
-#else
-  signal(SIGINT, vm_shutdown);
-  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-  maidsafe::priv::VaultManager vault_manager;
-
-  vault_manager.ReadConfig();
-  vault_manager.StartListening();
-  boost::mutex::scoped_lock lock(mutex_);
-  cond_var_.wait(lock, [&] { return shutdown_service; });  // NOLINT (Philip)
-  vault_manager.StopListening();
-#endif
-  return 0;
-}
-
-#ifdef WIN32
-
 void ControlHandler(DWORD request) {
   switch (request) {
     case SERVICE_CONTROL_STOP:
       LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_STOP received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      vm_shutdown(0);
+      ShutDownVaultManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     case SERVICE_CONTROL_SHUTDOWN:
       LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_SHUTDOWN received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      vm_shutdown(0);
+      ShutDownVaultManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     default:
@@ -147,13 +107,13 @@ void ServiceMain() {
   maidsafe::priv::VaultManager vault_manager;
 
   try {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
     /*vault_manager.ReadConfig();*/
     // vault_manager.StartListening();
-    while (!shutdown_service) {
-      cond_var_.timed_wait(lock, bptime::minutes(1));
+    while (!g_shutdown_service) {
+      g_cond_var.timed_wait(lock, bptime::minutes(1));
     }
     // vault_manager.StopListening();
     StopService(0, 0);
@@ -171,3 +131,32 @@ void ServiceMain() {
 }
 
 #endif
+
+}  // unnamed namespace
+
+
+
+int main() {
+#ifdef WIN32
+  SERVICE_TABLE_ENTRY service_table[2];
+  service_table[0].lpServiceName = g_service_name;
+  service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
+  service_table[1].lpServiceName = NULL;
+  service_table[1].lpServiceProc = NULL;
+  // Start the control dispatcher thread for our service
+  StartServiceCtrlDispatcher(service_table);
+#else
+  signal(SIGINT, ShutDownVaultManager);
+  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  maidsafe::priv::VaultManager vault_manager;
+
+  vault_manager.ReadConfig();
+  vault_manager.StartListening();
+  boost::mutex::scoped_lock lock(g_mutex);
+  g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
+  vault_manager.StopListening();
+#endif
+  return 0;
+}
+

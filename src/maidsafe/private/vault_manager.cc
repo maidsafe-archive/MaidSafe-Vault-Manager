@@ -543,9 +543,9 @@ void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_
     auto client_it(client_started_vault_vmids_.begin());
     auto config_it(config_file_vault_vmids_.begin());
     if (request.ParseFromString(vault_info_request_string)) {
-      std::string vmid(request.vmid());
+      std::string vault_manager_id(request.vault_manager_id());
       for (; client_it != client_started_vault_vmids_.end(); ++client_it) {
-        if ((*client_it)->vault_vmid == vmid) {
+        if ((*client_it)->vault_vmid == vault_manager_id) {
           new_vault = true;
           LOG(kInfo) << "HandleVaultInfoRequest: request is from vault recently started by client";
           break;
@@ -553,7 +553,7 @@ void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_
       }
       if (!new_vault) {
         for (; config_it != config_file_vault_vmids_.end(); ++config_it) {
-          if ((*config_it)->vault_vmid == vmid) {
+          if ((*config_it)->vault_vmid == vault_manager_id) {
             break;
           }
         }

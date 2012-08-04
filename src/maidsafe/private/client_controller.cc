@@ -74,8 +74,8 @@ void ClientController::ConnectToManager() {
   transport->Send(hello_string, endpoint, boost::posix_time::seconds(1));
 }
 
-void ClientController::ConnectToManagerCallback(const std::string &hello_response_string,
-                                                const Info &sender_info) {
+void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
+                                                const Info& sender_info) {
   ClientHelloResponse response;
   if (!response.ParseFromString(hello_response_string) ||
       response.hello_response() != "hello response") {
@@ -91,46 +91,19 @@ void ClientController::ConnectToManagerCallback(const std::string &hello_respons
   cond_var_.notify_all();
 }
 
-void ClientController::OnSendError(const int &transport_condition,
+void ClientController::OnSendError(const int& transport_condition,
                                    const Endpoint& /*remote_endpoint*/,
-                                   const std::function<void(bool)> &callback) {  // NOLINT
+                                   const std::function<void(bool)>& callback) {  // NOLINT
   LOG(kError) << "OnSendError: Error sending/receiving connect message - " << transport_condition;
   ConnectToManager();
   if (callback)
     callback(false);
 }
 
-void ClientController::HandleIncomingMessage(const int &type,
-                                             const std::string &payload,
-                                             const Info &info,
-                                             std::shared_ptr<TcpTransport> /*transport*/,
-                                             std::shared_ptr<MessageHandler> /*message_handler*/,
-                                             const std::function<void(bool)> &callback) {  // NOLINT
-  if (info.endpoint.ip.to_string() != "127.0.0.1") {
-    LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
-    return;
-  }
-  VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
-  switch (message_type) {
-    case VaultManagerMessageType::kHelloResponseToClient:
-      LOG(kInfo) << "kHelloResponseToClient";
-      ConnectToManagerCallback(payload, info);
-      if (callback)
-        callback(true);
-      break;
-    case VaultManagerMessageType::kStartResponseToClient:
-      LOG(kInfo) << "kStartResponseToClient";
-      StartVaultRequestCallback(payload, info, callback);
-      break;
-    default:
-      LOG(kWarning) << "Incorrect message type";
-  }
-}
-
-void ClientController::StartVaultRequest(const maidsafe::asymm::Keys &keys,
-                                         const std::string &account_name,
-                                         const bai::udp::endpoint &bootstrap_endpoint,
-                                         const std::function<void(bool)> &callback) {  // NOLINT
+void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
+                                         const std::string& account_name,
+                                         const bai::udp::endpoint& bootstrap_endpoint,
+                                         const std::function<void(bool)>& callback) {  // NOLINT
   int message_type(static_cast<int>(VaultManagerMessageType::kStartRequestFromClient));
   maidsafe::priv::ClientStartVaultRequest request;
   std::string keys_string;
@@ -161,15 +134,42 @@ void ClientController::StartVaultRequest(const maidsafe::asymm::Keys &keys,
 
 void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
                                                  const Info& /*sender_info*/,
-                                                 const std::function<void(bool)> &callback) {  // NOLINT
+                                                 const std::function<void(bool)>& callback) {  // NOLINT
   ClientStartVaultResponse response;
   if (callback)
     callback(response.ParseFromString(start_response_string) && response.result());
 }
 
-void ClientController::ResetTransport(std::shared_ptr<TcpTransport> &transport,
-                                      std::shared_ptr<MessageHandler> &message_handler,
-                                      const std::function<void(bool)> &callback) {  // NOLINT
+void ClientController::HandleIncomingMessage(const int& type,
+                                             const std::string& payload,
+                                             const Info& info,
+                                             std::shared_ptr<TcpTransport> /*transport*/,
+                                             std::shared_ptr<MessageHandler> /*message_handler*/,
+                                             const std::function<void(bool)>& callback) {  // NOLINT
+  if (info.endpoint.ip.to_string() != "127.0.0.1") {
+    LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
+    return;
+  }
+  VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
+  switch (message_type) {
+    case VaultManagerMessageType::kHelloResponseToClient:
+      LOG(kInfo) << "kHelloResponseToClient";
+      ConnectToManagerCallback(payload, info);
+      if (callback)
+        callback(true);
+      break;
+    case VaultManagerMessageType::kStartResponseToClient:
+      LOG(kInfo) << "kStartResponseToClient";
+      StartVaultRequestCallback(payload, info, callback);
+      break;
+    default:
+      LOG(kWarning) << "Incorrect message type";
+  }
+}
+
+void ClientController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                                      std::shared_ptr<MessageHandler>& message_handler,
+                                      const std::function<void(bool)>& callback) {  // NOLINT
   transport.reset(new TcpTransport(asio_service_.service()));
   message_handler.reset(new MessageHandler());
   transport->on_message_received()->connect(boost::bind(
@@ -185,7 +185,7 @@ void ClientController::ResetTransport(std::shared_ptr<TcpTransport> &transport,
 
 bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
                                   const std::string& account_name,
-                                  const bai::udp::endpoint &bootstrap_endpoint) {
+                                  const bai::udp::endpoint& bootstrap_endpoint) {
   {
     boost::mutex::scoped_lock lock(mutex_);
     if (!cond_var_.timed_wait(lock, boost::posix_time::seconds(3),

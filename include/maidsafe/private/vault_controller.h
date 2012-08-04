@@ -18,7 +18,6 @@
 #include <string>
 #include <vector>
 
-#include "boost/asio/ip/tcp.hpp"
 #include "boost/date_time/posix_time/posix_time_config.hpp"
 #include "boost/system/error_code.hpp"
 #include "boost/thread/condition_variable.hpp"
@@ -62,19 +61,13 @@ class VaultController {
   VaultController();
   ~VaultController();
 
-  bool Start(const std::string& vmid_string, std::function<void()> stop_callback);
+  bool Start(const std::string& vault_manager_id, std::function<void()> stop_callback);
   bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
 
  private:
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
-  /*void ListenForStopTerminate(std::string shared_mem_name,
-                              int id,
-                              std::function<void()> stop_handler);*/
-  void PrintResult(const std::string& serv,
-                   boost::asio::ip::tcp::resolver::iterator iter,
-                   const boost::system::error_code& ec);
   void ReceiveKeys();
   void ReceiveKeysCallback(const std::string& serialised_info,
                            const Info& sender_info,
@@ -89,13 +82,9 @@ class VaultController {
                              std::string* response,
                              std::shared_ptr<TcpTransport> transport,
                              std::shared_ptr<MessageHandler> message_handler);
-  void OnMessageReceived(const std::string &request,
-                         const Info& /*info*/,
-                         std::string* /*response*/,
-                         boost::posix_time::time_duration* /*timeout*/);
   void ResetTransport(std::shared_ptr<TcpTransport>& transport,
                       std::shared_ptr<MessageHandler>& message_handler);
-  /*ProcessInstruction CheckInstruction(const int32_t& id);*/
+
   std::string process_id_;
   uint16_t port_;
   boost::thread thread_;

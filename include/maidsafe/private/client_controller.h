@@ -40,42 +40,42 @@ class ClientController {
   ~ClientController();
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const maidsafe::asymm::Keys &keys,
-                  const std::string &account_name,
-                  const boost::asio::ip::udp::endpoint &bootstrap_endpoint =
+  bool StartVault(const maidsafe::asymm::Keys& keys,
+                  const std::string& account_name,
+                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint =
                       boost::asio::ip::udp::endpoint());
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.
-  bool StopVault(const maidsafe::asymm::PlainText &data,
-                 const maidsafe::asymm::Signature &signature,
-                 const maidsafe::asymm::Identity &identity);
+  bool StopVault(const maidsafe::asymm::PlainText& data,
+                 const maidsafe::asymm::Signature& signature,
+                 const maidsafe::asymm::Identity& identity);
 
  private:
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
   void ConnectToManager();
-  void ConnectToManagerCallback(const std::string &hello_response_string,
-                                const Info &sender_info);
-  void OnSendError(const int &transport_condition,
-                   const Endpoint &remote_endpoint,
-                   const std::function<void(bool)> &callback);  // NOLINT
-  void StartVaultRequest(const maidsafe::asymm::Keys &keys,
-                         const std::string &account_name,
-                         const boost::asio::ip::udp::endpoint &bootstrap_endpoint,
-                         const std::function<void(bool)> &callback);  // NOLINT
-  void StartVaultRequestCallback(const std::string &hello_response_string,
-                                 const Info &sender_info,
-                                 const std::function<void(bool)> &callback);  // NOLINT
-  void HandleIncomingMessage(const int &type,
-                             const std::string &payload,
-                             const Info &info,
+  void ConnectToManagerCallback(const std::string& hello_response_string,
+                                const Info& sender_info);
+  void OnSendError(const int& transport_condition,
+                   const Endpoint& remote_endpoint,
+                   const std::function<void(bool)>& callback);  // NOLINT
+  void StartVaultRequest(const maidsafe::asymm::Keys& keys,
+                         const std::string& account_name,
+                         const boost::asio::ip::udp::endpoint& bootstrap_endpoint,
+                         const std::function<void(bool)>& callback);  // NOLINT
+  void StartVaultRequestCallback(const std::string& hello_response_string,
+                                 const Info& sender_info,
+                                 const std::function<void(bool)>& callback);  // NOLINT
+  void HandleIncomingMessage(const int& type,
+                             const std::string& payload,
+                             const Info& info,
                              std::shared_ptr<TcpTransport> transport,
                              std::shared_ptr<MessageHandler> message_handler,
-                             const std::function<void(bool)> &callback);  // NOLINT
-  void ResetTransport(std::shared_ptr<TcpTransport> &transport,
-                      std::shared_ptr<MessageHandler> &message_handler,
-                      const std::function<void(bool)> &callback);  // NOLINT
+                             const std::function<void(bool)>& callback);  // NOLINT
+  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
+                      std::shared_ptr<MessageHandler>& message_handler,
+                      const std::function<void(bool)>& callback);  // NOLINT
 
   uint16_t port_;
   maidsafe::AsioService asio_service_;

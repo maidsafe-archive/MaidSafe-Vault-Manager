@@ -33,7 +33,7 @@ message ClientStartVaultResponse {
 // VaultManager receives this from Vault. Vault expects a VaultIdentityInfo response.
 
 message VaultIdentityRequest {
-  required bytes vmid = 1;
+  required bytes vault_manager_id = 1;
 }
 
 // VaultManager sends this to a requesting Vault. It contains the identity that the Vault can
@@ -47,7 +47,7 @@ message VaultIdentityInfo {
 // VaultManager receives this periodically from Vault. Vault expects a VaultIdentityInfo response.
 
 message VaultShutdownRequest {
-  required bytes vmid = 1;
+  required bytes vault_manager_id = 1;
 }
 
 // VaultManager sends this to a requesting Vault. It contains a boolean incdicating whether or not
