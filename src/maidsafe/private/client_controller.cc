@@ -1,29 +1,13 @@
-/* Copyright (c) 2012 maidsafe.net limited
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution.
-    * Neither the name of the maidsafe.net limited nor the names of its
-    contributors may be used to endorse or promote products derived from this
-    software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/***************************************************************************************************
+ *  Copyright 2012 maidsafe.net limited                                                            *
+ *                                                                                                 *
+ *  The following source code is property of MaidSafe.net limited and is not meant for external    *
+ *  use. The use of this code is governed by the licence file licence.txt found in the root of     *
+ *  this directory and also on www.maidsafe.net.                                                   *
+ *                                                                                                 *
+ *  You are not free to copy, amend or otherwise use this source code without the explicit written *
+ *  permission of the board of directors of MaidSafe.net.                                          *
+ **************************************************************************************************/
 
 #include "maidsafe/private/client_controller.h"
 
@@ -35,6 +19,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/private/vault_identity_info_pb.h"
 #include "maidsafe/private/vault_manager.h"
 
@@ -45,11 +31,11 @@ namespace maidsafe {
 namespace priv {
 
 ClientController::ClientController() : port_(0),
-                                       asio_service_(new AsioService(2)),
+                                       asio_service_(2),
                                        mutex_(),
                                        cond_var_(),
                                        state_(kInitialising) {
-  asio_service_->Start();
+  asio_service_.Start();
   ConnectToManager();
 }
 
@@ -105,7 +91,7 @@ void ClientController::ConnectToManagerCallback(const std::string &hello_respons
   cond_var_.notify_all();
 }
 
-void ClientController::OnSendError(const TransportCondition &transport_condition,
+void ClientController::OnSendError(const int &transport_condition,
                                    const Endpoint& /*remote_endpoint*/,
                                    const std::function<void(bool)> &callback) {  // NOLINT
   LOG(kError) << "OnSendError: Error sending/receiving connect message - " << transport_condition;
@@ -184,7 +170,7 @@ void ClientController::StartVaultRequestCallback(const std::string& start_respon
 void ClientController::ResetTransport(std::shared_ptr<TcpTransport> &transport,
                                       std::shared_ptr<MessageHandler> &message_handler,
                                       const std::function<void(bool)> &callback) {  // NOLINT
-  transport.reset(new TcpTransport(asio_service_->service()));
+  transport.reset(new TcpTransport(asio_service_.service()));
   message_handler.reset(new MessageHandler());
   transport->on_message_received()->connect(boost::bind(
       &MessageHandler::OnMessageReceived, message_handler.get(), _1, _2, _3, _4));

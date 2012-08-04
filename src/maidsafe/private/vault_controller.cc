@@ -1,55 +1,38 @@
-/* Copyright (c) 2009 maidsafe.net limited
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution.
-    * Neither the name of the maidsafe.net limited nor the names of its
-    contributors may be used to endorse or promote products derived from this
-    software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/***************************************************************************************************
+ *  Copyright 2012 maidsafe.net limited                                                            *
+ *                                                                                                 *
+ *  The following source code is property of MaidSafe.net limited and is not meant for external    *
+ *  use. The use of this code is governed by the licence file licence.txt found in the root of     *
+ *  this directory and also on www.maidsafe.net.                                                   *
+ *                                                                                                 *
+ *  You are not free to copy, amend or otherwise use this source code without the explicit written *
+ *  permission of the board of directors of MaidSafe.net.                                          *
+ **************************************************************************************************/
 
 #include "maidsafe/private/vault_controller.h"
 
-#include <thread>
-#include <chrono>
 #include <iostream>
 
 #ifdef __MSVC__
-# pragma warning(push)
-# pragma warning(disable: 4244 4250 4267)
+#  pragma warning(push)
+#  pragma warning(disable: 4244 4250 4267)
 #endif
 
 #include "boost/process.hpp"
-#include "boost/array.hpp"
 
 #ifdef __MSVC__
-# pragma warning(pop)
+#  pragma warning(pop)
 #endif
 
-#include "maidsafe/private/vault_manager.h"
-#include "maidsafe/private/vault_identity_info_pb.h"
+#include "boost/array.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/private/tcp_transport.h"
+#include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/vault_manager.h"
+#include "maidsafe/private/vault_identity_info_pb.h"
 
-namespace bai = boost::asio::ip;
 
 namespace maidsafe {
 
@@ -58,7 +41,7 @@ namespace priv {
 VaultController::VaultController() : process_id_(),
                                      port_(0),
                                      thread_(),
-                                     asio_service_(new AsioService(10)),
+                                     asio_service_(10),
                                      check_finished_(false),
                                      keys_(),
                                      account_name_(),
@@ -70,7 +53,7 @@ VaultController::VaultController() : process_id_(),
                                      shutdown_cond_var_(),
                                      shutdown_confirmed_(),
                                      stop_callback_() {
-  asio_service_->Start();
+  asio_service_.Start();
 }
 
 VaultController::~VaultController() {}
@@ -252,7 +235,7 @@ void VaultController::HandleIncomingMessage(const int& type, const std::string& 
 
 void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
                                       std::shared_ptr<MessageHandler>& message_handler) {
-  transport.reset(new TcpTransport(asio_service_->service()));
+  transport.reset(new TcpTransport(asio_service_.service()));
   message_handler.reset(new MessageHandler());
   transport->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                         message_handler.get(), _1, _2, _3, _4));
@@ -263,7 +246,7 @@ void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
                     transport, message_handler));
 }
 
-bool VaultController::Start(std::string vmid_string,
+bool VaultController::Start(const std::string& vmid_string,
                             std::function<void()> stop_callback) {
   stop_callback_ = stop_callback;
   try {

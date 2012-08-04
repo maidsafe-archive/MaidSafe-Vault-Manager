@@ -9,45 +9,35 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_RETURN_CODES_H_
-#define MAIDSAFE_PRIVATE_RETURN_CODES_H_
+#ifndef MAIDSAFE_PRIVATE_UTILS_H_
+#define MAIDSAFE_PRIVATE_UTILS_H_
+
+#include <string>
+#include <vector>
+#include "maidsafe/private/transport.h"
+
 
 namespace maidsafe {
 
 namespace priv {
 
-enum ReturnCode {
-  kSuccess = 0,
-  kGeneralError = -100001,
-  kUnknownFailure = -150002,
-  kNullParameter = -150003,
-  kKeyNotUnique = -150004,
-  kKeyUnique = -150005,
-  kParseFailure = -150006,
-  kPreOperationCheckFailure = -150007,
-  kDuplicateNameFailure = -150008,
-  kVerifyDataFailure = -150009,
-  kGetFailure = -150010,
-  kStoreFailure = -150011,
-  kDeleteFailure = -150012,
-  kModifyFailure = -150013,
-  kInvalidSignedData = -150014,
-  kInvalidModify = -150015,
-  kSignatureVerificationFailure = -150016,
-  kNotHashable = -150017,
-  kNotOwner = -150018,
-  kInvalidChunkType = -150019,
-  kFailedToFindChunk = -150020,
-  kInvalidPublicKey = -150021,
-  kAppendDisallowed = -150022,
-  kHashFailure = -150023,
-  kDifferentVersion = -150024,
-  kChunkNotModified = -150025,
-  kDataNotPublicKey = -150026
-};
+// Convert an IP in ASCII format to IPv4 or IPv6 bytes
+std::string IpAsciiToBytes(const std::string &decimal_ip);
+
+// Convert an IPv4 or IPv6 in bytes format to ASCII format
+std::string IpBytesToAscii(const std::string &bytes_ip);
+
+// Convert an internet network address into dotted string format.
+void IpNetToAscii(uint32_t address, char *ip_buffer);
+
+// Convert a dotted string format internet address into Ipv4 format.
+uint32_t IpAsciiToNet(const char *buffer);
+
+// Return all local addresses
+std::vector<IP> GetLocalAddresses();
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_RETURN_CODES_H_
+#endif  // MAIDSAFE_PRIVATE_UTILS_H_

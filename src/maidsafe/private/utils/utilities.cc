@@ -1,17 +1,14 @@
 /***************************************************************************************************
  *  Copyright 2012 maidsafe.net limited                                                            *
  *                                                                                                 *
- *  The following source code is property of maidsafe.net limited and is not meant for external    *
- *  use. The use of this code is governed by the license file LICENSE.TXT found in the root of     *
+ *  The following source code is property of MaidSafe.net limited and is not meant for external    *
+ *  use. The use of this code is governed by the licence file licence.txt found in the root of     *
  *  this directory and also on www.maidsafe.net.                                                   *
  *                                                                                                 *
  *  You are not free to copy, amend or otherwise use this source code without the explicit written *
- *  permission of the board of directors of maidsafe.net.                                          *
- ***********************************************************************************************//**
- * @file  utilities.cc
- * @brief Generic utility functions.
- * @date  2012-07-26
- */
+ *  permission of the board of directors of MaidSafe.net.                                          *
+ **************************************************************************************************/
+
 #include "maidsafe/private/utils/utilities.h"
 
 #include "boost/date_time/posix_time/posix_time.hpp"

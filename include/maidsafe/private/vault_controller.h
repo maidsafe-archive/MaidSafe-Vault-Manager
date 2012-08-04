@@ -1,49 +1,41 @@
-/* Copyright (c) 2009 maidsafe.net limited
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution.
-    * Neither the name of the maidsafe.net limited nor the names of its
-    contributors may be used to endorse or promote products derived from this
-    software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/***************************************************************************************************
+ *  Copyright 2012 maidsafe.net limited                                                            *
+ *                                                                                                 *
+ *  The following source code is property of MaidSafe.net limited and is not meant for external    *
+ *  use. The use of this code is governed by the licence file licence.txt found in the root of     *
+ *  this directory and also on www.maidsafe.net.                                                   *
+ *                                                                                                 *
+ *  You are not free to copy, amend or otherwise use this source code without the explicit written *
+ *  permission of the board of directors of MaidSafe.net.                                          *
+ **************************************************************************************************/
 
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
-#include <thread>
+#include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "boost/thread.hpp"
-#include "boost/asio.hpp"
+#include "boost/asio/ip/tcp.hpp"
+#include "boost/date_time/posix_time/posix_time_config.hpp"
+#include "boost/system/error_code.hpp"
+#include "boost/thread/condition_variable.hpp"
+#include "boost/thread/mutex.hpp"
+#include "boost/thread/thread.hpp"
 
-#include "maidsafe/common/rsa.h"
 #include "maidsafe/common/asio_service.h"
+#include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/tcp_transport.h"
-#include "maidsafe/private/message_handler.h"
 
 namespace maidsafe {
 
 namespace priv {
+
+struct Info;
+class TcpTransport;
+class MessageHandler;
 
 /*enum class ProcessStatus {
   Running,
@@ -70,15 +62,18 @@ class VaultController {
   VaultController();
   ~VaultController();
 
-  bool Start(std::string vmid_string, std::function<void()> stop_callback);
+  bool Start(const std::string& vmid_string, std::function<void()> stop_callback);
   bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
 
  private:
+  VaultController(const VaultController&);
+  VaultController& operator=(const VaultController&);
   /*void ListenForStopTerminate(std::string shared_mem_name,
                               int id,
                               std::function<void()> stop_handler);*/
-  void PrintResult(std::string serv, boost::asio::ip::tcp::resolver::iterator iter,
+  void PrintResult(const std::string& serv,
+                   boost::asio::ip::tcp::resolver::iterator iter,
                    const boost::system::error_code& ec);
   void ReceiveKeys();
   void ReceiveKeysCallback(const std::string& serialised_info,
@@ -86,8 +81,8 @@ class VaultController {
                            std::string* /*response*/);
   void ListenForShutdown();
   void ListenForShutdownCallback(const std::string& serialised_response,
-                                                  const Info& sender_info,
-                                                  std::string* /*response*/);
+                                 const Info& sender_info,
+                                 std::string* /*response*/);
   void HandleIncomingMessage(const int& type,
                              const std::string& payload,
                              const Info& info,
@@ -95,16 +90,16 @@ class VaultController {
                              std::shared_ptr<TcpTransport> transport,
                              std::shared_ptr<MessageHandler> message_handler);
   void OnMessageReceived(const std::string &request,
-                         const Info /*&info*/,
+                         const Info& /*info*/,
                          std::string* /*response*/,
-                         Timeout* /*timeout*/);
+                         boost::posix_time::time_duration* /*timeout*/);
   void ResetTransport(std::shared_ptr<TcpTransport>& transport,
                       std::shared_ptr<MessageHandler>& message_handler);
   /*ProcessInstruction CheckInstruction(const int32_t& id);*/
   std::string process_id_;
   uint16_t port_;
   boost::thread thread_;
-  std::shared_ptr<AsioService> asio_service_;
+  AsioService asio_service_;
   bool check_finished_;
   maidsafe::rsa::Keys keys_;
   std::string account_name_;
