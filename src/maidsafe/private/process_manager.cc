@@ -98,7 +98,7 @@ ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
 
 
 
-ProcessManager::ProcessManager() : processes_() {}
+ProcessManager::ProcessManager() : processes_(), mutex_() {}
 
 ProcessManager::~ProcessManager() {
   TerminateAll();
