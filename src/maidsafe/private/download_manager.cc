@@ -309,7 +309,7 @@ bool DownloadManager::VerifySignature() const {
   fs::path sigfile(file_to_download_ + ".sig");
   std::string signature, data;
 
-  if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
+  if (!ReadFile(file, &data) || !ReadFile(sigfile, &signature)) {
     LOG(kInfo) << "Verify Signature - error reading file";
     return false;
   }
@@ -317,11 +317,11 @@ bool DownloadManager::VerifySignature() const {
   asymm::PublicKey public_key;
   asymm::DecodePublicKey(maidsafe_public_key_, &public_key);
 
-  if (!maidsafe::rsa::ValidateKey(public_key)) {
+  if (!asymm::ValidateKey(public_key)) {
     LOG(kInfo) << "Verify Signature - public key invalid, aborting!!";
   }
 
-  if (maidsafe::rsa::CheckSignature(data, signature, public_key) == 0)  {
+  if (asymm::CheckSignature(data, signature, public_key) == 0)  {
     LOG(kInfo) << "Verify Signature - Signature valid";
   } else {
     LOG(kError) << "Verify Signature - Invalid signature";

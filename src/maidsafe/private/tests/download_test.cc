@@ -81,11 +81,11 @@ TEST(DownloadManagerTest, BEH_UpdateFile) {
 TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion) {
   std::shared_ptr<boost::filesystem::path> test_dir_
       (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
-  std::string extension = "";
+  std::string extension;
 
-  #ifdef _WINDOWS
-    extension = ".exe";
-  #endif
+//  #ifdef MAIDSAFE_WIN32
+//    extension = ".exe";
+//  #endif
 
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "4", "6");
@@ -104,10 +104,12 @@ TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion) {
 
 TEST(DownloadManagerTest, BEH_VerificationOfFiles) {
   boost::filesystem::path current_path(boost::filesystem::current_path());
-  std::string extension = "";
-  #ifdef _WINDOWS
-    extension = ".exe";
-  #endif
+  std::string extension;
+
+//  #ifdef MAIDSAFE_WIN32
+//    extension = ".exe";
+//  #endif
+
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");
   // Find the latest file and donwload it together with its signature file
@@ -134,10 +136,12 @@ TEST(DownloadManagerTest, BEH_VerificationOfFiles) {
 
 TEST(DownloadManagerTest, BEH_VerificationFail) {
   boost::filesystem::path current_path(boost::filesystem::current_path());
-  std::string extension = "";
-  #ifdef _WINDOWS
-    extension = ".exe";
-  #endif
+  std::string extension;
+
+//  #ifdef MAIDSAFE_WIN32
+//    extension = ".exe";
+//  #endif
+
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");
 

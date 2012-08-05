@@ -31,7 +31,6 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/vault_identity_info_pb.h"
 
 namespace {
 

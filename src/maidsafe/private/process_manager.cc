@@ -33,7 +33,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/vault_identity_info_pb.h"
+#include "maidsafe/private/controller_messages_pb.h"
 
 
 namespace bp = boost::process;
@@ -184,10 +184,10 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
     Sleep(boost::posix_time::milliseconds(600));
     // SetInstruction(id, ProcessInstruction::kRun);
     if (logging) {
-      maidsafe::log::FilterMap filter;
-      filter["*"] = maidsafe::log::kVerbose;
-      maidsafe::log::Logging::instance().SetFilter(filter);
-      maidsafe::log::Logging::instance().SetAsync(true);
+      log::FilterMap filter;
+      filter["*"] = log::kVerbose;
+      log::Logging::instance().SetFilter(filter);
+      log::Logging::instance().SetAsync(true);
     }
   }
   bp::context context;

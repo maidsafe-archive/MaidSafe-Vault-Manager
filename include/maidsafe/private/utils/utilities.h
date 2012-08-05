@@ -20,7 +20,6 @@
 
 #include "maidsafe/common/rsa.h"
 
-namespace asymm = maidsafe::rsa;
 
 namespace maidsafe {
 

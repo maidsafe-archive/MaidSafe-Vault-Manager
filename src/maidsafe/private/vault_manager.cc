@@ -19,7 +19,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/vault_identity_info_pb.h"
+#include "maidsafe/private/controller_messages_pb.h"
 
 
 namespace fs = boost::filesystem;
@@ -470,12 +470,12 @@ void VaultManager::HandleIncomingMessage(const int& type,
 void VaultManager::HandleClientHello(const std::string& hello_string,
                                      const Info& info,
                                      std::string* response) {
-  ClientHello hello;
+  protobuf::ClientHello hello;
   if (hello.ParseFromString(hello_string)) {
     if (hello.hello() == "hello") {
       Endpoint return_endpoint(info.endpoint.ip, info.endpoint.port);
       int message_type(static_cast<int>(VaultManagerMessageType::kHelloResponseToClient));
-      ClientHelloResponse hello_response;
+      protobuf::ClientHelloResponse hello_response;
       hello_response.set_hello_response("hello response");
       *response = message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                                 hello_response.SerializeAsString());
@@ -488,7 +488,7 @@ void VaultManager::HandleClientHello(const std::string& hello_string,
 void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_string,
                                                  const Info& /*info*/,
                                                  std::string* response) {
-  ClientStartVaultRequest request;
+  protobuf::ClientStartVaultRequest request;
   if (request.ParseFromString(start_vault_string)) {
     std::shared_ptr<WaitingVaultInfo> current_vault_info(new WaitingVaultInfo);
     current_vault_info->account_name = request.account_name();
@@ -497,7 +497,7 @@ void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_
                                           RandomAlphaNumericString(5) + "/";
     if (!HandleBootstrapFile(current_vault_info->keys.identity)) {
       LOG(kError) << "Failed to set bootstrap file for vault " << current_vault_info->keys.identity;
-                                                                                              // return;
+      return;
     }
     current_vault_info->chunkstore_capacity = "0";
     client_started_vault_manager_ids_.push_back(current_vault_info);
@@ -517,7 +517,7 @@ void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_
             boost::posix_time::seconds(3),
             [&] { return current_vault_info->vault_requested; })) {  // NOLINT (Philip)
       // Send response to client
-      ClientStartVaultResponse start_vault_response;
+      protobuf::ClientStartVaultResponse start_vault_response;
       start_vault_response.set_result(true);
       int message_type(static_cast<int>(VaultManagerMessageType::kStartResponseToClient));
       *response = message_handler_.MakeSerialisedWrapperMessage(
@@ -533,7 +533,7 @@ void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_
 void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_string,
                                           const Info& /*info*/,
                                           std::string* vault_info_string) {
-  VaultIdentityRequest request;
+  protobuf::VaultIdentityRequest request;
   bool new_vault(false);
   auto client_it(client_started_vault_manager_ids_.begin());
   auto config_it(config_file_vault_manager_ids_.begin());
@@ -555,7 +555,7 @@ void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_
   }
 
   // Send info to vault
-  VaultIdentityInfo vault_info;
+  protobuf::VaultIdentityInfo vault_info;
   std::string keys_string;
   std::shared_ptr<WaitingVaultInfo> waiting_vault_info(new_vault ? *client_it : *config_it);
 
@@ -574,10 +574,10 @@ void VaultManager::HandleVaultInfoRequest(const std::string& vault_info_request_
 void VaultManager::HandleVaultShutdownRequest(const std::string& vault_shutdown_string,
                                               const Info& /*info*/,
                                               std::string* response) {
-  VaultShutdownRequest request;
+  protobuf::VaultShutdownRequest request;
   if (request.ParseFromString(vault_shutdown_string)) {
     int message_type(static_cast<int>(VaultManagerMessageType::kShutdownResponseToVault));
-    VaultShutdownResponse shutdown_response;
+    protobuf::VaultShutdownResponse shutdown_response;
     boost::mutex::scoped_lock lock(mutex_);
     shutdown_response.set_shutdown(shutdown_requested_);
     LOG(kInfo) << "HandleVaultShutdownRequest: shutdown requested"

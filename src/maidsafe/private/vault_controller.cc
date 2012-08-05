@@ -15,10 +15,10 @@
 
 #include "maidsafe/common/log.h"
 
+#include "maidsafe/private/controller_messages_pb.h"
 #include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/vault_manager.h"
-#include "maidsafe/private/vault_identity_info_pb.h"
 
 
 namespace maidsafe {
@@ -47,7 +47,7 @@ VaultController::~VaultController() {}
 
 void VaultController::ReceiveKeys() {
   int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
-  maidsafe::priv::VaultIdentityRequest request;
+  protobuf::VaultIdentityRequest request;
   request.set_vault_manager_id(process_id_);
   std::shared_ptr<TcpTransport> transport;
   std::shared_ptr<MessageHandler> message_handler;
@@ -62,10 +62,10 @@ void VaultController::ReceiveKeys() {
 void VaultController::ReceiveKeysCallback(const std::string& serialised_info,
                                           const Info& /*sender_info*/,
                                           std::string* /*response*/) {
-  VaultIdentityInfo info;
+  protobuf::VaultIdentityInfo info;
   info.ParseFromString(serialised_info);
   boost::mutex::scoped_lock lock(mutex_);
-  if (!maidsafe::rsa::ParseKeys(info.keys(), keys_)) {
+  if (!asymm::ParseKeys(info.keys(), keys_)) {
     LOG(kError) << "ReceiveKeysCallback: failed to parse keys. ";
     info_received_ = false;
     return;
@@ -84,7 +84,7 @@ void VaultController::ReceiveKeysCallback(const std::string& serialised_info,
 
 void VaultController::ListenForShutdown() {
   LOG(kInfo) << "ListenForShutdown: sending shutdown request to port " << port_;
-  maidsafe::priv::VaultShutdownRequest request;
+  protobuf::VaultShutdownRequest request;
   request.set_vault_manager_id(process_id_);
   std::shared_ptr<TcpTransport> transport;
   std::shared_ptr<MessageHandler> message_handler;
@@ -110,7 +110,7 @@ void VaultController::ListenForShutdownCallback(const std::string& serialised_re
                                                 const Info& /*sender_info*/,
                                                 std::string* /*response*/) {
   LOG(kInfo) << "ListenForShutdownCallback";
-  VaultShutdownResponse response;
+  protobuf::VaultShutdownResponse response;
   if (response.ParseFromString(serialised_response)) {
     if (response.shutdown()) {
       boost::mutex::scoped_lock lock(shutdown_mutex_);
@@ -157,7 +157,7 @@ void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
   transport->on_error()->connect(boost::bind(&MessageHandler::OnError,
                                               message_handler.get(), _1, _2));
     message_handler->SetCallback(
-        boost::bind(&maidsafe::priv::VaultController::HandleIncomingMessage, this, _1, _2, _3, _4,
+        boost::bind(&VaultController::HandleIncomingMessage, this, _1, _2, _3, _4,
                     transport, message_handler));
 }
 
@@ -208,7 +208,7 @@ bool VaultController::Start(const std::string& vault_manager_id,
   return true;
 }
 
-bool VaultController::GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name) {
+bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) {
   if (!started_)
     return false;
   if (port_ == 0)

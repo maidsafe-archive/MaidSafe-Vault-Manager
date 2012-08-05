@@ -42,7 +42,7 @@ int CreateMaidsafeIdentity(asymm::Keys& keys) {
   asymm::GenerateKeyPair(&keys);
 
   std::string encoded_public_key;
-  maidsafe::rsa::EncodePublicKey(keys.public_key, &encoded_public_key);
+  asymm::EncodePublicKey(keys.public_key, &encoded_public_key);
   if (encoded_public_key.empty())
     return -111;
 
@@ -50,8 +50,8 @@ int CreateMaidsafeIdentity(asymm::Keys& keys) {
   if (keys.validation_token.empty())
     return -112;
 
-  keys.identity = maidsafe::crypto::Hash<maidsafe::crypto::SHA512>(encoded_public_key +
-                                                                   keys.validation_token);
+  keys.identity = crypto::Hash<maidsafe::crypto::SHA512>(encoded_public_key +
+                                                         keys.validation_token);
 
   return 0;
 }

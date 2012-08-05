@@ -11,18 +11,14 @@
 
 #include "maidsafe/private/client_controller.h"
 
-#include <thread>
-#include <chrono>
-#include <iostream>
-
-#include "boost/array.hpp"
-
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+
+#include "maidsafe/private/controller_messages_pb.h"
 #include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/tcp_transport.h"
-#include "maidsafe/private/vault_identity_info_pb.h"
 #include "maidsafe/private/vault_manager.h"
+
 
 namespace bai = boost::asio::ip;
 
@@ -63,7 +59,7 @@ void ClientController::ConnectToManager() {
   std::string hello_string;
   Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port);
   int message_type(static_cast<int>(VaultManagerMessageType::kHelloFromClient));
-  maidsafe::priv::ClientHello hello;
+  protobuf::ClientHello hello;
   hello.set_hello("hello");
   std::shared_ptr<TcpTransport> transport;
   std::shared_ptr<MessageHandler> message_handler;
@@ -76,7 +72,7 @@ void ClientController::ConnectToManager() {
 
 void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
                                                 const Info& sender_info) {
-  ClientHelloResponse response;
+  protobuf::ClientHelloResponse response;
   if (!response.ParseFromString(hello_response_string) ||
       response.hello_response() != "hello response") {
     LOG(kError) << "ConnectToManagerCallback: Invalid response, trying again.";
@@ -100,12 +96,12 @@ void ClientController::OnSendError(const int& transport_condition,
     callback(false);
 }
 
-void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
+void ClientController::StartVaultRequest(const asymm::Keys& keys,
                                          const std::string& account_name,
                                          const bai::udp::endpoint& bootstrap_endpoint,
                                          const std::function<void(bool)>& callback) {  // NOLINT
   int message_type(static_cast<int>(VaultManagerMessageType::kStartRequestFromClient));
-  maidsafe::priv::ClientStartVaultRequest request;
+  protobuf::ClientStartVaultRequest request;
   std::string keys_string;
   asymm::SerialiseKeys(keys, keys_string);
   request.set_keys(keys_string);
@@ -135,7 +131,7 @@ void ClientController::StartVaultRequest(const maidsafe::asymm::Keys& keys,
 void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
                                                  const Info& /*sender_info*/,
                                                  const std::function<void(bool)>& callback) {  // NOLINT
-  ClientStartVaultResponse response;
+  protobuf::ClientStartVaultResponse response;
   if (callback)
     callback(response.ParseFromString(start_response_string) && response.result());
 }
@@ -183,7 +179,7 @@ void ClientController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
       callback));
 }
 
-bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
+bool ClientController::StartVault(const asymm::Keys& keys,
                                   const std::string& account_name,
                                   const bai::udp::endpoint& bootstrap_endpoint) {
   {
@@ -225,9 +221,9 @@ bool ClientController::StartVault(const maidsafe::asymm::Keys& keys,
   return true;
 }
 
-bool ClientController::StopVault(const maidsafe::asymm::PlainText& /*data*/,
-                                 const maidsafe::asymm::Signature& /*signature*/,
-                                 const maidsafe::asymm::Identity& /*identity*/) {
+bool ClientController::StopVault(const asymm::PlainText& /*data*/,
+                                 const asymm::Signature& /*signature*/,
+                                 const asymm::Identity& /*identity*/) {
   LOG(kError) << "StopVault: Not implemented.";
   return false;
 }

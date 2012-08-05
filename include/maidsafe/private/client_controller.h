@@ -40,16 +40,16 @@ class ClientController {
   ~ClientController();
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const maidsafe::asymm::Keys& keys,
+  bool StartVault(const asymm::Keys& keys,
                   const std::string& account_name,
                   const boost::asio::ip::udp::endpoint& bootstrap_endpoint =
                       boost::asio::ip::udp::endpoint());
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.
-  bool StopVault(const maidsafe::asymm::PlainText& data,
-                 const maidsafe::asymm::Signature& signature,
-                 const maidsafe::asymm::Identity& identity);
+  bool StopVault(const asymm::PlainText& data,
+                 const asymm::Signature& signature,
+                 const asymm::Identity& identity);
 
  private:
   ClientController(const ClientController&);
@@ -60,7 +60,7 @@ class ClientController {
   void OnSendError(const int& transport_condition,
                    const Endpoint& remote_endpoint,
                    const std::function<void(bool)>& callback);  // NOLINT
-  void StartVaultRequest(const maidsafe::asymm::Keys& keys,
+  void StartVaultRequest(const asymm::Keys& keys,
                          const std::string& account_name,
                          const boost::asio::ip::udp::endpoint& bootstrap_endpoint,
                          const std::function<void(bool)>& callback);  // NOLINT
@@ -78,7 +78,7 @@ class ClientController {
                       const std::function<void(bool)>& callback);  // NOLINT
 
   uint16_t port_;
-  maidsafe::AsioService asio_service_;
+  AsioService asio_service_;
   boost::mutex mutex_;
   boost::condition_variable cond_var_;
   enum State { kInitialising, kVerified, kFailed } state_;

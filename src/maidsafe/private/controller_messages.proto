@@ -1,22 +1,25 @@
-package maidsafe.priv;
+package maidsafe.priv.protobuf;
 
-// VaultManager receives this from a Client looking for the correct port. Client expects a
-// ClientHelloResponse.
+// All following messages are serialised into the payload field, and the message type added.
+message WrapperMessage {
+  required int32 msg_type = 1;
+  required bytes payload = 2;
+  optional bytes message_signature = 3;
+}
 
+// VaultManager receives this from a Client looking for the correct port. Client expects a ClientHelloResponse.
 message ClientHello {
   required bytes hello = 1;
 }
 
 // VaultManager sends this to a requesting Client. It contains confirmation that the VaultManager is
 // listening on that port.
-
 message ClientHelloResponse {
   required bytes hello_response = 1;
 }
 
 // VaultManager receives this from Client. It will then start a vault and respond to its request for
 // identity info with a VaultIdentityInfo containing this information.
-
 message ClientStartVaultRequest {
   required bytes keys = 1;
   required bytes account_name = 2;
@@ -25,34 +28,28 @@ message ClientStartVaultRequest {
 
 // VaultManager sends this to Client in response to a ClientStartVaultRequest. It details whether or
 // not the starting of the vault was successful.
-
 message ClientStartVaultResponse {
   required bool result = 1;
 }
 
 // VaultManager receives this from Vault. Vault expects a VaultIdentityInfo response.
-
 message VaultIdentityRequest {
   required bytes vault_manager_id = 1;
 }
 
-// VaultManager sends this to a requesting Vault. It contains the identity that the Vault can
-// assume.
-
+// VaultManager sends this to a requesting Vault. It contains the identity that the Vault can assume.
 message VaultIdentityInfo {
   required bytes keys = 1;
   required bytes account_name = 2;
 }
 
 // VaultManager receives this periodically from Vault. Vault expects a VaultIdentityInfo response.
-
 message VaultShutdownRequest {
   required bytes vault_manager_id = 1;
 }
 
 // VaultManager sends this to a requesting Vault. It contains a boolean incdicating whether or not
 // the vault should shut down.
-
 message VaultShutdownResponse {
   required bool shutdown = 1;
 }

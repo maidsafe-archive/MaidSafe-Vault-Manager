@@ -62,7 +62,7 @@ class VaultController {
   ~VaultController();
 
   bool Start(const std::string& vault_manager_id, std::function<void()> stop_callback);
-  bool GetIdentity(maidsafe::rsa::Keys* keys, std::string* account_name);
+  bool GetIdentity(asymm::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
 
  private:
@@ -90,7 +90,7 @@ class VaultController {
   boost::thread thread_;
   AsioService asio_service_;
   bool check_finished_;
-  maidsafe::rsa::Keys keys_;
+  asymm::Keys keys_;
   std::string account_name_;
   bool info_received_;
   boost::mutex mutex_;

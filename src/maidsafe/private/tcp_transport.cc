@@ -16,9 +16,8 @@
 #include "maidsafe/common/log.h"
 
 #include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/transport_pb.h"
 #include "maidsafe/private/tcp_connection.h"
-#include "maidsafe/private/utils.h"
+
 
 namespace asio = boost::asio;
 namespace bs = boost::system;

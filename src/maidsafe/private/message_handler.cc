@@ -12,10 +12,12 @@
 #include "maidsafe/private/message_handler.h"
 
 #include <string>
-#include "boost/lexical_cast.hpp"
-#include "maidsafe/common/log.h"
-#include "maidsafe/private/transport_pb.h"
 
+#include "boost/lexical_cast.hpp"
+
+#include "maidsafe/common/log.h"
+
+#include "maidsafe/private/controller_messages_pb.h"
 
 
 namespace maidsafe {

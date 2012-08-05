@@ -23,8 +23,8 @@
 
 
 namespace bs2 = boost::signals2;
-typedef std::shared_ptr<maidsafe::rsa::PrivateKey> PrivateKeyPtr;
-typedef maidsafe::rsa::PublicKey PublicKey;
+typedef std::shared_ptr<maidsafe::asymm::PrivateKey> PrivateKeyPtr;
+typedef maidsafe::asymm::PublicKey PublicKey;
 
 namespace maidsafe {
 
@@ -49,15 +49,7 @@ enum MessageType {
   kRendezvousAcknowledgement
 };
 
-namespace protobuf {
-class Endpoint;
-class WrapperMessage;
-}  // namespace protobuf
-
-namespace test {
-class TransportMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test;
-class RudpMessageHandlerTest_BEH_MakeSerialisedWrapperMessage_Test;
-}  // namespace test
+namespace protobuf { class WrapperMessage; }
 
 // Highest possible message type ID, use as offset for type extensions.
 const int kMaxMessageType(1000);
@@ -65,8 +57,7 @@ const int kMaxMessageType(1000);
 class MessageHandler {
  public:
   typedef std::shared_ptr<bs2::signal<void(const TransportCondition&,
-                                           const Endpoint&)>>
-          ErrorSigPtr;
+                                           const Endpoint&)>> ErrorSigPtr;
 
   MessageHandler() : on_error_(new ErrorSigPtr::element_type),
                      callback_() {}
