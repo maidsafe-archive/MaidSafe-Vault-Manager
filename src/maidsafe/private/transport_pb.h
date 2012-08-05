@@ -21,4 +21,4 @@
 # pragma warning(pop)
 #endif
 
-#endif // MAIDSAFE_PRIVATE_TRANSPORT_PB_H_
+#endif  // MAIDSAFE_PRIVATE_TRANSPORT_PB_H_

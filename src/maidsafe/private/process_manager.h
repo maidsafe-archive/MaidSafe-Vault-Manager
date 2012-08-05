@@ -12,15 +12,16 @@
 #ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
 
-#include <thread>
+#include <mutex>
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "boost/thread/mutex.hpp"
-#include "boost/thread.hpp"
-#include "boost/asio.hpp"
+#include "boost/thread/thread.hpp"
 
 namespace maidsafe {
+
+namespace priv {
 
 /*enum class ProcessStatus {
   Running,
@@ -64,7 +65,6 @@ class Process {
 
 struct ProcessInfo {
   ProcessInfo() : process(), thread(), id(), port(), restart_count(0), done(false) {}
-  // move constructor
   ProcessInfo(ProcessInfo&& other);
   ProcessInfo& operator=(ProcessInfo&& other);
   Process process;
@@ -80,11 +80,9 @@ class ProcessManager {
   ProcessManager();
   ~ProcessManager();
   std::string AddProcess(Process process, uint16_t port);
-  int32_t NumberOfProcesses();
-  int32_t NumberOfLiveProcesses();
-  int32_t NumberOfSleepingProcesses();
-  void StopAndRemoveProcess(Process &process);
-  /*ProcessStatus GetProcessStatus(Process &process);*/
+  int32_t NumberOfProcesses() const;
+  int32_t NumberOfLiveProcesses() const;
+  int32_t NumberOfSleepingProcesses() const;
   void StartProcess(std::string id);
   void LetProcessDie(std::string id);
   void LetAllProcessesDie();
@@ -96,21 +94,15 @@ class ProcessManager {
  private:
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
-  std::vector<ProcessInfo>::iterator FindProcess(std::string num);
+  std::vector<ProcessInfo>::iterator FindProcess(std::string id);
   void RunProcess(std::string id, bool restart, bool logging);
-  void RunAll();
-  void MonitorAll();
   void TerminateAll();
-  /*bool AddStatus(std::string id, ProcessManagerStruct status);
-  bool SetInstruction(std::string id, ProcessInstruction instruction);
-  ProcessInstruction CheckInstruction(std::string id);*/
+
   std::vector<ProcessInfo> processes_;
-  boost::mutex process_info_mutex_;
-  uint32_t process_count_;
-  bool done_;
-  uint32_t current_port_;
-  boost::asio::io_service io_service_;
+  mutable std::mutex mutex_;
 };
+
+}  // namespace priv
 
 }  // namespace maidsafe
 

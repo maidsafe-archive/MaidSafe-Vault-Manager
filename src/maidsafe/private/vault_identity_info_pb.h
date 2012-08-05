@@ -21,4 +21,4 @@
 # pragma warning(pop)
 #endif
 
-#endif // MAIDSAFE_PRIVATE_VAULT_IDENTITY_INFO_PB_H_
+#endif  // MAIDSAFE_PRIVATE_VAULT_IDENTITY_INFO_PB_H_

@@ -11,20 +11,20 @@
 
 #ifndef MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
 #define MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
-#include <fstream>
-#include <iostream>
+
 #include <istream>
-#include <ostream>
-#include <memory>
 #include <string>
-#include <vector>
 
-#include "boost/asio.hpp"
+#include "boost/asio/streambuf.hpp"
+#include "boost/asio/ip/tcp.hpp"
 #include "boost/filesystem/path.hpp"
+#include "boost/tokenizer.hpp"
 
-namespace bai = boost::asio::ip;
 
 namespace maidsafe {
+
+namespace priv {
+
 // assumes NAME-VERSION-PATCH naming convention
 // passing "" will mean system ignores these and always downloads
 // the file
@@ -47,18 +47,21 @@ class DownloadManager {
   void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
   void SetCpuSizeToUpdate(std::string cpu_size) { cpu_size_ = cpu_size; }
   void SetFileToDownload(std::string file_to_download) { file_to_download_ = file_to_download; }
-  void ClearFileToDownload() { file_to_download_ = ""; }
-  std::string file_to_download() {return file_to_download_;}
+  void ClearFileToDownload() { file_to_download_.clear(); }
+  std::string file_to_download() const { return file_to_download_; }
+  bool FileIsValid(std::string file) const;
+  bool FileIsLaterThan(std::string file1, std::string file2) const;
   bool FindLatestFile();
   bool UpdateCurrentFile(boost::filesystem::path directory);
-  bool FileIsValid(std::string file);
-  bool FileIsLaterThan(std::string file1, std::string file2);
-  bool VerifySignature();
+  bool VerifySignature() const;
 
  private:
-  bool FileIsUseful(std::string file);
-  bool GetFileBuffer(const std::string& file_path, boost::asio::streambuf* response,
-                     std::istream* response_stream, bai::tcp::socket* socket);
+  typedef boost::tokenizer<boost::char_separator<char>> Tokens;
+  bool FileIsUseful(std::string file) const;
+  bool GetFileBuffer(const std::string& file_path,
+                     boost::asio::streambuf* response,
+                     std::istream* response_stream,
+                     boost::asio::ip::tcp::socket* socket) const;
   std::string site_;
   std::string location_;
   std::string name_;
@@ -70,6 +73,8 @@ class DownloadManager {
   std::string file_to_download_;
   std::string maidsafe_public_key_;
 };
+
+}  // namespace priv
 
 }  // namespace maidsafe
 

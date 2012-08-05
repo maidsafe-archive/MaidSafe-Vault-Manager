@@ -103,7 +103,7 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
-  maidsafe::ProcessManager process_manager;
+  maidsafe::priv::ProcessManager process_manager;
   maidsafe::priv::VaultManager vault_manager;
 
   try {
@@ -137,7 +137,7 @@ void ServiceMain() {
 
 
 int main() {
-#ifdef WIN32
+#ifdef MAIDSAFE_WIN32
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
   service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);

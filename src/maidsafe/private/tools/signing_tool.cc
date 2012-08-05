@@ -18,13 +18,13 @@
 #include <unistd.h>
 #endif
 
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <istream>
 #include <ostream>
 #include <string>
 #include <vector>
-#include <cstdint>
 #include "boost/filesystem.hpp"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/crypto.h"
@@ -42,26 +42,25 @@ T Get(std::string display_message, bool echo_input = true);
 
 void Echo(bool enable = true) {
 #ifdef WIN32
-    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode;
-    GetConsoleMode(hStdin, &mode);
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD mode;
+  GetConsoleMode(hStdin, &mode);
 
-    if( !enable )
-        mode &= ~ENABLE_ECHO_INPUT;
-    else
-        mode |= ENABLE_ECHO_INPUT;
+  if (!enable)
+    mode &= ~ENABLE_ECHO_INPUT;
+  else
+    mode |= ENABLE_ECHO_INPUT;
 
-    SetConsoleMode(hStdin, mode );
-
+  SetConsoleMode(hStdin, mode);
 #else
-    struct termios tty;
-    tcgetattr(STDIN_FILENO, &tty);
-    if( !enable )
-        tty.c_lflag &= ~ECHO;
-    else
-        tty.c_lflag |= ECHO;
+  struct termios tty;
+  tcgetattr(STDIN_FILENO, &tty);
+  if (!enable)
+    tty.c_lflag &= ~ECHO;
+  else
+    tty.c_lflag |= ECHO;
 
-    (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
 }
 
@@ -79,10 +78,9 @@ std::vector<std::string> TokeniseLine(std::string line)  {
   std::vector<std::string> args;
   line = std::string("--") + line;
   boost::char_separator<char> sep(" ");
-  boost::tokenizer< boost::char_separator<char> > tokens(line, sep);
-  for (const auto& t : tokens) {
+  boost::tokenizer<boost::char_separator<char>> tokens(line, sep);
+  for (const auto& t : tokens)  // NOLINT (Fraser)
     args.push_back(t);
-  }
   return args;
 }
 
@@ -100,7 +98,7 @@ void SavePrivateKey() {
   std::string filename = Get<std::string>("please enter filename to save the private key to\n");
   if (!have_private_key) {
     std::cout << "You have not loaded or created a Private Key\nAborting!\n";
-  }else {
+  } else {
     fs::path file(filename);
     std::string priv_key;
     maidsafe::rsa::EncodePrivateKey(Keys.private_key, &priv_key);
@@ -115,7 +113,7 @@ void SavePublicKey() {
   std::string filename = Get<std::string>("please enter filename to save the public key to\n");
   if (!have_public_key) {
     std::cout << "You have not loaded or created a Public Key\nAborting!\n";
-  }else {
+  } else {
     fs::path file(filename);
     std::string pub_key;
     maidsafe::rsa::EncodePublicKey(Keys.public_key, &pub_key);
@@ -183,7 +181,8 @@ void SignFile() {
 }
 
 void ValidateSignature() {
-  std::string filename = Get<std::string>("please enter filename to validate \n We will read the filename.sig as signature file\n");
+  std::string filename = Get<std::string>("please enter filename to validate \n We will read the "
+                                          "filename.sig as signature file\n");
   fs::path file(filename);
   fs::path sigfile(filename + ".sig");
 
@@ -267,7 +266,7 @@ void CreateKeyGroup() {
 
   std::map<std::string, std::string> users;
   std::pair<std::map<std::string, std::string>::iterator, bool> ret;
-  for(int i = 0; i < max; ++i) {
+  for (int i = 0; i < max; ++i) {
     std::string name;
     std::cout << "please Enter unique name \n";
     std::getline(std::cin, name);
@@ -306,12 +305,12 @@ void GroupSignIn() {
   std::string priv_key;
   std::string location = Get<std::string>("please enter location of files");
 
-  for(int i =0; i < min; ++i) {
+  for (int i =0; i < min; ++i) {
     enc_data.clear();
     std::string name = Get<std::string>("please Enter name \n");
     std::string passwd = GetPasswd(false);
     std::cout << "Password captured next person please\n ==================================\n";
-    
+
     std::string key = passwd.substr(0, 32);
     std::string iv = passwd.substr(32, 48);
     fs::path file(location + name + ".keyfile");
@@ -426,7 +425,7 @@ T Get(std::string display_message, bool echo_input) {
 }
 
 int main() {
-  while(true) {
+  for (;;) {
   Echo(true);
     std::cout << "_________________________________________________________________\n";
     Help();

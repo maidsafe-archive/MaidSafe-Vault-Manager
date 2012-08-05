@@ -11,35 +11,41 @@
 
 #include "maidsafe/private/download_manager.h"
 
-#include <fstream>
-#include <iostream>
-#include <istream>
+#include <cstdint>
+#include <iterator>
 #include <ostream>
-#include <string>
 #include <vector>
 
-#include "boost/archive/text_iarchive.hpp"
+#include "boost/asio/connect.hpp"
+#include "boost/asio/read.hpp"
+#include "boost/asio/read_until.hpp"
+#include "boost/asio/write.hpp"
+#include "boost/lexical_cast.hpp"
 #include "boost/filesystem/fstream.hpp"
-#include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/rsa.h"
 
+
 namespace bai = boost::asio::ip;
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
+
+namespace priv {
+
 DownloadManager::DownloadManager()
-  : site_(),
-  location_(),
-  name_(),
-  platform_(),
-  cpu_size_(),
-  current_version_(),
-  current_patchlevel_(),
-  protocol_(),
-  file_to_download_(),
-  maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
+    : site_(),
+      location_(),
+      name_(),
+      platform_(),
+      cpu_size_(),
+      current_version_(),
+      current_patchlevel_(),
+      protocol_(),
+      file_to_download_(),
+      maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
 
 DownloadManager::DownloadManager(std::string site,
                                  std::string location,
@@ -48,105 +54,142 @@ DownloadManager::DownloadManager(std::string site,
                                  std::string cpu_size,
                                  std::string current_version,
                                  std::string current_patchlevel)
-  : site_(site),
-  location_(location),
-  name_(name),
-  platform_(platform),
-  cpu_size_(cpu_size),
-  current_version_(current_version),
-  current_patchlevel_(current_patchlevel),
-  protocol_("http"),
-  file_to_download_(),
-  maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
+    : site_(site),
+      location_(location),
+      name_(name),
+      platform_(platform),
+      cpu_size_(cpu_size),
+      current_version_(current_version),
+      current_patchlevel_(current_patchlevel),
+      protocol_("http"),
+      file_to_download_(),
+      maidsafe_public_key_(DecodeFromHex("308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")) {}  // NOLINT
 
-bool DownloadManager::FileIsValid(std::string file) {
-  boost::char_separator<char> sep("_");
-  boost::tokenizer<boost::char_separator<char>> tok(file, sep);
-  auto it(tok.begin());
-  int i(0);
-  for (; it != tok.end(); ++it, ++i) {}
-  if (i != 5) {
-    LOG(kInfo) << "FileIsValid: File '" << file << "' has incorrect name format";
+bool DownloadManager::FileIsValid(std::string file) const {
+  Tokens tokens(file, boost::char_separator<char>("_"));
+  if (std::distance(tokens.begin(), tokens.end()) != 5) {
+    LOG(kError) << "File '" << file << "' has incorrect name format";
     return false;
   }
-  LOG(kInfo) << "FileIsValid: File '" << file << "' has CORRECT name format";
+  LOG(kInfo) << "File '" << file << "' has correct name format";
   return true;
 }
 
-
-bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) {
+bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) const {
   LOG(kInfo) << "FILE 1 " << file1;
   LOG(kInfo) << "FILE 2 " << file2;
-  if (file2 == "" || !FileIsValid(file2))
+  if (file2.empty() || !FileIsValid(file2))
     return true;
-  else if (file1 == "" || !FileIsValid(file1))
+  else if (file1.empty() || !FileIsValid(file1))
     return false;
-  LOG(kInfo) << "BOTH FILES ARE OKAY. FILE1 IS " << file1 << " FILE2 IS " << file2;
-  boost::char_separator<char> sep("_");
-  boost::tokenizer<boost::char_separator<char>> tok1(file1, sep);
-  auto it1(tok1.begin());
-  boost::tokenizer<boost::char_separator<char>> tok2(file2, sep);
-  auto it2(tok2.begin());
+
+  Tokens tokens1(file1, boost::char_separator<char>("_"));
+  Tokens tokens2(file2, boost::char_separator<char>("_"));
+
   // skip past name, platform, cpu_size
-  for (int i(0); i < 3; ++i) {
-    ++it1;
-    ++it2;
+  auto itr1(tokens1.begin());
+  auto itr2(tokens2.begin());
+  for (int i(0); i != 3; ++i, ++itr1, ++itr2) {}
+  uint32_t version1, version2;
+  try {
+    version2 = boost::lexical_cast<uint32_t>(*itr2);
   }
-  uint32_t version1(boost::lexical_cast<uint32_t>(*it1));
-  uint32_t version2(boost::lexical_cast<uint32_t>(*it2));
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return true;
+  }
+
+  try {
+    version1 = boost::lexical_cast<uint32_t>(*itr1);
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return false;
+  }
 
   if (version2 < version1)
     return true;
 
-  uint32_t patchlevel1(boost::lexical_cast<uint32_t>(*(++it1)));
-  uint32_t patchlevel2(boost::lexical_cast<uint32_t>(*(++it2)));
+  uint32_t patchlevel1, patchlevel2;
 
-  if (patchlevel2 < patchlevel1)
+  try {
+    patchlevel2 = boost::lexical_cast<uint32_t>(*(++itr2));
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
     return true;
-  return false;
+  }
+
+  try {
+    patchlevel1 = boost::lexical_cast<uint32_t>(*(++itr1));
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return false;
+  }
+
+  return patchlevel2 < patchlevel1;
 }
 
-bool DownloadManager::FileIsUseful(std::string file) {
+bool DownloadManager::FileIsUseful(std::string file) const {
   if (!FileIsValid(file))
     return false;
-  boost::char_separator<char> sep("_");
-  boost::tokenizer<boost::char_separator<char>> tok(file, sep);
-  auto it(tok.begin());
-  std::string name(*it);
-  if (name_ != name) {
+
+  Tokens tokens(file, boost::char_separator<char>("_"));
+  auto itr(tokens.begin());
+
+  if (name_ != *itr)
     return false;
-  }
-  std::string platform(*(++it));
-  if (platform_ != platform) {
+
+  if (platform_ != *(++itr))
     return false;
+
+  if (cpu_size_ != *(++itr))
+    return false;
+
+  uint32_t version, patchlevel;
+  try {
+    version = boost::lexical_cast<uint32_t>(*(++itr));
+    patchlevel = boost::lexical_cast<uint32_t>(*(++itr));
   }
-  std::string cpu_size(*(++it));
-  if (cpu_size_ != cpu_size) {
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
     return false;
   }
 
-  uint32_t version(boost::lexical_cast<uint32_t>(*(++it)));
-  if (current_version_ == "") {
-    LOG(kInfo) << "FileIsUseful: Empty version, getting any version from server";
+  if (current_version_.empty()) {
+    LOG(kInfo) << "Empty version, getting any version from server";
     return true;
   }
-  uint32_t current_version(boost::lexical_cast<uint32_t>(current_version_));
-  LOG(kInfo) << "LATEST VERSION IS " << current_version
-             << " THE ONE THAT WE ARE TESTING IS " << version;
-  if (version < current_version)
-    return false;
-  uint32_t patchlevel(boost::lexical_cast<uint32_t>(*(++it)));
-  if (current_patchlevel_ == "") {
-    LOG(kInfo) << "FileIsUseful: Empty patchlevel, getting any patchlevel with current version from"
-               << " server";
-    return true;
-  }
-  uint32_t current_patchlevel(boost::lexical_cast<uint32_t>(current_patchlevel_));
-  if (version == current_version && patchlevel <= current_patchlevel)
-    return false;
 
-  LOG(kInfo) << "THE FILE " << file << " IS USEFUL AND WE ARE RETURNING TRUE!";
-  return true;
+  uint32_t current_version;
+  try {
+    current_version = boost::lexical_cast<uint32_t>(current_version_);
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return true;
+  }
+
+  LOG(kInfo) << "Latest version is " << current_version << " The one we are testing is " << version;
+  if (version != current_version)
+    return version > current_version;
+
+  if (current_patchlevel_.empty()) {
+    LOG(kInfo) << "Empty patchlevel, getting any patchlevel with current version from server";
+    return true;
+  }
+
+  uint32_t current_patchlevel;
+  try {
+    current_patchlevel = boost::lexical_cast<uint32_t>(current_patchlevel_);
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return true;
+  }
+
+  return patchlevel > current_patchlevel;
 }
 
 bool DownloadManager::FindLatestFile() {
@@ -154,68 +197,69 @@ bool DownloadManager::FindLatestFile() {
   bai::tcp::resolver resolver(io_service);
   bai::tcp::resolver::query query(site_, protocol_);
   bai::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+
   // Try each endpoint until we successfully establish a connection.
   bai::tcp::socket socket(io_service);
   boost::asio::connect(socket, endpoint_iterator);
-  std::vector<std::string> files;
-  std::string current_file;
-  file_to_download_ = "";
+  file_to_download_.clear();
   boost::asio::streambuf file_list_buffer;
   std::istream file_list_stream(&file_list_buffer);
   if (!GetFileBuffer("/" + location_ + "/file_list", &file_list_buffer, &file_list_stream,
       &socket)) {
     return false;
   }
+
   // Read until EOF, puts whole file list in memory but this should be of manageable size
   boost::system::error_code error;
   while (boost::asio::read(socket, file_list_buffer, boost::asio::transfer_at_least(1), error));
   if (error != boost::asio::error::eof) {
-    LOG(kError) << "FindLatestFile: Error downloading list of latest file versions: "
-                << error.message();
+    LOG(kError) << "Error downloading list of latest file versions: " << error.message();
     return false;
   }
+
+  std::string current_file;
+  std::vector<std::string> files;
   while (std::getline(file_list_stream, current_file))
     files.push_back(current_file);
-  auto it(files.begin());
+
+  auto itr(files.begin());
   std::string latest_file, next_file;
-  for (; it != files.end(); ++it) {
-    next_file = *it;
+  for (; itr != files.end(); ++itr) {
+    next_file = *itr;
     // THIS WILL PROBABLY CHANGE IF THERE ARE PROBLEMS WITH MACs
     boost::erase_all(next_file, "*exe");
-    LOG(kInfo) << "\n\n";
-    LOG(kInfo) << "LATEST FILE: " << latest_file << " CURRENT FILE: " << next_file;  //  (*it);
-
+    LOG(kInfo) << "Latest file: " << latest_file << "  Current file: " << next_file;  //  (*it);
     if (FileIsUseful(next_file) && FileIsLaterThan(next_file, latest_file)) {
       latest_file = next_file;
-      LOG(kInfo) << "FILE " << latest_file << " IS USEFUL AND IT IS THE LATEST ";
+      LOG(kInfo) << latest_file << " is useful and is the latest.";
     }
   }
-  if (latest_file == "") {
-    LOG(kWarning) << "FindLatestFile: No more recent version of requested file " << name_
+
+  if (latest_file.empty()) {
+    LOG(kWarning) << "No more recent version of requested file " << name_
                   << " exists in latest file versions list";
     return false;
   }
+
   file_to_download_ = latest_file;
-    LOG(kInfo) << "FindLatestFile: Found more recent version of file '" << name_
-               << "' on updates server";
+  LOG(kInfo) << "Found more recent version of file '" << name_ << "' on updates server";
   return true;
 }
 
-bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
+bool DownloadManager::UpdateCurrentFile(fs::path directory) {
+  if (file_to_download_.empty()) {
+    LOG(kError) << "The file to be downloaded has not yet been found, use FindLatestFile()";
+    return false;
+  }
+
   boost::asio::io_service io_service;
   bai::tcp::resolver resolver(io_service);
   bai::tcp::resolver::query query(site_, protocol_);
   bai::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+
   // Try each endpoint until we successfully establish a connection.
   bai::tcp::socket socket(io_service);
   boost::asio::connect(socket, endpoint_iterator);
-
-  if (file_to_download_ == "") {
-    LOG(kError) << "UpdateCurrentFile: The file to be downloaded has not yet been found, use"
-                << " FindLatestFile() to find it";
-    return false;
-  }
-
   std::vector<char> char_buffer(1024);
   boost::asio::streambuf current_file_buffer(1024);
   std::istream current_file_stream(&current_file_buffer);
@@ -225,20 +269,19 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
   }
 
   try {
-    boost::filesystem::ofstream file_out(directory / file_to_download_,
-                                        std::ios::out | std::ios::trunc | std::ios::binary);
+    fs::ofstream file_out(directory / file_to_download_,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
     if (!file_out.good()) {
-      LOG(kError) << "UpdateCurrentFile: Can't get ofstream created for "
-                  << directory / file_to_download_;
+      LOG(kError) << "Can't get ofstream created for " << directory / file_to_download_;
       return false;
     }
+
     boost::system::error_code error;
     // Read until EOF, copies 1024 byte chunks of file into memory at a time before adding to file
-    std::size_t size;
     std::streamsize length = current_file_stream.readsome(&char_buffer[0], std::streamsize(1024));
     std::string current_block(char_buffer.begin(), char_buffer.begin() + static_cast<int>(length));
     file_out.write(current_block.c_str(), current_block.size());
-    size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
+    size_t size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     while (size > 0) {
       if (error && error != boost::asio::error::eof) {
         LOG(kError) << "UpdateCurrentFile: Error downloading file " << file_to_download_ << ": "
@@ -249,28 +292,28 @@ bool DownloadManager::UpdateCurrentFile(boost::filesystem::path directory) {
       file_out.write(current_block.c_str(), current_block.size());
       size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     }
-    LOG(kInfo) << "UpdateCurrentFile: Finished downloading file " << file_to_download_
-               << ", closing file.";
+    LOG(kInfo) << "Finished downloading file " << file_to_download_ << ", closing file.";
     file_out.close();
   } catch(const std::exception &e) {
-    LOG(kError) << "UpdateCurrentFile: Failed to write file " << directory / file_to_download_
-                << ": " << e.what();
+    LOG(kError) << "Failed to write file " << directory / file_to_download_ << ": " << e.what();
     return false;
   }
+
   return true;
 }
 
-bool DownloadManager::VerifySignature() {
-  boost::filesystem::path current_path(boost::filesystem::current_path());
-  boost::filesystem::path key_file("maidsafe_public");
-  boost::filesystem::path file(file_to_download_);
-  boost::filesystem::path sigfile(file_to_download_ + ".sig");
+bool DownloadManager::VerifySignature() const {
+  fs::path current_path(fs::current_path());
+  fs::path key_file("maidsafe_public");
+  fs::path file(file_to_download_);
+  fs::path sigfile(file_to_download_ + ".sig");
   std::string signature, data;
 
   if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
     LOG(kInfo) << "Verify Signature - error reading file";
     return false;
   }
+
   asymm::PublicKey public_key;
   asymm::DecodePublicKey(maidsafe_public_key_, &public_key);
 
@@ -281,7 +324,7 @@ bool DownloadManager::VerifySignature() {
   if (maidsafe::rsa::CheckSignature(data, signature, public_key) == 0)  {
     LOG(kInfo) << "Verify Signature - Signature valid";
   } else {
-    LOG(kInfo) << "Verify Signature - Invalid signature !!!";
+    LOG(kError) << "Verify Signature - Invalid signature";
     return false;
   }
   return true;
@@ -290,7 +333,7 @@ bool DownloadManager::VerifySignature() {
 bool DownloadManager::GetFileBuffer(const std::string& file_path,
                                     boost::asio::streambuf* response,
                                     std::istream* response_stream,
-                                    bai::tcp::socket* socket) {
+                                    bai::tcp::socket* socket) const {
   boost::asio::streambuf request;
   std::ostream request_stream(&request);
   try {
@@ -315,12 +358,11 @@ bool DownloadManager::GetFileBuffer(const std::string& file_path,
     std::string status_message;
     std::getline(*response_stream, status_message);
     if (!(*response_stream) || http_version.substr(0, 5) != "HTTP/") {
-      LOG(kError) << "GetFileBuffer: Error downloading file list: Invalid response";
+      LOG(kError) << "Error downloading file list: Invalid response";
       return false;
     }
     if (status_code != 200) {
-      LOG(kError) << "GetFileBuffer: Error downloading file list: Response returned "
-                  << "with status code " << status_code;
+      LOG(kError) << "Error downloading file list: Response returned " << status_code;
       return false;
     }
     // Read the response headers, which are terminated by a blank line.
@@ -333,10 +375,12 @@ bool DownloadManager::GetFileBuffer(const std::string& file_path,
     }
   }
   catch(const std::exception &e) {
-    LOG(kError) << "GetFileBuffer: Exception: " << e.what();
+    LOG(kError) << e.what();
     return false;
   }
   return true;
 }
+
+}  // namespace priv
 
 }  // namespace maidsafe

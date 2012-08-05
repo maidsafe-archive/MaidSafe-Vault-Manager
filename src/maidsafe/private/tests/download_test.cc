@@ -23,16 +23,19 @@
  * dash.maidsafe.net/~phil called garbage, lifestuff_linux_32_1_1, lifestuff_linux_32_1_2 and
  * lifestuff_linux_32_1_3, plus a file called file_list containing these filenames
 */
+
 namespace maidsafe {
+
+namespace priv {
 
 namespace test {
 
 TEST(DownloadManagerTest, BEH_FindLatestFile) {
   std::shared_ptr<boost::filesystem::path> test_dir_
-      (maidsafe::test::CreateTestPath("TestDownloadManager"));
+      (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
 
   // Test case for non-existent file
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "dummy", "dummyplatform", "1",
+  DownloadManager manager("dash.maidsafe.net", "~phil", "dummy", "dummyplatform", "1",
                                     "0", "0");
   EXPECT_FALSE(manager.FindLatestFile());
 
@@ -59,8 +62,8 @@ TEST(DownloadManagerTest, BEH_FindLatestFile) {
 
 TEST(DownloadManagerTest, BEH_UpdateFile) {
   std::shared_ptr<boost::filesystem::path> test_dir_
-      (maidsafe::test::CreateTestPath("TestDownloadManager"));
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestuff", "linux", "32", "1",
+      (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
+  DownloadManager manager("dash.maidsafe.net", "~phil", "lifestuff", "linux", "32", "1",
                                     "1");
   // Current file should not be updated without finding the latest file first
   EXPECT_FALSE(manager.UpdateCurrentFile(*test_dir_));
@@ -75,16 +78,16 @@ TEST(DownloadManagerTest, BEH_UpdateFile) {
   LOG(kInfo) << content;
 }
 
-TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion_SmallerPatchLevel) {
+TEST(DownloadManagerTest, BEH_UpdateFileNewerVersion) {
   std::shared_ptr<boost::filesystem::path> test_dir_
-      (maidsafe::test::CreateTestPath("TestDownloadManager"));
+      (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
   std::string extension = "";
 
   #ifdef _WINDOWS
     extension = ".exe";
   #endif
 
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+  DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "4", "6");
   // Download a version of lifestuff
   manager.SetFileToDownload("lifestufflocal_linux_32_4_6" + extension);
@@ -105,7 +108,7 @@ TEST(DownloadManagerTest, BEH_VerificationOfFiles) {
   #ifdef _WINDOWS
     extension = ".exe";
   #endif
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+  DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");
   // Find the latest file and donwload it together with its signature file
   EXPECT_TRUE(manager.FindLatestFile());
@@ -135,7 +138,7 @@ TEST(DownloadManagerTest, BEH_VerificationFail) {
   #ifdef _WINDOWS
     extension = ".exe";
   #endif
-  maidsafe::DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
+  DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", "linux",
                                     "32", "1", "1");
 
   std::string signature_file = "lifestufflocal_linux_32_5_3" + extension + ".sig";
@@ -157,6 +160,8 @@ TEST(DownloadManagerTest, BEH_VerificationFail) {
 }
 
 }  // namespace test
+
+}  // namespace priv
 
 }  // namespace maidsafe
 

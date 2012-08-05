@@ -48,14 +48,14 @@ void ClientController::ConnectToManager() {
     if (state_ != kInitialising)
       return;
     if (port_ == 0)
-      port_ = VaultManager::kMinPort;
+      port_ = VaultManager::kMinPort();
     else
       ++port_;
     port = port_;
-    if (port > VaultManager::kMaxPort) {
+    if (port > VaultManager::kMaxPort()) {
       state_ = kFailed;
       LOG(kError) << "ConnectToManager: Could not connect to any port in range "
-                  << VaultManager::kMinPort << " to " << VaultManager::kMaxPort;
+                  << VaultManager::kMinPort() << " to " << VaultManager::kMaxPort();
       cond_var_.notify_all();
       return;
     }

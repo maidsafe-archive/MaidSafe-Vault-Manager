@@ -11,29 +11,23 @@
 
 #include "maidsafe/private/process_manager.h"
 
-#include <thread>
-#include <chrono>
-#include <string>
-#include <vector>
-#include <utility>
 #include <algorithm>
 
 #ifdef __MSVC__
-# pragma warning(push)
-# pragma warning(disable: 4244 4250 4267)
+#  pragma warning(push)
+#  pragma warning(disable: 4244 4250 4267)
 #endif
 
 #include "boost/process.hpp"
-#include "boost/filesystem.hpp"
-#include "boost/archive/text_oarchive.hpp"
-#include "boost/archive/text_iarchive.hpp"
-#include "boost/filesystem/fstream.hpp"
-#include "boost/filesystem/operations.hpp"
-#include "boost/asio.hpp"
 
 #ifdef __MSVC__
-# pragma warning(pop)
+#  pragma warning(pop)
 #endif
+
+#include "boost/filesystem/fstream.hpp"
+#include "boost/archive/text_oarchive.hpp"
+#include "boost/filesystem/operations.hpp"
+#include "boost/system/error_code.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -41,29 +35,32 @@
 
 #include "maidsafe/private/vault_identity_info_pb.h"
 
-namespace maidsafe {
 
 namespace bp = boost::process;
-namespace bai = boost::asio::ip;
+namespace fs = boost::filesystem;
+
+namespace maidsafe {
+
+namespace priv {
 
 bool Process::SetProcessName(std::string process_name, std::string parent_path) {
-  std::string path_string;
-  if (parent_path == "")
-    path_string = boost::filesystem::current_path().string();
-  else
-    path_string = parent_path;
-  fs::path exec_path(fs::path(parent_path) / process_name);
-  LOG(kInfo) << "Executable path is " << exec_path.string();
+  std::string path_string(parent_path.empty() ? fs::current_path().string() : parent_path);
+  fs::path executable_path(fs::path(parent_path) / process_name);
   boost::system::error_code ec;
-  if (!boost::filesystem3::exists(exec_path, ec))
+  if (!fs::exists(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
     return false;
-  if (!boost::filesystem3::is_regular_file(exec_path, ec)
-      && !boost::filesystem3::is_symlink(exec_path, ec))
+  }
+  if (!fs::is_regular_file(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " is not a regular file.  " << (ec ? ec.message() : "");
     return false;
-  if (ec)
+  }
+  if (fs::is_symlink(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " is a symlink.  " << (ec ? ec.message() : "");
     return false;
-  LOG(kInfo) << "Executable found at " << exec_path.string();
-  process_name_ = exec_path.string();
+  }
+  LOG(kInfo) << "Executable found at " << executable_path.string();
+  process_name_ = executable_path.string();
   return true;
 }
 
@@ -79,16 +76,15 @@ std::vector<std::string> Process::Args() const {
   return args_;
 }
 
+
+
 ProcessInfo::ProcessInfo(ProcessInfo&& other)
-  :
-  process(), thread(), id(), port(), restart_count(0), done(false) {
-  process = std::move(other.process);
-  thread = std::move(other.thread);
-  id = std::move(other.id);
-  port = std::move(other.port);
-  restart_count = std::move(other.restart_count);
-  done = std::move(other.done);
-}
+    : process(std::move(other.process)),
+      thread(std::move(other.thread)),
+      id(std::move(other.id)),
+      port(std::move(other.port)),
+      restart_count(std::move(other.restart_count)),
+      done(std::move(other.done)) {}
 
 ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
   process = std::move(other.process);
@@ -100,14 +96,9 @@ ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
   return *this;
 }
 
-ProcessManager::ProcessManager()
-  :
-  processes_(),
-  process_info_mutex_(),
-  process_count_(0),
-  done_(false),
-  current_port_(5483),
-  io_service_() {}
+
+
+ProcessManager::ProcessManager() : processes_() {}
 
 ProcessManager::~ProcessManager() {
   TerminateAll();
@@ -127,39 +118,68 @@ std::string ProcessManager::AddProcess(Process process, uint16_t port) {
   for (std::string i : process.Args())
     LOG(kInfo) << i;
   info.process = process;
+  std::lock_guard<std::mutex> lock(mutex_);
   processes_.push_back(std::move(info));
   return id;
 }
 
-int32_t ProcessManager::NumberOfProcesses() {
+int32_t ProcessManager::NumberOfProcesses() const {
+  std::lock_guard<std::mutex> lock(mutex_);
   return static_cast<int32_t>(processes_.size());
 }
 
-
-int32_t ProcessManager::NumberOfLiveProcesses() {
-  int32_t count(0);
-  for (auto &i : processes_) {
-    if (!i.done && i.thread.joinable())
-      ++count;
-  }
-  return count;
+int32_t ProcessManager::NumberOfLiveProcesses() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return static_cast<int32_t>(
+      std::count_if(processes_.begin(),
+                    processes_.end(),
+                    [](const ProcessInfo& process_info) {
+                      return !process_info.done && process_info.thread.joinable();
+                    }));
 }
 
-int32_t ProcessManager::NumberOfSleepingProcesses() {
-  int32_t count(0);
-  for (auto &i : processes_) {
-    if (!i.done)
-      ++count;
-  }
-  return count;
+int32_t ProcessManager::NumberOfSleepingProcesses() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return static_cast<int32_t>(
+      std::count_if(processes_.begin(),
+                    processes_.end(),
+                    [](const ProcessInfo& process_info) { return !process_info.done; }));  // NOLINT (Fraser)
+}
+
+std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
+  return std::find_if(processes_.begin(),
+                      processes_.end(),
+                      [id] (ProcessInfo &process_info) { return (process_info.id == id); });  // NOLINT (Fraser)
+}
+
+void ProcessManager::StartProcess(std::string id) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(id);
+  if (itr == processes_.end())
+    return;
+  (*itr).done = false;
+  (*itr).restart_count = 0;
+  LOG(kInfo) << "StartProcess: AddStatus. ID: " << id;
+  // ProcessManagerStruct status;
+  // status.instruction = ProcessInstruction::kRun;
+  // AddStatus(id, status);
+  (*itr).thread = std::move(boost::thread([=] { RunProcess(id, false, false); }));  // NOLINT (Fraser)
 }
 
 void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
-  auto i = FindProcess(id);
-  if (i == processes_.end()) {
-    LOG(kError) << "RunProcess: process with specified VMID cannot be found";
-    return;
+  std::string process_name;
+  std::vector<std::string> process_args;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto itr = FindProcess(id);
+    if (itr == processes_.end()) {
+      LOG(kError) << "RunProcess: process with specified VMID cannot be found";
+      return;
+    }
+    process_name = (*itr).process.ProcessName();
+    process_args = (*itr).process.Args();
   }
+
   if (restart) {
     Sleep(boost::posix_time::milliseconds(600));
     // SetInstruction(id, ProcessInstruction::kRun);
@@ -170,46 +190,47 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
       maidsafe::log::Logging::instance().SetAsync(true);
     }
   }
-  bp::context ctx;
-  ctx.environment = bp::self::get_environment();
-  ctx.stderr_behavior = bp::capture_stream();
-  ctx.stdout_behavior = bp::capture_stream();
+  bp::context context;
+  context.environment = bp::self::get_environment();
+  context.stderr_behavior = bp::capture_stream();
+  context.stdout_behavior = bp::capture_stream();
 
-  bp::child child(bp::launch((*i).process.ProcessName(), (*i).process.Args(), ctx));
+  bp::child child(bp::launch(process_name, process_args, context));
 
-  bp::pistream& is = child.get_stdout();
-  bp::pistream& is2 = child.get_stderr();
+  bp::pistream& stdout_stream = child.get_stdout();
+  bp::pistream& stderr_stream = child.get_stderr();
   std::string result;
   std::string line;
-  while (std::getline(is, line)) {
-    result += line;
-    result += "\n";
-  }
-  result += "\nstd::err: ";
-  while (std::getline(is2, line)) {
-    result += line;
-    result += "\n";
+  while (std::getline(stdout_stream, line))
+    result += line + '\n';
+
+  bool stderr_message(false);
+  while (std::getline(stderr_stream, line)) {
+    if (!stderr_message) {
+      stderr_message = true;
+      result += "\nstd::err: ";
+    }
+    result += line + '\n';
   }
 
   if (logging) {
     fs::path filename("Logging.txt");
-    fs::ofstream ofs(filename);
-    boost::archive::text_oarchive oa(ofs);
+    fs::ofstream ofstream(filename);
+    boost::archive::text_oarchive text_oarchive(ofstream);
     std::string line;
     std::string content;
-    while (std::getline(is, line))
-        content += line + "\n";
-    oa & content;
+    while (std::getline(stdout_stream, line))
+      content += line + "\n";
+    text_oarchive & content;
   }
-#ifdef WIN32
+#ifdef MAIDSAFE_WIN32
   child.wait();
 #else
   bp::posix_status status = child.wait();
 #endif
-  i = FindProcess(id);
   LOG(kInfo) << "Process " << id << " completes. Output: ";
   LOG(kInfo) << result;
-#ifndef WIN32
+#ifndef MAIDSAFE_WIN32
   if (status.exited()) {
     LOG(kInfo) << "Program returned exit code " << status.exit_status();
   } else if (status.stopped()) {
@@ -222,151 +243,110 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
     LOG(kInfo) << "Program terminated for unknown reason";
   }
 #endif
-  LOG(kInfo) << "Restart count = " << (*i).restart_count;
-  if (!(*i).done) {
-    if ((*i).restart_count > 4) {
-      LOG(kInfo) << "A process " << (*i).id << " is consistently failing. Stopping..." <<
-      " Restart count = " << (*i).restart_count;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto itr(FindProcess(id));
+    LOG(kInfo) << "Restart count = " << (*itr).restart_count;
+    if ((*itr).done)
+      return;
+
+    if ((*itr).restart_count > 4) {
+      LOG(kInfo) << "A process " << (*itr).id << " is consistently failing. Stopping..."
+                 << " Restart count = " << (*itr).restart_count;
       return;
     }
-    if (((*i).restart_count < 3)) {
-      (*i).restart_count = (*i).restart_count + 1;
-      RunProcess(id, true, false);
+
+    if ((*itr).restart_count < 3) {
+      ++(*itr).restart_count;
+      logging = false;
     } else {
-      (*i).restart_count = (*i).restart_count + 1;
-      RunProcess(id, true, true);
+      ++(*itr).restart_count;
+      logging = true;
     }
   }
-}
-
-void ProcessManager::KillProcess(std::string id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = true;
-  // SetInstruction(id, ProcessInstruction::kTerminate);
-}
-
-void ProcessManager::StopProcess(std::string id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = true;
-  // SetInstruction(id, ProcessInstruction::kStop);
-}
-
-void ProcessManager::RestartProcess(std::string id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = false;
-  // SetInstruction(id, ProcessInstruction::kTerminate);
-}
-
-void ProcessManager::StartProcess(std::string id) {
-  auto i = FindProcess(id);
-  if (i == processes_.end())
-    return;
-  (*i).done = false;
-  (*i).restart_count = 0;
-  LOG(kInfo) << "StartProcess: AddStatus. ID: " << id;
-  // ProcessManagerStruct status;
-  // status.instruction = ProcessInstruction::kRun;
-  // AddStatus(id, status);
-  boost::thread thd([=] { RunProcess(id, false, false); }); //NOLINT
-  (*i).thread = std::move(thd);
+  RunProcess(id, true, logging);
 }
 
 void ProcessManager::LetProcessDie(std::string id) {
   LOG(kInfo) << "LetProcessDie: ID: " << id;
-  auto i = FindProcess(id);
-  if (i == processes_.end())
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(id);
+  if (itr == processes_.end())
     return;
-  (*i).done = true;
+  (*itr).done = true;
 }
 
 void ProcessManager::LetAllProcessesDie() {
-  for (auto i(processes_.begin()); i != processes_.end(); ++i)
-    (*i).done = true;
-}
-
-std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
-  process_info_mutex_.lock();
-  std::string id_to_find = id;
-  auto it = std::find_if(processes_.begin(), processes_.end(), [=] (ProcessInfo &j) {
-    return (j.id == id_to_find);
-  });
-  process_info_mutex_.unlock();
-  return it;
+  std::lock_guard<std::mutex> lock(mutex_);
+  for (auto& process : processes_)
+    process.done = true;
 }
 
 void ProcessManager::WaitForProcesses() {
-  for (auto &i : processes_) {
-    while (!i.done) {}
-    if (i.thread.joinable())
-      i.thread.join();
+  bool done(false);
+  boost::thread thread;
+  while (!done) {
+    done = true;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      for (auto& process : processes_) {
+        if (!process.done) {
+          done = false;
+          break;
+        }
+        if (process.thread.joinable()) {
+          thread = std::move(process.thread);
+          done = false;
+          break;
+        }
+      }
+    }
+    thread.join();
+    Sleep(boost::posix_time::milliseconds(10));
   }
 }
 
+void ProcessManager::KillProcess(std::string id) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(id);
+  if (itr == processes_.end())
+    return;
+  (*itr).done = true;
+  // SetInstruction(id, ProcessInstruction::kTerminate);
+}
+
+void ProcessManager::StopProcess(std::string id) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(id);
+  if (itr == processes_.end())
+    return;
+  (*itr).done = true;
+  // SetInstruction(id, ProcessInstruction::kStop);
+}
+
+void ProcessManager::RestartProcess(std::string id) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(id);
+  if (itr == processes_.end())
+    return;
+  (*itr).done = false;
+  // SetInstruction(id, ProcessInstruction::kTerminate);
+}
+
 void ProcessManager::TerminateAll() {
-  for (auto &i : processes_) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  for (auto& process : processes_) {
     /*if (CheckInstruction(i.id) != ProcessInstruction::kTerminate) {
       i.done = true;
       LOG(kInfo) << "TerminateAll: SetInstruction to kTerminate";
       SetInstruction(i.id, ProcessInstruction::kTerminate);
     }*/
-    if (i.thread.joinable())
-      i.thread.join();
+    if (process.thread.joinable())
+      process.thread.join();
   }
   processes_.clear();
 }
 
-/*bool ProcessManager::AddStatus(std::string id, ProcessManagerStruct status) {
-  // std::pair<TerminateVector*, std::size_t> t =
-  //    shared_mem_.find<TerminateVector>("terminate_info");
-  std::pair<StructMap*, std::size_t> t =
-      shared_mem_.find<StructMap>("process_info");
-  if (!(t.first)) {
-    LOG(kError) << "AddStatus: failed to access IPC shared memory";
-    return false;
-  }
-  (*t.first)[id] = status;
-  LOG(kInfo) << "SIZE OF MAP!!!!!!!!!!!!: " << (*t.first).size();
-  // LOG(kInfo) << "AddTerminateFlag: vector is now size " << (*t.first).size();
-  LOG(kInfo) << "INSTRUCTION IN MAP!!!!!!!!!!!!: " << (*t.first)[id].instruction;
-  LOG(kInfo) << "INSTRUCTION IN MAP WITH CHECK INSTRUCTION!!!!!!!!!!!!: " << CheckInstruction(id);
-  return true;
-}
-
-bool ProcessManager::SetInstruction(std::string id, ProcessInstruction instruction) {
-  std::pair<StructMap*, std::size_t> t =
-      shared_mem_.find<StructMap>("process_info");
-  if (!(t.first)) {
-    LOG(kError) << "SetInstruction: failed to access IPC shared memory";
-    return false;
-  }
-  if ((*t.first).count(id) == 0) {
-      LOG(kInfo) << "SetInstruction: invalid process ID " << (*t.first).size();
-    return false;
-  }
-  LOG(kInfo) << "SetInstruction: VALID process ID " << (*t.first).size();
-  LOG(kInfo) << "SetInstruction: Instrucation set to " << instruction;
-  (*t.first)[id].instruction = instruction;
-  return true;
-}
-
-ProcessInstruction ProcessManager::CheckInstruction(std::string id) {
-  std::pair<StructMap*, std::size_t> t =
-      shared_mem_.find<StructMap>("process_info");
-  if (!(t.first)) {
-    LOG(kError) << "CheckInstruction: failed to access IPC shared memory";
-    return ProcessInstruction::kInvalid;
-  }
-  if ((*t.first).count(id) == 0) {
-    LOG(kInfo) << "CheckInstruction: invalid process ID " << id;
-    return ProcessInstruction::kInvalid;
-  }
-  return (*t.first)[id].instruction;
-}*/
+}  // namespace priv
 
 }  // namespace maidsafe
