@@ -28,7 +28,6 @@
 #include "maidsafe/private/download_manager.h"
 #include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/process_manager.h"
-#include "maidsafe/private/tcp_transport.h"
 #include "maidsafe/private/transport.h"
 
 
@@ -126,7 +125,7 @@ class VaultManager {
   DownloadManager download_manager_;
   AsioService asio_service_;
   MessageHandler message_handler_;
-  TcpTransport transport_;
+  std::shared_ptr<TcpTransport> transport_;
   uint16_t local_port_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> client_started_vault_manager_ids_;
   std::vector<std::shared_ptr<WaitingVaultInfo>> config_file_vault_manager_ids_;

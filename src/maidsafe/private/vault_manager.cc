@@ -20,6 +20,7 @@
 #include "maidsafe/common/log.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
+#include "maidsafe/private/tcp_transport.h"
 
 
 namespace fs = boost::filesystem;
@@ -34,7 +35,7 @@ VaultManager::VaultManager(const std::string& parent_path)
       download_manager_(),
       asio_service_(3),
       message_handler_(),
-      transport_(asio_service_.service()),
+      transport_(new TcpTransport(asio_service_.service())),
       local_port_(kMinPort()),
       client_started_vault_manager_ids_(),
       config_file_vault_manager_ids_(),
@@ -414,7 +415,7 @@ bool HandleBootstrapFile(asymm::Identity identity) {
 
 void VaultManager::ListenForMessages() {
   boost::mutex::scoped_lock lock(mutex_);
-  while (transport_.StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
+  while (transport_->StartListening(Endpoint(boost::asio::ip::address_v4::loopback(),
       local_port_)) != kSuccess) {
     ++local_port_;
     if (local_port_ > kMaxPort()) {
@@ -596,9 +597,9 @@ void VaultManager::HandleVaultShutdownRequest(const std::string& vault_shutdown_
 }
 
 void VaultManager::StartListening() {
-  transport_.on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
+  transport_->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
                                                         &message_handler_, _1, _2, _3, _4));
-  transport_.on_error()->connect(boost::bind(&MessageHandler::OnError, &message_handler_, _1, _2));
+  transport_->on_error()->connect(boost::bind(&MessageHandler::OnError, &message_handler_, _1, _2));
   message_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
   message_handler_.SetCallback(
       boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3, _4));
@@ -621,7 +622,7 @@ void VaultManager::StopListening() {
   LOG(kInfo) << "After VaultManager vaults shutdown";
   /*if (updates_thread_.joinable())
     updates_thread_.join();*/
-  transport_.StopListening();
+  transport_->StopListening();
 }
 
 }  // namespace priv
