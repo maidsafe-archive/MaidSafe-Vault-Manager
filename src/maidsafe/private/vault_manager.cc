@@ -393,24 +393,20 @@ void VaultManager::ListenForUpdates() {
 }
 
 bool HandleBootstrapFile(asymm::Identity identity) {
-  try {
-    fs::path manager_bootstrap_path(GetSystemAppDir() / "bootstrap-global.dat");
-    if (!fs::exists(manager_bootstrap_path)) {
-      LOG(kError) << "Error: Main bootstrap file doesn't exist at " << manager_bootstrap_path;
-      return false;
-    }
-    fs::path vault_bootstrap_path(GetSystemAppDir() /
-                                  ("bootstrap-" + EncodeToBase32(identity) + ".dat"));
-    if (!fs::exists(vault_bootstrap_path)) {
-      fs::copy_file(manager_bootstrap_path, vault_bootstrap_path);
-      // SET PERMISSIONS
-    }
-    return true;
-  } catch(const std::exception& e) {
-    LOG(kError) << "Error creating/accessing bootstrap file: " << e.what();
-    // return false;
+  std::string short_vault_id(maidsafe::EncodeToBase32(
+      maidsafe::crypto::Hash<maidsafe::crypto::SHA1>(identity)));
+  fs::path vault_bootstrap_path(
+      maidsafe::GetSystemAppDir() / ("bootstrap-" + short_vault_id + ".dat"));
+
+  // just create empty file, Routing will fall back to global bootstrap file
+  if (!fs::exists(vault_bootstrap_path) && !maidsafe::WriteFile(vault_bootstrap_path, "")) {
+    LOG(kError) << "HandleBootstrapFile: Could not create " << vault_bootstrap_path;
+    return false;
   }
-  return false;
+
+  // TODO(Phil) set permissions to give vault exclusive access
+
+  return true;
 }
 
 void VaultManager::ListenForMessages() {
@@ -440,7 +436,7 @@ void VaultManager::HandleIncomingMessage(const int& type,
                                          const std::string& payload,
                                          const Info& info,
                                          std::string* response) {
-  LOG(kInfo) << "HandleIncomingMessage: message type " << type << " received.";
+  LOG(kVerbose) << "HandleIncomingMessage: message type " << type << " received.";
   if (!info.endpoint.ip.is_loopback()) {
     LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
     return;
@@ -448,19 +444,19 @@ void VaultManager::HandleIncomingMessage(const int& type,
   VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
   switch (message_type) {
     case VaultManagerMessageType::kHelloFromClient:
-      LOG(kInfo) << "kHelloFromClient";
+      LOG(kVerbose) << "kHelloFromClient";
       HandleClientHello(payload, info, response);
       break;
     case VaultManagerMessageType::kIdentityInfoRequestFromVault:
-      LOG(kInfo) << "kIdentityInfoRequestFromVault";
+      LOG(kVerbose) << "kIdentityInfoRequestFromVault";
       HandleVaultInfoRequest(payload, info, response);
       break;
     case VaultManagerMessageType::kStartRequestFromClient:
-      LOG(kInfo) << "kStartRequestFromClient";
+      LOG(kVerbose) << "kStartRequestFromClient";
       HandleClientStartVaultRequest(payload, info, response);
       break;
     case VaultManagerMessageType::kShutdownRequestFromVault:
-      LOG(kInfo) << "kShutdownRequestFromVault";
+      LOG(kVerbose) << "kShutdownRequestFromVault";
       HandleVaultShutdownRequest(payload, info, response);
       break;
     default:
@@ -483,7 +479,7 @@ void VaultManager::HandleClientHello(const std::string& hello_string,
       return;
     }
   }
-  LOG(kError) <<  "HandleClientHello: Problem parsing client's hello message";
+  LOG(kError) << "HandleClientHello: Problem parsing client's hello message";
 }
 
 void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_string,
@@ -497,7 +493,8 @@ void VaultManager::HandleClientStartVaultRequest(const std::string& start_vault_
     current_vault_info->chunkstore_path = (/*GetSystemAppDir() /*/ "TestVault")/*.string()*/ +
                                           RandomAlphaNumericString(5) + "/";
     if (!HandleBootstrapFile(current_vault_info->keys.identity)) {
-      LOG(kError) << "Failed to set bootstrap file for vault " << current_vault_info->keys.identity;
+      LOG(kError) << "Failed to set bootstrap file for vault "
+                  << HexSubstr(current_vault_info->keys.identity);
       return;
     }
     current_vault_info->chunkstore_capacity = "0";
@@ -581,8 +578,8 @@ void VaultManager::HandleVaultShutdownRequest(const std::string& vault_shutdown_
     protobuf::VaultShutdownResponse shutdown_response;
     boost::mutex::scoped_lock lock(mutex_);
     shutdown_response.set_shutdown(shutdown_requested_);
-    LOG(kInfo) << "HandleVaultShutdownRequest: shutdown requested"
-               << std::boolalpha << shutdown_requested_;
+    LOG(kVerbose) << "HandleVaultShutdownRequest: shutdown requested "
+                  << std::boolalpha << shutdown_requested_;
     *response =
         message_handler_.MakeSerialisedWrapperMessage(message_type,
                                                       shutdown_response.SerializeAsString());
