@@ -398,8 +398,17 @@ bool HandleBootstrapFile(asymm::Identity identity) {
   fs::path vault_bootstrap_path(
       maidsafe::GetSystemAppDir() / ("bootstrap-" + short_vault_id + ".dat"));
 
+  boost::system::error_code error_code;
+  fs::create_directories(maidsafe::GetSystemAppDir(), error_code);
+  if (error_code) {
+    LOG(kError) << "HandleBootstrapFile: Could not create application directory. ("
+                << error_code.message() << ")";
+    return false;
+  }
+
   // just create empty file, Routing will fall back to global bootstrap file
-  if (!fs::exists(vault_bootstrap_path) && !maidsafe::WriteFile(vault_bootstrap_path, "")) {
+  if (!fs::exists(vault_bootstrap_path, error_code) &&
+      !maidsafe::WriteFile(vault_bootstrap_path, "")) {
     LOG(kError) << "HandleBootstrapFile: Could not create " << vault_bootstrap_path;
     return false;
   }
