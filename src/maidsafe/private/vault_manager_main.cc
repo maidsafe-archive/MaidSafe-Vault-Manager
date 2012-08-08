@@ -11,7 +11,7 @@
 
 #include "maidsafe/private/vault_manager.h"
 
-#ifdef WIN32
+#ifdef MAIDSAFE_WIN32
 #  include <windows.h>
 #else
 #  include <signal.h>
@@ -45,7 +45,7 @@ void ShutDownVaultManager(int /*signal*/) {
   g_cond_var.notify_one();
 }
 
-#ifdef WIN32
+#ifdef MAIDSAFE_WIN32
 
 enum {
   kMaidSafeVaultManagerStdException = 0x1,

@@ -347,7 +347,7 @@ void VaultManager::ListenForUpdates() {
         // Remove the signature_file
         LOG(kInfo) << "Removing signature file";
         fs::remove(current_path / signature_file);
-#ifndef WIN32
+#ifndef MAIDSAFE_WIN32
         fs::path symlink(current_path / name);
         fs::remove(symlink);
 

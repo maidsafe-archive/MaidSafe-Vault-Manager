@@ -70,7 +70,7 @@ TransportCondition TcpTransport::StartListening(const Endpoint &endpoint) {
 // http://msdn.microsoft.com/en-us/library/ms740621(VS.85).aspx
 // http://www.unixguide.net/network/socketfaq/4.5.shtml
 // http://old.nabble.com/Port-allocation-problem-on-windows-(incl.-patch)-td28241079.html
-#ifndef WIN32
+#ifndef MAIDSAFE_WIN32
   acceptor_->set_option(ip::tcp::acceptor::reuse_address(true), ec);
 #endif
 

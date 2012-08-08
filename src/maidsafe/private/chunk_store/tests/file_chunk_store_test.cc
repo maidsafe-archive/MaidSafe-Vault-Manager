@@ -400,7 +400,7 @@ TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
   }
 
   for (auto before = chunk_data_pre.begin(), after = chunk_data_post.begin();
-       before != chunk_data_pre.end(), after != chunk_data_post.end(); ++before, ++after) {
+       before != chunk_data_pre.end() && after != chunk_data_post.end(); ++before, ++after) {
     EXPECT_EQ(before->chunk_name, after->chunk_name);
     EXPECT_EQ(before->chunk_size, after->chunk_size);
   }
