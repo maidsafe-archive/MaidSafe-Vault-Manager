@@ -89,7 +89,7 @@ std::string FileChunkStore::Get(const std::string &name) const {
   fs::path file_path(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(file_path));
   if (ref_count == 0) {
-    LOG(kError) << "Data has reference count == 0: " << Base32Substr(name);
+    LOG(kWarning) << "Data has reference count == 0: " << Base32Substr(name);
     return "";
   }
 
@@ -593,7 +593,7 @@ uintmax_t FileChunkStore::GetChunkReferenceCount(
     const fs::path &chunk_path) const {
   boost::system::error_code ec;
   if (!fs::exists(chunk_path.parent_path(), ec)) {
-    LOG(kError) << "Path given doesn't exist: " << chunk_path;
+    LOG(kWarning) << "Path given doesn't exist: " << chunk_path;
     return 0;
   }
 

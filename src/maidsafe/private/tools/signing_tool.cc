@@ -9,16 +9,17 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifdef MAIDSAFE_WIN32
+#if defined MAIDSAFE_WIN32
 #  include <windows.h>
 #  pragma warning(push)
 #  pragma warning(disable: 4701)
-#elif defined MAIDSAFE_LINUX
-#  include <termio.h>
+#else
 #  include <unistd.h>
-#elif defined MAIDSAFE_APPLE
-#  include <termios.h>
-#  include <unistd.h>
+#  if defined MAIDSAFE_LINUX
+#    include <termio.h>
+#  elif defined MAIDSAFE_APPLE
+#    include <termios.h>
+#  endif
 #endif
 
 #include <cstdint>
