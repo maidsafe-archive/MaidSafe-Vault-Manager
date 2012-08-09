@@ -95,8 +95,12 @@ TEST_F(DownloadTest, BEH_UpdateFile) {
   EXPECT_TRUE(manager.FindLatestFile());
   EXPECT_EQ("lifestuff_linux_32_1_3" + extension_, manager.file_to_download() + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
-  EXPECT_TRUE(boost::filesystem::exists(*test_dir_ / "lifestuff_linux_32_1_3" / extension_));
-  EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_ / "lifestuff_linux_32_1_3" / extension_));
+  EXPECT_TRUE(boost::filesystem::exists(*test_dir_
+              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_" + cpu_size_
+                                                + "_1_3" + extension_)));
+  EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
+              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_" + cpu_size_
+                                                + "_1_3" + extension_)));
   std::string content;
   ReadFile(*test_dir_ / "lifestuff_" / platform_ / "_" / cpu_size_ / "_1_3" / extension_, &content);
   LOG(kInfo) << content;
