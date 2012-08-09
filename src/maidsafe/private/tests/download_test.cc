@@ -72,13 +72,15 @@ TEST_F(DownloadTest, BEH_FindLatestFile) {
   // Test case for file that is a later version / patch level than the one requested
   manager.SetCurrentPatchLevelToUpdate("2");
   EXPECT_TRUE(manager.FindLatestFile());
-  EXPECT_EQ("lifestuff_linux_32_1_3" + extension_, manager.file_to_download() + extension_);
+  EXPECT_EQ("lifestuff_" + platform_ + "_" + cpu_size_ + "_1_3" + extension_,
+            manager.file_to_download() + extension_);
 
   // Test case where the must choose the latest of two later versions of the file
   manager.ClearFileToDownload();
   manager.SetCurrentPatchLevelToUpdate("1");
   EXPECT_TRUE(manager.FindLatestFile());
-  EXPECT_EQ("lifestuff_linux_32_1_3" + extension_, manager.file_to_download() + extension_);
+  EXPECT_EQ("lifestuff_" + platform_ + "_" + cpu_size_ + "_1_3" + extension_,
+            manager.file_to_download() + extension_);
 }
 
 TEST_F(DownloadTest, BEH_UpdateFile) {
@@ -96,7 +98,7 @@ TEST_F(DownloadTest, BEH_UpdateFile) {
   EXPECT_TRUE(boost::filesystem::exists(*test_dir_ / "lifestuff_linux_32_1_3" / extension_));
   EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_ / "lifestuff_linux_32_1_3" / extension_));
   std::string content;
-  ReadFile(*test_dir_ / "lifestuff_linux_32_1_3" / extension_, &content);
+  ReadFile(*test_dir_ / "lifestuff_" / platform_ / "_" / cpu_size_ / "_1_3" / extension_, &content);
   LOG(kInfo) << content;
 }
 
@@ -107,17 +109,21 @@ TEST_F(DownloadTest, BEH_UpdateFileNewerVersion) {
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", platform_,
                                     cpu_size_, "4", "6");
   // Download a version of lifestuff
-  manager.SetFileToDownload("lifestufflocal_linux_32_4_6" + extension_);
+  manager.SetFileToDownload("lifestufflocal_" + platform_ + "_" + cpu_size_ + "_4_6" + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
 
   // Try to find the latest version which has bigger version than the current one but has smaller
   // patch level
   EXPECT_TRUE(manager.FindLatestFile());
-  EXPECT_EQ("lifestufflocal_linux_32_5_4" + extension_, manager.file_to_download() + extension_);
+  EXPECT_EQ("lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_4" + extension_,
+            manager.file_to_download() + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
-  EXPECT_TRUE(boost::filesystem::exists(*test_dir_ / "lifestufflocal_linux_32_5_4" / extension_));
-  EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_ / "lifestufflocal_linux_32_5_4"
-                                                      / extension_));
+  EXPECT_TRUE(boost::filesystem::exists(*test_dir_
+              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_" + cpu_size_
+                                                + "_5_4" + extension_)));
+  EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
+              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_" + cpu_size_
+                                                + "_5_4" + extension_)));
 }
 
 TEST_F(DownloadTest, BEH_VerificationOfFiles) {
@@ -128,15 +134,18 @@ TEST_F(DownloadTest, BEH_VerificationOfFiles) {
 
   // Find the latest file and donwload it together with its signature file
   EXPECT_TRUE(manager.FindLatestFile());
-  EXPECT_EQ("lifestufflocal_linux_32_5_4" + extension_, manager.file_to_download() + extension_);
+  EXPECT_EQ("lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_4" + extension_,
+            manager.file_to_download() + extension_);
 
-  std::string signature_file = "lifestufflocal_linux_32_5_4" + extension_ + ".sig";
+  std::string signature_file = "lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_4"
+                                + extension_ + ".sig";
   manager.SetFileToDownload(signature_file);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / signature_file));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / signature_file));
 
-  std::string file_to_download = "lifestufflocal_linux_32_5_4" + extension_;
+  std::string file_to_download = "lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_4"
+                                  + extension_;
   manager.SetFileToDownload(file_to_download);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / file_to_download));
@@ -154,13 +163,15 @@ TEST_F(DownloadTest, BEH_VerificationFail) {
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocal", platform_,
                                     cpu_size_, "1", "1");
 
-  std::string signature_file = "lifestufflocal_linux_32_5_3" + extension_ + ".sig";
+  std::string signature_file = "lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_3"
+                                + extension_ + ".sig";
   manager.SetFileToDownload(signature_file);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / signature_file));
   EXPECT_FALSE(boost::filesystem::is_empty(current_path / signature_file));
 
-  std::string file_to_download = "lifestufflocal_linux_32_5_3" + extension_;
+  std::string file_to_download = "lifestufflocal_" + platform_ + "_" + cpu_size_ + "_5_3"
+                                  + extension_;
   manager.SetFileToDownload(file_to_download);
   EXPECT_TRUE(manager.UpdateCurrentFile(current_path));
   EXPECT_TRUE(boost::filesystem::exists(current_path / file_to_download));
