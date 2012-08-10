@@ -48,6 +48,16 @@ enum class VaultManagerMessageType {
   kShutdownResponseToVault = 8
 };
 
+struct LatestFileInfo {
+  LatestFileInfo()
+      : major_version(),
+        minor_version(),
+        patch_level() {}
+  std::string major_version;
+  std::string minor_version;
+  std::string patch_level;
+};
+
 struct WaitingVaultInfo {
   WaitingVaultInfo()
       : vault_manager_id(),
@@ -108,9 +118,8 @@ class VaultManager {
                              const Info& info,
                              std::string* response);
   void OnError(const TransportCondition& transport_condition, const Endpoint& remote_endpoint);
-  std::pair<std::string, std::string> FindLatestLocalVersion(std::string name,
-                                                             std::string platform,
-                                                             std::string cpu_size);
+  LatestFileInfo FindLatestLocalVersion(std::string name,
+                                                             std::string platform);
   void ProcessStopHandler();
 
 //   It should be decided if the following three methods are going to be private or public

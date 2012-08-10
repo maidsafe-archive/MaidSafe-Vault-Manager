@@ -229,13 +229,11 @@ int32_t VaultManager::ListVaults(bool select) const {
   return 0;
 }
 
-std::pair<std::string, std::string> VaultManager::FindLatestLocalVersion(std::string name,
-                                                                         std::string platform,
-                                                                         std::string cpu_size) {
+LatestFileInfo VaultManager::FindLatestLocalVersion(std::string name, std::string platform) {
   fs::path current_path(fs::current_path());
   fs::directory_iterator end;
-  std::string latest_file(name + "_" + platform + "_" + cpu_size + "_0_0");
-  std::string max_version, max_patchlevel;
+  std::string latest_file(name + "_" + platform + "_" + "0.0.0");
+  LatestFileInfo latest_file_info;
   for (fs::directory_iterator dir_it(current_path); dir_it != end; ++dir_it) {
     if (!download_manager_.FileIsValid((*dir_it).path().stem().string()))
       continue;
@@ -258,27 +256,24 @@ std::pair<std::string, std::string> VaultManager::FindLatestLocalVersion(std::st
     if (platform != current_platform)
       continue;
 
-    std::string current_cpu_size(*(++it));
-    LOG(kInfo) << "cpu_size " << cpu_size;
-    LOG(kInfo) << "current_cpu_size " << current_cpu_size;
-    if (cpu_size != current_cpu_size)
-      continue;
-
-    std::string temp_max_version = *(++it);
+    std::string temp_max_major_version = *(++it);
+    std::string temp_max_minor_version = *(++it);
     std::string temp_max_patchlevel = *(++it);
 
     if (download_manager_.FileIsLaterThan((*dir_it).path().stem().string(), latest_file)) {
       latest_file = (*dir_it).path().stem().string();
-      max_version = temp_max_version;
-      max_patchlevel = temp_max_patchlevel;
+      latest_file_info.major_version = temp_max_major_version;
+      latest_file_info.minor_version = temp_max_minor_version;
+      latest_file_info.patch_level = temp_max_patchlevel;
     }
   }
-  return std::pair<std::string, std::string>(max_version, max_patchlevel);
+  
+  return latest_file_info;
 }
 
 void VaultManager::ListenForUpdates() {
 //     std::string name("lifestufflocal");
-  int32_t cpu_size(CpuSize());
+  std::string cpu_size = boost::lexical_cast<std::string>(CpuSize());
   std::string platform, extension;
 
   std::vector<std::string> download_type;
@@ -287,34 +282,35 @@ void VaultManager::ListenForUpdates() {
   std::vector<std::string>::iterator download_type_iterator = download_type.begin();
 
 #if defined MAIDSAFE_WIN32
-  platform = "win";
+  platform = "win" + cpu_size;
   extension = ".exe";
 #elif defined MAIDSAFE_APPLE
-  platform = "osx";
+  platform = "osx" + cpu_size;
 #else
-  platform = "linux";
+  platform = "linux" + cpu_size;
 #endif
-  std::string current_version, current_patchlevel;
-  std::pair<std::string, std::string> version_and_patchlevel;
+  std::string current_major_version, current_minor_version, current_patchlevel;
+  LatestFileInfo latest_file_info;
   fs::path current_path(fs::current_path());
   for (;;) {
     std::string name(*download_type_iterator);
     LOG(kInfo) << "Searching for latest local version of " << name;
-    version_and_patchlevel = FindLatestLocalVersion(name, platform,
-                                                    boost::lexical_cast<std::string>(cpu_size));
+    latest_file_info = FindLatestLocalVersion(name, platform);
     std::string latest_local_file = name + "_" + platform + "_"
-                                  + boost::lexical_cast<std::string>(cpu_size) + "_"
-                                  + version_and_patchlevel.first + "_"
-                                  + version_and_patchlevel.second + extension;
-    LOG(kInfo) << "Cpu size: " << cpu_size;
-    current_version = version_and_patchlevel.first;
-    current_patchlevel = version_and_patchlevel.second;
+                                  + latest_file_info.major_version + "."
+                                  + latest_file_info.minor_version + "."
+                                  + latest_file_info.patch_level + extension;
+    LOG(kInfo) << "Platform: " << platform;
+    current_major_version = latest_file_info.major_version;
+    current_minor_version = latest_file_info.minor_version;
+    current_patchlevel = latest_file_info.patch_level;
     LOG(kInfo) << "Latest local version of " << name << " is "
-                                            << version_and_patchlevel.first << "_"
-                                            << version_and_patchlevel.second;
+                                            << latest_file_info.major_version << "_"
+                                            << latest_file_info.minor_version << "_"
+                                            << latest_file_info.patch_level;
     download_manager_ = DownloadManager("dash.maidsafe.net", "~phil", name,
-                                        platform, boost::lexical_cast<std::string>(cpu_size),
-                                        current_version, current_patchlevel);
+                                        platform, current_major_version, current_minor_version,
+                                        current_patchlevel);
 
     LOG(kInfo) << "Initialise Download Manager";
     if (download_manager_.FindLatestFile()) {
@@ -609,8 +605,8 @@ void VaultManager::StartListening() {
   message_handler_.on_error()->connect(boost::bind(&VaultManager::OnError, this, _1, _2));
   message_handler_.SetCallback(
       boost::bind(&VaultManager::HandleIncomingMessage, this, _1, _2, _3, _4));
-  /*updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT*/
-  mediator_thread_ = boost::thread( [&] { ListenForMessages(); } ); // NOLINT
+  updates_thread_ = boost::thread( [&] { ListenForUpdates(); } ); // NOLINT
+//   mediator_thread_ = boost::thread( [&] { ListenForMessages(); } ); // NOLINT
 }
 
 void VaultManager::StopListening() {

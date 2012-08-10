@@ -150,7 +150,7 @@ int main() {
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   maidsafe::priv::VaultManager vault_manager;
 
-  vault_manager.ReadConfig();
+//   vault_manager.ReadConfig();
   vault_manager.StartListening();
   boost::mutex::scoped_lock lock(g_mutex);
   g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)

@@ -35,17 +35,17 @@ class DownloadManager {
                   std::string location,  // location of files on site
                   std::string name,  // eg maidsafe_vault / maidsafe_client
                   std::string platform,  // linux / osx / windows
-                  std::string cpu_size,  // 64/32
-                  std::string current_version,  // e.g. 123
+                  std::string current_major_version,  // e.g. 123
+                  std::string current_minor_version,  // e.g. 123
                   std::string current_patchlevel);  // e.g. 234
   void SetSiteName(std::string site) { site_ = site; }
   void SetLocation(std::string location) { location_ = location; }
   void SetProtocol(std::string protocol = "http");
   void SetNameToDownload(std::string name) { name_ = name; }
-  void SetCurrentVersionToUpdate(std::string version) { current_version_ = version; }
+  void SetCurrentMajorVersionToUpdate(std::string version) { current_major_version_ = version; }
+  void SetCurrentMinorVersionToUpdate(std::string version) { current_minor_version_ = version; } // UNITL HERE
   void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
   void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
-  void SetCpuSizeToUpdate(std::string cpu_size) { cpu_size_ = cpu_size; }
   void SetFileToDownload(std::string file_to_download) { file_to_download_ = file_to_download; }
   void ClearFileToDownload() { file_to_download_.clear(); }
   std::string file_to_download() const { return file_to_download_; }
@@ -66,8 +66,8 @@ class DownloadManager {
   std::string location_;
   std::string name_;
   std::string platform_;
-  std::string cpu_size_;
-  std::string current_version_;
+  std::string current_major_version_;
+  std::string current_minor_version_;
   std::string current_patchlevel_;
   std::string protocol_;
   std::string file_to_download_;

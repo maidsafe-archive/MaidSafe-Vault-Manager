@@ -40,8 +40,8 @@ DownloadManager::DownloadManager()
       location_(),
       name_(),
       platform_(),
-      cpu_size_(),
-      current_version_(),
+      current_major_version_(),
+      current_minor_version_(),
       current_patchlevel_(),
       protocol_(),
       file_to_download_(),
@@ -51,15 +51,15 @@ DownloadManager::DownloadManager(std::string site,
                                  std::string location,
                                  std::string name,
                                  std::string platform,
-                                 std::string cpu_size,
-                                 std::string current_version,
+                                 std::string current_major_version,
+                                 std::string current_minor_version,
                                  std::string current_patchlevel)
     : site_(site),
       location_(location),
       name_(name),
       platform_(platform),
-      cpu_size_(cpu_size),
-      current_version_(current_version),
+      current_major_version_(current_major_version),
+      current_minor_version_(current_minor_version),
       current_patchlevel_(current_patchlevel),
       protocol_("http"),
       file_to_download_(),
@@ -67,7 +67,8 @@ DownloadManager::DownloadManager(std::string site,
 
 bool DownloadManager::FileIsValid(std::string file) const {
   Tokens tokens(file, boost::char_separator<char>("_"));
-  if (std::distance(tokens.begin(), tokens.end()) != 5) {
+  Tokens tokens2(file, boost::char_separator<char>("."));
+  if ((std::distance(tokens.begin(), tokens.end()) != 3) || (std::distance(tokens2.begin(), tokens2.end()) != 3)) {
     LOG(kError) << "File '" << file << "' has incorrect name format";
     return false;
   }
@@ -76,6 +77,7 @@ bool DownloadManager::FileIsValid(std::string file) const {
 }
 
 bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) const {
+  LOG(kInfo) << "INSIDE FILE IS LATER THAN";
   LOG(kInfo) << "FILE 1 " << file1;
   LOG(kInfo) << "FILE 2 " << file2;
   if (file2.empty() || !FileIsValid(file2))
@@ -83,16 +85,24 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) cons
   else if (file1.empty() || !FileIsValid(file1))
     return false;
 
-  Tokens tokens1(file1, boost::char_separator<char>("_"));
-  Tokens tokens2(file2, boost::char_separator<char>("_"));
+  Tokens filetokens1(file1, boost::char_separator<char>("_"));
+  Tokens filetokens2(file2, boost::char_separator<char>("_"));
 
-  // skip past name, platform, cpu_size
-  auto itr1(tokens1.begin());
-  auto itr2(tokens2.begin());
-  for (int i(0); i != 3; ++i, ++itr1, ++itr2) {}
-  uint32_t version1, version2;
+  // skip past name and platform
+  auto file_itr1(filetokens1.begin());
+  auto file_itr2(filetokens2.begin());
+  for (int i(0); i != 3; ++i, ++file_itr1, ++file_itr2) {}
+  
+  // Separate the information about the versions
+  Tokens version_tokens1(*file_itr1, boost::char_separator<char>("."));
+  Tokens version_tokens2(*file_itr2, boost::char_separator<char>("."));
+
+  auto version_itr1(version_tokens1.begin());
+  auto version_itr2(version_tokens2.begin());
+  
+  uint32_t major_version1, major_version2;
   try {
-    version2 = boost::lexical_cast<uint32_t>(*itr2);
+    major_version2 = boost::lexical_cast<uint32_t>(*version_itr2);
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
@@ -100,20 +110,19 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) cons
   }
 
   try {
-    version1 = boost::lexical_cast<uint32_t>(*itr1);
+    major_version1 = boost::lexical_cast<uint32_t>(*version_itr1);
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
     return false;
   }
 
-  if (version2 < version1)
+  if (major_version2 < major_version1)
     return true;
 
-  uint32_t patchlevel1, patchlevel2;
-
+  uint32_t minor_version1, minor_version2;
   try {
-    patchlevel2 = boost::lexical_cast<uint32_t>(*(++itr2));
+    minor_version2 = boost::lexical_cast<uint32_t>(*(++version_itr2));
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
@@ -121,7 +130,28 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) cons
   }
 
   try {
-    patchlevel1 = boost::lexical_cast<uint32_t>(*(++itr1));
+    minor_version1 = boost::lexical_cast<uint32_t>(*(++version_itr1));
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return false;
+  }
+
+  if (minor_version2 < minor_version1)
+    return true;
+
+  uint32_t patchlevel1, patchlevel2;
+
+  try {
+    patchlevel2 = boost::lexical_cast<uint32_t>(*(++version_itr2));
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return true;
+  }
+
+  try {
+    patchlevel1 = boost::lexical_cast<uint32_t>(*(++version_itr1));
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
@@ -135,46 +165,60 @@ bool DownloadManager::FileIsUseful(std::string file) const {
   if (!FileIsValid(file))
     return false;
 
-  Tokens tokens(file, boost::char_separator<char>("_"));
-  auto itr(tokens.begin());
+  Tokens file_tokens(file, boost::char_separator<char>("_"));
+  auto fileitr(file_tokens.begin());
 
-  if (name_ != *itr)
+  if (name_ != *fileitr)
     return false;
 
-  if (platform_ != *(++itr))
+  if (platform_ != *(++fileitr))
     return false;
 
-  if (cpu_size_ != *(++itr))
-    return false;
-
-  uint32_t version, patchlevel;
+  uint32_t major_version, minor_version, patchlevel;
+  Tokens version_tokens(*(++fileitr), boost::char_separator<char>("."));
+  auto versionitr(version_tokens.begin());
   try {
-    version = boost::lexical_cast<uint32_t>(*(++itr));
-    patchlevel = boost::lexical_cast<uint32_t>(*(++itr));
+    major_version = boost::lexical_cast<uint32_t>(*(++versionitr));
+    minor_version = boost::lexical_cast<uint32_t>(*(++versionitr));
+    patchlevel = boost::lexical_cast<uint32_t>(*(++versionitr));
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
     return false;
   }
 
-  if (current_version_.empty()) {
+  if (current_major_version_.empty()) {
     LOG(kInfo) << "Empty version, getting any version from server";
     return true;
   }
 
-  uint32_t current_version;
+  uint32_t current_major_version;
   try {
-    current_version = boost::lexical_cast<uint32_t>(current_version_);
+    current_major_version = boost::lexical_cast<uint32_t>(current_major_version_);
   }
   catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
     return true;
   }
 
-  LOG(kInfo) << "Latest version is " << current_version << " The one we are testing is " << version;
-  if (version != current_version)
-    return version > current_version;
+  LOG(kInfo) << "Latest major version is " << current_major_version << " The one we are testing is " << major_version;
+  if (major_version != current_major_version)
+    return major_version > current_major_version;
 
+  
+  uint32_t current_minor_version;
+  try {
+    current_minor_version = boost::lexical_cast<uint32_t>(current_minor_version_);
+  }
+  catch(const boost::bad_lexical_cast& e) {
+    LOG(kError) << e.what();
+    return true;
+  }
+
+  LOG(kInfo) << "Latest minor version is " << current_minor_version << " The one we are testing is " << minor_version;
+  if (minor_version != current_minor_version)
+    return minor_version > current_minor_version;
+  
   if (current_patchlevel_.empty()) {
     LOG(kInfo) << "Empty patchlevel, getting any patchlevel with current version from server";
     return true;
@@ -227,8 +271,9 @@ bool DownloadManager::FindLatestFile() {
   for (; itr != files.end(); ++itr) {
     next_file = *itr;
     // THIS WILL PROBABLY CHANGE IF THERE ARE PROBLEMS WITH MACs
-    boost::erase_all(next_file, "*exe");
+    boost::erase_all(next_file, ".exe");
     LOG(kInfo) << "Latest file: " << latest_file << "  Current file: " << next_file;  //  (*it);
+    LOG(kInfo) << "BEFORE CHECKING!!!"; 
     if (FileIsUseful(next_file) && FileIsLaterThan(next_file, latest_file)) {
       latest_file = next_file;
       LOG(kInfo) << latest_file << " is useful and is the latest.";
@@ -303,8 +348,8 @@ bool DownloadManager::UpdateCurrentFile(fs::path directory) {
 }
 
 bool DownloadManager::VerifySignature() const {
-  fs::path current_path(fs::current_path());
-  fs::path key_file("maidsafe_public");
+//   fs::path current_path(fs::current_path());
+//   fs::path key_file("maidsafe_public");
   fs::path file(file_to_download_);
   fs::path sigfile(file_to_download_ + ".sig");
   std::string signature, data;
