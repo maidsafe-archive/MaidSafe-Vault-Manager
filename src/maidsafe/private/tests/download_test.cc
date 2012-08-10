@@ -20,8 +20,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/private/download_manager.h"
 /*Note: These tests assume that there exists nonempty files publicly available on
- * dash.maidsafe.net/~phil called garbage, lifestuff_linux_32_1_1, lifestuff_linux_32_1_2 and
- * lifestuff_linux_32_1_3, plus a file called file_list containing these filenames
+ * dash.maidsafe.net/~phil called garbage, lifestuff_(platform)_(cpu_size)_(version)_(patch_level),
+ * plus a file called file_list containing these filenames
 */
 
 namespace maidsafe {
@@ -93,7 +93,8 @@ TEST_F(DownloadTest, BEH_UpdateFile) {
   EXPECT_FALSE(manager.UpdateCurrentFile(*test_dir_));
   // Successful test case
   EXPECT_TRUE(manager.FindLatestFile());
-  EXPECT_EQ("lifestuff_linux_32_1_3" + extension_, manager.file_to_download() + extension_);
+  EXPECT_EQ("lifestuff_" + platform_ + "_" + cpu_size_ + "_1_3" + extension_,
+            manager.file_to_download() + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
   EXPECT_TRUE(boost::filesystem::exists(*test_dir_
               / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_" + cpu_size_
