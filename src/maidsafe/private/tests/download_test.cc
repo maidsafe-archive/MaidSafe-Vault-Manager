@@ -116,8 +116,8 @@ TEST_F(DownloadTest, BEH_UpdateFileNewerVersion) {
   manager.SetFileToDownload("lifestufflocal_" + platform_ + "_4.4.6" + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
 
-  // Try to find the latest version which has bigger version than the current one but has smaller
-  // patch level
+  // Try to find the latest version which has bigger major and minor version than the current 
+  // one but has smaller patch level
   EXPECT_TRUE(manager.FindLatestFile());
   EXPECT_EQ("lifestufflocal_" + platform_ + "_5.5.4" + extension_, manager.file_to_download()
             + extension_);
@@ -127,6 +127,29 @@ TEST_F(DownloadTest, BEH_UpdateFileNewerVersion) {
                                                   + extension_)));
   EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
               / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_5.5.4"
+                                                  + extension_)));
+}
+
+TEST_F(DownloadTest, BEH_UpdateFileNewerVersion2) {
+  std::shared_ptr<boost::filesystem::path> test_dir_
+      (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
+
+  DownloadManager manager("dash.maidsafe.net", "~phil", "lifestufflocaltest", platform_, "4", "4", "6");
+  // Download a version of lifestuff
+  manager.SetFileToDownload("lifestufflocaltest_" + platform_ + "_4.4.6" + extension_);
+  EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
+
+  // Try to find the latest version which has same major version and patch level as previous one,
+  // but it has bigger patch level
+  EXPECT_TRUE(manager.FindLatestFile());
+  EXPECT_EQ("lifestufflocaltest_" + platform_ + "_4.5.6" + extension_, manager.file_to_download()
+            + extension_);
+  EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
+  EXPECT_TRUE(boost::filesystem::exists(*test_dir_
+              / boost::lexical_cast<std::string>("lifestufflocaltest_" + platform_ + "_4.5.6"
+                                                  + extension_)));
+  EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
+              / boost::lexical_cast<std::string>("lifestufflocaltest_" + platform_ + "_4.5.6"
                                                   + extension_)));
 }
 
