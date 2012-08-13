@@ -43,7 +43,7 @@ class DownloadManager {
   void SetProtocol(std::string protocol = "http");
   void SetNameToDownload(std::string name) { name_ = name; }
   void SetCurrentMajorVersionToUpdate(std::string version) { current_major_version_ = version; }
-  void SetCurrentMinorVersionToUpdate(std::string version) { current_minor_version_ = version; } // UNITL HERE
+  void SetCurrentMinorVersionToUpdate(std::string version) { current_minor_version_ = version; }
   void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
   void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
   void SetFileToDownload(std::string file_to_download) { file_to_download_ = file_to_download; }

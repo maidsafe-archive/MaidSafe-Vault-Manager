@@ -68,7 +68,8 @@ DownloadManager::DownloadManager(std::string site,
 bool DownloadManager::FileIsValid(std::string file) const {
   Tokens tokens(file, boost::char_separator<char>("_"));
   Tokens tokens2(file, boost::char_separator<char>("."));
-  if ((std::distance(tokens.begin(), tokens.end()) != 3) || (std::distance(tokens2.begin(), tokens2.end()) != 3)) {
+  if ((std::distance(tokens.begin(), tokens.end()) != 3)
+       || (std::distance(tokens2.begin(), tokens2.end()) != 3)) {
     LOG(kError) << "File '" << file << "' has incorrect name format";
     return false;
   }
@@ -77,9 +78,8 @@ bool DownloadManager::FileIsValid(std::string file) const {
 }
 
 bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) const {
-  LOG(kInfo) << "INSIDE FILE IS LATER THAN";
-  LOG(kInfo) << "FILE 1 " << file1;
-  LOG(kInfo) << "FILE 2 " << file2;
+  LOG(kInfo) << "File 1 " << file1;
+  LOG(kInfo) << "File 2 " << file2;
   if (file2.empty() || !FileIsValid(file2))
     return true;
   else if (file1.empty() || !FileIsValid(file1))
@@ -91,16 +91,16 @@ bool DownloadManager::FileIsLaterThan(std::string file1, std::string file2) cons
   // skip past name and platform
   auto file_itr1(filetokens1.begin());
   auto file_itr2(filetokens2.begin());
-  for (int i(0); i != 3; ++i, ++file_itr1, ++file_itr2) {}
-  
+  for (int i(0); i != 2; ++i, ++file_itr1, ++file_itr2) {}
+
   // Separate the information about the versions
   Tokens version_tokens1(*file_itr1, boost::char_separator<char>("."));
   Tokens version_tokens2(*file_itr2, boost::char_separator<char>("."));
-
   auto version_itr1(version_tokens1.begin());
   auto version_itr2(version_tokens2.begin());
-  
+
   uint32_t major_version1, major_version2;
+
   try {
     major_version2 = boost::lexical_cast<uint32_t>(*version_itr2);
   }
@@ -168,17 +168,20 @@ bool DownloadManager::FileIsUseful(std::string file) const {
   Tokens file_tokens(file, boost::char_separator<char>("_"));
   auto fileitr(file_tokens.begin());
 
-  if (name_ != *fileitr)
+  if (name_ != *fileitr) {
     return false;
+  }
 
-  if (platform_ != *(++fileitr))
+  if (platform_ != *(++fileitr)) {
     return false;
+  }
 
   uint32_t major_version, minor_version, patchlevel;
   Tokens version_tokens(*(++fileitr), boost::char_separator<char>("."));
   auto versionitr(version_tokens.begin());
+
   try {
-    major_version = boost::lexical_cast<uint32_t>(*(++versionitr));
+    major_version = boost::lexical_cast<uint32_t>(*(versionitr));
     minor_version = boost::lexical_cast<uint32_t>(*(++versionitr));
     patchlevel = boost::lexical_cast<uint32_t>(*(++versionitr));
   }
@@ -201,11 +204,11 @@ bool DownloadManager::FileIsUseful(std::string file) const {
     return true;
   }
 
-  LOG(kInfo) << "Latest major version is " << current_major_version << " The one we are testing is " << major_version;
+  LOG(kInfo) << "Latest major version is: " << current_major_version
+             << " The one we are testing is: " << major_version;
   if (major_version != current_major_version)
     return major_version > current_major_version;
 
-  
   uint32_t current_minor_version;
   try {
     current_minor_version = boost::lexical_cast<uint32_t>(current_minor_version_);
@@ -215,10 +218,11 @@ bool DownloadManager::FileIsUseful(std::string file) const {
     return true;
   }
 
-  LOG(kInfo) << "Latest minor version is " << current_minor_version << " The one we are testing is " << minor_version;
+  LOG(kInfo) << "Latest minor version is: " << current_minor_version
+             << " The one we are testing is: " << minor_version;
   if (minor_version != current_minor_version)
     return minor_version > current_minor_version;
-  
+
   if (current_patchlevel_.empty()) {
     LOG(kInfo) << "Empty patchlevel, getting any patchlevel with current version from server";
     return true;
@@ -273,7 +277,7 @@ bool DownloadManager::FindLatestFile() {
     // THIS WILL PROBABLY CHANGE IF THERE ARE PROBLEMS WITH MACs
     boost::erase_all(next_file, ".exe");
     LOG(kInfo) << "Latest file: " << latest_file << "  Current file: " << next_file;  //  (*it);
-    LOG(kInfo) << "BEFORE CHECKING!!!"; 
+
     if (FileIsUseful(next_file) && FileIsLaterThan(next_file, latest_file)) {
       latest_file = next_file;
       LOG(kInfo) << latest_file << " is useful and is the latest.";

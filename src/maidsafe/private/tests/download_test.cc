@@ -87,19 +87,21 @@ TEST_F(DownloadTest, BEH_UpdateFile) {
       (maidsafe::test::CreateTestPath("MaidSafe_TestDownloadManager"));
 
   DownloadManager manager("dash.maidsafe.net", "~phil", "lifestuff", platform_, "1", "1", "1");
-  
+
   // Current file should not be updated without finding the latest file first
   EXPECT_FALSE(manager.UpdateCurrentFile(*test_dir_));
-  
+
   // Successful test case
   EXPECT_TRUE(manager.FindLatestFile());
   EXPECT_EQ("lifestuff_" + platform_ + "_1.1.3" + extension_,
             manager.file_to_download() + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
   EXPECT_TRUE(boost::filesystem::exists(*test_dir_
-              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_1.1.3" + extension_)));
+              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_1.1.3"
+                                                  + extension_)));
   EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
-              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_1.1.3" + extension_)));
+              / boost::lexical_cast<std::string>("lifestuff_" + platform_ + "_1.1.3"
+                                                  + extension_)));
   std::string content;
   ReadFile(*test_dir_ / "lifestuff_" / platform_ / "_1.1.3" / extension_, &content);
   LOG(kInfo) << content;
@@ -121,9 +123,11 @@ TEST_F(DownloadTest, BEH_UpdateFileNewerVersion) {
             + extension_);
   EXPECT_TRUE(manager.UpdateCurrentFile(*test_dir_));
   EXPECT_TRUE(boost::filesystem::exists(*test_dir_
-              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_5.5.4" + extension_)));
+              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_5.5.4"
+                                                  + extension_)));
   EXPECT_FALSE(boost::filesystem::is_empty(*test_dir_
-              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_5.5.4" + extension_)));
+              / boost::lexical_cast<std::string>("lifestufflocal_" + platform_ + "_5.5.4"
+                                                  + extension_)));
 }
 
 TEST_F(DownloadTest, BEH_VerificationOfFiles) {

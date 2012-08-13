@@ -234,6 +234,7 @@ LatestFileInfo VaultManager::FindLatestLocalVersion(std::string name, std::strin
   fs::directory_iterator end;
   std::string latest_file(name + "_" + platform + "_" + "0.0.0");
   LatestFileInfo latest_file_info;
+
   for (fs::directory_iterator dir_it(current_path); dir_it != end; ++dir_it) {
     if (!download_manager_.FileIsValid((*dir_it).path().stem().string()))
       continue;
@@ -267,7 +268,7 @@ LatestFileInfo VaultManager::FindLatestLocalVersion(std::string name, std::strin
       latest_file_info.patch_level = temp_max_patchlevel;
     }
   }
-  
+
   return latest_file_info;
 }
 
