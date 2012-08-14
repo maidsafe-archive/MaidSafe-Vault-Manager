@@ -22,6 +22,7 @@
 
 #include "boost/asio/deadline_timer.hpp"
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
+#include "boost/filesystem/path.hpp"
 #include "boost/thread/condition_variable.hpp"
 #include "boost/thread/mutex.hpp"
 #include "boost/thread/thread.hpp"
@@ -62,7 +63,8 @@ class VaultManager {
  public:
   explicit VaultManager(const std::string& parent_path);
   ~VaultManager();
-  // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
+  static std::string kConfigFileName() { return "config-global.dat"; }
+                                    // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
   static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
 
@@ -89,9 +91,9 @@ class VaultManager {
                            const std::string& executable_name) const;
 
   // Config file handling
-  bool WriteConfig();
-  bool ReadConfig();
-  static std::string kConfigFileName() { return "vault_manager_config.txt"; }
+  bool EstablishConfigFilePath();
+  bool ReadConfigFile();
+  bool WriteConfigFile();
 
   // Client and vault request handling
   void ListenForMessages();
@@ -109,6 +111,7 @@ class VaultManager {
   void ListenForUpdates(const boost::system::error_code& ec);
 
   // General
+  bool InTestMode() const;
   ProcessIndex GetProcessIndexFromAccountName(const std::string& account_name) const;
   ProcessIndex AddVaultToProcesses(const std::string& chunkstore_path,
                                    const uintmax_t& chunkstore_capacity,
@@ -127,7 +130,6 @@ class VaultManager {
   boost::posix_time::time_duration update_interval_;
   boost::asio::deadline_timer update_timer_;
   mutable std::mutex update_mutex_;
-
   std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
   std::vector<std::unique_ptr<VaultInfo>> vault_infos_;
@@ -136,6 +138,7 @@ class VaultManager {
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
   std::string parent_path_;
+  boost::filesystem::path config_file_path_;
 };
 
 }  // namespace priv

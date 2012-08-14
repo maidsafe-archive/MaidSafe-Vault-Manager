@@ -127,7 +127,8 @@ ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_
 ms_add_executable(TESTvault_manager "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/utils_test.cc")
+                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/utils_test.cc"
+                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vault_manager_test.cc")
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")

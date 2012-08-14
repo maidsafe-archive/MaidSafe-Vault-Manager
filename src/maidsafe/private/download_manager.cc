@@ -57,6 +57,10 @@ DownloadManager::DownloadManager(const std::string& protocol,
 
 std::string DownloadManager::UpdateAndVerify(const std::string& current_file,
                                              const fs::path& directory) {
+  // Handle special case bootstrap-global.dat by always downloading
+  if (current_file == "bootstrap-global.dat")
+    return GetAndVerifyFile(current_file, directory) ? current_file : "";
+
   // Tokenise current_file
   std::string application;
   detail::Platform platform(detail::Platform::Type::kUnknown);

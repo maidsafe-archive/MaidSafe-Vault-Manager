@@ -108,9 +108,16 @@ VaultManager::VaultManager(const std::string& parent_path)
       cond_var_(),
       stop_listening_for_updates_(false),
       shutdown_requested_(false),
-      parent_path_(parent_path) {
-  asio_service_.Start();
+      parent_path_(parent_path),
+      config_file_path_() {
+  if (!EstablishConfigFilePath() && !WriteConfigFile()) {
+    LOG(kError) << "VaultManager failed to start - failed to find existing config file in "
+                << fs::current_path() << " or in " << GetSystemAppDir()
+                << " and failed to write new one at " << config_file_path_;
+    return;
+  }
 
+  asio_service_.Start();
   transport_->on_message_received().connect(
       [this](const std::string& message, std::string& response) {
         HandleRequest(message, response);
@@ -119,9 +126,18 @@ VaultManager::VaultManager(const std::string& parent_path)
     LOG(kError) << "Transport reported error code " << error;
   });
 
-  ReadConfig();
-  update_timer_.async_wait([this](const boost::system::error_code& ec) { ListenForUpdates(ec); });  // NOLINT (Fraser)
+  if (!ReadConfigFile()) {
+    LOG(kError) << "VaultManager failed to start - failed to read existing config file at "
+                << config_file_path_;
+    return;
+  }
+
+  // Invoke update immediately.  Thereafter, invoked every update_interval_.
+  boost::system::error_code ec;
+  ListenForUpdates(ec);
   ListenForMessages();
+  LOG(kInfo) << "VaultManager started successfully.  Using config file at "
+             << (InTestMode() ? fs::current_path() / kConfigFileName() : config_file_path_);
 }
 
 VaultManager::~VaultManager() {
@@ -162,51 +178,35 @@ void VaultManager::RestartVaultManager(const std::string& latest_file,
     LOG(kWarning) << "Result: " << result;
 }
 
-bool VaultManager::WriteConfig() {
-  protobuf::VaultManagerConfig config;
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    config.set_update_interval(update_interval_.total_seconds());
+bool VaultManager::EstablishConfigFilePath() {
+  assert(config_file_path_.empty());
+  // Favour config file in ./
+  fs::path local_config_file_path(fs::path(".") / kConfigFileName());
+  boost::system::error_code error_code;
+  if (!fs::exists(local_config_file_path, error_code) || error_code) {
+    // Try for one in system app dir
+    config_file_path_ = fs::path(GetSystemAppDir() / kConfigFileName());
+    return (fs::exists(config_file_path_, error_code) && !error_code);
+  } else {
+    config_file_path_ = local_config_file_path;
   }
-  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  for (auto& vault_info : vault_infos_) {
-    protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
-    vault_info->ToProtobuf(pb_vault_info);
-  }
-                            //  return WriteFile(GetSystemAppDir() / kConfigFileName(), config.SerializeAsString());
-  return WriteFile("TestConfig.txt", config.SerializeAsString());
+  return true;
 }
 
-bool VaultManager::ReadConfig() {
-          fs::path config_file_path(/*GetSystemAppDir() / "vault_manager_config.txt"*/ "TestConfig.txt");
-  boost::system::error_code ec;
-  if (!config_file_path.parent_path().empty() && !fs::exists(config_file_path.parent_path(), ec)) {
-    if (ec || !fs::create_directories(config_file_path.parent_path(), ec) || ec) {
-      LOG(kError) << "Failed creating config file directory " << config_file_path.parent_path()
-                  << ": " << ec.message();
-      return false;
-    }
-    return true;
-  }
-
-  if (!fs::exists(config_file_path, ec)) {
-    if (ec) {
-      LOG(kError) << "Failed establishing existence of " << config_file_path << ": "
-                  << ec.message();
-      return false;
-    }
-    return true;
-  }
-
+bool VaultManager::ReadConfigFile() {
   std::string content;
-  if (!ReadFile(config_file_path, &content)) {
-    LOG(kError) << "Failed to read config file " << config_file_path;
+  if (!ReadFile(config_file_path_, &content)) {
+    LOG(kError) << "Failed to read config file " << config_file_path_;
     return false;
   }
 
+  // Handle first run with 1 byte config file in local dir (for use in tests)
+  if (content.size() == 1U && InTestMode())
+    return true;
+
   protobuf::VaultManagerConfig config;
   if (!config.ParseFromString(content) || !config.IsInitialized()) {
-    LOG(kError) << "Failed to parse config file " << config_file_path;
+    LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
   }
 
@@ -221,6 +221,27 @@ bool VaultManager::ReadConfig() {
     if (vault_info->requested_to_run)
       process_manager_.StartProcess(vault_info->process_index);
     vault_infos_.push_back(std::move(vault_info));
+  }
+
+  return true;
+}
+
+bool VaultManager::WriteConfigFile() {
+  protobuf::VaultManagerConfig config;
+  {
+    std::lock_guard<std::mutex> lock(update_mutex_);
+    config.set_update_interval(update_interval_.total_seconds());
+  }
+
+  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+  for (auto& vault_info : vault_infos_) {
+    protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
+    vault_info->ToProtobuf(pb_vault_info);
+  }
+
+  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+    LOG(kError) << "Failed to write config file " << config_file_path_;
+    return false;
   }
 
   return true;
@@ -303,8 +324,7 @@ void VaultManager::HandleStartVaultRequest(const std::string& request, std::stri
     vault_infos_.push_back(std::move(vault_info));
   }
 
-  if (!WriteConfig())
-    LOG(kError) << "Failed to write config file.";
+  WriteConfigFile();
 
   // Need to block here until new vault has sent VaultIdentityRequest, since response to client will
   // be sent once this function exits.
@@ -440,6 +460,11 @@ void VaultManager::ListenForUpdates(const boost::system::error_code& ec) {
     return;
   }
 
+  if (download_manager_.UpdateAndVerify("bootstrap-global.dat", config_file_path_.parent_path()) !=
+      "bootstrap-global.dat") {
+    LOG(kError) << "Failed to update bootstrap-global.dat";
+  }
+
   std::lock_guard<std::mutex> lock(update_mutex_);
   std::vector<std::string> applications;
   applications.push_back(kApplicationName);
@@ -449,7 +474,8 @@ void VaultManager::ListenForUpdates(const boost::system::error_code& ec) {
   for (auto application : applications) {
     std::string latest_local(FindLatestLocalVersion(application));
     LOG(kVerbose) << "Latest local version is " << latest_local;
-            std::string updated_file(download_manager_.UpdateAndVerify(latest_local, GetSystemAppDir()));
+    std::string updated_file(download_manager_.UpdateAndVerify(latest_local,
+                                                               config_file_path_.parent_path()));
     if (!updated_file.empty()) {  // A new version was downloaded
       boost::system::error_code error_code;
 #ifndef MAIDSAFE_WIN32
@@ -483,6 +509,10 @@ void VaultManager::ListenForUpdates(const boost::system::error_code& ec) {
 
   update_timer_.expires_from_now(update_interval_);
   update_timer_.async_wait([this](const boost::system::error_code& ec) { ListenForUpdates(ec); });  // NOLINT (Fraser)
+}
+
+bool VaultManager::InTestMode() const {
+  return config_file_path_ == fs::path(".") / kConfigFileName();
 }
 
 ProcessIndex VaultManager::GetProcessIndexFromAccountName(const std::string& account_name) const {
