@@ -162,10 +162,6 @@ if(UNIX)
                                 PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
 endif()
 
-# if(MSVC)
-#   # C4505 Crypto function is dead code 'unreferenced local function has been removed'
-#   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4505")
-# endif()
 
 ###################################################################################################
 # Tests                                                                                           #

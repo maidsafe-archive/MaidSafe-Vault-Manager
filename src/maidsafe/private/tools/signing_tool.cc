@@ -11,8 +11,6 @@
 
 #if defined MAIDSAFE_WIN32
 #  include <windows.h>
-#  pragma warning(push)
-#  pragma warning(disable: 4701)
 #else
 #  include <unistd.h>
 #  if defined MAIDSAFE_LINUX
@@ -407,6 +405,10 @@ void Process(int command) {
   }
 }
 
+#if defined MAIDSAFE_WIN32
+#  pragma warning(push)
+#  pragma warning(disable: 4701)
+#endif
 template <class T>
 T Get(std::string display_message, bool echo_input) {
   Echo(echo_input);
@@ -427,6 +429,9 @@ T Get(std::string display_message, bool echo_input) {
   }
   return command;
 }
+#if defined MAIDSAFE_WIN32
+#  pragma warning(pop)
+#endif
 
 int main() {
   for (;;) {
@@ -437,7 +442,3 @@ int main() {
     std::cout <<"_________________________________________________________________\n";
   }
 }
-
-#ifdef WIN32
-# pragma warning(pop)
-#endif
