@@ -11,220 +11,193 @@
 
 #include "maidsafe/private/client_controller.h"
 
+#include <chrono>
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/message_handler.h"
-#include "maidsafe/private/tcp_transport.h"
+#include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/utils.h"
 #include "maidsafe/private/vault_manager.h"
 
-
-namespace bai = boost::asio::ip;
 
 namespace maidsafe {
 
 namespace priv {
 
-ClientController::ClientController() : port_(0),
+ClientController::ClientController() : vault_manager_port_(LocalTcpTransport::kMinPort() - 1),
                                        asio_service_(2),
                                        mutex_(),
                                        cond_var_(),
                                        state_(kInitialising) {
   asio_service_.Start();
-  ConnectToManager();
+  PingVaultManager();
 }
 
-ClientController::~ClientController() {}
+ClientController::~ClientController() {
+  asio_service_.Stop();
+}
 
-void ClientController::ConnectToManager() {
-  uint16_t port;
+void ClientController::PingVaultManager() {
+  Port vault_manager_port;
   {
-    boost::mutex::scoped_lock lock(mutex_);
-    if (state_ != kInitialising)
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ != kInitialising) {
+      LOG(kWarning) << "Not in initialising state.";
       return;
-    if (port_ == 0)
-      port_ = VaultManager::kMinPort();
-    else
-      ++port_;
-    port = port_;
-    if (port > VaultManager::kMaxPort()) {
+    }
+    vault_manager_port = ++vault_manager_port_;
+    if (vault_manager_port > LocalTcpTransport::kMaxPort()) {
       state_ = kFailed;
-      LOG(kError) << "ConnectToManager: Could not connect to any port in range "
-                  << VaultManager::kMinPort() << " to " << VaultManager::kMaxPort();
+      LOG(kError) << "Could not connect to any port in range "
+                  << LocalTcpTransport::kMinPort() << " to " << LocalTcpTransport::kMaxPort();
       cond_var_.notify_all();
       return;
     }
   }
-  std::string hello_string;
-  Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port);
-  int message_type(static_cast<int>(VaultManagerMessageType::kHelloFromClient));
-  protobuf::ClientHello hello;
-  hello.set_hello("hello");
-  std::shared_ptr<TcpTransport> transport;
-  std::shared_ptr<MessageHandler> message_handler;
-  ResetTransport(transport, message_handler, nullptr);
-  hello_string = message_handler->MakeSerialisedWrapperMessage(message_type,
-                                                               hello.SerializeAsString());
-  LOG(kInfo) << "ConnectToManager: trying port " << port;
-  transport->Send(hello_string, endpoint, boost::posix_time::seconds(1));
+
+  protobuf::Ping ping;
+  ping.set_ping("");
+  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
+  transport->on_message_received().connect(
+      [this, transport](const std::string& message, std::string& /*response*/) {
+        HandlePingResponse(message, transport);
+      });
+  transport->on_error().connect([this, transport](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    PingVaultManager();
+  });
+
+  LOG(kVerbose) << "Sending ping to port " << vault_manager_port;
+  transport->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
+                  vault_manager_port,
+                  boost::posix_time::seconds(1));
 }
 
-void ClientController::ConnectToManagerCallback(const std::string& hello_response_string,
-                                                const Info& sender_info) {
-  protobuf::ClientHelloResponse response;
-  if (!response.ParseFromString(hello_response_string) ||
-      response.hello_response() != "hello response") {
-    LOG(kError) << "ConnectToManagerCallback: Invalid response, trying again.";
-    ConnectToManager();
-    return;
+void ClientController::HandlePingResponse(const std::string& message, TransportPtr /*transport*/) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return PingVaultManager();
   }
 
-  boost::mutex::scoped_lock lock(mutex_);
-  port_ = sender_info.endpoint.port;
+  protobuf::Ping ping;
+  if (!ping.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse Ping.";
+    return PingVaultManager();
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
-  LOG(kSuccess) << "ConnectToManagerCallback: Successfully connected on port " << port_;
+  LOG(kSuccess) << "Successfully connected to VaultManager on port " << vault_manager_port_;
   cond_var_.notify_all();
 }
 
-void ClientController::OnSendError(const int& transport_condition,
-                                   const Endpoint& /*remote_endpoint*/,
-                                   const std::function<void(bool)>& callback) {  // NOLINT
-  LOG(kError) << "OnSendError: Error sending/receiving connect message - " << transport_condition;
-  ConnectToManager();
-  if (callback)
-    callback(false);
-}
-
-void ClientController::StartVaultRequest(const asymm::Keys& keys,
-                                         const std::string& account_name,
-                                         const bai::udp::endpoint& bootstrap_endpoint,
+void ClientController::StartVaultRequest(const std::string& account_name,
+                                         const asymm::Keys& keys,
+                                         const boost::asio::ip::udp::endpoint& bootstrap_endpoint,
                                          const std::function<void(bool)>& callback) {  // NOLINT
-  int message_type(static_cast<int>(VaultManagerMessageType::kStartRequestFromClient));
-  protobuf::ClientStartVaultRequest request;
-  std::string keys_string;
-  asymm::SerialiseKeys(keys, keys_string);
-  request.set_keys(keys_string);
-  request.set_account_name(account_name);
-  if (bootstrap_endpoint != bai::udp::endpoint()) {
-    std::string endpoint_string(bootstrap_endpoint.address().to_string() + ":" +
-                                    boost::lexical_cast<std::string>(bootstrap_endpoint.port()));
-    LOG(kInfo) << "StartVaultRequest: setting bootstrap endpoint to " << endpoint_string;
-    request.set_bootstrap_endpoint(endpoint_string);
+  protobuf::StartVaultRequest start_vault_request;
+  start_vault_request.set_account_name(account_name);
+  std::string serialised_keys;
+  if (!asymm::SerialiseKeys(keys, serialised_keys)) {
+    LOG(kError) << "Failed to serialise keys.";
+    return callback(false);
   }
-  std::string request_string;
-  std::shared_ptr<TcpTransport> transport;
-  std::shared_ptr<MessageHandler> message_handler;
-  ResetTransport(transport, message_handler, callback);
-  request_string = message_handler->MakeSerialisedWrapperMessage(message_type,
-                                                                 request.SerializeAsString());
-  uint16_t port;
-  {
-    boost::mutex::scoped_lock lock(mutex_);
-    port = port_;
+  start_vault_request.set_keys(serialised_keys);
+  if (bootstrap_endpoint.address().is_unspecified()) {
+    start_vault_request.set_bootstrap_endpoint(
+        bootstrap_endpoint.address().to_string() + ":" +
+        boost::lexical_cast<std::string>(bootstrap_endpoint.port()));
+    LOG(kVerbose) << "Setting bootstrap endpoint to " << start_vault_request.bootstrap_endpoint();
   }
-  Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port);
-  LOG(kInfo) << "StartVaultRequest: Sending request to port " << port;
-  transport->Send(request_string, endpoint, boost::posix_time::seconds(10));
+
+  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
+  transport->on_message_received().connect(
+      [this, transport, callback](const std::string& message, std::string& /*response*/) {
+        HandleStartVaultResponse(message, transport, callback);
+      });
+  transport->on_error().connect([this, transport, callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  LOG(kVerbose) << "Sending request to start vault to port " << vault_manager_port_;
+  transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
+                                      start_vault_request.SerializeAsString()),
+                  vault_manager_port_,
+                  boost::posix_time::seconds(10));
 }
 
-void ClientController::StartVaultRequestCallback(const std::string& start_response_string,
-                                                 const Info& /*sender_info*/,
-                                                 const std::function<void(bool)>& callback) {  // NOLINT
-  protobuf::ClientStartVaultResponse response;
-  if (callback)
-    callback(response.ParseFromString(start_response_string) && response.result());
-}
-
-void ClientController::HandleIncomingMessage(const int& type,
-                                             const std::string& payload,
-                                             const Info& info,
-                                             std::shared_ptr<TcpTransport> /*transport*/,
-                                             std::shared_ptr<MessageHandler> /*message_handler*/,
-                                             const std::function<void(bool)>& callback) {  // NOLINT
-  if (info.endpoint.ip.to_string() != "127.0.0.1") {
-    LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
+void ClientController::HandleStartVaultResponse(const std::string& message,
+                                                TransportPtr transport,
+                                                const std::function<void(bool)>& callback) {  // NOLINT
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    callback(false);
     return;
   }
-  VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
-  switch (message_type) {
-    case VaultManagerMessageType::kHelloResponseToClient:
-      LOG(kInfo) << "kHelloResponseToClient";
-      ConnectToManagerCallback(payload, info);
-      if (callback)
-        callback(true);
-      break;
-    case VaultManagerMessageType::kStartResponseToClient:
-      LOG(kInfo) << "kStartResponseToClient";
-      StartVaultRequestCallback(payload, info, callback);
-      break;
-    default:
-      LOG(kWarning) << "Incorrect message type";
-  }
-}
 
-void ClientController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
-                                      std::shared_ptr<MessageHandler>& message_handler,
-                                      const std::function<void(bool)>& callback) {  // NOLINT
-  transport.reset(new TcpTransport(asio_service_.service()));
-  message_handler.reset(new MessageHandler());
-  transport->on_message_received()->connect(boost::bind(
-      &MessageHandler::OnMessageReceived, message_handler.get(), _1, _2, _3, _4));
-  transport->on_error()->connect(boost::bind(
-      &MessageHandler::OnError, message_handler.get(), _1, _2));
-  message_handler->on_error()->connect(boost::bind(
-      &ClientController::OnSendError, this, _1, _2, callback));
-  message_handler->SetCallback(boost::bind(
-      &ClientController::HandleIncomingMessage, this, _1, _2, _3, transport, message_handler,
-      callback));
+  protobuf::StartVaultResponse start_vault_response;
+  if (!start_vault_response.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse StartVaultResponse.";
+    callback(false);
+    return;
+  }
+
+  callback(start_vault_response.result());
 }
 
 bool ClientController::StartVault(const asymm::Keys& keys,
                                   const std::string& account_name,
-                                  const bai::udp::endpoint& bootstrap_endpoint) {
+                                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint) {
   {
-    boost::mutex::scoped_lock lock(mutex_);
-    if (!cond_var_.timed_wait(lock, boost::posix_time::seconds(3),
-                              [&]() { return state_ != kInitialising; })) {
-      LOG(kError) << "StartVault: Timed out waiting for initialisation.";
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!cond_var_.wait_for(lock,
+                            std::chrono::seconds(3),
+                            [&] { return state_ != kInitialising; })) {
+      LOG(kError) << "Timed out waiting for ClientController initialisation.";
       return false;
     }
     if (state_ != kVerified) {
-      LOG(kError) << "StartVault: Controller is uninitialised.";
+      LOG(kError) << "ClientController is uninitialised.";
       return false;
     }
   }
 
-  boost::mutex local_mutex;
-  boost::condition_variable local_cond_var;
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
   bool done(false), local_result(false);
 
-  StartVaultRequest(keys, account_name, bootstrap_endpoint,
-                    [&local_mutex, &local_cond_var, &done, &local_result] (bool result) {
-    boost::mutex::scoped_lock lock(local_mutex);
-    local_result = result;
-    done = true;
-    local_cond_var.notify_one();
-  });
+  StartVaultRequest(account_name, keys, bootstrap_endpoint,
+                    [&](bool result) {
+                      std::lock_guard<std::mutex> lock(local_mutex);
+                      local_result = result;
+                      done = true;
+                      local_cond_var.notify_one();
+                    });
 
-  boost::mutex::scoped_lock lock(local_mutex);
-  if (!local_cond_var.timed_wait(lock, boost::posix_time::seconds(10),
-                                 [&]() { return done; })) {
-    LOG(kError) << "StartVault: Timed out waiting for reply.";
+  std::unique_lock<std::mutex> lock(local_mutex);
+  if (!local_cond_var.wait_for(lock,
+                               std::chrono::seconds(10),
+                               [&] { return done; })) {
+    LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
-  if (!local_result) {
-    LOG(kError) << "StartVault: Failed starting vault.";
-    return false;
-  }
-
-  return true;
+  if (!local_result)
+    LOG(kError) << "Failed starting vault.";
+  return local_result;
 }
 
 bool ClientController::StopVault(const asymm::PlainText& /*data*/,
                                  const asymm::Signature& /*signature*/,
                                  const asymm::Identity& /*identity*/) {
-  LOG(kError) << "StopVault: Not implemented.";
+                                                                LOG(kError) << "StopVault: Not implemented.";
   return false;
 }
 

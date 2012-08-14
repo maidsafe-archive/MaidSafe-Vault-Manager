@@ -12,12 +12,16 @@
 #ifndef MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
 #define MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
 
+#include <condition_variable>
+#include <mutex>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "boost/asio/deadline_timer.hpp"
+#include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/thread/condition_variable.hpp"
 #include "boost/thread/mutex.hpp"
 #include "boost/thread/thread.hpp"
@@ -26,126 +30,111 @@
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/download_manager.h"
-#include "maidsafe/private/message_handler.h"
 #include "maidsafe/private/process_manager.h"
-#include "maidsafe/private/transport.h"
 
 
 namespace maidsafe {
 
 namespace priv {
 
-class TcpTransport;
+namespace protobuf { class VaultInfo; }
 
-enum class VaultManagerMessageType {
-  kHelloFromClient = 1,
-  kHelloResponseToClient = 2,
-  kStartRequestFromClient = 3,
-  kStartResponseToClient = 4,
-  kIdentityInfoRequestFromVault = 5,
-  kIdentityInfoToVault = 6,
-  kShutdownRequestFromVault = 7,
-  kShutdownResponseToVault = 8
+namespace detail { class Platform; }
+
+class LocalTcpTransport;
+
+enum class MessageType {
+  kPing = 1,
+  kStartVaultRequest,
+  kStartVaultResponse,
+  kVaultIdentityRequest,
+  kVaultIdentityResponse,
+  kVaultShutdownQuery,
+  kVaultShutdownResponse
 };
 
-struct LatestFileInfo {
-  LatestFileInfo()
-      : major_version(),
-        minor_version(),
-        patch_level() {}
-  std::string major_version;
-  std::string minor_version;
-  std::string patch_level;
-};
-
-struct WaitingVaultInfo {
-  WaitingVaultInfo()
-      : vault_manager_id(),
-        client_endpoint(),
-        account_name(),
-        keys(),
-        chunkstore_path(),
-        chunkstore_capacity(),
-        mutex(),
-        cond_var(),
-        vault_requested(false) {}
-  std::string vault_manager_id;
-  Endpoint client_endpoint;
-  std::string account_name;
-  asymm::Keys keys;
-  std::string chunkstore_path;
-  std::string chunkstore_capacity;
-  boost::mutex mutex;
-  boost::condition_variable cond_var;
-  bool vault_requested;
-};
-
+// The VaultManager has several responsibilities:
+// * Reads config file on startup and restarts vaults listed in file as having been started before.
+// * Writes details of all vaults to config file.
+// * Listens and responds to client and vault requests on the loopback address.
+// * Regularly checks for (and downloads) updated client or vault executables.
 class VaultManager {
  public:
-  explicit VaultManager(const std::string& parent_path = "");
+  explicit VaultManager(const std::string& parent_path);
   ~VaultManager();
-  static uint16_t kMinPort() { return 5483; }
-  static uint16_t kMaxPort() { return 5582; }
-  void RestartVaultManager(std::string latest_file, std::string executable_name);
-  std::string RunVault(std::string chunkstore_path,
-                       std::string chunkstore_capacity,
-                       std::string bootstrap_endpoint = "");
-  void StartListening();
-  void StopListening();
-  bool ReadConfig();
-  void StopVault(int32_t index);
-  void EraseVault(int32_t index);
-  int32_t ListVaults(bool select) const;
-  void RestartVault(std::string id);
+  // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
+  static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
+  static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
 
  private:
+  struct VaultInfo {
+    VaultInfo();
+    void ToProtobuf(protobuf::VaultInfo* pb_vault_info) const;
+    void FromProtobuf(const protobuf::VaultInfo& pb_vault_info);
+    ProcessIndex process_index;
+    std::string account_name;
+    asymm::Keys keys;
+    std::string chunkstore_path;
+    uintmax_t chunkstore_capacity;
+                                                                                          //  uint16_t client_port;
+    std::mutex mutex;
+    std::condition_variable cond_var;
+    bool requested_to_run;
+    bool vault_requested;
+  };
+
   VaultManager(const VaultManager&);
   VaultManager operator=(const VaultManager&);
-  void ListenForUpdates();
-  void ListenForMessages();
-  void HandleClientHello(const std::string& hello_string, const Info& info, std::string* response);
-  void HandleClientStartVaultRequest(const std::string& start_vault_string,
-                                     const Info& info,
-                                     std::string* response);
-  void HandleVaultInfoRequest(const std::string& vault_info_string,
-                              const Info& info,
-                              std::string* response);
-  void HandleVaultShutdownRequest(const std::string& vault_shutdown_string,
-                                  const Info& info,
-                                  std::string* response);
-  void HandleIncomingMessage(const int& type,
-                             const std::string& payload,
-                             const Info& info,
-                             std::string* response);
-  void OnError(const TransportCondition& transport_condition, const Endpoint& remote_endpoint);
-  LatestFileInfo FindLatestLocalVersion(std::string name,
-                                                             std::string platform);
-  void ProcessStopHandler();
+  void RestartVaultManager(const std::string& latest_file,
+                           const std::string& executable_name) const;
 
-//   It should be decided if the following three methods are going to be private or public
-//   void RunVault(/*std::string chunkstore_path, */std::string chunkstore_capacity,
-//                     bool new_vault);
-//   void StopVault();
-//   bool ReadConfig();
+  // Config file handling
   bool WriteConfig();
+  bool ReadConfig();
+  static std::string kConfigFileName() { return "vault_manager_config.txt"; }
 
-  std::vector<std::pair<Process, std::string>> processes_;
+  // Client and vault request handling
+  void ListenForMessages();
+  void HandleRequest(const std::string& request, std::string& response);
+  void HandlePing(const std::string& request, std::string& response);
+  void HandleStartVaultRequest(const std::string& request, std::string& response);
+  void HandleVaultIdentityRequest(const std::string& request, std::string& response);
+  void HandleVaultShutdownQuery(const std::string& request, std::string& response);
+  // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
+  void HandleSetUpdateInterval(const std::string& request, std::string& response);
+  void HandleGetUpdateInterval(const std::string& request, std::string& response);
+
+  // Update handling
+  std::string FindLatestLocalVersion(const std::string& application) const;
+  void ListenForUpdates(const boost::system::error_code& ec);
+
+  // General
+  ProcessIndex GetProcessIndexFromAccountName(const std::string& account_name) const;
+  ProcessIndex AddVaultToProcesses(const std::string& chunkstore_path,
+                                   const uintmax_t& chunkstore_capacity,
+                                   const std::string& bootstrap_endpoint);
+  void RestartVault(const std::string& account_name);
+  void StopVault(const std::string& account_name);
+//  void EraseVault(const std::string& account_name);
+//  int32_t ListVaults(bool select) const;
+  static std::string kVaultName() { return "pd-vault"; }
+  static std::string kVaultManagerName() { return "vault-manager"; }
+
+
   ProcessManager process_manager_;
   DownloadManager download_manager_;
   AsioService asio_service_;
-  MessageHandler message_handler_;
-  std::shared_ptr<TcpTransport> transport_;
+  boost::posix_time::time_duration update_interval_;
+  boost::asio::deadline_timer update_timer_;
+  mutable std::mutex update_mutex_;
+
+  std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
-  std::vector<std::shared_ptr<WaitingVaultInfo>> client_started_vault_manager_ids_;
-  std::vector<std::shared_ptr<WaitingVaultInfo>> config_file_vault_manager_ids_;
-  boost::thread mediator_thread_;
-  boost::thread updates_thread_;
-  boost::mutex mutex_;
-  boost::condition_variable cond_var_;
-  bool stop_listening_for_messages_;
+  std::vector<std::unique_ptr<VaultInfo>> vault_infos_;
+  mutable std::mutex vault_infos_mutex_;
+  std::condition_variable cond_var_;
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
-  uint16_t stopped_vaults_;
   std::string parent_path_;
 };
 

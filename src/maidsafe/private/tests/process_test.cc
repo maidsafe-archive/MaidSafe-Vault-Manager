@@ -251,11 +251,11 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
-  std::string id = process_manager_.AddProcess(test, 0);
+  ProcessIndex process_index = process_manager_.AddProcess(test, 0);
   auto start(boost::posix_time::microsec_clock::universal_time());
-  process_manager_.StartProcess(id);
-  EXPECT_FALSE(id.empty());
-  process_manager_.LetProcessDie(id);
+  process_manager_.StartProcess(process_index);
+  EXPECT_NE(0, process_index);
+  process_manager_.LetProcessDie(process_index);
   process_manager_.WaitForProcesses();
   auto end(boost::posix_time::microsec_clock::universal_time());
   boost::posix_time::time_duration elapsed(end - start);
@@ -381,20 +381,20 @@ TEST_F(ProcessManagerTest, BEH_StartThreeProcesses) {
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
-  std::string id = process_manager_.AddProcess(test, 0);
-  std::string id1 = process_manager_.AddProcess(test1, 0);
-  std::string id2 = process_manager_.AddProcess(test2, 0);
+  ProcessIndex process_index = process_manager_.AddProcess(test, 0);
+  ProcessIndex process_index1 = process_manager_.AddProcess(test1, 0);
+  ProcessIndex process_index2 = process_manager_.AddProcess(test2, 0);
   auto start(boost::posix_time::microsec_clock::universal_time());
-  process_manager_.StartProcess(id);
-  process_manager_.StartProcess(id1);
-  process_manager_.StartProcess(id2);
-  process_manager_.RestartProcess(id);
-  process_manager_.RestartProcess(id1);
-  process_manager_.RestartProcess(id2);
+  process_manager_.StartProcess(process_index);
+  process_manager_.StartProcess(process_index1);
+  process_manager_.StartProcess(process_index2);
+  process_manager_.RestartProcess(process_index);
+  process_manager_.RestartProcess(process_index1);
+  process_manager_.RestartProcess(process_index2);
   Sleep(boost::posix_time::milliseconds(800));
-  process_manager_.LetProcessDie(id);
-  process_manager_.LetProcessDie(id1);
-  process_manager_.LetProcessDie(id2);
+  process_manager_.LetProcessDie(process_index);
+  process_manager_.LetProcessDie(process_index1);
+  process_manager_.LetProcessDie(process_index2);
   process_manager_.WaitForProcesses();
   auto end(boost::posix_time::microsec_clock::universal_time());
   boost::posix_time::time_duration elapsed(end - start);
@@ -429,33 +429,37 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
-  std::vector<std::string> process_ids_5, process_ids_10;
+  std::vector<ProcessIndex> process_indices_5, process_indices_10;
   for (size_t i(0); i < processes_5.size(); ++i) {
-    std::string id = process_manager_.AddProcess(processes_5.at(i), 0);
-    EXPECT_NE(id, "");
-    process_ids_5.push_back(id);
-    process_manager_.StartProcess(id);
+    ProcessIndex process_index = process_manager_.AddProcess(processes_5.at(i), 0);
+    EXPECT_NE(0, process_index);
+    process_indices_5.push_back(process_index);
+    process_manager_.StartProcess(process_index);
   }
   for (size_t i(0); i < processes_10.size(); ++i) {
-    std::string id = process_manager_.AddProcess(processes_10.at(i), 0);
-    EXPECT_NE(id, "");
-    process_manager_.StartProcess(id);
-    process_ids_10.push_back(id);
+    ProcessIndex process_index = process_manager_.AddProcess(processes_10.at(i), 0);
+    EXPECT_NE(0, process_index);
+    process_manager_.StartProcess(process_index);
+    process_indices_10.push_back(process_index);
   }
-  EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), process_manager_.NumberOfProcesses());
-  EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), process_manager_.NumberOfLiveProcesses());
+  EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
+            process_manager_.NumberOfProcesses());
+  EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
+            process_manager_.NumberOfLiveProcesses());
 
-  for (auto it(process_ids_5.begin()); it != process_ids_5.end(); ++it)
+  for (auto it(process_indices_5.begin()); it != process_indices_5.end(); ++it)
     process_manager_.LetProcessDie(*it);
   Sleep(boost::posix_time::seconds(6));
 
-  EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), process_manager_.NumberOfProcesses());
-  EXPECT_EQ(process_ids_10.size(), process_manager_.NumberOfLiveProcesses());
+  EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
+            process_manager_.NumberOfProcesses());
+  EXPECT_EQ(process_indices_10.size(), process_manager_.NumberOfLiveProcesses());
 
-  for (auto it(process_ids_10.begin()); it != process_ids_10.end(); ++it)
+  for (auto it(process_indices_10.begin()); it != process_indices_10.end(); ++it)
     process_manager_.LetProcessDie(*it);
   Sleep(boost::posix_time::seconds(6));
-  EXPECT_EQ(process_ids_5.size() + process_ids_10.size(), process_manager_.NumberOfProcesses());
+  EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
+            process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   process_manager_.WaitForProcesses();
 }

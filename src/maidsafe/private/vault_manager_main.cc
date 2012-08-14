@@ -9,8 +9,6 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/vault_manager.h"
-
 #ifdef MAIDSAFE_WIN32
 #  include <windows.h>
 #else
@@ -30,7 +28,8 @@
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/vault_manager.h"
+
 
 namespace {
 
@@ -102,21 +101,15 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
-  maidsafe::priv::ProcessManager process_manager;
-  maidsafe::priv::VaultManager vault_manager;
-
   try {
+    maidsafe::priv::VaultManager vault_manager("");
     boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
-    /*vault_manager.ReadConfig();*/
-    // vault_manager.StartListening();
     while (!g_shutdown_service) {
-      g_cond_var.timed_wait(lock, bptime::minutes(1));
+      g_cond_var.timed_wait(lock, boost::posix_time::minutes(1));
     }
-    // vault_manager.StopListening();
     StopService(0, 0);
-    return;
   }
   catch(const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
@@ -148,13 +141,12 @@ int main() {
   signal(SIGINT, ShutDownVaultManager);
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
-  maidsafe::priv::VaultManager vault_manager;
 
-//   vault_manager.ReadConfig();
-  vault_manager.StartListening();
-  boost::mutex::scoped_lock lock(g_mutex);
-  g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
-  vault_manager.StopListening();
+  {
+    maidsafe::priv::VaultManager vault_manager("");
+    boost::mutex::scoped_lock lock(g_mutex);
+    g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
+  }
 #endif
   return 0;
 }

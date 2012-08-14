@@ -43,7 +43,20 @@ enum ReturnCode {
   kHashFailure = -150023,
   kDifferentVersion = -150024,
   kChunkNotModified = -150025,
-  kDataNotPublicKey = -150026
+  kDataNotPublicKey = -150026,
+
+  // Transport
+  kAlreadyStarted = -350001,
+  kInvalidPort = -350002,
+  kInvalidAddress = -350003,
+  kSetOptionFailure = -350004,
+  kBindError = -350005,
+  kListenError = -350006,
+  kMessageSizeTooLarge = -350007,
+  kReceiveFailure = -350008,
+  kReceiveTimeout = -350009,
+  kSendFailure = -350010,
+  kSendTimeout = -350011
 };
 
 }  // namespace priv

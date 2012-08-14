@@ -1,0 +1,14 @@
+package maidsafe.priv.protobuf;
+
+message VaultInfo {
+  required bytes account_name = 1;
+  required bytes keys = 2;
+  required bytes chunkstore_path = 3;
+  required uint64 chunkstore_capacity = 4;
+  required bool requested_to_run = 5;
+}
+
+message VaultManagerConfig {
+  required uint32 update_interval = 1;  // In seconds
+  repeated VaultInfo vault_info = 2;
+}

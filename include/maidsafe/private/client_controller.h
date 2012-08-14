@@ -12,14 +12,14 @@
 #ifndef MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
 
+#include <condition_variable>
+#include <mutex>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 
 #include "boost/asio/ip/udp.hpp"
-#include "boost/thread/condition_variable.hpp"
-#include "boost/thread/mutex.hpp"
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
@@ -29,10 +29,7 @@ namespace maidsafe {
 
 namespace priv {
 
-struct Endpoint;
-struct Info;
-class TcpTransport;
-class MessageHandler;
+class LocalTcpTransport;
 
 class ClientController {
  public:
@@ -52,35 +49,23 @@ class ClientController {
                  const asymm::Identity& identity);
 
  private:
+  typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
-  void ConnectToManager();
-  void ConnectToManagerCallback(const std::string& hello_response_string,
-                                const Info& sender_info);
-  void OnSendError(const int& transport_condition,
-                   const Endpoint& remote_endpoint,
-                   const std::function<void(bool)>& callback);  // NOLINT
-  void StartVaultRequest(const asymm::Keys& keys,
-                         const std::string& account_name,
+  void PingVaultManager();
+  void HandlePingResponse(const std::string& message, TransportPtr transport);
+  void StartVaultRequest(const std::string& account_name,
+                         const asymm::Keys& keys,
                          const boost::asio::ip::udp::endpoint& bootstrap_endpoint,
                          const std::function<void(bool)>& callback);  // NOLINT
-  void StartVaultRequestCallback(const std::string& hello_response_string,
-                                 const Info& sender_info,
-                                 const std::function<void(bool)>& callback);  // NOLINT
-  void HandleIncomingMessage(const int& type,
-                             const std::string& payload,
-                             const Info& info,
-                             std::shared_ptr<TcpTransport> transport,
-                             std::shared_ptr<MessageHandler> message_handler,
-                             const std::function<void(bool)>& callback);  // NOLINT
-  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
-                      std::shared_ptr<MessageHandler>& message_handler,
-                      const std::function<void(bool)>& callback);  // NOLINT
+  void HandleStartVaultResponse(const std::string& message,
+                                TransportPtr transport,
+                                const std::function<void(bool)>& callback);  // NOLINT
 
-  uint16_t port_;
+  uint16_t vault_manager_port_;
   AsioService asio_service_;
-  boost::mutex mutex_;
-  boost::condition_variable cond_var_;
+  std::mutex mutex_;
+  std::condition_variable cond_var_;
   enum State { kInitialising, kVerified, kFailed } state_;
 };
 

@@ -11,13 +11,15 @@
 
 #include "maidsafe/private/vault_controller.h"
 
+#include <chrono>
 #include <iterator>
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/tcp_transport.h"
-#include "maidsafe/private/message_handler.h"
+#include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/utils.h"
 #include "maidsafe/private/vault_manager.h"
 
 
@@ -25,198 +27,148 @@ namespace maidsafe {
 
 namespace priv {
 
-VaultController::VaultController() : process_id_(),
-                                     port_(0),
-                                     thread_(),
+VaultController::VaultController() : process_index_(),
+                                     vault_manager_port_(0),
                                      asio_service_(2),
-                                     check_finished_(false),
                                      keys_(),
                                      account_name_(),
                                      info_received_(false),
                                      mutex_(),
-                                     cond_var_(),
-                                     started_(false),
                                      shutdown_mutex_(),
+                                     cond_var_(),
                                      shutdown_cond_var_(),
                                      shutdown_confirmed_(),
-                                     stop_callback_() {
-  asio_service_.Start();
+                                     stop_callback_() {}
+
+VaultController::~VaultController() {
+  asio_service_.Stop();
 }
 
-VaultController::~VaultController() {}
+void VaultController::RequestVaultIdentity() {
+  protobuf::VaultIdentityRequest vault_identity_request;
+  vault_identity_request.set_process_index(process_index_);
+  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
+  transport->on_message_received().connect(
+      [this, transport](const std::string& message, std::string& /*response*/) {
+        HandleVaultIdentityResponse(message, transport);
+      });
+  transport->on_error().connect([](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+  });
 
-void VaultController::ReceiveKeys() {
-  int message_type(static_cast<int>(VaultManagerMessageType::kIdentityInfoRequestFromVault));
-  protobuf::VaultIdentityRequest request;
-  request.set_vault_manager_id(process_id_);
-  std::shared_ptr<TcpTransport> transport;
-  std::shared_ptr<MessageHandler> message_handler;
-  ResetTransport(transport, message_handler);
-  std::string full_request =
-      message_handler->MakeSerialisedWrapperMessage(message_type, request.SerializeAsString());
-  Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
-  LOG(kInfo) << "ReceiveKeys: Sending request for vault identity info to port" << endpoint.port;
-  transport->Send(full_request, endpoint, boost::posix_time::seconds(1));
+  LOG(kVerbose) << "Sending request for vault identity to port " << vault_manager_port_;
+  transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
+                                      vault_identity_request.SerializeAsString()),
+                  vault_manager_port_,
+                  boost::posix_time::seconds(1));
 }
 
-void VaultController::ReceiveKeysCallback(const std::string& serialised_info,
-                                          const Info& /*sender_info*/,
-                                          std::string* /*response*/) {
-  protobuf::VaultIdentityInfo info;
-  info.ParseFromString(serialised_info);
-  boost::mutex::scoped_lock lock(mutex_);
-  if (!asymm::ParseKeys(info.keys(), keys_)) {
-    LOG(kError) << "ReceiveKeysCallback: failed to parse keys. ";
+void VaultController::HandleVaultIdentityResponse(const std::string& message,
+                                                  TransportPtr /*transport*/) {
+  MessageType type;
+  std::string payload;
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
     info_received_ = false;
     return;
   }
 
-  account_name_ = info.account_name();
+  protobuf::VaultIdentityResponse vault_identity_response;
+  if (!vault_identity_response.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse VaultIdentityResponse.";
+    info_received_ = false;
+    return;
+  }
+
+  if (!asymm::ParseKeys(vault_identity_response.keys(), keys_)) {
+    LOG(kError) << "Failed to parse keys.";
+    info_received_ = false;
+    return;
+  }
+
+  account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {
-    LOG(kError) << "ReceiveKeysCallback: account name is empty. ";
+    LOG(kError) << "Account name is empty.";
     info_received_ = false;
     return;
   }
 
+  LOG(kVerbose) << "Received VaultIdentityResponse.";
   info_received_ = true;
   cond_var_.notify_all();
 }
 
-void VaultController::ListenForShutdown() {
-  LOG(kInfo) << "ListenForShutdown: sending shutdown request to port " << port_;
-  protobuf::VaultShutdownRequest request;
-  request.set_vault_manager_id(process_id_);
-  std::shared_ptr<TcpTransport> transport;
-  std::shared_ptr<MessageHandler> message_handler;
-  ResetTransport(transport, message_handler);
-  int message_type(static_cast<int>(VaultManagerMessageType::kShutdownRequestFromVault));
-  std::string full_request =
-      message_handler->MakeSerialisedWrapperMessage(message_type, request.SerializeAsString());
-  for (;;) {
-    boost::mutex::scoped_lock lock(shutdown_mutex_);
-    shutdown_cond_var_.timed_wait(lock, boost::posix_time::seconds(2),
-                                  [&] { return shutdown_confirmed_; });  // NOLINT
-    if (shutdown_confirmed_) {
-      return;
-    } else {
-      Endpoint endpoint(boost::asio::ip::address_v4::loopback(), port_);
-      lock.unlock();
-      transport->Send(full_request, endpoint, boost::posix_time::milliseconds(1000));
-    }
-  }
+void VaultController::QueryShutdown() {
+  protobuf::VaultShutdownQuery vault_shutdown_query;
+  vault_shutdown_query.set_process_index(process_index_);
+  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
+  transport->on_message_received().connect(
+      [this, transport](const std::string& message, std::string& /*response*/) {
+        HandleVaultShutdownResponse(message, transport);
+      });
+  transport->on_error().connect([](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+  });
+
+  LOG(kVerbose) << "Sending shutdown query to port " << vault_manager_port_;
+  transport->Send(detail::WrapMessage(MessageType::kVaultShutdownQuery,
+                                      vault_shutdown_query.SerializeAsString()),
+                  vault_manager_port_,
+                  boost::posix_time::seconds(1));
 }
 
-void VaultController::ListenForShutdownCallback(const std::string& serialised_response,
-                                                const Info& /*sender_info*/,
-                                                std::string* /*response*/) {
-  LOG(kInfo) << "ListenForShutdownCallback";
-  protobuf::VaultShutdownResponse response;
-  if (response.ParseFromString(serialised_response)) {
-    if (response.shutdown()) {
-      boost::mutex::scoped_lock lock(shutdown_mutex_);
-      shutdown_confirmed_ = true;
-      LOG(kInfo) << "ListenForShutdownCallback: Shutdown confirmation received";
-      shutdown_cond_var_.notify_one();
-    }
-    stop_callback_();
-  }
-}
-
-void VaultController::HandleIncomingMessage(const int& type,
-                                            const std::string& payload,
-                                            const Info& info,
-                                            std::string* response,
-                                            std::shared_ptr<TcpTransport> /*transport*/,
-                                            std::shared_ptr<MessageHandler> /*message_handler*/) {
-  LOG(kInfo) << "VaultController: HandleIncomingMessage";
-  if (!info.endpoint.ip.is_loopback()) {
-    LOG(kError) << "HandleIncomingMessage: message is not of local origin.";
+void VaultController::HandleVaultShutdownResponse(const std::string& message,
+                                                  TransportPtr /*transport*/) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
     return;
   }
-  VaultManagerMessageType message_type = boost::numeric_cast<VaultManagerMessageType>(type);
-  switch (message_type) {
-    case VaultManagerMessageType::kIdentityInfoToVault:
-      LOG(kInfo) << "kIdentityInfoToVault";
-      ReceiveKeysCallback(payload, info, response);
-      break;
-    case VaultManagerMessageType::kShutdownResponseToVault:
-      LOG(kInfo) << "kShutdownResponseToVault";
-      ListenForShutdownCallback(payload, info, response);
-      break;
-    default:
-      LOG(kInfo) << "Incorrect message type";
+
+  protobuf::VaultShutdownResponse vault_shutdown_response;
+  if (!vault_shutdown_response.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse VaultShutdownResponse.";
+    return;
   }
+
+  if (!vault_shutdown_response.shutdown()) {
+    Sleep(boost::posix_time::seconds(1));
+    QueryShutdown();
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(shutdown_mutex_);
+    shutdown_confirmed_ = true;
+    LOG(kVerbose) << "Shutdown confirmation received";
+    shutdown_cond_var_.notify_one();
+  }
+  stop_callback_();
 }
 
-void VaultController::ResetTransport(std::shared_ptr<TcpTransport>& transport,
-                                     std::shared_ptr<MessageHandler>& message_handler) {
-  transport.reset(new TcpTransport(asio_service_.service()));
-  message_handler.reset(new MessageHandler());
-  transport->on_message_received()->connect(boost::bind(&MessageHandler::OnMessageReceived,
-                                                        message_handler.get(), _1, _2, _3, _4));
-  transport->on_error()->connect(boost::bind(&MessageHandler::OnError,
-                                              message_handler.get(), _1, _2));
-    message_handler->SetCallback(
-        boost::bind(&VaultController::HandleIncomingMessage, this, _1, _2, _3, _4,
-                    transport, message_handler));
-}
 
-bool VaultController::Start(const std::string& vault_manager_id,
+bool VaultController::Start(const std::string& vault_manager_identifier,
                             std::function<void()> stop_callback) {
-  stop_callback_ = stop_callback;
-  try {
-    if (vault_manager_id.empty()) {
-      LOG(kError) << "Empty Vault Manager ID";
-      return false;
-    }
-
-    boost::char_separator<char> separator("-");
-    boost::tokenizer<boost::char_separator<char>> tokens(vault_manager_id, separator);
-    if (std::distance(tokens.begin(), tokens.end()) != 2) {
-      LOG(kError) << "Invalid Vault Manager ID";
-      return false;
-    }
-
-    auto it(tokens.begin());
-    if ((*it).length() > 0) {
-      process_id_ = (*it);
-    } else {
-      LOG(kError) << "Invalid Vault Manager ID";
-      return false;
-    }
-
-    ++it;
-    if ((*it).length() > 0) {
-      port_ = boost::lexical_cast<uint16_t>(*it);
-    } else {
-      LOG(kError) << " VaultController: Invalid Vault Manager ID";
-      return false;
-    }
-
-    if (port_ != 0) {
-      thread_ = boost::thread([=] {
-          ReceiveKeys();
-          ListenForShutdown();
-      });
-    }
-  } catch(std::exception& e)  {
-    LOG(kError) << "VaultController: Start: Error receiving keys: " << e.what();
+  if (detail::ParseVmidParameter(vault_manager_identifier, process_index_, vault_manager_port_)) {
+    LOG(kError) << "Invalid --vmid parameter " << vault_manager_identifier;
     return false;
   }
 
-  started_ = true;
+  stop_callback_ = stop_callback;
+  asio_service_.Start();
+  RequestVaultIdentity();
+  QueryShutdown();
   return true;
 }
 
 bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) {
-  if (!started_)
+  if (vault_manager_port_ == 0 || !keys || !account_name)
     return false;
-  if (port_ == 0)
-    return false;
-  boost::mutex::scoped_lock lock(mutex_);
-  if (cond_var_.timed_wait(lock,
-                           boost::posix_time::seconds(10),
-                           [&] { return info_received_; })) {  // NOLINT (Philip)
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (cond_var_.wait_for(lock,
+                         std::chrono::seconds(10),
+                         [&] { return info_received_; })) {  // NOLINT (Philip)
     keys->private_key = keys_.private_key;
     keys->public_key = keys_.public_key;
     keys->identity = keys_.identity;
@@ -228,7 +180,7 @@ bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) 
 }
 
 void VaultController::ConfirmJoin(bool /*joined*/) {
-  LOG(kError) << "ConfirmJoin: Not yet implemented";
+                                                                LOG(kError) << "ConfirmJoin: Not yet implemented";
 }
 
 }  // namespace priv

@@ -12,66 +12,40 @@
 #ifndef MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
 #define MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
 
-#include <istream>
 #include <string>
+#include <vector>
 
-#include "boost/asio/streambuf.hpp"
+#include "boost/asio/io_service.hpp"
 #include "boost/asio/ip/tcp.hpp"
 #include "boost/filesystem/path.hpp"
-#include "boost/tokenizer.hpp"
+#include "boost/asio/streambuf.hpp"
+#include "maidsafe/common/rsa.h"
 
 
 namespace maidsafe {
 
 namespace priv {
 
-// assumes NAME-VERSION-PATCH naming convention
-// passing "" will mean system ignores these and always downloads
-// the file
 class DownloadManager {
  public:
-  DownloadManager();
-  DownloadManager(std::string site,
-                  std::string location,  // location of files on site
-                  std::string name,  // eg maidsafe_vault / maidsafe_client
-                  std::string platform,  // linux / osx / windows
-                  std::string current_major_version,  // e.g. 123
-                  std::string current_minor_version,  // e.g. 123
-                  std::string current_patchlevel);  // e.g. 234
-  void SetSiteName(std::string site) { site_ = site; }
-  void SetLocation(std::string location) { location_ = location; }
-  void SetProtocol(std::string protocol = "http");
-  void SetNameToDownload(std::string name) { name_ = name; }
-  void SetCurrentMajorVersionToUpdate(std::string version) { current_major_version_ = version; }
-  void SetCurrentMinorVersionToUpdate(std::string version) { current_minor_version_ = version; }
-  void SetCurrentPatchLevelToUpdate(std::string patchlevel) { current_patchlevel_ = patchlevel; }
-  void SetPlatformToUpdate(std::string platform) { platform_ = platform; }
-  void SetFileToDownload(std::string file_to_download) { file_to_download_ = file_to_download; }
-  void ClearFileToDownload() { file_to_download_.clear(); }
-  std::string file_to_download() const { return file_to_download_; }
-  bool FileIsValid(std::string file) const;
-  bool FileIsLaterThan(std::string file1, std::string file2) const;
-  bool FindLatestFile();
-  bool UpdateCurrentFile(boost::filesystem::path directory);
-  bool VerifySignature() const;
+  DownloadManager(const std::string& protocol,
+                  const std::string& site,
+                  const std::string& location);
+  // If a newer version of current_file exists, is sucessfully downloaded to directory, and the
+  // signature verified, then the new file name is returned, else an empty string.
+  std::string UpdateAndVerify(const std::string& current_file,
+                              const boost::filesystem::path& directory);
 
  private:
-  typedef boost::tokenizer<boost::char_separator<char>> Tokens;
-  bool FileIsUseful(std::string file) const;
-  bool GetFileBuffer(const std::string& file_path,
-                     boost::asio::streambuf* response,
-                     std::istream* response_stream,
-                     boost::asio::ip::tcp::socket* socket) const;
+  bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
+  std::string DownloadFile(const std::string& file_name);
+  std::string protocol_;
   std::string site_;
   std::string location_;
-  std::string name_;
-  std::string platform_;
-  std::string current_major_version_;
-  std::string current_minor_version_;
-  std::string current_patchlevel_;
-  std::string protocol_;
-  std::string file_to_download_;
-  std::string maidsafe_public_key_;
+  asymm::PublicKey maidsafe_public_key_;
+  boost::asio::io_service io_service_;
+  boost::asio::ip::tcp::resolver resolver_;
+  boost::asio::ip::tcp::resolver::query query_;
 };
 
 }  // namespace priv

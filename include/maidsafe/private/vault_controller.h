@@ -12,17 +12,12 @@
 #ifndef MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 #define MAIDSAFE_PRIVATE_VAULT_CONTROLLER_H_
 
+#include <condition_variable>
+#include <mutex>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <vector>
-
-#include "boost/date_time/posix_time/posix_time_config.hpp"
-#include "boost/system/error_code.hpp"
-#include "boost/thread/condition_variable.hpp"
-#include "boost/thread/mutex.hpp"
-#include "boost/thread/thread.hpp"
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
@@ -32,72 +27,35 @@ namespace maidsafe {
 
 namespace priv {
 
-struct Info;
-class TcpTransport;
-class MessageHandler;
-
-/*enum class ProcessStatus {
-  Running,
-  Stopped,
-  Crashed
-};
-
-enum class ProcessInstruction {
-  kRun = 1,
-  kStop = 2,
-  kTerminate = 3,
-  kInvalid = 4
-};
-
-enum class KeysStatus {
-  kDoNotNeedKeys = 1,
-  kNeedKeys = 2,
-  kCanHaveKeys = 3,
-  kDoHaveKeys = 4
-};*/
+class LocalTcpTransport;
 
 class VaultController {
  public:
   VaultController();
   ~VaultController();
 
-  bool Start(const std::string& vault_manager_id, std::function<void()> stop_callback);
+  bool Start(const std::string& vault_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(asymm::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
 
  private:
+  typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
-  void ReceiveKeys();
-  void ReceiveKeysCallback(const std::string& serialised_info,
-                           const Info& sender_info,
-                           std::string* /*response*/);
-  void ListenForShutdown();
-  void ListenForShutdownCallback(const std::string& serialised_response,
-                                 const Info& sender_info,
-                                 std::string* /*response*/);
-  void HandleIncomingMessage(const int& type,
-                             const std::string& payload,
-                             const Info& info,
-                             std::string* response,
-                             std::shared_ptr<TcpTransport> transport,
-                             std::shared_ptr<MessageHandler> message_handler);
-  void ResetTransport(std::shared_ptr<TcpTransport>& transport,
-                      std::shared_ptr<MessageHandler>& message_handler);
+  void RequestVaultIdentity();
+  void HandleVaultIdentityResponse(const std::string& message, TransportPtr transport);
+  void QueryShutdown();
+  void HandleVaultShutdownResponse(const std::string& message, TransportPtr transport);
 
-  std::string process_id_;
-  uint16_t port_;
-  boost::thread thread_;
+  uint32_t process_index_;
+  uint16_t vault_manager_port_;
   AsioService asio_service_;
-  bool check_finished_;
   asymm::Keys keys_;
   std::string account_name_;
   bool info_received_;
-  boost::mutex mutex_;
-  boost::condition_variable cond_var_;
-  bool started_;
-  boost::mutex shutdown_mutex_;
-  boost::condition_variable shutdown_cond_var_;
+  std::mutex mutex_, shutdown_mutex_;
+  std::condition_variable cond_var_, shutdown_cond_var_;
+  bool check_finished_;
   bool shutdown_confirmed_;
   std::function<void()> stop_callback_;
 };

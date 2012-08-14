@@ -9,17 +9,19 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_TCP_TRANSPORT_H_
-#define MAIDSAFE_PRIVATE_TCP_TRANSPORT_H_
+#ifndef MAIDSAFE_PRIVATE_LOCAL_TCP_TRANSPORT_H_
+#define MAIDSAFE_PRIVATE_LOCAL_TCP_TRANSPORT_H_
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
+
 #include "boost/asio/io_service.hpp"
 #include "boost/asio/strand.hpp"
 #include "boost/asio/ip/tcp.hpp"
-#include "maidsafe/private/transport.h"
+#include "boost/date_time/posix_time/posix_time_duration.hpp"
+#include "boost/signals2/signal.hpp"
 
 
 namespace maidsafe {
@@ -27,46 +29,59 @@ namespace maidsafe {
 namespace priv {
 
 class TcpConnection;
-class MessageHandler;
+
+typedef boost::signals2::signal<void(const std::string&, std::string&)> OnMessageReceived;
+typedef boost::signals2::signal<void(const int&)> OnError;
+typedef uint16_t Port;
+
 
 #ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Weffc++"
 #endif
-class TcpTransport : public Transport,
-                     public std::enable_shared_from_this<TcpTransport> {
+class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport> {
 #ifdef __GNUC__
-#pragma GCC diagnostic pop
+#  pragma GCC diagnostic pop
 #endif
+
  public:
-  explicit TcpTransport(boost::asio::io_service &asio_service); // NOLINT
-  virtual ~TcpTransport();
-  virtual TransportCondition StartListening(const Endpoint &endpoint);
-  virtual TransportCondition Bootstrap(const std::vector<Contact> &candidates);
-  virtual void StopListening();
-  virtual void Send(const std::string &data,
-                    const Endpoint &endpoint,
-                    const Timeout &timeout);
+  typedef int32_t DataSize;
+
+  explicit LocalTcpTransport(boost::asio::io_service& asio_service);  // NOLINT (Fraser)
+  ~LocalTcpTransport();
+  int StartListening(Port port);
+  void StopListening();
+  void Send(const std::string& data,
+            Port port,
+            const boost::posix_time::time_duration& timeout);
+  OnMessageReceived& on_message_received() { return on_message_received_; }
+  OnError& on_error() { return on_error_; }
   static DataSize kMaxTransportMessageSize() { return 67108864; }
+  static Port kMinPort() { return 5483; }
+  static Port kMaxPort() { return 5582; }
+
+  friend class TcpConnection;
 
  private:
-  TcpTransport(const TcpTransport&);
-  TcpTransport& operator=(const TcpTransport&);
-  friend class TcpConnection;
-  typedef std::shared_ptr<boost::asio::ip::tcp::acceptor> AcceptorPtr;
+  LocalTcpTransport(const LocalTcpTransport&);
+  LocalTcpTransport& operator=(const LocalTcpTransport&);
+
   typedef std::shared_ptr<TcpConnection> ConnectionPtr;
   typedef std::set<ConnectionPtr> ConnectionSet;
-  static void CloseAcceptor(AcceptorPtr acceptor);
-  void HandleAccept(AcceptorPtr acceptor, ConnectionPtr connection,
-                    const boost::system::error_code &ec);
+
+  void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
+                    ConnectionPtr connection,
+                    const boost::system::error_code& ec);
 
   void InsertConnection(ConnectionPtr connection);
   void DoInsertConnection(ConnectionPtr connection);
   void RemoveConnection(ConnectionPtr connection);
   void DoRemoveConnection(ConnectionPtr connection);
 
-  AcceptorPtr acceptor_;
-
+  boost::asio::io_service &asio_service_;
+  OnMessageReceived on_message_received_;
+  OnError on_error_;
+  boost::asio::ip::tcp::acceptor acceptor_;
   // Because the connections can be in an idle initial state with no pending
   // async operations (after calling PrepareSend()), they are kept alive with
   // a shared_ptr in this map, as well as in the async operation handlers.
@@ -78,4 +93,4 @@ class TcpTransport : public Transport,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_TCP_TRANSPORT_H_
+#endif  // MAIDSAFE_PRIVATE_LOCAL_TCP_TRANSPORT_H_

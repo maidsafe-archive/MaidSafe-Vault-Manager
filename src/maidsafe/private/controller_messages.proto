@@ -7,45 +7,41 @@ message WrapperMessage {
   optional bytes message_signature = 3;
 }
 
-// VaultManager receives this from a Client looking for the correct port. Client expects a ClientHelloResponse.
-message ClientHello {
-  required bytes hello = 1;
+// VaultManager receives this from a Client looking for the correct port and responds with this.
+message Ping {
+  optional bytes ping = 1;
 }
 
-// VaultManager sends this to a requesting Client. It contains confirmation that the VaultManager is
-// listening on that port.
-message ClientHelloResponse {
-  required bytes hello_response = 1;
-}
-
-// VaultManager receives this from Client. It will then start a vault and respond to its request for
-// identity info with a VaultIdentityInfo containing this information.
-message ClientStartVaultRequest {
-  required bytes keys = 1;
-  required bytes account_name = 2;
+// VaultManager receives this from Client and it will then start a vault.  The new vault will send a
+// VaultIdentityRequest to the VaultManager which will trigger the StartVaultResponse in reply to
+// this message.
+message StartVaultRequest {
+  required bytes account_name = 1;
+  required bytes keys = 2;
   optional bytes bootstrap_endpoint = 3;
 }
 
-// VaultManager sends this to Client in response to a ClientStartVaultRequest. It details whether or
-// not the starting of the vault was successful.
-message ClientStartVaultResponse {
+// VaultManager sends this in response to a StartVaultRequest. It details whether or not the
+// starting of the vault was successful.
+message StartVaultResponse {
   required bool result = 1;
 }
 
-// VaultManager receives this from Vault. Vault expects a VaultIdentityInfo response.
+// VaultManager receives this from Vault. Vault expects a VaultIdentityResponse.
 message VaultIdentityRequest {
-  required bytes vault_manager_id = 1;
+  required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
 // VaultManager sends this to a requesting Vault. It contains the identity that the Vault can assume.
-message VaultIdentityInfo {
-  required bytes keys = 1;
-  required bytes account_name = 2;
+message VaultIdentityResponse {
+  required bytes account_name = 1;
+  required bytes keys = 2;
 }
 
-// VaultManager receives this periodically from Vault. Vault expects a VaultIdentityInfo response.
-message VaultShutdownRequest {
-  required bytes vault_manager_id = 1;
+// VaultManager receives this periodically from Vault (polling to see whether to keep running).
+//  Vault expects a VaultShutdownResponse.
+message VaultShutdownQuery {
+  required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
 // VaultManager sends this to a requesting Vault. It contains a boolean incdicating whether or not
@@ -53,3 +49,5 @@ message VaultShutdownRequest {
 message VaultShutdownResponse {
   required bool shutdown = 1;
 }
+
+// TODO(Fraser#5#): 2012-08-12 - Add Setter and getter RPCs for update interval

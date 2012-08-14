@@ -34,6 +34,8 @@
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
+#include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/utils.h"
 
 
 namespace bp = boost::process;
@@ -43,9 +45,9 @@ namespace maidsafe {
 
 namespace priv {
 
-bool Process::SetProcessName(std::string process_name, std::string parent_path) {
+bool Process::SetProcessName(const std::string& name, const std::string& parent_path) {
   std::string path_string(parent_path.empty() ? fs::current_path().string() : parent_path);
-  fs::path executable_path(fs::path(parent_path) / process_name);
+  fs::path executable_path(fs::path(parent_path) / name);
   boost::system::error_code ec;
   if (!fs::exists(executable_path, ec) || ec) {
     LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
@@ -60,36 +62,25 @@ bool Process::SetProcessName(std::string process_name, std::string parent_path) 
     return false;
   }
   LOG(kInfo) << "Executable found at " << executable_path.string();
-  process_name_ = executable_path.string();
+  name_ = executable_path.string();
   return true;
 }
 
-void Process::AddArgument(std::string argument) {
-  args_.push_back(argument);
-}
-
-std::string Process::ProcessName() const {
-  return process_name_;
-}
-
-std::vector<std::string> Process::Args() const {
-  return args_;
-}
 
 
-
-ProcessInfo::ProcessInfo(ProcessInfo&& other)
+ProcessManager::ProcessInfo::ProcessInfo(ProcessManager::ProcessInfo&& other)
     : process(std::move(other.process)),
       thread(std::move(other.thread)),
-      id(std::move(other.id)),
+      index(std::move(other.index)),
       port(std::move(other.port)),
       restart_count(std::move(other.restart_count)),
       done(std::move(other.done)) {}
 
-ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
+ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
+    ProcessManager::ProcessInfo&& other) {
   process = std::move(other.process);
   thread = std::move(other.thread);
-  id = std::move(other.id);
+  index = std::move(other.index);
   port = std::move(other.port);
   restart_count = std::move(other.restart_count);
   done = std::move(other.done);
@@ -98,86 +89,83 @@ ProcessInfo& ProcessInfo::operator=(ProcessInfo&& other) {
 
 
 
-ProcessManager::ProcessManager() : processes_(), mutex_() {}
+ProcessManager::ProcessManager() : processes_(), current_max_id_(0), mutex_() {}
 
 ProcessManager::~ProcessManager() {
   TerminateAll();
 }
 
-std::string ProcessManager::AddProcess(Process process, uint16_t port) {
+ProcessIndex ProcessManager::AddProcess(Process process, Port port) {
   ProcessInfo info;
-  std::string id(RandomAlphaNumericString(16));
-  info.id = id;
+  info.index = ++current_max_id_;
   info.done = false;
   info.restart_count = 0;
   info.port = port;
-  LOG(kInfo) << "Restart count on init: " << info.restart_count;
+  LOG(kVerbose) << "Restart count on init: " << info.restart_count;
   process.AddArgument("--vmid");
-  process.AddArgument(info.id + "-" + boost::lexical_cast<std::string>(info.port));
-  LOG(kInfo) << "Process Arguments: ";
-  for (std::string i : process.Args())
-    LOG(kInfo) << i;
+  process.AddArgument(detail::GenerateVmidParameter(info.index, info.port));
   info.process = process;
   std::lock_guard<std::mutex> lock(mutex_);
   processes_.push_back(std::move(info));
-  return id;
+  return info.index;
 }
 
-int32_t ProcessManager::NumberOfProcesses() const {
+size_t ProcessManager::NumberOfProcesses() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return static_cast<int32_t>(processes_.size());
+  return processes_.size();
 }
 
-int32_t ProcessManager::NumberOfLiveProcesses() const {
+size_t ProcessManager::NumberOfLiveProcesses() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return static_cast<int32_t>(
-      std::count_if(processes_.begin(),
-                    processes_.end(),
-                    [](const ProcessInfo& process_info) {
-                      return !process_info.done && process_info.thread.joinable();
-                    }));
+  return std::count_if(processes_.begin(),
+                       processes_.end(),
+                       [](const ProcessInfo& process_info) {
+                         return !process_info.done && process_info.thread.joinable();
+                       });
 }
 
-int32_t ProcessManager::NumberOfSleepingProcesses() const {
+size_t ProcessManager::NumberOfSleepingProcesses() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return static_cast<int32_t>(
-      std::count_if(processes_.begin(),
-                    processes_.end(),
-                    [](const ProcessInfo& process_info) { return !process_info.done; }));  // NOLINT (Fraser)
+  return std::count_if(processes_.begin(),
+                       processes_.end(),
+                       [](const ProcessInfo& process_info) { return !process_info.done; });  // NOLINT (Fraser)
 }
 
-std::vector<ProcessInfo>::iterator ProcessManager::FindProcess(std::string id) {
+std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(
+    const ProcessIndex& index) {
   return std::find_if(processes_.begin(),
                       processes_.end(),
-                      [id] (ProcessInfo &process_info) { return (process_info.id == id); });  // NOLINT (Fraser)
+                      [index] (ProcessInfo &process_info) {
+                        return (process_info.index == index);
+                      });
 }
 
-void ProcessManager::StartProcess(std::string id) {
+void ProcessManager::StartProcess(const ProcessIndex& index) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(id);
+  auto itr = FindProcess(index);
   if (itr == processes_.end())
     return;
   (*itr).done = false;
   (*itr).restart_count = 0;
-  LOG(kInfo) << "StartProcess: AddStatus. ID: " << id;
+  LOG(kInfo) << "StartProcess: AddStatus. ID: " << index;
   // ProcessManagerStruct status;
   // status.instruction = ProcessInstruction::kRun;
   // AddStatus(id, status);
-  (*itr).thread = std::move(boost::thread([=] { RunProcess(id, false, false); }));  // NOLINT (Fraser)
+  (*itr).thread = std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
 }
 
-void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
+void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool logging) {
   std::string process_name;
   std::vector<std::string> process_args;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto itr = FindProcess(id);
+    auto itr = FindProcess(index);
     if (itr == processes_.end()) {
       LOG(kError) << "RunProcess: process with specified VMID cannot be found";
       return;
     }
-    process_name = (*itr).process.ProcessName();
-    process_args = (*itr).process.Args();
+    process_name = (*itr).process.name();
+    process_args = (*itr).process.args();
   }
 
   if (restart) {
@@ -228,7 +216,7 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
 #else
   bp::posix_status status = child.wait();
 #endif
-  LOG(kInfo) << "Process " << id << " completes. Output: ";
+  LOG(kInfo) << "Process " << index << " completes. Output: ";
   LOG(kInfo) << result;
 #ifndef MAIDSAFE_WIN32
   if (status.exited()) {
@@ -245,13 +233,13 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
 #endif
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto itr(FindProcess(id));
+    auto itr(FindProcess(index));
     LOG(kInfo) << "Restart count = " << (*itr).restart_count;
     if ((*itr).done)
       return;
 
     if ((*itr).restart_count > 4) {
-      LOG(kInfo) << "A process " << (*itr).id << " is consistently failing. Stopping..."
+      LOG(kInfo) << "A process " << (*itr).index << " is consistently failing. Stopping..."
                  << " Restart count = " << (*itr).restart_count;
       return;
     }
@@ -264,13 +252,13 @@ void ProcessManager::RunProcess(std::string id, bool restart, bool logging) {
       logging = true;
     }
   }
-  RunProcess(id, true, logging);
+  RunProcess(index, true, logging);
 }
 
-void ProcessManager::LetProcessDie(std::string id) {
-  LOG(kInfo) << "LetProcessDie: ID: " << id;
+void ProcessManager::LetProcessDie(const ProcessIndex& index) {
+  LOG(kVerbose) << "LetProcessDie: ID: " << index;
   std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(id);
+  auto itr = FindProcess(index);
   if (itr == processes_.end())
     return;
   (*itr).done = true;
@@ -306,27 +294,27 @@ void ProcessManager::WaitForProcesses() {
   }
 }
 
-void ProcessManager::KillProcess(std::string id) {
+void ProcessManager::KillProcess(const ProcessIndex& index) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(id);
+  auto itr = FindProcess(index);
   if (itr == processes_.end())
     return;
   (*itr).done = true;
   // SetInstruction(id, ProcessInstruction::kTerminate);
 }
 
-void ProcessManager::StopProcess(std::string id) {
+void ProcessManager::StopProcess(const ProcessIndex& index) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(id);
+  auto itr = FindProcess(index);
   if (itr == processes_.end())
     return;
   (*itr).done = true;
   // SetInstruction(id, ProcessInstruction::kStop);
 }
 
-void ProcessManager::RestartProcess(std::string id) {
+void ProcessManager::RestartProcess(const ProcessIndex& index) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(id);
+  auto itr = FindProcess(index);
   if (itr == processes_.end())
     return;
   (*itr).done = false;

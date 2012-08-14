@@ -23,6 +23,8 @@ namespace maidsafe {
 
 namespace priv {
 
+typedef uint32_t ProcessIndex;
+
 /*enum class ProcessStatus {
   Running,
   Stopped,
@@ -53,52 +55,54 @@ struct ProcessManagerStruct {
 
 class Process {
  public:
-  Process() : args_(), process_name_() {}
-  bool SetProcessName(std::string process_name, std::string parent_path = "");
-  void AddArgument(std::string argument);
-  std::string ProcessName() const;
-  std::vector<std::string> Args() const;
+  Process() : args_(), name_() {}
+  bool SetProcessName(const std::string& name, const std::string& parent_path);
+  void AddArgument(const std::string& argument) { args_.push_back(argument); }
+  std::string name() const { return name_; }
+  std::vector<std::string> args() const { return args_; }
  private:
   std::vector<std::string> args_;
-  std::string process_name_;
+  std::string name_;
 };
 
-struct ProcessInfo {
-  ProcessInfo() : process(), thread(), id(), port(), restart_count(0), done(false) {}
-  ProcessInfo(ProcessInfo&& other);
-  ProcessInfo& operator=(ProcessInfo&& other);
-  Process process;
-  boost::thread thread;
-  std::string id;
-  uint32_t port;
-  int32_t restart_count;
-  bool done;
-};
 
 class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  std::string AddProcess(Process process, uint16_t port);
-  int32_t NumberOfProcesses() const;
-  int32_t NumberOfLiveProcesses() const;
-  int32_t NumberOfSleepingProcesses() const;
-  void StartProcess(std::string id);
-  void LetProcessDie(std::string id);
+  ProcessIndex AddProcess(Process process, uint16_t port);
+  size_t NumberOfProcesses() const;
+  size_t NumberOfLiveProcesses() const;
+  size_t NumberOfSleepingProcesses() const;
+  void StartProcess(const ProcessIndex& index);
+  void LetProcessDie(const ProcessIndex& index);
   void LetAllProcessesDie();
   void WaitForProcesses();
-  void KillProcess(std::string id);
-  void StopProcess(std::string id);
-  void RestartProcess(std::string id);
+  void KillProcess(const ProcessIndex& index);
+  void StopProcess(const ProcessIndex& index);
+  void RestartProcess(const ProcessIndex& index);
 
  private:
+  struct ProcessInfo {
+    ProcessInfo() : process(), thread(), index(0), port(0), restart_count(0), done(false) {}
+    ProcessInfo(ProcessInfo&& other);
+    ProcessInfo& operator=(ProcessInfo&& other);
+    Process process;
+    boost::thread thread;
+    ProcessIndex index;
+    uint16_t port;
+    int32_t restart_count;
+    bool done;
+  };
+
   ProcessManager(const ProcessManager&);
   ProcessManager &operator=(const ProcessManager&);
-  std::vector<ProcessInfo>::iterator FindProcess(std::string id);
-  void RunProcess(std::string id, bool restart, bool logging);
+  std::vector<ProcessInfo>::iterator FindProcess(const ProcessIndex& index);
+  void RunProcess(const ProcessIndex& index, bool restart, bool logging);
   void TerminateAll();
 
   std::vector<ProcessInfo> processes_;
+  ProcessIndex current_max_id_;
   mutable std::mutex mutex_;
 };
 
