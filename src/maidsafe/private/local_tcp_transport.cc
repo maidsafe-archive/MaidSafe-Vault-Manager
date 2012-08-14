@@ -71,7 +71,7 @@ int LocalTcpTransport::StartListening(Port port) {
 // http://www.unixguide.net/network/socketfaq/4.5.shtml
 // http://old.nabble.com/Port-allocation-problem-on-windows-(incl.-patch)-td28241079.html
 #ifndef MAIDSAFE_WIN32
-  acceptor_->set_option(ip::tcp::acceptor::reuse_address(true), ec);
+  acceptor_.set_option(ip::tcp::acceptor::reuse_address(true), ec);
 #endif
   if (ec) {
     LOG(kError) << "Could not set the reuse address option: " << ec.message();

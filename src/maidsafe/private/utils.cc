@@ -208,17 +208,17 @@ int VersionToInt(const std::string& version) {
 
   auto itr(tokens.begin());
 
-  int16_t major(0), minor(0), patch(0);
+  int16_t major_version(0), minor_version(0), patch_level(0);
   try {
-    major = boost::lexical_cast<int16_t>(*(itr++));
+    major_version = boost::lexical_cast<int16_t>(*(itr++));
 
-    minor = boost::lexical_cast<int16_t>(*itr);
+    minor_version = boost::lexical_cast<int16_t>(*itr);
     if ((*itr++).size() != 2U) {
       LOG(kWarning) << "Invalid minor version " << version;
       return kInvalidVersion;
     }
 
-    patch = boost::lexical_cast<int16_t>(*itr);
+    patch_level = boost::lexical_cast<int16_t>(*itr);
     if ((*itr++).size() != 2U) {
       LOG(kWarning) << "Invalid patch level " << version;
       return kInvalidVersion;
@@ -229,12 +229,12 @@ int VersionToInt(const std::string& version) {
     return kInvalidVersion;
   }
 
-  if (major < 0 || minor < 0 || patch < 0) {
+  if (major_version < 0 || minor_version < 0 || patch_level < 0) {
     LOG(kWarning) << "Invalid version " << version;
     return kInvalidVersion;
   }
 
-  return (major * 10000) + (minor * 100) + patch;
+  return (major_version * 10000) + (minor_version * 100) + patch_level;
 }
 
 std::string GenerateFileName(const std::string& application,

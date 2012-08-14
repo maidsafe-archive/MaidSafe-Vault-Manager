@@ -44,7 +44,7 @@ namespace test {
 class RemoteChunkStoreTest: public testing::Test {
  public:
   RemoteChunkStoreTest()
-      : test_dir_(maidsafe::test::CreateTestPath("TestRemoteChunkStore")),
+      : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_Test_RemoteChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
         asio_service_(21),
         chunk_store_(),
