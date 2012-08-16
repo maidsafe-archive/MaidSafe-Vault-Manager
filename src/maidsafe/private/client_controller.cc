@@ -185,7 +185,7 @@ bool ClientController::StartVault(const asymm::Keys& keys,
   }
   request_transport->on_message_received().connect(
       [this, callback](const std::string& message, Port /*vault_manager_port*/) {
-        HandleStartVaultResponse(message, callback);
+        HandleStartStopVaultResponse<protobuf::StartVaultResponse>(message, callback);
       });
   request_transport->on_error().connect([this, callback](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -207,8 +207,65 @@ bool ClientController::StartVault(const asymm::Keys& keys,
   return local_result;
 }
 
-void ClientController::HandleStartVaultResponse(const std::string& message,
-                                                const std::function<void(bool)>& callback) {  // NOLINT
+bool ClientController::StopVault(const asymm::PlainText& data,
+                                 const asymm::Signature& signature,
+                                 const asymm::Identity& identity) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ != kVerified) {
+      LOG(kError) << "Not connected to VaultManager.";
+      return false;
+    }
+  }
+
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), local_result(false);
+  protobuf::StopVaultRequest stop_vault_request;
+  stop_vault_request.set_data(data);
+  stop_vault_request.set_signature(signature);
+  stop_vault_request.set_identity(identity);
+
+  std::function<void(bool)> callback =
+    [&](bool result) {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+      local_cond_var.notify_one();
+    };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  if (request_transport->Connect(vault_manager_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
+    return false;
+  }
+  request_transport->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+        HandleStartStopVaultResponse<protobuf::StopVaultResponse>(message, callback);
+      });
+  request_transport->on_error().connect([this, callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
+
+  LOG(kVerbose) << "Sending request to stop vault to port " << vault_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
+                                              stop_vault_request.SerializeAsString()),
+                          vault_manager_port_);
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
+    LOG(kError) << "Timed out waiting for reply.";
+    return false;
+  }
+  if (!local_result)
+    LOG(kError) << "Failed stopping vault.";
+  return local_result;
+}
+
+template<typename ResponseType>
+void ClientController::HandleStartStopVaultResponse(const std::string& message,
+                                                    const std::function<void(bool)>& callback) {  // NOLINT
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -217,28 +274,14 @@ void ClientController::HandleStartVaultResponse(const std::string& message,
     return;
   }
 
-  protobuf::StartVaultResponse start_vault_response;
-  if (!start_vault_response.ParseFromString(payload) || !start_vault_response.IsInitialized()) {
-    LOG(kError) << "Failed to parse StartVaultResponse.";
+  ResponseType vault_response;
+  if (!vault_response.ParseFromString(payload) || !vault_response.IsInitialized()) {
+    LOG(kError) << "Failed to parse response.";
     callback(false);
     return;
   }
 
-  callback(start_vault_response.result());
-}
-
-bool ClientController::StopVault(const asymm::PlainText& /*data*/,
-                                 const asymm::Signature& /*signature*/,
-                                 const asymm::Identity& /*identity*/) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kVerified) {
-      LOG(kError) << "Not connected to VaultManager.";
-      return false;
-    }
-  }
-                                                                LOG(kError) << "StopVault: Not implemented.";
-  return false;
+  callback(vault_response.result());
 }
 
 bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval) {
@@ -344,6 +387,7 @@ void ClientController::HandleUpdateIntervalResponse(
 }
 
 void ClientController::HandleReceivedRequest(const std::string& message, Port peer_port) {
+  assert(peer_port == vault_manager_port_);
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {

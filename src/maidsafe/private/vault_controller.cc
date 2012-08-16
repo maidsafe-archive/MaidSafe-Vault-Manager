@@ -15,6 +15,7 @@
 #include <iterator>
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
@@ -27,126 +28,19 @@ namespace maidsafe {
 
 namespace priv {
 
-VaultController::VaultController() : process_index_(),
-                                     vault_manager_port_(0),
-                                     asio_service_(3),
-                                     keys_(),
-                                     account_name_(),
-                                     info_received_(false),
-                                     mutex_(),
-                                     shutdown_mutex_(),
-                                     cond_var_(),
-                                     shutdown_cond_var_(),
-                                     shutdown_confirmed_(),
-                                     stop_callback_() {}
+VaultController::VaultController()
+    : process_index_(),
+      vault_manager_port_(0),
+      asio_service_(3),
+      receiving_transport_(new LocalTcpTransport(asio_service_.service())),
+      keys_(),
+      account_name_(),
+      stop_callback_() {}
 
 VaultController::~VaultController() {
+  receiving_transport_.reset();
   asio_service_.Stop();
 }
-
-void VaultController::RequestVaultIdentity() {
-  protobuf::VaultIdentityRequest vault_identity_request;
-  vault_identity_request.set_process_index(process_index_);
-  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
-  transport->on_message_received().connect(
-      [this, transport](const std::string& message, Port /*vault_manager_port*/) {
-        HandleVaultIdentityResponse(message, transport);
-      });
-  transport->on_error().connect([](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-  });
-
-  LOG(kVerbose) << "Sending request for vault identity to port " << vault_manager_port_;
-  transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
-                                      vault_identity_request.SerializeAsString()),
-                  vault_manager_port_);
-}
-
-void VaultController::HandleVaultIdentityResponse(const std::string& message,
-                                                  TransportPtr /*transport*/) {
-  MessageType type;
-  std::string payload;
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (!detail::UnwrapMessage(message, type, payload)) {
-    LOG(kError) << "Failed to handle incoming message.";
-    info_received_ = false;
-    return;
-  }
-
-  protobuf::VaultIdentityResponse vault_identity_response;
-  if (!vault_identity_response.ParseFromString(payload) ||
-      !vault_identity_response.IsInitialized()) {
-    LOG(kError) << "Failed to parse VaultIdentityResponse.";
-    info_received_ = false;
-    return;
-  }
-
-  if (!asymm::ParseKeys(vault_identity_response.keys(), keys_)) {
-    LOG(kError) << "Failed to parse keys.";
-    info_received_ = false;
-    return;
-  }
-
-  account_name_ = vault_identity_response.account_name();
-  if (account_name_.empty()) {
-    LOG(kError) << "Account name is empty.";
-    info_received_ = false;
-    return;
-  }
-
-  LOG(kVerbose) << "Received VaultIdentityResponse.";
-  info_received_ = true;
-  cond_var_.notify_all();
-}
-
-void VaultController::QueryShutdown() {
-  protobuf::VaultShutdownQuery vault_shutdown_query;
-  vault_shutdown_query.set_process_index(process_index_);
-  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
-  transport->on_message_received().connect(
-      [this, transport](const std::string& message, Port /*vault_manager_port*/) {
-        HandleVaultShutdownResponse(message, transport);
-      });
-  transport->on_error().connect([](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-  });
-
-  LOG(kVerbose) << "Sending shutdown query to port " << vault_manager_port_;
-  transport->Send(detail::WrapMessage(MessageType::kVaultShutdownQuery,
-                                      vault_shutdown_query.SerializeAsString()),
-                  vault_manager_port_);
-}
-
-void VaultController::HandleVaultShutdownResponse(const std::string& message,
-                                                  TransportPtr /*transport*/) {
-  MessageType type;
-  std::string payload;
-  if (!detail::UnwrapMessage(message, type, payload)) {
-    LOG(kError) << "Failed to handle incoming message.";
-    return;
-  }
-
-  protobuf::VaultShutdownResponse vault_shutdown_response;
-  if (!vault_shutdown_response.ParseFromString(payload) ||
-      !vault_shutdown_response.IsInitialized()) {
-    LOG(kError) << "Failed to parse VaultShutdownResponse.";
-    return;
-  }
-
-  if (!vault_shutdown_response.shutdown()) {
-    Sleep(boost::posix_time::seconds(1));
-    QueryShutdown();
-  }
-
-  {
-    std::lock_guard<std::mutex> lock(shutdown_mutex_);
-    shutdown_confirmed_ = true;
-    LOG(kVerbose) << "Shutdown confirmation received";
-    shutdown_cond_var_.notify_one();
-  }
-  stop_callback_();
-}
-
 
 bool VaultController::Start(const std::string& vault_manager_identifier,
                             std::function<void()> stop_callback) {
@@ -158,29 +52,143 @@ bool VaultController::Start(const std::string& vault_manager_identifier,
   stop_callback_ = stop_callback;
   asio_service_.Start();
   RequestVaultIdentity();
-  QueryShutdown();
+  receiving_transport_->on_message_received().connect(
+      [this](const std::string& message, Port vault_manager_port) {
+        HandleReceivedRequest(message, vault_manager_port);
+      });
+  receiving_transport_->on_error().connect([](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+  });
+
   return true;
 }
 
 bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) {
   if (vault_manager_port_ == 0 || !keys || !account_name)
     return false;
-  std::unique_lock<std::mutex> lock(mutex_);
-  if (cond_var_.wait_for(lock,
-                         std::chrono::seconds(10),
-                         [&] { return info_received_; })) {  // NOLINT (Philip)
-    keys->private_key = keys_.private_key;
-    keys->public_key = keys_.public_key;
-    keys->identity = keys_.identity;
-    keys->validation_token = keys_.validation_token;
-    *account_name = account_name_;
-    return true;
-  }
-  return false;
+  keys->private_key = keys_.private_key;
+  keys->public_key = keys_.public_key;
+  keys->identity = keys_.identity;
+  keys->validation_token = keys_.validation_token;
+  *account_name = account_name_;
+  return true;
 }
 
 void VaultController::ConfirmJoin(bool /*joined*/) {
                                                                 LOG(kError) << "ConfirmJoin: Not yet implemented";
+}
+
+void VaultController::RequestVaultIdentity() {
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+
+  protobuf::VaultIdentityRequest vault_identity_request;
+  vault_identity_request.set_process_index(process_index_);
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  if (request_transport->Connect(vault_manager_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
+      return;
+  }
+  request_transport->on_message_received().connect(
+      [this, &local_mutex, &local_cond_var](const std::string& message,
+                                            Port /*vault_manager_port*/) {
+        HandleVaultIdentityResponse(message, local_mutex, local_cond_var);
+      });
+  request_transport->on_error().connect([](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+  });
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  LOG(kVerbose) << "Sending request for vault identity to port " << vault_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
+                                              vault_identity_request.SerializeAsString()),
+                          vault_manager_port_);
+
+  if (!local_cond_var.wait_for(lock,
+                               std::chrono::seconds(3),
+                               [&] { return !account_name_.empty(); })) {  // NOLINT (Fraser)
+    LOG(kError) << "Timed out waiting for reply.";
+    return;
+  }
+}
+
+void VaultController::HandleVaultIdentityResponse(const std::string& message,
+                                                  std::mutex& mutex,
+                                                  std::condition_variable& cond_var) {
+  MessageType type;
+  std::string payload;
+  std::lock_guard<std::mutex> lock(mutex);
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+
+  protobuf::VaultIdentityResponse vault_identity_response;
+  if (!vault_identity_response.ParseFromString(payload) ||
+      !vault_identity_response.IsInitialized()) {
+    LOG(kError) << "Failed to parse VaultIdentityResponse.";
+    return;
+  }
+
+  if (!asymm::ParseKeys(vault_identity_response.keys(), keys_)) {
+    LOG(kError) << "Failed to parse keys.";
+    return;
+  }
+
+  account_name_ = vault_identity_response.account_name();
+  if (account_name_.empty()) {
+    LOG(kError) << "Account name is empty.";
+    return;
+  }
+
+  LOG(kVerbose) << "Received VaultIdentityResponse.";
+  cond_var.notify_one();
+}
+
+void VaultController::HandleReceivedRequest(const std::string& message, Port peer_port) {
+  assert(peer_port == vault_manager_port_);
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+  LOG(kVerbose) << "HandleReceivedRequest: message type " << static_cast<int>(type) << " received.";
+  std::string response;
+  switch (type) {
+    case MessageType::kVaultShutdownRequest:
+      HandleVaultShutdownRequest(payload, response);
+      break;
+    default:
+      return;
+  }
+  receiving_transport_->Send(response, peer_port);
+  if (type == MessageType::kVaultShutdownRequest) {
+    // Don't kill transport before it has a chance to send reponse.
+    // TODO(Fraser#5#): 2012-08-16 - This Sleep should probably be replaced with a
+    //                HandleVaultShutdownResponseAck method where the VaultManager Acks the response
+    Sleep(boost::posix_time::milliseconds(500));
+    stop_callback_();
+  }
+}
+
+void VaultController::HandleVaultShutdownRequest(const std::string& request,
+                                                 std::string& response) {
+  protobuf::VaultShutdownRequest vault_shutdown_request;
+  protobuf::VaultShutdownResponse vault_shutdown_response;
+  if (!vault_shutdown_request.ParseFromString(request) ||
+      !vault_shutdown_request.IsInitialized()) {
+    LOG(kError) << "Failed to parse VaultShutdownRequest.";
+    vault_shutdown_response.set_shutdown(false);
+  } else if (vault_shutdown_request.process_index() != process_index_) {
+    LOG(kError) << "This shutdown request is not for this process.";
+    vault_shutdown_response.set_shutdown(false);
+  } else {
+    vault_shutdown_response.set_shutdown(true);
+  }
+  response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
+                                 vault_shutdown_response.SerializeAsString());
 }
 
 }  // namespace priv

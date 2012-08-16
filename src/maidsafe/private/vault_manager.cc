@@ -73,7 +73,8 @@ VaultManager::VaultInfo::VaultInfo()
       keys(),
       chunkstore_path(),
       chunkstore_capacity(0),
-      port(0),
+      client_port(0),
+      vault_port(0),
       mutex(),
       cond_var(),
       requested_to_run(false),
@@ -281,8 +282,8 @@ void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_p
     case MessageType::kVaultIdentityRequest:
       HandleVaultIdentityRequest(payload, response);
       break;
-    case MessageType::kVaultShutdownQuery:
-      HandleVaultShutdownQuery(payload, response);
+    case MessageType::kStopVaultRequest:
+      HandleStopVaultRequest(payload, response);
       break;
     case MessageType::kUpdateIntervalRequest:
       HandleUpdateIntervalRequest(payload, response);
@@ -402,37 +403,43 @@ void VaultManager::HandleVaultIdentityRequest(const std::string& request, std::s
                                  vault_identity_response.SerializeAsString());
 }
 
-void VaultManager::HandleVaultShutdownQuery(const std::string& request, std::string& response) {
-  protobuf::VaultShutdownQuery vault_shutdown_query;
-  if (!vault_shutdown_query.ParseFromString(request) || !vault_shutdown_query.IsInitialized()) {
+void VaultManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
+  protobuf::StopVaultRequest stop_vault_request;
+  if (!stop_vault_request.ParseFromString(request) || !stop_vault_request.IsInitialized()) {
     // Silently drop
-    LOG(kError) << "Failed to parse VaultShutdownQuery.";
+    LOG(kError) << "Failed to parse StopVaultRequest.";
     return;
   }
 
-  protobuf::VaultShutdownResponse vault_shutdown_response;
+  protobuf::StopVaultResponse stop_vault_response;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(std::find_if(vault_infos_.begin(),
                         vault_infos_.end(),
-                        [&vault_shutdown_query](const std::shared_ptr<VaultInfo>& vault_info) {
-                          return vault_info->process_index == vault_shutdown_query.process_index();
+                        [&stop_vault_request](const std::shared_ptr<VaultInfo>& vault_info) {
+                          return vault_info->keys.identity == stop_vault_request.identity();
+                          // TODO(Fraser#5#): 2012-08-16 - Check client port is same as peer_port for this request
                         }));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with process_index " << vault_shutdown_query.process_index()
+    LOG(kError) << "Vault with identity " << HexSubstr(stop_vault_request.identity())
                 << " hasn't been added.";
-    vault_shutdown_response.set_shutdown(false);
+    stop_vault_response.set_result(false);
+  } else if (!asymm::Validate(stop_vault_request.data(),
+                              stop_vault_request.signature(),
+                              (*itr)->keys.public_key)) {
+    LOG(kError) << "Vault with identity " << HexSubstr(stop_vault_request.identity())
+                << " hasn't been added.";
+    stop_vault_response.set_result(false);
   } else {
-    vault_shutdown_response.set_shutdown(shutdown_requested_);
+    stop_vault_response.set_result(true);
   }
 
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
-                                 vault_shutdown_response.SerializeAsString());
+                                 stop_vault_response.SerializeAsString());
 
-  if (shutdown_requested_) {
-    LOG(kInfo) << "Shutting down vault with process_index " << vault_shutdown_query.process_index();
+  LOG(kInfo) << "Shutting down vault with identity " << HexSubstr(stop_vault_request.identity());
+  StopVault(stop_vault_request.identity());
                                                     // TODO(Fraser#5#): 2012-08-13 - Do we need this cond_var_ call?
-    cond_var_.notify_all();
-  }
+  cond_var_.notify_all();
 }
 
 void VaultManager::HandleUpdateIntervalRequest(const std::string& request, std::string& response) {
@@ -574,14 +581,13 @@ bool VaultManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / kConfigFileName();
 }
 
-ProcessIndex VaultManager::GetProcessIndexFromAccountName(const std::string& account_name) const {
-  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(vault_infos_.begin(),
-                        vault_infos_.end(),
-                        [account_name](const std::shared_ptr<VaultInfo>& vault_info) {
-                          return vault_info->account_name == account_name;
-                        }));
-  return (itr == vault_infos_.end()) ? 0 : (*itr)->process_index;
+std::vector<std::shared_ptr<VaultManager::VaultInfo>>::const_iterator
+    VaultManager::FindFromIdentity(const std::string& identity) const {
+  return std::find_if(vault_infos_.begin(),
+                      vault_infos_.end(),
+                      [identity](const std::shared_ptr<VaultInfo>& vault_info) {
+                        return vault_info->keys.identity == identity;
+                      });
 }
 
 ProcessIndex VaultManager::AddVaultToProcesses(const std::string& chunkstore_path,
@@ -608,25 +614,27 @@ ProcessIndex VaultManager::AddVaultToProcesses(const std::string& chunkstore_pat
   return process_manager_.AddProcess(process, local_port_);
 }
 
-void VaultManager::RestartVault(const std::string& account_name) {
-  ProcessIndex process_index(GetProcessIndexFromAccountName(account_name));
-  if (process_index == 0) {
-    LOG(kError) << "Vault with account name " << HexSubstr(account_name) << " hasn't been added.";
+void VaultManager::RestartVault(const std::string& identity) {
+  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+  auto itr(FindFromIdentity(identity));
+  if (itr == vault_infos_.end()) {
+    LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
     return;
   }
-  process_manager_.RestartProcess(process_index);
+  process_manager_.RestartProcess((*itr)->process_index);
 }
 
-void VaultManager::StopVault(const std::string& account_name) {
-  ProcessIndex process_index(GetProcessIndexFromAccountName(account_name));
-  if (process_index == 0) {
-    LOG(kError) << "Vault with account name " << HexSubstr(account_name) << " hasn't been added.";
+void VaultManager::StopVault(const std::string& identity) {
+  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+  auto itr(FindFromIdentity(identity));
+  if (itr == vault_infos_.end()) {
+    LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
     return;
   }
-  process_manager_.StopProcess(process_index);
-
-  // TODO(Fraser#5#): 2012-08-13 - set vault_info->requested_to_run to false and call WriteConfig()
-  //                               if client requested vault to stop.
+  process_manager_.StopProcess((*itr)->process_index);
+                  // TODO(Fraser#5#): 2012-08-16 - Need to send VaultShutdownRequest here and block until response arrives?
+  (*itr)->requested_to_run = false;
+  WriteConfigFile();
 }
 
 //  void VaultManager::EraseVault(const std::string& account_name) {

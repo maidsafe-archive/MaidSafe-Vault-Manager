@@ -48,9 +48,11 @@ enum class MessageType {
   kPing = 1,
   kStartVaultRequest,
   kStartVaultResponse,
+  kStopVaultRequest,
+  kStopVaultResponse,
   kVaultIdentityRequest,
   kVaultIdentityResponse,
-  kVaultShutdownQuery,
+  kVaultShutdownRequest,
   kVaultShutdownResponse,
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
@@ -84,7 +86,7 @@ class VaultManager {
     asymm::Keys keys;
     std::string chunkstore_path;
     uintmax_t chunkstore_capacity;
-    uint16_t port;
+    uint16_t client_port, vault_port;
     std::mutex mutex;
     std::condition_variable cond_var;
     bool requested_to_run;
@@ -107,7 +109,7 @@ class VaultManager {
   void HandlePing(const std::string& request, std::string& response);
   void HandleStartVaultRequest(const std::string& request, std::string& response);
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
-  void HandleVaultShutdownQuery(const std::string& request, std::string& response);
+  void HandleStopVaultRequest(const std::string& request, std::string& response);
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
   bool SetUpdateInterval(const boost::posix_time::time_duration& update_interval);
@@ -119,13 +121,13 @@ class VaultManager {
 
   // General
   bool InTestMode() const;
-  ProcessIndex GetProcessIndexFromAccountName(const std::string& account_name) const;
+  std::vector<std::shared_ptr<VaultInfo>>::const_iterator FindFromIdentity(const std::string& identity) const;
   ProcessIndex AddVaultToProcesses(const std::string& chunkstore_path,
                                    const uintmax_t& chunkstore_capacity,
                                    const std::string& bootstrap_endpoint);
-  void RestartVault(const std::string& account_name);
-  void StopVault(const std::string& account_name);
-//  void EraseVault(const std::string& account_name);
+  void RestartVault(const std::string& identity);
+  void StopVault(const std::string& identity);
+//  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
   static std::string kVaultManagerName() { return "vault-manager"; }

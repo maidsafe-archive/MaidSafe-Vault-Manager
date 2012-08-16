@@ -43,20 +43,18 @@ class VaultController {
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
   void RequestVaultIdentity();
-  void HandleVaultIdentityResponse(const std::string& message, TransportPtr transport);
-  void QueryShutdown();
-  void HandleVaultShutdownResponse(const std::string& message, TransportPtr transport);
+  void HandleVaultIdentityResponse(const std::string& message,
+                                   std::mutex& mutex,
+                                   std::condition_variable& cond_var);
+  void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
+  void HandleVaultShutdownRequest(const std::string& request, std::string& response);
 
   uint32_t process_index_;
   uint16_t vault_manager_port_;
   AsioService asio_service_;
+  TransportPtr receiving_transport_;
   asymm::Keys keys_;
   std::string account_name_;
-  bool info_received_;
-  std::mutex mutex_, shutdown_mutex_;
-  std::condition_variable cond_var_, shutdown_cond_var_;
-  bool check_finished_;
-  bool shutdown_confirmed_;
   std::function<void()> stop_callback_;
 };
 

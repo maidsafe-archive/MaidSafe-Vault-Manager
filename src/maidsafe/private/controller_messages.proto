@@ -38,20 +38,32 @@ message VaultIdentityResponse {
   required bytes keys = 2;
 }
 
-// VaultManager receives this periodically from Vault (polling to see whether to keep running).
-//  Vault expects a VaultShutdownResponse.
-message VaultShutdownQuery {
+// VaultManager receives this from Client and it will then stop vault with keys.identity == identity
+message StopVaultRequest {
+  required bytes data = 1;
+  required bytes signature = 2;
+  required bytes identity = 3;
+}
+
+// VaultManager sends this in response to a StopVaultRequest. It details whether or not the
+// stopping of the vault was successful.
+message StopVaultResponse {
+  required bool result = 1;
+}
+
+// VaultManager sends this to Vault
+message VaultShutdownRequest {
   required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
-// VaultManager sends this to a requesting Vault. It contains a boolean incdicating whether or not
-// the vault should shut down.
+// Vault replies with this to a requesting VaultManager. It contains a boolean incdicating whether or not
+// the vault is shutting down.
 message VaultShutdownResponse {
   required bool shutdown = 1;
 }
 
 // Client sends this to VaultManager.  If the new_update_interval is set, the request is a setter,
-// otherwise it's a getter.  The 
+// otherwise it's a getter.
 message UpdateIntervalRequest {
   optional uint32 new_update_interval = 1;  // In seconds.
 }

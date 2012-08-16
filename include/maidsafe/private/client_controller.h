@@ -80,8 +80,9 @@ class ClientController {
       uint16_t vault_manager_port,
       std::shared_ptr<boost::signals2::connection> on_message_received_connection,
       std::shared_ptr<boost::signals2::connection> on_error_connection);
-  void HandleStartVaultResponse(const std::string& message,
-                                const std::function<void(bool)>& callback);  // NOLINT
+  template<typename ResponseType>
+  void HandleStartStopVaultResponse(const std::string& message,
+                                    const std::function<void(bool)>& callback);  // NOLINT
   boost::posix_time::time_duration SetOrGetUpdateInterval(
       const boost::posix_time::time_duration& update_interval);
   void HandleUpdateIntervalResponse(
