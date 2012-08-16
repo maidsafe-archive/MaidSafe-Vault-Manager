@@ -29,7 +29,7 @@ namespace priv {
 
 VaultController::VaultController() : process_index_(),
                                      vault_manager_port_(0),
-                                     asio_service_(2),
+                                     asio_service_(3),
                                      keys_(),
                                      account_name_(),
                                      info_received_(false),
@@ -49,7 +49,7 @@ void VaultController::RequestVaultIdentity() {
   vault_identity_request.set_process_index(process_index_);
   TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
   transport->on_message_received().connect(
-      [this, transport](const std::string& message, std::string& /*response*/) {
+      [this, transport](const std::string& message, Port /*vault_manager_port*/) {
         HandleVaultIdentityResponse(message, transport);
       });
   transport->on_error().connect([](const int& error) {
@@ -59,8 +59,7 @@ void VaultController::RequestVaultIdentity() {
   LOG(kVerbose) << "Sending request for vault identity to port " << vault_manager_port_;
   transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
                                       vault_identity_request.SerializeAsString()),
-                  vault_manager_port_,
-                  boost::posix_time::seconds(1));
+                  vault_manager_port_);
 }
 
 void VaultController::HandleVaultIdentityResponse(const std::string& message,
@@ -75,7 +74,8 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message,
   }
 
   protobuf::VaultIdentityResponse vault_identity_response;
-  if (!vault_identity_response.ParseFromString(payload)) {
+  if (!vault_identity_response.ParseFromString(payload) ||
+      !vault_identity_response.IsInitialized()) {
     LOG(kError) << "Failed to parse VaultIdentityResponse.";
     info_received_ = false;
     return;
@@ -104,7 +104,7 @@ void VaultController::QueryShutdown() {
   vault_shutdown_query.set_process_index(process_index_);
   TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
   transport->on_message_received().connect(
-      [this, transport](const std::string& message, std::string& /*response*/) {
+      [this, transport](const std::string& message, Port /*vault_manager_port*/) {
         HandleVaultShutdownResponse(message, transport);
       });
   transport->on_error().connect([](const int& error) {
@@ -114,8 +114,7 @@ void VaultController::QueryShutdown() {
   LOG(kVerbose) << "Sending shutdown query to port " << vault_manager_port_;
   transport->Send(detail::WrapMessage(MessageType::kVaultShutdownQuery,
                                       vault_shutdown_query.SerializeAsString()),
-                  vault_manager_port_,
-                  boost::posix_time::seconds(1));
+                  vault_manager_port_);
 }
 
 void VaultController::HandleVaultShutdownResponse(const std::string& message,
@@ -128,7 +127,8 @@ void VaultController::HandleVaultShutdownResponse(const std::string& message,
   }
 
   protobuf::VaultShutdownResponse vault_shutdown_response;
-  if (!vault_shutdown_response.ParseFromString(payload)) {
+  if (!vault_shutdown_response.ParseFromString(payload) ||
+      !vault_shutdown_response.IsInitialized()) {
     LOG(kError) << "Failed to parse VaultShutdownResponse.";
     return;
   }

@@ -43,14 +43,8 @@ LocalTcpTransport::~LocalTcpTransport() {
 
 int LocalTcpTransport::StartListening(Port port) {
   if (acceptor_.is_open()) {
-    LOG(kError) << "Already listening on port " << acceptor_.local_endpoint().port();
+    LOG(kError) << "Already listening on port " << port;
     return kAlreadyStarted;
-  }
-
-  if (port < kMinPort() || port > kMaxPort()) {
-    LOG(kError) << "Can't listen on port " << port << " - must be between " << kMinPort() << " and "
-                << kMaxPort();
-    return kInvalidPort;
   }
 
   ip::tcp::endpoint endpoint(ip::address_v4::loopback(), port);
@@ -90,7 +84,7 @@ int LocalTcpTransport::StartListening(Port port) {
     return kListenError;
   }
 
-  ConnectionPtr new_connection(new TcpConnection(shared_from_this(), ip::tcp::endpoint()));
+  ConnectionPtr new_connection(new TcpConnection(shared_from_this()));
 
   // The connection object is kept alive in the acceptor handler until HandleAccept() is called.
   acceptor_.async_accept(new_connection->Socket(),
@@ -120,20 +114,27 @@ void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
     connection->StartReceiving();
   }
 
-  ConnectionPtr new_connection(new TcpConnection(shared_from_this(),
-                                                 boost::asio::ip::tcp::endpoint()));
+  ConnectionPtr new_connection(new TcpConnection(shared_from_this()));
 
   // The connection object is kept alive in the acceptor handler until
   // HandleAccept() is called.
   acceptor.async_accept(new_connection->Socket(),
-                         strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept,
-                                                shared_from_this(), std::ref(acceptor),
-                                                new_connection, args::_1)));
+                        strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept,
+                                               shared_from_this(), std::ref(acceptor),
+                                               new_connection, args::_1)));
 }
 
-void LocalTcpTransport::Send(const std::string& data,
-                             Port port,
-                             const boost::posix_time::time_duration& timeout) {
+int LocalTcpTransport::Connect(Port server_port) {
+  if (acceptor_.is_open())
+    return kAlreadyStarted;
+  ConnectionPtr connection(new TcpConnection(shared_from_this()));
+  int result(connection->Connect(server_port));
+  if (result == kSuccess)
+    InsertConnection(connection);
+  return result;
+}
+
+void LocalTcpTransport::Send(const std::string& data, Port port) {
   DataSize msg_size(static_cast<DataSize>(data.size()));
   if (msg_size > kMaxTransportMessageSize()) {
     LOG(kError) << "Data size " << msg_size << " bytes (exceeds limit of "
@@ -141,10 +142,21 @@ void LocalTcpTransport::Send(const std::string& data,
     on_error_(kMessageSizeTooLarge);
     return;
   }
-  ConnectionPtr connection(new TcpConnection(shared_from_this(),
-                                             ip::tcp::endpoint(ip::address_v4::loopback(), port)));
-  InsertConnection(connection);
-  connection->StartSending(data, timeout);
+  strand_.dispatch(std::bind(&LocalTcpTransport::DoSend, shared_from_this(), data, port));
+}
+
+void LocalTcpTransport::DoSend(const std::string& data, Port port) {
+  auto itr(std::find_if(connections_.begin(),
+                        connections_.end(),
+                        [port](ConnectionPtr connection) {
+                          return connection->Socket().remote_endpoint().port() == port;
+                        }));
+  if (itr == connections_.end()) {
+    LOG(kError) << "Not connected to port " << port;
+    on_error_(kInvalidAddress);
+  } else {
+    (*itr)->StartSending(data);
+  }
 }
 
 void LocalTcpTransport::InsertConnection(ConnectionPtr connection) {

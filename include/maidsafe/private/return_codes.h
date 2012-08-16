@@ -47,16 +47,16 @@ enum ReturnCode {
 
   // Transport
   kAlreadyStarted = -350001,
-  kInvalidPort = -350002,
-  kInvalidAddress = -350003,
-  kSetOptionFailure = -350004,
-  kBindError = -350005,
-  kListenError = -350006,
-  kMessageSizeTooLarge = -350007,
-  kReceiveFailure = -350008,
-  kReceiveTimeout = -350009,
-  kSendFailure = -350010,
-  kSendTimeout = -350011
+  kInvalidAddress = -350002,
+  kSetOptionFailure = -350003,
+  kBindError = -350004,
+  kListenError = -350005,
+  kMessageSizeTooLarge = -350006,
+  kReceiveFailure = -350007,
+  kReceiveTimeout = -350008,
+  kSendFailure = -350009,
+  kSendTimeout = -350010,
+  kConnectFailure = -350011
 };
 
 }  // namespace priv

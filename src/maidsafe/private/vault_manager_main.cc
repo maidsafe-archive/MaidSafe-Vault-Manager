@@ -102,7 +102,7 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   try {
-    maidsafe::priv::VaultManager vault_manager("");
+    maidsafe::priv::VaultManager vault_manager;
     boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -143,7 +143,7 @@ int main() {
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   {
-    maidsafe::priv::VaultManager vault_manager("");
+    maidsafe::priv::VaultManager vault_manager;
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }

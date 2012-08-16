@@ -153,9 +153,10 @@ Platform kThisPlatform() {
 }
 
 
-std::string WrapMessage(const MessageType& message_type, const std::string& payload) {
+std::string WrapMessage(const MessageType& message_type,
+                        const std::string& payload) {
   protobuf::WrapperMessage wrapper_message;
-  wrapper_message.set_msg_type(static_cast<int>(message_type));
+  wrapper_message.set_type(static_cast<int>(message_type));
   wrapper_message.set_payload(payload);
   return wrapper_message.SerializeAsString();
 }
@@ -165,7 +166,7 @@ bool UnwrapMessage(const std::string& wrapped_message,
                    std::string& payload) {
   protobuf::WrapperMessage wrapper;
   if (wrapper.ParseFromString(wrapped_message) && wrapper.IsInitialized()) {
-    message_type = static_cast<MessageType>(wrapper.msg_type());
+    message_type = static_cast<MessageType>(wrapper.type());
     payload = wrapper.payload();
     return true;
   } else {
@@ -362,8 +363,8 @@ bool ParseVmidParameter(const std::string& vault_manager_identifier,
     return do_fail();
   }
 
-  if (vault_manager_port < LocalTcpTransport::kMinPort() ||
-      vault_manager_port > LocalTcpTransport::kMaxPort()) {
+  if (vault_manager_port < VaultManager::kMinPort() ||
+      vault_manager_port > VaultManager::kMaxPort()) {
     LOG(kError) << "Invalid Vault Manager port " << vault_manager_port;
     return do_fail();
   }

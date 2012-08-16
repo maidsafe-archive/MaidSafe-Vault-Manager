@@ -51,7 +51,11 @@ enum class MessageType {
   kVaultIdentityRequest,
   kVaultIdentityResponse,
   kVaultShutdownQuery,
-  kVaultShutdownResponse
+  kVaultShutdownResponse,
+  kUpdateIntervalRequest,
+  kUpdateIntervalResponse,
+  kNewVersionAvailable,
+  kNewVersionAvailableAck
 };
 
 // The VaultManager has several responsibilities:
@@ -61,9 +65,11 @@ enum class MessageType {
 // * Regularly checks for (and downloads) updated client or vault executables.
 class VaultManager {
  public:
-  explicit VaultManager(const std::string& parent_path);
+  VaultManager();
   ~VaultManager();
   static std::string kConfigFileName() { return "config-global.dat"; }
+  static uint16_t kMinPort() { return 5483; }
+  static uint16_t kMaxPort() { return 5582; }
                                     // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
   static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
@@ -78,7 +84,7 @@ class VaultManager {
     asymm::Keys keys;
     std::string chunkstore_path;
     uintmax_t chunkstore_capacity;
-                                                                                          //  uint16_t client_port;
+    uint16_t port;
     std::mutex mutex;
     std::condition_variable cond_var;
     bool requested_to_run;
@@ -97,18 +103,19 @@ class VaultManager {
 
   // Client and vault request handling
   void ListenForMessages();
-  void HandleRequest(const std::string& request, std::string& response);
+  void HandleReceivedMessage(const std::string& message, uint16_t peer_port);
   void HandlePing(const std::string& request, std::string& response);
   void HandleStartVaultRequest(const std::string& request, std::string& response);
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultShutdownQuery(const std::string& request, std::string& response);
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
-  void HandleSetUpdateInterval(const std::string& request, std::string& response);
-  void HandleGetUpdateInterval(const std::string& request, std::string& response);
+  void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
+  bool SetUpdateInterval(const boost::posix_time::time_duration& update_interval);
+  boost::posix_time::time_duration GetUpdateInterval() const;
 
   // Update handling
   std::string FindLatestLocalVersion(const std::string& application) const;
-  void ListenForUpdates(const boost::system::error_code& ec);
+  void CheckForUpdates(const boost::system::error_code& ec);
 
   // General
   bool InTestMode() const;
@@ -132,12 +139,11 @@ class VaultManager {
   mutable std::mutex update_mutex_;
   std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
-  std::vector<std::unique_ptr<VaultInfo>> vault_infos_;
+  std::vector<std::shared_ptr<VaultInfo>> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
   std::condition_variable cond_var_;
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
-  std::string parent_path_;
   boost::filesystem::path config_file_path_;
 };
 

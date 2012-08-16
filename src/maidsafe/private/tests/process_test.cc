@@ -13,14 +13,18 @@
 #include <string>
 #include <vector>
 
+#include "boost/filesystem/path.hpp"
+
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/process_manager.h"
+#include "maidsafe/private/utils.h"
 
-namespace {
-std::string g_parent_path;
-}  // unnamed namespace
+
+namespace fs = boost::filesystem;
+
+namespace { std::string g_parent_path; }
 
 namespace maidsafe {
 
@@ -227,23 +231,19 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest()
       : process_manager_(),
-#ifdef MAIDSAFE_WIN32
-        kProcessName_("DUMMYprocess.exe"),
-#else
-        kProcessName_("DUMMYprocess"),
-#endif
-        kExecutablePath_((fs::path(g_parent_path) / kProcessName_).string()) {}
+        kProcessName_("DUMMYprocess" + detail::kThisPlatform().executable_extension()),
+        kExecutablePath_(fs::path(g_parent_path) / kProcessName_) {}
 
  protected:
   ProcessManager process_manager_;
-  const std::string kProcessName_, kExecutablePath_;
+  const std::string kProcessName_;
+  fs::path kExecutablePath_;
 };
 
 
 TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   Process test;
-  ASSERT_TRUE(test.SetProcessName(kProcessName_, g_parent_path));
-  test.AddArgument(kExecutablePath_);
+  ASSERT_TRUE(test.SetExecutablePath(kExecutablePath_));
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
@@ -358,22 +358,19 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
 
 TEST_F(ProcessManagerTest, BEH_StartThreeProcesses) {
   Process test;
-  ASSERT_TRUE(test.SetProcessName(kProcessName_, g_parent_path));
-  test.AddArgument(kExecutablePath_);
+  ASSERT_TRUE(test.SetExecutablePath(kExecutablePath_));
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
 
   Process test1;
-  ASSERT_TRUE(test1.SetProcessName(kProcessName_, g_parent_path));
-  test1.AddArgument(kExecutablePath_);
+  ASSERT_TRUE(test1.SetExecutablePath(kExecutablePath_));
   test1.AddArgument("--runtime");
   test1.AddArgument("2");
   test1.AddArgument("--nocrash");
 
   Process test2;
-  ASSERT_TRUE(test2.SetProcessName(kProcessName_, g_parent_path));
-  test2.AddArgument(kExecutablePath_);
+  ASSERT_TRUE(test2.SetExecutablePath(kExecutablePath_));
   test2.AddArgument("--runtime");
   test2.AddArgument("2");
   test2.AddArgument("--nocrash");
@@ -410,8 +407,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   std::vector<Process> processes_5, processes_10;
   for (int i(0); i < 5; ++i) {
     Process test_5;
-    ASSERT_TRUE(test_5.SetProcessName(kProcessName_, g_parent_path));
-    test_5.AddArgument(kExecutablePath_);
+    ASSERT_TRUE(test_5.SetExecutablePath(kExecutablePath_));
     test_5.AddArgument("--runtime");
     test_5.AddArgument("5");
     test_5.AddArgument("--nocrash");
@@ -419,8 +415,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   }
   for (int i(0); i < 5; ++i) {
     Process test_10;
-    ASSERT_TRUE(test_10.SetProcessName(kProcessName_, g_parent_path));
-    test_10.AddArgument(kExecutablePath_);
+    ASSERT_TRUE(test_10.SetExecutablePath(kExecutablePath_));
     test_10.AddArgument("--runtime");
     test_10.AddArgument("10");
     test_10.AddArgument("--nocrash");
@@ -505,6 +500,6 @@ int main(int argc, char **argv) {
   maidsafe::log::FilterMap filter;
   fs::path full_path(argv[0]);
   g_parent_path = full_path.parent_path().string();
-  filter["*"] = maidsafe::log::kInfo;
+  filter["*"] = maidsafe::log::kVerbose;
   return ExecuteMain(argc, argv, filter);
 }

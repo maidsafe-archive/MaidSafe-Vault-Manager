@@ -45,9 +45,7 @@ namespace maidsafe {
 
 namespace priv {
 
-bool Process::SetProcessName(const std::string& name, const std::string& parent_path) {
-  std::string path_string(parent_path.empty() ? fs::current_path().string() : parent_path);
-  fs::path executable_path(fs::path(parent_path) / name);
+bool Process::SetExecutablePath(const fs::path& executable_path) {
   boost::system::error_code ec;
   if (!fs::exists(executable_path, ec) || ec) {
     LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
@@ -63,6 +61,7 @@ bool Process::SetProcessName(const std::string& name, const std::string& parent_
   }
   LOG(kInfo) << "Executable found at " << executable_path.string();
   name_ = executable_path.string();
+  args_.push_back(name_);
   return true;
 }
 
@@ -96,6 +95,10 @@ ProcessManager::~ProcessManager() {
 }
 
 ProcessIndex ProcessManager::AddProcess(Process process, Port port) {
+  if (process.name().empty()) {
+    LOG(kError) << "Invalid process - executable path empty.";
+    return kInvalidIndex();
+  }
   ProcessInfo info;
   info.index = ++current_max_id_;
   info.done = false;
@@ -182,8 +185,14 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   context.environment = bp::self::get_environment();
   context.stderr_behavior = bp::capture_stream();
   context.stdout_behavior = bp::capture_stream();
-
-  bp::child child(bp::launch(process_name, process_args, context));
+  bp::child child;
+  try {
+    child = bp::child(bp::launch(process_name, process_args, context));
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << "Failed to launch " << process_name << "  : " << e.what();
+    return;
+  }
 
   bp::pistream& stdout_stream = child.get_stdout();
   bp::pistream& stderr_stream = child.get_stderr();

@@ -30,9 +30,9 @@ namespace priv {
 
 class TcpConnection;
 
-typedef boost::signals2::signal<void(const std::string&, std::string&)> OnMessageReceived;
-typedef boost::signals2::signal<void(const int&)> OnError;
 typedef uint16_t Port;
+typedef boost::signals2::signal<void(const std::string&, Port)> OnMessageReceived;
+typedef boost::signals2::signal<void(const int&)> OnError;
 
 
 #ifdef __GNUC__
@@ -51,14 +51,11 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   ~LocalTcpTransport();
   int StartListening(Port port);
   void StopListening();
-  void Send(const std::string& data,
-            Port port,
-            const boost::posix_time::time_duration& timeout);
+  int Connect(Port server_port);
+  void Send(const std::string& data, Port port);
   OnMessageReceived& on_message_received() { return on_message_received_; }
   OnError& on_error() { return on_error_; }
   static DataSize kMaxTransportMessageSize() { return 67108864; }
-  static Port kMinPort() { return 5483; }
-  static Port kMaxPort() { return 5582; }
 
   friend class TcpConnection;
 
@@ -72,6 +69,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
                     ConnectionPtr connection,
                     const boost::system::error_code& ec);
+  void DoSend(const std::string& data, Port port);
 
   void InsertConnection(ConnectionPtr connection);
   void DoInsertConnection(ConnectionPtr connection);

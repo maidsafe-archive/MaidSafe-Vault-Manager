@@ -39,15 +39,15 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 #endif
 
  public:
-  TcpConnection(const std::shared_ptr<LocalTcpTransport>& local_tcp_transport,
-                const boost::asio::ip::tcp::endpoint& remote);
-  ~TcpConnection();
+  explicit TcpConnection(const std::shared_ptr<LocalTcpTransport>& local_tcp_transport);
+  ~TcpConnection() {}
 
-  boost::asio::ip::tcp::socket &Socket();
-
+  int Connect(const uint16_t& remote_port);
   void Close();
   void StartReceiving();
-  void StartSending(const std::string& data, const boost::posix_time::time_duration& timeout);
+  void StartSending(const std::string& data);
+
+  boost::asio::ip::tcp::socket &Socket() { return socket_; }
 
  private:
   TcpConnection(const TcpConnection&);
@@ -55,27 +55,10 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 
   // Maximum number of bytes to read at a time
   static int32_t kMaxTransportChunkSize() { return 65536; }
-  // Default timeout for RPCs
-  static boost::posix_time::time_duration kDefaultTimeout() {
-    return boost::posix_time::seconds(10);
-  }
-  // Minimum timeout if being calculated dynamically
-  static boost::posix_time::time_duration kMinTimeout() {
-    return boost::posix_time::milliseconds(500);
-  }
-  // Factor of message size used to calculate timeout dynamically
-  static float kTimeoutFactor() { return 0.01f; }
-  // Maximum period of inactivity on a send or receive before timeout triggered
-  static boost::posix_time::time_duration kStallTimeout() { return boost::posix_time::seconds(3); }
 
   void DoClose();
   void DoStartReceiving();
   void DoStartSending();
-
-  void CheckTimeout(const boost::system::error_code& ec);
-
-  void StartConnect();
-  void HandleConnect(const boost::system::error_code& ec);
 
   void StartReadSize();
   void HandleReadSize(const boost::system::error_code& ec);
@@ -88,17 +71,12 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 
   void DispatchMessage();
   void EncodeData(const std::string& data);
-  void CloseOnError(const int& error);
 
   std::weak_ptr<LocalTcpTransport> transport_;
   boost::asio::io_service::strand strand_;
   boost::asio::ip::tcp::socket socket_;
-  boost::asio::deadline_timer timer_;
-  boost::posix_time::ptime response_deadline_;
-  boost::asio::ip::tcp::endpoint remote_endpoint_;
   std::vector<unsigned char> size_buffer_, data_buffer_;
   size_t data_size_, data_received_;
-  boost::posix_time::time_duration timeout_for_response_;
 };
 
 }  // namespace priv

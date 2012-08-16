@@ -12,128 +12,202 @@
 #include "maidsafe/private/client_controller.h"
 
 #include <chrono>
+#include <limits>
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/controller_messages_pb.h"
 #include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/utils.h"
 #include "maidsafe/private/vault_manager.h"
 
+
+namespace bptime = boost::posix_time;
+namespace bs2 = boost::signals2;
 
 namespace maidsafe {
 
 namespace priv {
 
-ClientController::ClientController() : vault_manager_port_(LocalTcpTransport::kMinPort() - 1),
-                                       asio_service_(2),
-                                       mutex_(),
-                                       cond_var_(),
-                                       state_(kInitialising) {
+ClientController::ClientController()
+    : vault_manager_port_(VaultManager::kMinPort() - 1),
+      asio_service_(3),
+      receiving_transport_(new LocalTcpTransport(asio_service_.service())),
+      on_new_version_available_(),
+      mutex_(),
+      cond_var_(),
+      state_(kInitialising) {
   asio_service_.Start();
-  PingVaultManager();
+  ConnectToVaultManager();
 }
 
 ClientController::~ClientController() {
+  receiving_transport_.reset();
   asio_service_.Stop();
 }
 
-void ClientController::PingVaultManager() {
-  Port vault_manager_port;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kInitialising) {
-      LOG(kWarning) << "Not in initialising state.";
-      return;
-    }
-    vault_manager_port = ++vault_manager_port_;
-    if (vault_manager_port > LocalTcpTransport::kMaxPort()) {
-      state_ = kFailed;
-      LOG(kError) << "Could not connect to any port in range "
-                  << LocalTcpTransport::kMinPort() << " to " << LocalTcpTransport::kMaxPort();
-      cond_var_.notify_all();
-      return;
-    }
+void ClientController::ConnectToVaultManager() {
+  vault_manager_port_ = VaultManager::kMinPort() - 1;
+  std::string random_data(RandomAlphaNumericString(64));
+  std::shared_ptr<bs2::connection> on_message_received_connection(new bs2::connection);
+  std::shared_ptr<bs2::connection> on_error_connection(new bs2::connection);
+  *on_message_received_connection = receiving_transport_->on_message_received().connect(
+          [=](const std::string& message, Port vault_manager_port) {
+            HandlePingResponse(random_data, message, vault_manager_port,
+                               on_message_received_connection, on_error_connection);
+          });
+  *on_error_connection = receiving_transport_->on_error().connect(
+          [=](const int& error) {
+            LOG(kError) << "Transport reported error code " << error;
+            PingVaultManager(random_data, on_message_received_connection, on_error_connection);
+          });
+  PingVaultManager(random_data, on_message_received_connection, on_error_connection);
+
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (!cond_var_.wait_for(lock,
+                          std::chrono::seconds(3),
+                          [&] { return state_ != kInitialising; })) {
+    LOG(kError) << "Timed out waiting for ClientController initialisation.";
   }
-
-  protobuf::Ping ping;
-  ping.set_ping("");
-  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
-  transport->on_message_received().connect(
-      [this, transport](const std::string& message, std::string& /*response*/) {
-        HandlePingResponse(message, transport);
-      });
-  transport->on_error().connect([this, transport](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-    PingVaultManager();
-  });
-
-  LOG(kVerbose) << "Sending ping to port " << vault_manager_port;
-  transport->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
-                  vault_manager_port,
-                  boost::posix_time::seconds(1));
+  if (state_ != kVerified) {
+    LOG(kError) << "ClientController is uninitialised.";
+  }
 }
 
-void ClientController::HandlePingResponse(const std::string& message, TransportPtr /*transport*/) {
+void ClientController::PingVaultManager(
+    const std::string& random_data,
+    std::shared_ptr<bs2::connection> on_message_received_connection,
+    std::shared_ptr<bs2::connection> on_error_connection) {
+  while (receiving_transport_->Connect(++vault_manager_port_) != kSuccess) {
+    if (vault_manager_port_ == VaultManager::kMaxPort()) {
+      LOG(kError) << "ClientController failed to connect to VaultManager on all ports in range "
+                  << VaultManager::kMinPort() << " to " << VaultManager::kMaxPort();
+      on_message_received_connection->disconnect();
+      on_error_connection->disconnect();
+      std::lock_guard<std::mutex> lock(mutex_);
+      state_ = kFailed;
+      return cond_var_.notify_one();
+    }
+  }
+  protobuf::Ping ping;
+  ping.set_ping(random_data);
+  LOG(kVerbose) << "Sending ping to port " << vault_manager_port_;
+  receiving_transport_->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
+                             vault_manager_port_);
+}
+
+void ClientController::HandlePingResponse(
+    const std::string& data_sent,
+    const std::string& message,
+    Port /*vault_manager_port*/,
+    std::shared_ptr<bs2::connection> on_message_received_connection,
+    std::shared_ptr<bs2::connection> on_error_connection) {
   MessageType type;
   std::string payload;
+
   if (!detail::UnwrapMessage(message, type, payload)) {
     LOG(kError) << "Failed to handle incoming message.";
-    return PingVaultManager();
+    return PingVaultManager(data_sent, on_message_received_connection, on_error_connection);
   }
 
   protobuf::Ping ping;
-  if (!ping.ParseFromString(payload)) {
+  if (!ping.ParseFromString(payload) || !ping.IsInitialized()) {
     LOG(kError) << "Failed to parse Ping.";
-    return PingVaultManager();
+    return PingVaultManager(data_sent, on_message_received_connection, on_error_connection);
+  }
+
+  if (ping.ping() != data_sent) {
+    LOG(kError) << "Ping response didn't contain original data sent.";
+    return PingVaultManager(data_sent, on_message_received_connection, on_error_connection);
   }
 
   std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
   LOG(kSuccess) << "Successfully connected to VaultManager on port " << vault_manager_port_;
-  cond_var_.notify_all();
+
+  // Success - disconnect current slots and connect service functions
+  on_message_received_connection->disconnect();
+  on_error_connection->disconnect();
+  receiving_transport_->on_message_received().connect(
+      [this](const std::string& message, Port vault_manager_port) {
+        HandleReceivedRequest(message, vault_manager_port);
+      });
+  receiving_transport_->on_error().connect([](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+  });
+
+  cond_var_.notify_one();
 }
 
-void ClientController::StartVaultRequest(const std::string& account_name,
-                                         const asymm::Keys& keys,
-                                         const boost::asio::ip::udp::endpoint& bootstrap_endpoint,
-                                         const std::function<void(bool)>& callback) {  // NOLINT
+bool ClientController::StartVault(const asymm::Keys& keys,
+                                  const std::string& account_name,
+                                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ != kVerified) {
+      LOG(kError) << "Not connected to VaultManager.";
+      return false;
+    }
+  }
+
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name);
   std::string serialised_keys;
   if (!asymm::SerialiseKeys(keys, serialised_keys)) {
     LOG(kError) << "Failed to serialise keys.";
-    return callback(false);
+    return false;
   }
   start_vault_request.set_keys(serialised_keys);
-  if (bootstrap_endpoint.address().is_unspecified()) {
+  if (!bootstrap_endpoint.address().is_unspecified()) {
     start_vault_request.set_bootstrap_endpoint(
         bootstrap_endpoint.address().to_string() + ":" +
         boost::lexical_cast<std::string>(bootstrap_endpoint.port()));
     LOG(kVerbose) << "Setting bootstrap endpoint to " << start_vault_request.bootstrap_endpoint();
   }
 
-  TransportPtr transport(new LocalTcpTransport(asio_service_.service()));
-  transport->on_message_received().connect(
-      [this, transport, callback](const std::string& message, std::string& /*response*/) {
-        HandleStartVaultResponse(message, transport, callback);
+  std::function<void(bool)> callback =
+    [&](bool result) {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+      local_cond_var.notify_one();
+    };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  if (request_transport->Connect(vault_manager_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
+    return false;
+  }
+  request_transport->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+        HandleStartVaultResponse(message, callback);
       });
-  transport->on_error().connect([this, transport, callback](const int& error) {
+  request_transport->on_error().connect([this, callback](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
   });
 
-  std::lock_guard<std::mutex> lock(mutex_);
   LOG(kVerbose) << "Sending request to start vault to port " << vault_manager_port_;
-  transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
-                                      start_vault_request.SerializeAsString()),
-                  vault_manager_port_,
-                  boost::posix_time::seconds(10));
+  request_transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
+                                              start_vault_request.SerializeAsString()),
+                          vault_manager_port_);
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
+    LOG(kError) << "Timed out waiting for reply.";
+    return false;
+  }
+  if (!local_result)
+    LOG(kError) << "Failed starting vault.";
+  return local_result;
 }
 
 void ClientController::HandleStartVaultResponse(const std::string& message,
-                                                TransportPtr transport,
                                                 const std::function<void(bool)>& callback) {  // NOLINT
   MessageType type;
   std::string payload;
@@ -144,7 +218,7 @@ void ClientController::HandleStartVaultResponse(const std::string& message,
   }
 
   protobuf::StartVaultResponse start_vault_response;
-  if (!start_vault_response.ParseFromString(payload)) {
+  if (!start_vault_response.ParseFromString(payload) || !start_vault_response.IsInitialized()) {
     LOG(kError) << "Failed to parse StartVaultResponse.";
     callback(false);
     return;
@@ -153,53 +227,160 @@ void ClientController::HandleStartVaultResponse(const std::string& message,
   callback(start_vault_response.result());
 }
 
-bool ClientController::StartVault(const asymm::Keys& keys,
-                                  const std::string& account_name,
-                                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint) {
+bool ClientController::StopVault(const asymm::PlainText& /*data*/,
+                                 const asymm::Signature& /*signature*/,
+                                 const asymm::Identity& /*identity*/) {
   {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (!cond_var_.wait_for(lock,
-                            std::chrono::seconds(3),
-                            [&] { return state_ != kInitialising; })) {
-      LOG(kError) << "Timed out waiting for ClientController initialisation.";
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ != kVerified) {
+      LOG(kError) << "Not connected to VaultManager.";
       return false;
     }
+  }
+                                                                LOG(kError) << "StopVault: Not implemented.";
+  return false;
+}
+
+bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval) {
+  if (update_interval < VaultManager::kMinUpdateInterval() ||
+      update_interval > VaultManager::kMaxUpdateInterval()) {
+    LOG(kError) << "Cannot set update interval to " << update_interval << "  It must be in range ["
+                << VaultManager::kMinUpdateInterval() << ", "
+                << VaultManager::kMaxUpdateInterval() << "]";
+    return false;
+  }
+  return SetOrGetUpdateInterval(update_interval) == update_interval;
+}
+
+bptime::time_duration ClientController::GetUpdateInterval() {
+  return SetOrGetUpdateInterval(bptime::pos_infin);
+}
+
+bptime::time_duration ClientController::SetOrGetUpdateInterval(
+      const bptime::time_duration& update_interval) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (state_ != kVerified) {
-      LOG(kError) << "ClientController is uninitialised.";
-      return false;
+      LOG(kError) << "Not connected to VaultManager.";
+      return bptime::pos_infin;
     }
   }
 
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
-  bool done(false), local_result(false);
+  bptime::time_duration returned_result(bptime::neg_infin);
+  protobuf::UpdateIntervalRequest update_interval_request;
+  if (!update_interval.is_pos_infinity())
+    update_interval_request.set_new_update_interval(update_interval.total_seconds());
 
-  StartVaultRequest(account_name, keys, bootstrap_endpoint,
-                    [&](bool result) {
-                      std::lock_guard<std::mutex> lock(local_mutex);
-                      local_result = result;
-                      done = true;
-                      local_cond_var.notify_one();
-                    });
+  std::function<void(bptime::time_duration)> callback =
+      [&](bptime::time_duration update_interval) {
+        std::lock_guard<std::mutex> lock(local_mutex);
+        returned_result = update_interval;
+        local_cond_var.notify_one();
+      };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  if (request_transport->Connect(vault_manager_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
+      return bptime::pos_infin;
+  }
+  request_transport->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+        HandleUpdateIntervalResponse(message, callback);
+      });
+  request_transport->on_error().connect([this, callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(bptime::pos_infin);
+  });
 
   std::unique_lock<std::mutex> lock(local_mutex);
+  LOG(kVerbose) << "Sending request to " << (update_interval.is_pos_infinity() ? "get" : "set")
+                << " update interval to VaultManager on port " << vault_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kUpdateIntervalRequest,
+                                              update_interval_request.SerializeAsString()),
+                          vault_manager_port_);
+
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(10),
-                               [&] { return done; })) {
+                               [&] {
+                                 return !returned_result.is_neg_infinity();
+                               })) {
     LOG(kError) << "Timed out waiting for reply.";
-    return false;
+    return bptime::pos_infin;
   }
-  if (!local_result)
-    LOG(kError) << "Failed starting vault.";
-  return local_result;
+
+  if (returned_result.is_pos_infinity())
+    LOG(kError) << "Failed to " << (update_interval.is_pos_infinity() ? "get" : "set")
+                << " update interval.";
+  return returned_result;
 }
 
-bool ClientController::StopVault(const asymm::PlainText& /*data*/,
-                                 const asymm::Signature& /*signature*/,
-                                 const asymm::Identity& /*identity*/) {
-                                                                LOG(kError) << "StopVault: Not implemented.";
-  return false;
+void ClientController::HandleUpdateIntervalResponse(
+    const std::string& message,
+    const std::function<void(bptime::time_duration)>& callback) {  // NOLINT
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    callback(bptime::pos_infin);
+    return;
+  }
+
+  protobuf::UpdateIntervalResponse update_interval_response;
+  if (!update_interval_response.ParseFromString(payload) ||
+      !update_interval_response.IsInitialized()) {
+    LOG(kError) << "Failed to parse UpdateIntervalResponse.";
+    callback(bptime::pos_infin);
+    return;
+  }
+
+  if (update_interval_response.update_interval() == 0) {
+    LOG(kError) << "UpdateIntervalResponse indicates failure.";
+    callback(bptime::pos_infin);
+  } else {
+    callback(bptime::seconds(update_interval_response.update_interval()));
+  }
 }
+
+void ClientController::HandleReceivedRequest(const std::string& message, Port peer_port) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+  LOG(kVerbose) << "HandleReceivedRequest: message type " << static_cast<int>(type) << " received.";
+  std::string response;
+  switch (type) {
+    case MessageType::kNewVersionAvailable:
+      HandleNewVersionAvailable(payload, response);
+      break;
+    default:
+      return;
+  }
+  receiving_transport_->Send(response, peer_port);
+}
+
+void ClientController::HandleNewVersionAvailable(const std::string& request,
+                                                 std::string& response) {
+  protobuf::NewVersionAvailable new_version_available;
+  protobuf::NewVersionAvailableAck new_version_available_ack;
+  if (!new_version_available.ParseFromString(request) || !new_version_available.IsInitialized()) {
+    LOG(kError) << "Failed to parse NewVersionAvailable.";
+    new_version_available_ack.set_new_version_filename("");
+  } else if (!detail::TokeniseFileName(new_version_available.new_version_filename())) {
+    LOG(kError) << "New version " << new_version_available.new_version_filename()
+                << " isn't a valid MaidSafe filename.";
+    new_version_available_ack.set_new_version_filename("");
+  } else {
+    new_version_available_ack.set_new_version_filename(
+        new_version_available.new_version_filename());
+  }
+  response = detail::WrapMessage(MessageType::kNewVersionAvailableAck,
+                                 new_version_available_ack.SerializeAsString());
+}
+
 
 }  // namespace priv
 

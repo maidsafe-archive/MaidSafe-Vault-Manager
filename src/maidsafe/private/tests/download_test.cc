@@ -45,7 +45,7 @@ TEST(DownloadTest, BEH_UpdateAndVerify) {
   EXPECT_TRUE(newest_version.empty());
 
   // Test case for unsigned file
-  newest_version = download_manager.UpdateAndVerify("lifestuff_linux32_1.01.02", *test_path);
+  newest_version = download_manager.UpdateAndVerify("lifestufflocaltest_win64_4.04.06", *test_path);
   EXPECT_TRUE(newest_version.empty());
 
   // Test case for file with invalid signature

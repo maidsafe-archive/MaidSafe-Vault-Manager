@@ -14,9 +14,11 @@
 
 #include <mutex>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
+#include "boost/filesystem/path.hpp"
 #include "boost/thread/thread.hpp"
 
 namespace maidsafe {
@@ -56,7 +58,7 @@ struct ProcessManagerStruct {
 class Process {
  public:
   Process() : args_(), name_() {}
-  bool SetProcessName(const std::string& name, const std::string& parent_path);
+  bool SetExecutablePath(const boost::filesystem::path& executable_path);
   void AddArgument(const std::string& argument) { args_.push_back(argument); }
   std::string name() const { return name_; }
   std::vector<std::string> args() const { return args_; }
@@ -81,6 +83,7 @@ class ProcessManager {
   void KillProcess(const ProcessIndex& index);
   void StopProcess(const ProcessIndex& index);
   void RestartProcess(const ProcessIndex& index);
+  static ProcessIndex kInvalidIndex() { return std::numeric_limits<ProcessIndex>::max(); }
 
  private:
   struct ProcessInfo {
