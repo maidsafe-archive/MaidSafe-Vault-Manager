@@ -34,7 +34,7 @@ class VaultController {
   VaultController();
   ~VaultController();
 
-  bool Start(const std::string& vault_manager_identifier, std::function<void()> stop_callback);
+  bool Start(const std::string& vaults_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(asymm::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
 
@@ -51,7 +51,7 @@ class VaultController {
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleVaultShutdownResponseAck(const std::string& request, std::string& response);
   uint32_t process_index_;
-  uint16_t vault_manager_port_;
+  uint16_t vaults_manager_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   asymm::Keys keys_;

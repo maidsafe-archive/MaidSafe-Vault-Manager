@@ -40,7 +40,7 @@ include_directories(${common_SOURCE_DIR}/include)
 ###################################################################################################
 ####    CODE    ####
 file(GLOB SOURCE_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vault_manager_main.cc")
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vaults_manager_main.cc")
 file(GLOB HEADER_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.h")
 file(GLOB API_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/*.h")
 
@@ -124,25 +124,25 @@ ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
                               ${ALL_FILES_PRIVATE_UTILS_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-ms_add_executable(TESTvault_manager "Tests/Private"
+ms_add_executable(TESTvaults_manager "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/utils_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vault_manager_test.cc")
+                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vaults_manager_test.cc")
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(vault-manager VaultManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vault_manager_main.cc")
+ms_add_executable(vaults-manager VaultsManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vaults_manager_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(DUMMYclient maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(TESTvault_manager maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(vault-manager maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(TESTvaults_manager maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(vaults-manager maidsafe_private ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 
-add_dependencies(TESTvault_manager DUMMYprocess)
+add_dependencies(TESTvaults_manager DUMMYprocess)
 
 rename_outdated_built_exes()
 
@@ -168,6 +168,6 @@ endif()
 ###################################################################################################
 add_style_test(${STYLE_CHECK_FILES})
 add_gtests(TESTprivate)
-add_gtests(TESTvault_manager)
+add_gtests(TESTvaults_manager)
 add_project_experimental()
 test_summary_output()

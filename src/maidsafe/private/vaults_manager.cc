@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/vault_manager.h"
+#include "maidsafe/private/vaults_manager.h"
 
 #include <chrono>
 #include <iostream>
@@ -67,7 +67,7 @@ bool HandleBootstrapFile(const std::string& short_vault_id, const fs::path& pare
 }  // unnamed namespace
 
 
-VaultManager::VaultInfo::VaultInfo()
+VaultsManager::VaultInfo::VaultInfo()
     : process_index(),
       account_name(),
       keys(),
@@ -81,7 +81,7 @@ VaultManager::VaultInfo::VaultInfo()
       vault_requested(false),
       joined_network(kPending) {}
 
-void VaultManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
+void VaultsManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
   std::string serialized_keys;
   asymm::SerialiseKeys(keys, serialized_keys);
@@ -91,7 +91,7 @@ void VaultManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) con
   pb_vault_info->set_requested_to_run(requested_to_run);
 }
 
-void VaultManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
+void VaultsManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
   account_name = pb_vault_info.account_name();
   asymm::ParseKeys(pb_vault_info.keys(), keys);
   chunkstore_path = pb_vault_info.chunkstore_path();
@@ -100,7 +100,7 @@ void VaultManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_i
 }
 
 
-VaultManager::VaultManager()
+VaultsManager::VaultsManager()
     : process_manager_(),
       download_manager_("http", "dash.maidsafe.net", "~phil"),  // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
       asio_service_(3),
@@ -116,7 +116,7 @@ VaultManager::VaultManager()
       shutdown_requested_(false),
       config_file_path_() {
   if (!EstablishConfigFilePath() && !WriteConfigFile()) {
-    LOG(kError) << "VaultManager failed to start - failed to find existing config file in "
+    LOG(kError) << "VaultsManager failed to start - failed to find existing config file in "
                 << fs::current_path() << " or in " << GetSystemAppDir()
                 << " and failed to write new one at " << config_file_path_;
     return;
@@ -132,7 +132,7 @@ VaultManager::VaultManager()
   });
 
   if (!ReadConfigFile()) {
-    LOG(kError) << "VaultManager failed to start - failed to read existing config file at "
+    LOG(kError) << "VaultsManager failed to start - failed to read existing config file at "
                 << config_file_path_;
     return;
   }
@@ -141,11 +141,11 @@ VaultManager::VaultManager()
   boost::system::error_code ec;
   CheckForUpdates(ec);
   ListenForMessages();
-  LOG(kInfo) << "VaultManager started successfully.  Using config file at "
+  LOG(kInfo) << "VaultsManager started successfully.  Using config file at "
              << (InTestMode() ? fs::current_path() / kConfigFileName() : config_file_path_);
 }
 
-VaultManager::~VaultManager() {
+VaultsManager::~VaultsManager() {
   process_manager_.LetAllProcessesDie();
                                                                                                         {
                                                                                                           std::lock_guard<std::mutex> lock(vault_infos_mutex_);
@@ -161,16 +161,16 @@ VaultManager::~VaultManager() {
   asio_service_.Stop();
 }
 
-boost::posix_time::time_duration VaultManager::kMinUpdateInterval() {
+boost::posix_time::time_duration VaultsManager::kMinUpdateInterval() {
   return bptime::minutes(5);
 }
 
-boost::posix_time::time_duration VaultManager::kMaxUpdateInterval() {
+boost::posix_time::time_duration VaultsManager::kMaxUpdateInterval() {
   return bptime::hours(24 * 7);
 }
 
-void VaultManager::RestartVaultManager(const std::string& latest_file,
-                                       const std::string& executable_name) const {
+void VaultsManager::RestartVaultsManager(const std::string& latest_file,
+                                         const std::string& executable_name) const {
   // TODO(Fraser#5#): 2012-08-12 - Define command in constant.  Do we need 2 shell scripts?  Do we need 2 parameters to unix script?
 #ifdef MAIDSAFE_WIN32
   std::string command("restart_vm_windows.bat " + latest_file + " " + executable_name);
@@ -183,7 +183,7 @@ void VaultManager::RestartVaultManager(const std::string& latest_file,
     LOG(kWarning) << "Result: " << result;
 }
 
-bool VaultManager::EstablishConfigFilePath() {
+bool VaultsManager::EstablishConfigFilePath() {
   assert(config_file_path_.empty());
   // Favour config file in ./
   fs::path local_config_file_path(fs::path(".") / kConfigFileName());
@@ -198,7 +198,7 @@ bool VaultManager::EstablishConfigFilePath() {
   return true;
 }
 
-bool VaultManager::ReadConfigFile() {
+bool VaultsManager::ReadConfigFile() {
   std::string content;
   if (!ReadFile(config_file_path_, &content)) {
     LOG(kError) << "Failed to read config file " << config_file_path_;
@@ -209,7 +209,7 @@ bool VaultManager::ReadConfigFile() {
   if (content.size() == 1U && InTestMode())
     return true;
 
-  protobuf::VaultManagerConfig config;
+  protobuf::VaultsManagerConfig config;
   if (!config.ParseFromString(content) || !config.IsInitialized()) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
@@ -242,8 +242,8 @@ bool VaultManager::ReadConfigFile() {
   return true;
 }
 
-bool VaultManager::WriteConfigFile() {
-  protobuf::VaultManagerConfig config;
+bool VaultsManager::WriteConfigFile() {
+  protobuf::VaultsManagerConfig config;
   {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
@@ -263,7 +263,7 @@ bool VaultManager::WriteConfigFile() {
   return true;
 }
 
-void VaultManager::ListenForMessages() {
+void VaultsManager::ListenForMessages() {
   while (transport_->StartListening(local_port_) != kSuccess) {
     ++local_port_;
     if (local_port_ > kMaxPort()) {
@@ -273,7 +273,7 @@ void VaultManager::ListenForMessages() {
   }
 }
 
-void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
+void VaultsManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -307,7 +307,7 @@ void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_p
   transport_->Send(response, peer_port);
 }
 
-void VaultManager::HandlePing(const std::string& request, std::string& response) {
+void VaultsManager::HandlePing(const std::string& request, std::string& response) {
   protobuf::Ping ping;
   if (!ping.ParseFromString(request) || !ping.IsInitialized()) {  // Silently drop
     LOG(kError) << "Failed to parse ping.";
@@ -316,9 +316,9 @@ void VaultManager::HandlePing(const std::string& request, std::string& response)
   response = detail::WrapMessage(MessageType::kPing, request);
 }
 
-void VaultManager::HandleStartVaultRequest(const std::string& request,
-                                           Port client_port,
-                                           std::string& response) {
+void VaultsManager::HandleStartVaultRequest(const std::string& request,
+                                            Port client_port,
+                                            std::string& response) {
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request) || !start_vault_request.IsInitialized()) {
     // Silently drop
@@ -405,9 +405,9 @@ void VaultManager::HandleStartVaultRequest(const std::string& request,
   set_response(true);
 }
 
-void VaultManager::HandleVaultIdentityRequest(const std::string& request,
-                                              Port vault_port,
-                                              std::string& response) {
+void VaultsManager::HandleVaultIdentityRequest(const std::string& request,
+                                               Port vault_port,
+                                               std::string& response) {
   protobuf::VaultIdentityRequest vault_identity_request;
   if (!vault_identity_request.ParseFromString(request) || !vault_identity_request.IsInitialized()) {
     // Silently drop
@@ -450,8 +450,8 @@ void VaultManager::HandleVaultIdentityRequest(const std::string& request,
                                  vault_identity_response.SerializeAsString());
 }
 
-void VaultManager::HandleVaultJoinedNetworkRequest(const std::string& request,
-                                                   std::string& response) {
+void VaultsManager::HandleVaultJoinedNetworkRequest(const std::string& request,
+                                                    std::string& response) {
   protobuf::VaultJoinedNetwork vault_joined_network;
   if (!vault_joined_network.ParseFromString(request) || !vault_joined_network.IsInitialized()) {
     // Silently drop
@@ -484,7 +484,7 @@ void VaultManager::HandleVaultJoinedNetworkRequest(const std::string& request,
                                  vault_joined_network_ack.SerializeAsString());
 }
 
-void VaultManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
+void VaultsManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
   protobuf::StopVaultRequest stop_vault_request;
   if (!stop_vault_request.ParseFromString(request) || !stop_vault_request.IsInitialized()) {
     // Silently drop
@@ -522,7 +522,7 @@ void VaultManager::HandleStopVaultRequest(const std::string& request, std::strin
   cond_var_.notify_all();
 }
 
-void VaultManager::HandleUpdateIntervalRequest(const std::string& request, std::string& response) {
+void VaultsManager::HandleUpdateIntervalRequest(const std::string& request, std::string& response) {
   protobuf::UpdateIntervalRequest update_interval_request;
   if (!update_interval_request.ParseFromString(request) ||
       !update_interval_request.IsInitialized()) {  // Silently drop
@@ -544,7 +544,7 @@ void VaultManager::HandleUpdateIntervalRequest(const std::string& request, std::
                                  update_interval_response.SerializeAsString());
 }
 
-bool VaultManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
+bool VaultsManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
   if (update_interval < kMinUpdateInterval() || update_interval > kMaxUpdateInterval()) {
     LOG(kError) << "Invalid update interval of " << update_interval;
     return false;
@@ -556,12 +556,12 @@ bool VaultManager::SetUpdateInterval(const bptime::time_duration& update_interva
   return true;
 }
 
-bptime::time_duration VaultManager::GetUpdateInterval() const {
+bptime::time_duration VaultsManager::GetUpdateInterval() const {
   std::lock_guard<std::mutex> lock(update_mutex_);
   return update_interval_;
 }
 
-std::string VaultManager::FindLatestLocalVersion(const std::string& application) const {
+std::string VaultsManager::FindLatestLocalVersion(const std::string& application) const {
   std::string app;
   detail::Platform platform(detail::Platform::Type::kUnknown);
   int latest_version(detail::kInvalidVersion), version(detail::kInvalidVersion);
@@ -599,7 +599,7 @@ std::string VaultManager::FindLatestLocalVersion(const std::string& application)
   return latest_file;
 }
 
-void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
+void VaultsManager::CheckForUpdates(const boost::system::error_code& ec) {
   if (ec) {
     if (ec != boost::asio::error::operation_aborted)
       LOG(kError) << ec.message();
@@ -615,7 +615,7 @@ void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
   std::vector<std::string> applications;
   applications.push_back(kApplicationName);
   applications.push_back(kVaultName());
-  applications.push_back(kVaultManagerName());
+  applications.push_back(kVaultsManagerName());
 
   for (auto application : applications) {
     std::string latest_local(FindLatestLocalVersion(application));
@@ -644,8 +644,8 @@ void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
       //  if (stop_listening_for_updates_)
       //    return;
       //}
-      //if (application == kVaultManagerName() || application == kVaultName())
-      //  RestartVaultManager(updated_file, application);
+      //if (application == kVaultsManagerName() || application == kVaultName())
+      //  RestartVaultsManager(updated_file, application);
     } else {
       LOG(kVerbose) << "No newer file has been found";
     }
@@ -657,12 +657,12 @@ void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
   update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
-bool VaultManager::InTestMode() const {
+bool VaultsManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / kConfigFileName();
 }
 
-std::vector<std::shared_ptr<VaultManager::VaultInfo>>::const_iterator
-    VaultManager::FindFromIdentity(const std::string& identity) const {
+std::vector<std::shared_ptr<VaultsManager::VaultInfo>>::const_iterator
+    VaultsManager::FindFromIdentity(const std::string& identity) const {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
                       [identity](const std::shared_ptr<VaultInfo>& vault_info) {
@@ -670,7 +670,7 @@ std::vector<std::shared_ptr<VaultManager::VaultInfo>>::const_iterator
                       });
 }
 
-ProcessIndex VaultManager::AddVaultToProcesses(const std::string& chunkstore_path,
+ProcessIndex VaultsManager::AddVaultToProcesses(const std::string& chunkstore_path,
                                                const uintmax_t& chunkstore_capacity,
                                                const std::string& bootstrap_endpoint) {
   Process process;
@@ -694,7 +694,7 @@ ProcessIndex VaultManager::AddVaultToProcesses(const std::string& chunkstore_pat
   return process_manager_.AddProcess(process, local_port_);
 }
 
-void VaultManager::RestartVault(const std::string& identity) {
+void VaultsManager::RestartVault(const std::string& identity) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
@@ -704,7 +704,7 @@ void VaultManager::RestartVault(const std::string& identity) {
   process_manager_.RestartProcess((*itr)->process_index);
 }
 
-bool VaultManager::StopVault(const std::string& identity) {
+bool VaultsManager::StopVault(const std::string& identity) {
   // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
   //                               Try to reduce lock scope eventually.
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
@@ -732,7 +732,7 @@ bool VaultManager::StopVault(const std::string& identity) {
     };
 
   boost::signals2::connection connection1 = transport_->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+      [this, callback](const std::string& message, Port /*vaults_manager_port*/) {
         HandleVaultShutdownResponse(message, callback);
       });
   boost::signals2::connection connection2 =
@@ -767,8 +767,8 @@ bool VaultManager::StopVault(const std::string& identity) {
   return local_result;
 }
 
-void VaultManager::HandleVaultShutdownResponse(const std::string& message,
-                                               const std::function<void(bool)>& callback) {
+void VaultsManager::HandleVaultShutdownResponse(const std::string& message,
+                                                const std::function<void(bool)>& callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -789,7 +789,7 @@ void VaultManager::HandleVaultShutdownResponse(const std::string& message,
 }
 
 
-//  void VaultManager::EraseVault(const std::string& account_name) {
+//  void VaultsManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {
 //      auto itr(processes_.begin() + (index - 1));
 //      process_manager_.KillProcess((*itr).second);
@@ -804,7 +804,7 @@ void VaultManager::HandleVaultShutdownResponse(const std::string& message,
 //    }
 //  }
 
-//  int32_t VaultManager::ListVaults(bool select) const {
+//  int32_t VaultsManager::ListVaults(bool select) const {
 //    fs::path path((GetSystemAppDir() / "config.txt"));
 //
 //    std::string content;

@@ -8,7 +8,7 @@ message VaultInfo {
   required bool requested_to_run = 5;
 }
 
-message VaultManagerConfig {
+message VaultsManagerConfig {
   required uint32 update_interval = 1;  // In seconds
   repeated VaultInfo vault_info = 2;
 }

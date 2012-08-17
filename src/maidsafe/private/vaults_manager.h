@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
-#define MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_
+#define MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -64,15 +64,15 @@ enum class MessageType {
   kNewVersionAvailableAck
 };
 
-// The VaultManager has several responsibilities:
+// The VaultsManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file as having been started before.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
 // * Regularly checks for (and downloads) updated client or vault executables.
-class VaultManager {
+class VaultsManager {
  public:
-  VaultManager();
-  ~VaultManager();
+  VaultsManager();
+  ~VaultsManager();
   static std::string kConfigFileName() { return "config-global.dat"; }
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5582; }
@@ -97,9 +97,9 @@ class VaultManager {
     enum JoinedState { kPending, kJoined, kNotJoined } joined_network;
   };
 
-  VaultManager(const VaultManager&);
-  VaultManager operator=(const VaultManager&);
-  void RestartVaultManager(const std::string& latest_file,
+  VaultsManager(const VaultsManager&);
+  VaultsManager operator=(const VaultsManager&);
+  void RestartVaultsManager(const std::string& latest_file,
                            const std::string& executable_name) const;
 
   // Config file handling
@@ -141,7 +141,7 @@ class VaultManager {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
-  static std::string kVaultManagerName() { return "vault-manager"; }
+  static std::string kVaultsManagerName() { return "vault-manager"; }
 
 
   ProcessManager process_manager_;
@@ -164,4 +164,4 @@ class VaultManager {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_

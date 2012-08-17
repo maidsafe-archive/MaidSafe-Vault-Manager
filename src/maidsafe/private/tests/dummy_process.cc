@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
-      ("vmid", po::value<std::string>(), "vault manager ID");
+      ("vmid", po::value<std::string>(), "vaults manager ID");
   try {
     po::variables_map variables_map;
     po::store(po::parse_command_line(argc, argv, options_description), variables_map);
@@ -85,13 +85,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (!variables_map.count("vmid")) {
-      LOG(kInfo) << "DUMMYprocess: You must supply a vault manager ID";
+      LOG(kInfo) << "DUMMYprocess: You must supply a vaults manager ID";
       return 1;
     }
-    std::string vault_manager_id = variables_map["vmid"].as<std::string>();
+    std::string vaults_manager_id = variables_map["vmid"].as<std::string>();
     LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
     maidsafe::priv::VaultController vault_controller;
-    vault_controller.Start(vault_manager_id.c_str(), [&] { StopHandler(); });  // NOLINT
+    vault_controller.Start(vaults_manager_id.c_str(), [&] { StopHandler(); });  // NOLINT
     maidsafe::asymm::Keys keys;
     std::string account_name;
     vault_controller.GetIdentity(&keys, &account_name);
