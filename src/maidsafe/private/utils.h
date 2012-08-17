@@ -40,6 +40,7 @@ class Platform {
   static std::string kOsxStr() { return "osx"; }
   // Returns ".exe" for Windows, else an empty string.
   std::string executable_extension() const;
+  std::string installer_extension() const;
   friend Platform kThisPlatform();
  private:
   // Default constructs Platform using host machine's details.

@@ -33,6 +33,7 @@
 
 #include "maidsafe/private/download_manager.h"
 #include "maidsafe/private/process_manager.h"
+#include "utils.h"
 
 
 namespace maidsafe {
@@ -121,6 +122,7 @@ class VaultManager {
   void HandleStopVaultRequest(const std::string& request, std::string& response);
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
+  void SendVaultShutdownRequest(const std::string& identity);
   bool SetUpdateInterval(const boost::posix_time::time_duration& update_interval);
   boost::posix_time::time_duration GetUpdateInterval() const;
 
@@ -135,9 +137,10 @@ class VaultManager {
                                    const uintmax_t& chunkstore_capacity,
                                    const std::string& bootstrap_endpoint);
   void RestartVault(const std::string& identity);
-  bool StopVault(const std::string& identity);
   void HandleVaultShutdownResponse(const std::string& message,
                                    const std::function<void(bool)>& callback);
+  bool StopVault(const std::string& identity);
+  void StopAllVaults();
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
@@ -158,6 +161,7 @@ class VaultManager {
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
+  std::string latest_local_version_;
 };
 
 }  // namespace priv

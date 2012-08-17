@@ -114,14 +114,15 @@ VaultManager::VaultManager()
       cond_var_(),
       stop_listening_for_updates_(false),
       shutdown_requested_(false),
-      config_file_path_() {
+      config_file_path_(),
+      latest_local_version_("0.00.00") {
   if (!EstablishConfigFilePath() && !WriteConfigFile()) {
     LOG(kError) << "VaultManager failed to start - failed to find existing config file in "
                 << fs::current_path() << " or in " << GetSystemAppDir()
                 << " and failed to write new one at " << config_file_path_;
     return;
   }
-
+  LOG(kInfo) << "VaultManager started";
   asio_service_.Start();
   transport_->on_message_received().connect(
       [this](const std::string& message, Port peer_port) {
@@ -214,7 +215,7 @@ bool VaultManager::ReadConfigFile() {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
   }
-
+  latest_local_version_ = config.latest_local_version();
   update_interval_ = bptime::seconds(config.update_interval());
 
   for (int i(0); i != config.vault_info_size(); ++i) {
@@ -248,7 +249,7 @@ bool VaultManager::WriteConfigFile() {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
   }
-
+  config.set_latest_local_version(latest_local_version_);
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   for (auto& vault_info : vault_infos_) {
     protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
@@ -561,42 +562,43 @@ bptime::time_duration VaultManager::GetUpdateInterval() const {
   return update_interval_;
 }
 
-std::string VaultManager::FindLatestLocalVersion(const std::string& application) const {
-  std::string app;
-  detail::Platform platform(detail::Platform::Type::kUnknown);
-  int latest_version(detail::kInvalidVersion), version(detail::kInvalidVersion);
-  std::string latest_file;
-  fs::path search_dir(config_file_path_.parent_path());
-  // Disable logging temporarily
-  log::FilterMap filter_map_before(log::Logging::instance().Filter());
-  log::FilterMap disable_logging;
-  disable_logging["*"] = log::kFatal;
-  log::Logging::instance().SetFilter(disable_logging);
-  try {
-    for (fs::directory_iterator itr(search_dir); itr != fs::directory_iterator(); ++itr) {
-      // Allow directory iteration to be interrupted
-      boost::this_thread::interruption_point();
-      std::string file_name((*itr).path().stem().string());
-      if (detail::TokeniseFileName(file_name, &app, &platform, &version) &&
-          app == application &&
-          platform.type() == detail::kThisPlatform().type() &&
-          version > latest_version) {
-        latest_version = version;
-        latest_file = file_name;
-      }
-    }
-    log::Logging::instance().SetFilter(filter_map_before);
-  }
-  catch(const std::exception& e) {
-    log::Logging::instance().SetFilter(filter_map_before);
-    LOG(kError) << e.what();
-    latest_file.clear();
-  }
-  if (latest_file.empty()) {
-    LOG(kInfo) << "Couldn't find any version of " << application << " in " << search_dir;
-    latest_file = detail::GenerateFileName(application, detail::kThisPlatform(), "0.00.00");
-  }
-  return latest_file;
+std::string VaultManager::FindLatestLocalVersion(const std::string& /*application*/) const {
+//   std::string app;
+//   detail::Platform platform(detail::Platform::Type::kUnknown);
+//   int latest_version(detail::kInvalidVersion), version(detail::kInvalidVersion);
+//   std::string latest_file;
+//   fs::path search_dir(config_file_path_.parent_path());
+//   // Disable logging temporarily
+//   log::FilterMap filter_map_before(log::Logging::instance().Filter());
+//   log::FilterMap disable_logging;
+//   disable_logging["*"] = log::kFatal;
+//   log::Logging::instance().SetFilter(disable_logging);
+//   try {
+//     for (fs::directory_iterator itr(search_dir); itr != fs::directory_iterator(); ++itr) {
+//       // Allow directory iteration to be interrupted
+//       boost::this_thread::interruption_point();
+//       std::string file_name((*itr).path().stem().string());
+//       if (detail::TokeniseFileName(file_name, &app, &platform, &version) &&
+//           app == application &&
+//           platform.type() == detail::kThisPlatform().type() &&
+//           version > latest_version) {
+//         latest_version = version;
+//         latest_file = file_name;
+//       }
+//     }
+//     log::Logging::instance().SetFilter(filter_map_before);
+//   }
+//   catch(const std::exception& e) {
+//     log::Logging::instance().SetFilter(filter_map_before);
+//     LOG(kError) << e.what();
+//     latest_file.clear();
+//   }
+//   if (latest_file.empty()) {
+//     LOG(kInfo) << "Couldn't find any version of " << application << " in " << search_dir;
+//     latest_file = detail::GenerateFileName(application, detail::kThisPlatform(), "0.00.00");
+//   }
+//   return latest_file;
+  return latest_local_version_;
 }
 
 void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
@@ -613,26 +615,33 @@ void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
 
   std::lock_guard<std::mutex> lock(update_mutex_);
   std::vector<std::string> applications;
-  applications.push_back(kApplicationName);
-  applications.push_back(kVaultName());
-  applications.push_back(kVaultManagerName());
-
+  // applications.push_back(kApplicationName);
+  applications.push_back(kInstallerName);
+  // applications.push_back(kVaultName());
+  // applications.push_back(kVaultManagerName());
+  bool restart_vault(false);
   for (auto application : applications) {
     std::string latest_local(FindLatestLocalVersion(application));
+    std::string latest_remote(download_manager_.GetLatestRemoteVersion());
     LOG(kVerbose) << "Latest local version is " << latest_local;
-    std::string updated_file(download_manager_.UpdateAndVerify(latest_local,
-                                                               config_file_path_.parent_path()));
-    if (!updated_file.empty()) {  // A new version was downloaded
+    /*std::string updated_file(download_manager_.UpdateAndVerify(latest_local,
+                                                               config_file_path_.parent_path()));*/
+    if (detail::VersionToInt(latest_remote) > detail::VersionToInt(latest_local)) {  // A new version was downloaded
+      if (application == kInstallerName) {
+        applications.push_back(kVaultName());
+      } else if (application == kVaultName()) {
+        restart_vault = true;
+      }
       boost::system::error_code error_code;
-#ifndef MAIDSAFE_WIN32
-      fs::path symlink(GetSystemAppDir() / application);
-      if (!fs::remove(symlink, error_code) || error_code)
-        LOG(kWarning) << "Failed to remove symlink " << symlink << ": " << error_code.message();
-
-      fs::create_symlink(updated_file, symlink, error_code);
-      LOG(kVerbose) << "Symbolic link " << symlink << " to " << updated_file
-                    << (error_code ? " failed to be created: " + error_code.message() : " created");
-#endif
+// #ifndef MAIDSAFE_WIN32
+//       fs::path symlink(GetSystemAppDir() / application);
+//       if (!fs::remove(symlink, error_code) || error_code)
+//         LOG(kWarning) << "Failed to remove symlink " << symlink << ": " << error_code.message();
+//
+//       fs::create_symlink(updated_file, symlink, error_code);
+//       LOG(kVerbose) << "Symbolic link " << symlink << " to " << updated_file
+//                     << (error_code ? " failed to be created: " + error_code.message() : " created");
+// #endif
       //// Remove the previous file
       //while (fs::exists(current_path / latest_local_file)) {
       //  if (fs::remove(current_path / latest_local_file)) {
@@ -652,6 +661,13 @@ void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
       //if (stop_listening_for_updates_)
       //  return;
   }
+  if (restart_vault) {
+    // stop all vaults, restart vaults
+    StopAllVaults();
+    for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
+      RestartVault((*itr)->keys.identity);
+    }
+  }
 
   update_timer_.expires_from_now(update_interval_);
   update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
@@ -661,7 +677,7 @@ bool VaultManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / kConfigFileName();
 }
 
-std::vector<std::shared_ptr<VaultManager::VaultInfo>>::const_iterator
+std::vector<std::shared_ptr<VaultManager::VaultInfo>>::const_iterator  // NOLINT (Philip)
     VaultManager::FindFromIdentity(const std::string& identity) const {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
@@ -701,7 +717,7 @@ void VaultManager::RestartVault(const std::string& identity) {
     LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
     return;
   }
-  process_manager_.RestartProcess((*itr)->process_index);
+  process_manager_.StartProcess((*itr)->process_index);
 }
 
 bool VaultManager::StopVault(const std::string& identity) {
@@ -723,7 +739,7 @@ bool VaultManager::StopVault(const std::string& identity) {
   protobuf::VaultShutdownRequest vault_shutdown_request;
   vault_shutdown_request.set_process_index((*itr)->process_index);
 
-  std::function<void(bool)> callback =
+  std::function<void(bool)> callback =      // NOLINT
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);
       local_result = result;
@@ -768,7 +784,7 @@ bool VaultManager::StopVault(const std::string& identity) {
 }
 
 void VaultManager::HandleVaultShutdownResponse(const std::string& message,
-                                               const std::function<void(bool)>& callback) {
+                                               const std::function<void(bool)>& callback) {  // NOLINT
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -788,6 +804,12 @@ void VaultManager::HandleVaultShutdownResponse(const std::string& message,
   callback(vault_shutdown_response.shutdown());
 }
 
+
+void VaultManager::StopAllVaults() {
+  for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
+    StopVault((*itr)->keys.identity);
+  }
+}
 
 //  void VaultManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {

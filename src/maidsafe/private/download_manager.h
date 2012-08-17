@@ -35,6 +35,8 @@ class DownloadManager {
   // signature verified, then the new file name is returned, else an empty string.
   std::string UpdateAndVerify(const std::string& current_file,
                               const boost::filesystem::path& directory);
+  // Get the version of the files on the update server
+  std::string GetLatestRemoteVersion();
 
  private:
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);

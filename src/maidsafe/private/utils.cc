@@ -146,6 +146,9 @@ std::string Platform::executable_extension() const {
   return (type_ == Type::kWin32 || type_ == Type::kWin64) ? ".exe" : "";
 }
 
+std::string Platform::installer_extension() const {
+  return (type_ == Type::kWin32 || type_ == Type::kWin64) ? ".exe" : ".deb";
+}
 
 Platform kThisPlatform() {
   static Platform this_platform;

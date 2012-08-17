@@ -136,6 +136,10 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
   return true;
 }
 
+std::string DownloadManager::GetLatestRemoteVersion() {
+  return DownloadFile("version");
+}
+
 std::string DownloadManager::DownloadFile(const std::string& file_name) {
   ip::tcp::socket socket(io_service_);
   asio::streambuf request_buffer, response_buffer;

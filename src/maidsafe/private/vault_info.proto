@@ -6,9 +6,12 @@ message VaultInfo {
   required bytes chunkstore_path = 3;
   required uint64 chunkstore_capacity = 4;
   required bool requested_to_run = 5;
+  required bytes bootstrap_nodes = 6;
 }
 
 message VaultManagerConfig {
   required uint32 update_interval = 1;  // In seconds
-  repeated VaultInfo vault_info = 2;
+  optional bytes latest_local_version = 3;
+  optional bytes vault_permissions = 4;
+  repeated VaultInfo vault_info = 5;
 }

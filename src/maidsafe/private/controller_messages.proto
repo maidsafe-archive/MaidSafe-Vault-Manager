@@ -79,6 +79,7 @@ message VaultShutdownRequest {
 // the vault is shutting down.
 message VaultShutdownResponse {
   required bool shutdown = 1;
+  required uint32 process_index = 2;
 }
 
 // VaultManager acknowledges VaultShutdownResponse with this.

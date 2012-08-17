@@ -238,6 +238,7 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
   } else {
     vault_shutdown_response.set_shutdown(true);
   }
+  vault_shutdown_response.set_process_index(process_index_);
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
                                  vault_shutdown_response.SerializeAsString());
   shutdown_requested_ = true;
