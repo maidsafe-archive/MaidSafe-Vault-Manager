@@ -43,7 +43,7 @@ TEST(VaultManagerTest, BEH_StartStop) {
   EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
   EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
 
-  rsa::Keys keys;
+  asymm::Keys keys;
   ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
   EXPECT_TRUE(client_controller.StartVault(keys, "F"));
 

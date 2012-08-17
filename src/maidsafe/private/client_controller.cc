@@ -412,17 +412,25 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
   protobuf::NewVersionAvailableAck new_version_available_ack;
   if (!new_version_available.ParseFromString(request) || !new_version_available.IsInitialized()) {
     LOG(kError) << "Failed to parse NewVersionAvailable.";
-    new_version_available_ack.set_new_version_filename("");
-  } else if (!detail::TokeniseFileName(new_version_available.new_version_filename())) {
-    LOG(kError) << "New version " << new_version_available.new_version_filename()
-                << " isn't a valid MaidSafe filename.";
-    new_version_available_ack.set_new_version_filename("");
+    new_version_available_ack.set_new_version_filepath("");
   } else {
-    new_version_available_ack.set_new_version_filename(
-        new_version_available.new_version_filename());
+    boost::system::error_code error_code;
+    fs::path new_version(new_version_available.new_version_filepath());
+    if (!fs::exists(new_version, error_code) || error_code) {
+      LOG(kError) << "New version file missing: " << new_version;
+      new_version_available_ack.set_new_version_filepath("");
+    } else if (!detail::TokeniseFileName(new_version.filename().string())) {
+      LOG(kError) << "New version " << new_version_available.new_version_filepath()
+                  << " isn't a valid MaidSafe filename.";
+      new_version_available_ack.set_new_version_filepath("");
+    } else {
+      new_version_available_ack.set_new_version_filepath(
+          new_version_available.new_version_filepath());
+    }
   }
   response = detail::WrapMessage(MessageType::kNewVersionAvailableAck,
                                  new_version_available_ack.SerializeAsString());
+  on_new_version_available_(new_version_available.new_version_filepath());
 }
 
 

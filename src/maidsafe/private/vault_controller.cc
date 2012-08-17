@@ -35,6 +35,7 @@ VaultController::VaultController()
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       keys_(),
       account_name_(),
+      shutdown_requested_(false),
       stop_callback_() {}
 
 VaultController::~VaultController() {
@@ -74,8 +75,61 @@ bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) 
   return true;
 }
 
-void VaultController::ConfirmJoin(bool /*joined*/) {
-                                                                LOG(kError) << "ConfirmJoin: Not yet implemented";
+void VaultController::ConfirmJoin(bool joined) {
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false);
+  protobuf::VaultJoinedNetwork vault_joined_network;
+  vault_joined_network.set_process_index(process_index_);
+  vault_joined_network.set_joined(joined);
+
+  std::function<void()> callback = [&] {
+    std::lock_guard<std::mutex> lock(local_mutex);
+    done = true;
+    local_cond_var.notify_one();
+  };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  if (request_transport->Connect(vault_manager_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
+      return;
+  }
+  request_transport->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+        HandleVaultJoinedAck(message, callback);
+      });
+  request_transport->on_error().connect([callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback();
+  });
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  LOG(kVerbose) << "Sending joined notification to port " << vault_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinedNetwork,
+                                              vault_joined_network.SerializeAsString()),
+                          vault_manager_port_);
+
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; }))  // NOLINT (Fraser)
+    LOG(kError) << "Timed out waiting for reply.";
+}
+
+void VaultController::HandleVaultJoinedAck(const std::string& message,
+                                           std::function<void()> callback) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+
+  protobuf::VaultJoinedNetworkAck vault_joined_network_ack;
+  if (!vault_joined_network_ack.ParseFromString(payload) ||
+      !vault_joined_network_ack.IsInitialized()) {
+    LOG(kError) << "Failed to parse VaultJoinedNetworkAck.";
+    return;
+  }
+
+  callback();
 }
 
 void VaultController::RequestVaultIdentity() {
@@ -160,17 +214,14 @@ void VaultController::HandleReceivedRequest(const std::string& message, Port pee
     case MessageType::kVaultShutdownRequest:
       HandleVaultShutdownRequest(payload, response);
       break;
+    case MessageType::kVaultShutdownResponseAck:
+      HandleVaultShutdownResponseAck(payload, response);
+      break;
     default:
       return;
   }
-  receiving_transport_->Send(response, peer_port);
-  if (type == MessageType::kVaultShutdownRequest) {
-    // Don't kill transport before it has a chance to send reponse.
-    // TODO(Fraser#5#): 2012-08-16 - This Sleep should probably be replaced with a
-    //                HandleVaultShutdownResponseAck method where the VaultManager Acks the response
-    Sleep(boost::posix_time::milliseconds(500));
-    stop_callback_();
-  }
+  if (type != MessageType::kVaultShutdownResponseAck)
+    receiving_transport_->Send(response, peer_port);
 }
 
 void VaultController::HandleVaultShutdownRequest(const std::string& request,
@@ -189,6 +240,23 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
   }
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
                                  vault_shutdown_response.SerializeAsString());
+  shutdown_requested_ = true;
+}
+
+void VaultController::HandleVaultShutdownResponseAck(const std::string& request,
+                                                     std::string& response) {
+  protobuf::VaultShutdownResponseAck vault_shutdown_response_ack;
+  if (!vault_shutdown_response_ack.ParseFromString(request) ||
+      !vault_shutdown_response_ack.IsInitialized()) {
+    LOG(kError) << "Failed to parse VaultShutdownResponseAck.";
+  } else if (!vault_shutdown_response_ack.ack()) {
+    LOG(kError) << "VaultShutdownResponseAck is false.";
+  } else if (!shutdown_requested_) {
+    LOG(kError) << "VaultShutdownResponseAck is unexpected.";
+  } else {
+    stop_callback_();
+  }
+  response.clear();
 }
 
 }  // namespace priv

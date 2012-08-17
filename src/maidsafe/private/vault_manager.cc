@@ -78,7 +78,8 @@ VaultManager::VaultInfo::VaultInfo()
       mutex(),
       cond_var(),
       requested_to_run(false),
-      vault_requested(false) {}
+      vault_requested(false),
+      joined_network(kPending) {}
 
 void VaultManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
@@ -224,9 +225,18 @@ bool VaultManager::ReadConfigFile() {
                                                     "");
     if (vault_info->process_index == ProcessManager::kInvalidIndex())
       continue;
-    if (vault_info->requested_to_run)
-      process_manager_.StartProcess(vault_info->process_index);
     vault_infos_.push_back(vault_info);
+    if (vault_info->requested_to_run) {
+      std::unique_lock<std::mutex> vault_lock(vault_info->mutex);
+      process_manager_.StartProcess(vault_info->process_index);
+      LOG(kVerbose) << "Waiting for Vault " << vault_info->process_index << " to confirm joined.";
+      if (!vault_info->cond_var.wait_for(
+              vault_lock,
+              std::chrono::seconds(30),
+              [&] { return vault_info->joined_network != VaultInfo::kPending; })) {  // NOLINT (Fraser)
+        LOG(kError) << "Wait for Vault join confirmation timed out.";
+      }
+    }
   }
 
   return true;
@@ -277,10 +287,13 @@ void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_p
       HandlePing(payload, response);
       break;
     case MessageType::kStartVaultRequest:
-      HandleStartVaultRequest(payload, response);
+      HandleStartVaultRequest(payload, peer_port, response);
       break;
     case MessageType::kVaultIdentityRequest:
-      HandleVaultIdentityRequest(payload, response);
+      HandleVaultIdentityRequest(payload, peer_port, response);
+      break;
+    case MessageType::kVaultJoinedNetwork:
+      HandleVaultJoinedNetworkRequest(payload, response);
       break;
     case MessageType::kStopVaultRequest:
       HandleStopVaultRequest(payload, response);
@@ -289,7 +302,6 @@ void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_p
       HandleUpdateIntervalRequest(payload, response);
       break;
     default:
-      LOG(kError) << "Invalid message type";
       return;
   }
   transport_->Send(response, peer_port);
@@ -304,7 +316,9 @@ void VaultManager::HandlePing(const std::string& request, std::string& response)
   response = detail::WrapMessage(MessageType::kPing, request);
 }
 
-void VaultManager::HandleStartVaultRequest(const std::string& request, std::string& response) {
+void VaultManager::HandleStartVaultRequest(const std::string& request,
+                                           Port client_port,
+                                           std::string& response) {
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request) || !start_vault_request.IsInitialized()) {
     // Silently drop
@@ -320,28 +334,58 @@ void VaultManager::HandleStartVaultRequest(const std::string& request, std::stri
   });
 
   std::shared_ptr<VaultInfo> vault_info(new VaultInfo);
-  vault_info->account_name = start_vault_request.account_name();
   asymm::ParseKeys(start_vault_request.keys(), vault_info->keys);
-  std::string short_vault_id(EncodeToBase32(crypto::Hash<crypto::SHA1>(vault_info->keys.identity)));
-  vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
-  if (!HandleBootstrapFile(short_vault_id, config_file_path_.parent_path())) {
-    LOG(kError) << "Failed to set bootstrap file for vault "
-                << HexSubstr(vault_info->keys.identity);
-    return set_response(false);
-  }
-
-  vault_info->chunkstore_capacity = 0;
-  LOG(kVerbose) << "Bootstrap endpoint is " << start_vault_request.bootstrap_endpoint();
-  vault_info->process_index = AddVaultToProcesses(vault_info->chunkstore_path,
-                                                  vault_info->chunkstore_capacity,
-                                                  start_vault_request.bootstrap_endpoint());
-  if (vault_info->process_index == ProcessManager::kInvalidIndex())
-    return set_response(false);
-
-  process_manager_.StartProcess(vault_info->process_index);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    vault_infos_.push_back(vault_info);
+    auto itr(std::find_if(
+        vault_infos_.begin(),
+        vault_infos_.end(),
+        [&vault_info](const std::shared_ptr<VaultInfo>& vault_inf) {
+          return vault_info->keys.identity == vault_inf->keys.identity;
+        }));
+    if (itr != vault_infos_.end()) {
+      // This client's vault is already registered - check existing details match.
+      if ((*itr)->account_name != start_vault_request.account_name()) {
+        LOG(kError) << "Client's StartVaultRequest account name doesn't match existing one.";
+        return set_response(false);
+      }
+
+      if ((*itr)->keys.validation_token != vault_info->keys.validation_token) {
+        LOG(kError) << "Client's StartVaultRequest keys validation_token doesn't match existing.";
+        return set_response(false);
+      }
+
+      (*itr)->client_port = client_port;
+      // If the vault's already running, we're done here.
+                                                  // TODO(Fraser#5#): 2012-08-17 - Check process manager too?
+      if ((*itr)->requested_to_run)
+        return set_response(true);
+
+      (*itr)->requested_to_run = true;
+      process_manager_.StartProcess((*itr)->process_index);
+    } else {
+      // The vault is not already registered.
+      vault_info->account_name = start_vault_request.account_name();
+      std::string short_vault_id(EncodeToBase32(crypto::Hash<crypto::SHA1>(vault_info->keys.identity)));
+      vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
+      if (!HandleBootstrapFile(short_vault_id, config_file_path_.parent_path())) {
+        LOG(kError) << "Failed to set bootstrap file for vault "
+                    << HexSubstr(vault_info->keys.identity);
+        return set_response(false);
+      }
+
+      vault_info->chunkstore_capacity = 0;
+      vault_info->client_port = client_port;
+      LOG(kVerbose) << "Bootstrap endpoint is " << start_vault_request.bootstrap_endpoint();
+      vault_info->process_index = AddVaultToProcesses(vault_info->chunkstore_path,
+                                                      vault_info->chunkstore_capacity,
+                                                      start_vault_request.bootstrap_endpoint());
+      if (vault_info->process_index == ProcessManager::kInvalidIndex())
+        return set_response(false);
+
+      process_manager_.StartProcess(vault_info->process_index);
+      vault_infos_.push_back(vault_info);
+    }
   }
 
   WriteConfigFile();
@@ -361,7 +405,9 @@ void VaultManager::HandleStartVaultRequest(const std::string& request, std::stri
   set_response(true);
 }
 
-void VaultManager::HandleVaultIdentityRequest(const std::string& request, std::string& response) {
+void VaultManager::HandleVaultIdentityRequest(const std::string& request,
+                                              Port vault_port,
+                                              std::string& response) {
   protobuf::VaultIdentityRequest vault_identity_request;
   if (!vault_identity_request.ParseFromString(request) || !vault_identity_request.IsInitialized()) {
     // Silently drop
@@ -393,7 +439,8 @@ void VaultManager::HandleVaultIdentityRequest(const std::string& request, std::s
       vault_identity_response.set_account_name((*itr)->account_name);
       vault_identity_response.set_keys(serialised_keys);
       // Notify so that waiting client StartVaultResponse can be sent
-      std::lock_guard<std::mutex> lock((*itr)->mutex);
+      std::lock_guard<std::mutex> local_lock((*itr)->mutex);
+      (*itr)->vault_port = vault_port;
       (*itr)->vault_requested = true;
       (*itr)->cond_var.notify_one();
     }
@@ -401,6 +448,40 @@ void VaultManager::HandleVaultIdentityRequest(const std::string& request, std::s
 
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_identity_response.SerializeAsString());
+}
+
+void VaultManager::HandleVaultJoinedNetworkRequest(const std::string& request,
+                                                   std::string& response) {
+  protobuf::VaultJoinedNetwork vault_joined_network;
+  if (!vault_joined_network.ParseFromString(request) || !vault_joined_network.IsInitialized()) {
+    // Silently drop
+    LOG(kError) << "Failed to parse VaultJoinedNetwork.";
+    return;
+  }
+
+  protobuf::VaultJoinedNetworkAck vault_joined_network_ack;
+  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+  auto itr(std::find_if(
+      vault_infos_.begin(),
+      vault_infos_.end(),
+      [&vault_joined_network](const std::shared_ptr<VaultInfo>& vault_info) {
+        return vault_info->process_index == vault_joined_network.process_index();
+      }));
+  if (itr == vault_infos_.end()) {
+    LOG(kError) << "Vault with process_index " << vault_joined_network.process_index()
+                << " hasn't been added.";
+    vault_joined_network_ack.set_ack(false);
+  } else {
+    vault_joined_network_ack.set_ack(true);
+    // Notify so that next vault can be started
+    std::lock_guard<std::mutex> local_lock((*itr)->mutex);
+    (*itr)->joined_network =
+        (vault_joined_network.joined() ? VaultInfo::kJoined : VaultInfo::kNotJoined);
+    (*itr)->cond_var.notify_one();
+  }
+
+  response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
+                                 vault_joined_network_ack.SerializeAsString());
 }
 
 void VaultManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
@@ -430,14 +511,13 @@ void VaultManager::HandleStopVaultRequest(const std::string& request, std::strin
                 << " hasn't been added.";
     stop_vault_response.set_result(false);
   } else {
-    stop_vault_response.set_result(true);
+    LOG(kInfo) << "Shutting down vault with identity " << HexSubstr(stop_vault_request.identity());
+    stop_vault_response.set_result(StopVault(stop_vault_request.identity()));
   }
 
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
                                  stop_vault_response.SerializeAsString());
 
-  LOG(kInfo) << "Shutting down vault with identity " << HexSubstr(stop_vault_request.identity());
-  StopVault(stop_vault_request.identity());
                                                     // TODO(Fraser#5#): 2012-08-13 - Do we need this cond_var_ call?
   cond_var_.notify_all();
 }
@@ -624,18 +704,90 @@ void VaultManager::RestartVault(const std::string& identity) {
   process_manager_.RestartProcess((*itr)->process_index);
 }
 
-void VaultManager::StopVault(const std::string& identity) {
+bool VaultManager::StopVault(const std::string& identity) {
+  // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
+  //                               Try to reduce lock scope eventually.
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
-    return;
+    return false;
   }
   process_manager_.StopProcess((*itr)->process_index);
-                  // TODO(Fraser#5#): 2012-08-16 - Need to send VaultShutdownRequest here and block until response arrives?
   (*itr)->requested_to_run = false;
   WriteConfigFile();
+
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), local_result(false);
+  protobuf::VaultShutdownRequest vault_shutdown_request;
+  vault_shutdown_request.set_process_index((*itr)->process_index);
+
+  std::function<void(bool)> callback =
+    [&](bool result) {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+      local_cond_var.notify_one();
+    };
+
+  boost::signals2::connection connection1 = transport_->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*vault_manager_port*/) {
+        HandleVaultShutdownResponse(message, callback);
+      });
+  boost::signals2::connection connection2 =
+      transport_->on_error().connect([this, callback](const int& /*error*/) {
+    // TODO(Fraser#5#): 2012-08-17 - Don't want to just callback(false) since this transport
+    // could get errors from other concurrent ongoing requests.  Need to handle by maybe chnaging
+    // transport's on_error to include the outgoing message, or a messge ID or something.
+  });
+
+  std::unique_lock<std::mutex> local_lock(local_mutex);
+  transport_->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
+                                       vault_shutdown_request.SerializeAsString()),
+                   (*itr)->vault_port);
+
+  if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
+    LOG(kError) << "Timed out waiting for reply.";
+    connection1.disconnect();
+    connection2.disconnect();
+    return false;
+  }
+  if (!local_result) {
+    LOG(kError) << "Vault shutdown failed.";
+  } else {
+    protobuf::VaultShutdownResponseAck vault_shutdown_response_ack;
+    vault_shutdown_response_ack.set_ack(true);
+    transport_->Send(detail::WrapMessage(MessageType::kVaultShutdownResponseAck,
+                                         vault_shutdown_request.SerializeAsString()),
+                     (*itr)->vault_port);
+  }
+  connection1.disconnect();
+  connection2.disconnect();
+  return local_result;
 }
+
+void VaultManager::HandleVaultShutdownResponse(const std::string& message,
+                                               const std::function<void(bool)>& callback) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    callback(false);
+    return;
+  }
+
+  protobuf::VaultShutdownResponse vault_shutdown_response;
+  if (!vault_shutdown_response.ParseFromString(payload) ||
+      !vault_shutdown_response.IsInitialized()) {
+    LOG(kError) << "Failed to parse VaultShutdownResponse.";
+    callback(false);
+    return;
+  }
+
+  callback(vault_shutdown_response.shutdown());
+}
+
 
 //  void VaultManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {

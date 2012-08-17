@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -52,8 +53,11 @@ enum class MessageType {
   kStopVaultResponse,
   kVaultIdentityRequest,
   kVaultIdentityResponse,
+  kVaultJoinedNetwork,
+  kVaultJoinedNetworkAck,
   kVaultShutdownRequest,
   kVaultShutdownResponse,
+  kVaultShutdownResponseAck,
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
   kNewVersionAvailable,
@@ -89,8 +93,8 @@ class VaultManager {
     uint16_t client_port, vault_port;
     std::mutex mutex;
     std::condition_variable cond_var;
-    bool requested_to_run;
-    bool vault_requested;
+    bool requested_to_run, vault_requested;
+    enum JoinedState { kPending, kJoined, kNotJoined } joined_network;
   };
 
   VaultManager(const VaultManager&);
@@ -107,8 +111,13 @@ class VaultManager {
   void ListenForMessages();
   void HandleReceivedMessage(const std::string& message, uint16_t peer_port);
   void HandlePing(const std::string& request, std::string& response);
-  void HandleStartVaultRequest(const std::string& request, std::string& response);
-  void HandleVaultIdentityRequest(const std::string& request, std::string& response);
+  void HandleStartVaultRequest(const std::string& request,
+                               uint16_t client_port,
+                               std::string& response);
+  void HandleVaultIdentityRequest(const std::string& request,
+                                  uint16_t vault_port,
+                                  std::string& response);
+  void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
@@ -126,7 +135,9 @@ class VaultManager {
                                    const uintmax_t& chunkstore_capacity,
                                    const std::string& bootstrap_endpoint);
   void RestartVault(const std::string& identity);
-  void StopVault(const std::string& identity);
+  bool StopVault(const std::string& identity);
+  void HandleVaultShutdownResponse(const std::string& message,
+                                   const std::function<void(bool)>& callback);
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
