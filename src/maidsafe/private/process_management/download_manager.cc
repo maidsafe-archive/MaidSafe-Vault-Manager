@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/download_manager.h"
+#include "maidsafe/private/process_management/download_manager.h"
 
 #include <cstdint>
 #include <istream>
@@ -29,7 +29,7 @@
 #include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/utils.h"
+#include "maidsafe/private/process_management/utils.h"
 
 
 namespace asio = boost::asio;
@@ -39,6 +39,8 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 DownloadManager::DownloadManager(const std::string& protocol,
                                  const std::string& site,
@@ -201,6 +203,8 @@ std::string DownloadManager::DownloadFile(const std::string& file_name) {
   const char* char_buffer = asio::buffer_cast<const char*>(response_buffer.data());
   return std::string(char_buffer, response_buffer.size());
 }
+
+}  // namespace process_management
 
 }  // namespace priv
 

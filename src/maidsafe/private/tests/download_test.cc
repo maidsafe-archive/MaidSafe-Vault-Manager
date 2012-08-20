@@ -18,7 +18,7 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/private/download_manager.h"
+#include "maidsafe/private/process_management/download_manager.h"
 
 // Note: These tests assume that there exists nonempty files publicly available on
 // dash.maidsafe.net/~phil called e.g.
@@ -28,6 +28,8 @@
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace test {
 
@@ -83,6 +85,8 @@ TEST(DownloadTest, BEH_UpdateAndVerify) {
 }
 
 }  // namespace test
+
+}  // namespace process_management
 
 }  // namespace priv
 

@@ -26,6 +26,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 class DownloadManager {
  public:
   DownloadManager(const std::string& protocol,
@@ -47,6 +49,8 @@ class DownloadManager {
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

@@ -27,6 +27,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 class LocalTcpTransport;
 
 class VaultController {
@@ -59,6 +61,8 @@ class VaultController {
   bool shutdown_requested_;
   std::function<void()> stop_callback_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

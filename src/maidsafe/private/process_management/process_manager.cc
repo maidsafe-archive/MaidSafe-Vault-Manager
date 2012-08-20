@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_manager.h"
+#include "maidsafe/private/process_management/process_manager.h"
 
 #include <algorithm>
 
@@ -33,9 +33,9 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/local_tcp_transport.h"
-#include "maidsafe/private/utils.h"
+#include "maidsafe/private/process_management/controller_messages_pb.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
+#include "maidsafe/private/process_management/utils.h"
 
 
 namespace bp = boost::process;
@@ -44,6 +44,8 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 bool Process::SetExecutablePath(const fs::path& executable_path) {
   boost::system::error_code ec;
@@ -343,6 +345,8 @@ void ProcessManager::TerminateAll() {
   }
   processes_.clear();
 }
+
+}  // namespace process_management
 
 }  // namespace priv
 

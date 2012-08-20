@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/utils.h"
+#include "maidsafe/private/process_management/utils.h"
 
 #include <string>
 
@@ -19,6 +19,8 @@
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace detail {
 
@@ -130,6 +132,8 @@ TEST(UtilsTest, BEH_ParseVmidParameter) {
 }  // namespace test
 
 }  // namespace detail
+
+}  // namespace process_management
 
 }  // namespace priv
 

@@ -31,13 +31,15 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/download_manager.h"
-#include "maidsafe/private/process_manager.h"
+#include "maidsafe/private/process_management/download_manager.h"
+#include "maidsafe/private/process_management/process_manager.h"
 
 
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace protobuf { class VaultInfo; }
 
@@ -100,7 +102,7 @@ class VaultsManager {
   VaultsManager(const VaultsManager&);
   VaultsManager operator=(const VaultsManager&);
   void RestartVaultsManager(const std::string& latest_file,
-                           const std::string& executable_name) const;
+                            const std::string& executable_name) const;
 
   // Config file handling
   bool EstablishConfigFilePath();
@@ -159,6 +161,8 @@ class VaultsManager {
   bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

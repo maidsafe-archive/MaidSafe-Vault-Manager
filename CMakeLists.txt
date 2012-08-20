@@ -39,25 +39,34 @@ include_directories(${common_SOURCE_DIR}/include)
 # Set up all files as GLOBs                                                                       #
 ###################################################################################################
 ####    CODE    ####
-file(GLOB SOURCE_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vaults_manager_main.cc")
-file(GLOB HEADER_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.h")
-file(GLOB API_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/*.h")
+file(GLOB SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.cc")
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vaults_manager_main.cc")
+file(GLOB HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.h")
+file(GLOB API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/process_management/*.h")
 
-file(GLOB PROTO_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.proto")
-file(GLOB SOURCE_PROTO_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/*_pb.h")
+file(GLOB PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.proto")
+file(GLOB SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*_pb.h")
 
-set(ALL_FILES_PRIVATE_DIR ${SOURCE_FILES_PRIVATE_DIR} ${HEADER_FILES_PRIVATE_DIR} ${PROTO_FILES_PRIVATE_DIR} ${API_FILES_PRIVATE_DIR})
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DIR ${SOURCE_PROTO_FILES_PRIVATE_DIR})
-list(REMOVE_ITEM HEADER_FILES_PRIVATE_DIR ${HEADER_PROTO_FILES_PRIVATE_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DIR})
-set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_DIR} ${HEADER_FILES_PRIVATE_DIR} ${API_FILES_PRIVATE_DIR})
+set(ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                             ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                             ${PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                             ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+list(REMOVE_ITEM HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${HEADER_PROTO_FILES_PROCESS_MANAGEMENT_PRIVATE_DIR}
+                                                             ${MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                      ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                      ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 
-source_group("Private Source Files" FILES ${SOURCE_FILES_PRIVATE_DIR})
-source_group("Private Header Files" FILES ${HEADER_FILES_PRIVATE_DIR})
-source_group("Private Proto Files" FILES ${PROTO_FILES_PRIVATE_DIR} ${SOURCE_PROTO_FILES_PRIVATE_DIR} ${HEADER_PROTO_FILES_PRIVATE_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DIR})
-source_group("Private API Files" FILES ${API_FILES_PRIVATE_DIR})
+source_group("Private Source Files" FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+source_group("Private Header Files" FILES ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+source_group("Private Proto Files" FILES ${PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                         ${SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                         ${HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
+                                         ${MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+source_group("Private API Files" FILES ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 
 
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.cc")
@@ -119,7 +128,7 @@ EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/tools/res
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_DIR}
+ms_add_static_library(private ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
                               ${ALL_FILES_PRIVATE_UTILS_DIR})
@@ -132,7 +141,7 @@ ms_add_executable(TESTvaults_manager "Tests/Private"
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(vaults-manager VaultsManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/vaults_manager_main.cc")
+ms_add_executable(vaults-manager VaultsManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vaults_manager_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
@@ -158,8 +167,8 @@ if(UNIX)
   SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
                               "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
                                PROPERTIES COMPILE_FLAGS "-Wno-effc++")
-  SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc
-                                PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
+  SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc"
+                              PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
 endif()
 
 

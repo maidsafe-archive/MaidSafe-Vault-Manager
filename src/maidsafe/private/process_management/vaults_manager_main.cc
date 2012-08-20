@@ -28,7 +28,8 @@
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/private/vaults_manager.h"
+
+#include "maidsafe/private/process_management/vaults_manager.h"
 
 
 namespace {
@@ -143,7 +144,7 @@ int main() {
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   {
-    maidsafe::priv::VaultsManager vaults_manager;
+    maidsafe::priv::process_management::VaultsManager vaults_manager;
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }
