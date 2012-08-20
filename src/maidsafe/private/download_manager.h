@@ -26,6 +26,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace test { class DownloadTest_BEH_DownloadFileToDisk_Test; }
+
 class DownloadManager {
  public:
   DownloadManager(const std::string& protocol,
@@ -45,6 +47,7 @@ class DownloadManager {
   boost::filesystem::path GetRemotePath() const { return remote_path_; }
 
  private:
+  friend class test::DownloadTest_BEH_DownloadFileToDisk_Test;
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);

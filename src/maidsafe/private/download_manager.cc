@@ -59,6 +59,8 @@ DownloadManager::DownloadManager(const std::string& protocol,
   std::string prefix(RandomAlphaNumericString(8));
   boost::system::error_code error_code;
   fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code) / prefix));
+  if (!fs::exists(temp_path))
+    fs::create_directories(temp_path);
   local_path_ = temp_path;
 }
 

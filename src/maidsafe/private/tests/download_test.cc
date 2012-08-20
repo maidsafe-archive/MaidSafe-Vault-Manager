@@ -31,7 +31,7 @@ namespace priv {
 
 namespace test {
 
-TEST(DownloadTest, BEH_UpdateAndVerify) {
+/*TEST(DownloadTest, BEH_UpdateAndVerify) {
   maidsafe::test::TestPath test_path(
       maidsafe::test::CreateTestPath("MaidSafe_Test_DownloadManager"));
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil");
@@ -80,6 +80,14 @@ TEST(DownloadTest, BEH_UpdateAndVerify) {
   EXPECT_EQ("lifestufflocal_win32_5.05.04.exe", newest_version);
   newest_version = download_manager.UpdateAndVerify("lifestufflocal_win64_4.99.99.exe", *test_path);
   EXPECT_EQ("lifestufflocal_win64_5.05.04.exe", newest_version);
+}*/
+
+TEST(DownloadTest, BEH_DownloadFileToDisk) {
+  maidsafe::test::TestPath test_path(
+      maidsafe::test::CreateTestPath("MaidSafe_Test_DownloadManager"));
+  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil");
+  EXPECT_TRUE(download_manager.DownloadFileToDisk("warandpeace_linux_32_1_2", *test_path));
+  EXPECT_FALSE(download_manager.DownloadFileToDisk("non_existent_file", *test_path));
 }
 
 }  // namespace test
