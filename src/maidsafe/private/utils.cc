@@ -22,7 +22,7 @@
 #include "maidsafe/private/controller_messages_pb.h"
 #include "maidsafe/private/local_tcp_transport.h"
 #include "maidsafe/private/process_manager.h"
-#include "maidsafe/private/vault_manager.h"
+#include "maidsafe/private/vaults_manager.h"
 
 
 namespace maidsafe {
@@ -148,6 +148,10 @@ std::string Platform::executable_extension() const {
 
 std::string Platform::installer_extension() const {
   return (type_ == Type::kWin32 || type_ == Type::kWin64) ? ".exe" : ".deb";
+}
+
+boost::filesystem::path Platform::UpdatePath() const {
+  return boost::filesystem::path(name_);
 }
 
 Platform kThisPlatform() {
@@ -331,33 +335,33 @@ bool TokeniseFileName(const std::string& file_name,
 }
 
 std::string GenerateVmidParameter(const ProcessIndex& process_index,
-                                  const Port& vault_manager_port) {
+                                  const Port& vaults_manager_port) {
   return boost::lexical_cast<std::string>(process_index) + kSeparator +
-         boost::lexical_cast<std::string>(vault_manager_port);
+         boost::lexical_cast<std::string>(vaults_manager_port);
 }
 
-bool ParseVmidParameter(const std::string& vault_manager_identifier,
+bool ParseVmidParameter(const std::string& vaults_manager_identifier,
                         ProcessIndex& process_index,
-                        Port& vault_manager_port) {
+                        Port& vaults_manager_port) {
   auto do_fail([&]()->bool {
-    process_index = vault_manager_port = 0;
+    process_index = vaults_manager_port = 0;
     return false;
   });
 
-  size_t separator_position(vault_manager_identifier.find(kSeparator));
+  size_t separator_position(vaults_manager_identifier.find(kSeparator));
   if (separator_position == std::string::npos) {
-    LOG(kError) << "vault_manager_identifier " << vault_manager_identifier << " has wrong format";
+    LOG(kError) << "vaults_manager_identifier " << vaults_manager_identifier << " has wrong format";
     return do_fail();
   }
   try {
     process_index =
-        boost::lexical_cast<ProcessIndex>(vault_manager_identifier.substr(0, separator_position));
-    vault_manager_port =
-        boost::lexical_cast<Port>(vault_manager_identifier.substr(separator_position + 1));
+        boost::lexical_cast<ProcessIndex>(vaults_manager_identifier.substr(0, separator_position));
+    vaults_manager_port =
+        boost::lexical_cast<Port>(vaults_manager_identifier.substr(separator_position + 1));
   }
   catch(const boost::bad_lexical_cast& exception) {
-    LOG(kError) << "vault_manager_identifier " << vault_manager_identifier << " has wrong format: "
-                << exception.what();
+    LOG(kError) << "vaults_manager_identifier " << vaults_manager_identifier
+                << " has wrong format: " << exception.what();
     return do_fail();
   }
 
@@ -366,9 +370,9 @@ bool ParseVmidParameter(const std::string& vault_manager_identifier,
     return do_fail();
   }
 
-  if (vault_manager_port < VaultManager::kMinPort() ||
-      vault_manager_port > VaultManager::kMaxPort()) {
-    LOG(kError) << "Invalid Vault Manager port " << vault_manager_port;
+  if (vaults_manager_port < VaultsManager::kMinPort() ||
+      vaults_manager_port > VaultsManager::kMaxPort()) {
+    LOG(kError) << "Invalid Vaults Manager port " << vaults_manager_port;
     return do_fail();
   }
 

@@ -18,7 +18,7 @@
 
 #include "maidsafe/private/client_controller.h"
 #include "maidsafe/private/vault_controller.h"
-#include "maidsafe/private/vault_manager.h"
+#include "maidsafe/private/vaults_manager.h"
 
 
 namespace bptime = boost::posix_time;
@@ -29,17 +29,17 @@ namespace priv {
 
 namespace test {
 
-TEST(VaultManagerTest, BEH_StartStop) {
+TEST(VaultsManagerTest, BEH_StartStop) {
   // Write 1 byte local config file
-  WriteFile(fs::path(".") / VaultManager::kConfigFileName(), "~");
+  WriteFile(fs::path(".") / VaultsManager::kConfigFileName(), "~");
 
-  maidsafe::priv::VaultManager vault_manager;
+  maidsafe::priv::VaultsManager vaults_manager;
   maidsafe::priv::ClientController client_controller;
 
-  int max_seconds = VaultManager::kMaxUpdateInterval().total_seconds();
+  int max_seconds = VaultsManager::kMaxUpdateInterval().total_seconds();
   EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
   EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
-  int min_seconds = VaultManager::kMinUpdateInterval().total_seconds();
+  int min_seconds = VaultsManager::kMinUpdateInterval().total_seconds();
   EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
   EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
 

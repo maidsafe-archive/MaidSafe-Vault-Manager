@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
-#define MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_
+#define MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -33,7 +33,7 @@
 
 #include "maidsafe/private/download_manager.h"
 #include "maidsafe/private/process_manager.h"
-#include "utils.h"
+#include "maidsafe/private/utils.h"
 
 
 namespace maidsafe {
@@ -65,15 +65,15 @@ enum class MessageType {
   kNewVersionAvailableAck
 };
 
-// The VaultManager has several responsibilities:
+// The VaultsManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file as having been started before.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
 // * Regularly checks for (and downloads) updated client or vault executables.
-class VaultManager {
+class VaultsManager {
  public:
-  VaultManager();
-  ~VaultManager();
+  VaultsManager();
+  ~VaultsManager();
   static std::string kConfigFileName() { return "config-global.dat"; }
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5582; }
@@ -98,9 +98,9 @@ class VaultManager {
     enum JoinedState { kPending, kJoined, kNotJoined } joined_network;
   };
 
-  VaultManager(const VaultManager&);
-  VaultManager operator=(const VaultManager&);
-  void RestartVaultManager(const std::string& latest_file,
+  VaultsManager(const VaultsManager&);
+  VaultsManager operator=(const VaultsManager&);
+  void RestartVaultsManager(const std::string& latest_file,
                            const std::string& executable_name) const;
 
   // Config file handling
@@ -127,12 +127,13 @@ class VaultManager {
   boost::posix_time::time_duration GetUpdateInterval() const;
 
   // Update handling
-  std::string FindLatestLocalVersion(const std::string& application) const;
+  std::string FindLatestLocalVersion() const;
   void CheckForUpdates(const boost::system::error_code& ec);
 
   // General
   bool InTestMode() const;
-  std::vector<std::shared_ptr<VaultInfo>>::const_iterator FindFromIdentity(const std::string& identity) const;
+  std::vector<std::shared_ptr<VaultInfo>>::const_iterator  // NOLINT
+      FindFromIdentity(const std::string& identity) const;
   ProcessIndex AddVaultToProcesses(const std::string& chunkstore_path,
                                    const uintmax_t& chunkstore_capacity,
                                    const std::string& bootstrap_endpoint);
@@ -144,7 +145,7 @@ class VaultManager {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
-  static std::string kVaultManagerName() { return "vault-manager"; }
+  static std::string kVaultsManagerName() { return "vault-manager"; }
 
 
   ProcessManager process_manager_;
@@ -162,10 +163,11 @@ class VaultManager {
   bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
   std::string latest_local_version_;
+  std::string bootstrap_nodes_;
 };
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_VAULT_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_VAULTS_MANAGER_H_

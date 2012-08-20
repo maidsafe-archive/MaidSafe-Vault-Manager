@@ -9,15 +9,15 @@ message WrapperMessage {
 
 
 
-// VaultManager receives this from a Client looking for the correct port and echos it back.
+// VaultsManager receives this from a Client looking for the correct port and echos it back.
 message Ping {
   optional bytes ping = 1;
 }
 
 
 
-// VaultManager receives this from Client and it will then start a vault.  The new vault will send a
-// VaultIdentityRequest to the VaultManager which will trigger the StartVaultResponse in reply to
+// VaultsManager receives this from Client and it will then start a vault.  The new vault will send
+// a VaultIdentityRequest to the VaultsManager which will trigger the StartVaultResponse in reply to
 // this message.
 message StartVaultRequest {
   required bytes account_name = 1;
@@ -25,18 +25,18 @@ message StartVaultRequest {
   optional bytes bootstrap_endpoint = 3;
 }
 
-// VaultManager sends this in response to a StartVaultRequest. It details whether or not the
+// VaultsManager sends this in response to a StartVaultRequest. It details whether or not the
 // starting of the vault was successful.
 message StartVaultResponse {
   required bool result = 1;
 }
 
-// VaultManager receives this from Vault. Vault expects a VaultIdentityResponse.
+// VaultsManager receives this from Vault. Vault expects a VaultIdentityResponse.
 message VaultIdentityRequest {
   required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
-// VaultManager sends this to a requesting Vault. It contains the identity that the Vault can assume.
+// VaultsManager sends this to a requesting Vault. It contains the ID that the Vault can assume.
 message VaultIdentityResponse {
   required bytes account_name = 1;
   required bytes keys = 2;
@@ -44,7 +44,7 @@ message VaultIdentityResponse {
 
 
 
-// VaultManager receives this from Vault once it has joined or failed to join the network and
+// VaultsManager receives this from Vault once it has joined or failed to join the network and
 // replies with the VaultJoinedNetworkAck.
 message VaultJoinedNetwork {
   required uint32 process_index = 1;  // as assigned by ProcessManager
@@ -57,52 +57,52 @@ message VaultJoinedNetworkAck {
 
 
 
-// VaultManager receives this from Client and it will then stop vault with keys.identity == identity
+// VaultsManager receives this from Client and it will then stop vault with keys.identity==identity
 message StopVaultRequest {
   required bytes data = 1;
   required bytes signature = 2;
   required bytes identity = 3;
 }
 
-// VaultManager sends this in response to a StopVaultRequest. It details whether or not the
+// VaultsManager sends this in response to a StopVaultRequest. It details whether or not the
 // stopping of the vault was successful.
 message StopVaultResponse {
   required bool result = 1;
 }
 
-// VaultManager sends this to Vault
+// VaultsManager sends this to Vault
 message VaultShutdownRequest {
   required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
-// Vault replies with this to a requesting VaultManager. It contains a boolean incdicating whether or not
-// the vault is shutting down.
+// Vault replies with this to a requesting VaultsManager. It contains a boolean incdicating whether
+// or not the vault is shutting down.
 message VaultShutdownResponse {
   required bool shutdown = 1;
   required uint32 process_index = 2;
 }
 
-// VaultManager acknowledges VaultShutdownResponse with this.
+// VaultsManager acknowledges VaultShutdownResponse with this.
 message VaultShutdownResponseAck {
   required bool ack = 1;
 }
 
 
 
-// Client sends this to VaultManager.  If the new_update_interval is set, the request is a setter,
+// Client sends this to VaultsManager.  If the new_update_interval is set, the request is a setter,
 // otherwise it's a getter.
 message UpdateIntervalRequest {
   optional uint32 new_update_interval = 1;  // In seconds.
 }
 
-// VaultManager sends this to a requesting Client indicating the current update interval in seconds.
+// VaultsManager sends this to a requesting Client indicating current update interval in seconds.
 message UpdateIntervalResponse {
   required uint32 update_interval = 1;  // In seconds.
 }
 
 
 
-// VaultManager sends this to Clients when a new version of the Client executable is available.
+// VaultsManager sends this to Clients when a new version of the Client executable is available.
 message NewVersionAvailable {
   required bytes new_version_filepath = 1;
 }

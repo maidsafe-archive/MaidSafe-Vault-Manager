@@ -49,63 +49,75 @@ DownloadManager::DownloadManager(const std::string& protocol,
       maidsafe_public_key_(),
       io_service_(),
       resolver_(io_service_),
-      query_(site_, protocol_) {
+      query_(site_, protocol_),
+      local_path_(),
+      remote_path_(),
+      files_in_manifest_() {
   asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
+  std::string prefix(RandomAlphaNumericString(8));
+  boost::system::error_code error_code;
+  fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code) / prefix));
+  local_path_ = temp_path;
 }
 
-std::string DownloadManager::UpdateAndVerify(const std::string& current_file,
-                                             const fs::path& directory) {
-  // Handle special case bootstrap-global.dat by always downloading
-  if (current_file == "bootstrap-global.dat")
-    return GetAndVerifyFile(current_file, directory) ? current_file : "";
-
-  // Tokenise current_file
-  std::string application;
-  detail::Platform platform(detail::Platform::Type::kUnknown);
-  int version(detail::kInvalidVersion);
-  std::string extension;
-  if (!detail::TokeniseFileName(current_file, &application, &platform, &version, &extension)) {
-    LOG(kError) << "Invalid current file name";
+std::string DownloadManager::RetrieveBootstrapInfo() {
+  if (!GetAndVerifyFile("bootstrap-global.dat", local_path_)) {
+    LOG(kError) << "Failed to download bootstrap file";
     return "";
   }
-
-  // Download the file list
-  std::string file_list_as_string(DownloadFile("file_list"));
-  if (file_list_as_string.empty()) {
-    LOG(kWarning) << "Failed to get the file listing.";
+  std::string bootstrap_content;
+  if (!ReadFile(local_path_ / "bootstrap-global.dat", &bootstrap_content)) {
+    LOG(kError) << "Failed to read downloaded bootstrap file";
     return "";
   }
-  std::vector<std::string> file_list;
-  boost::split(file_list, file_list_as_string, boost::is_any_of("\n"));
+  return bootstrap_content;
+}
 
-  // Establish if there is a newer version of current_file
-  int latest_version(version);
-  std::string latest_file;
-  for (auto file : file_list) {
-    std::string app;
-    detail::Platform platfm(detail::Platform::Type::kUnknown);
-    int versn(detail::kInvalidVersion);
-    std::string extn;
-    if (detail::TokeniseFileName(file, &app, &platfm, &versn) &&
-        app == application &&
-        platfm.type() == platform.type() &&
-        versn > latest_version) {
-      latest_version = versn;
-      latest_file = file;
+std::string DownloadManager::RetrieveLatestRemoteVersion() {
+  if (!GetAndVerifyFile("version", local_path_)) {
+    LOG(kError) << "Failed to download version file";
+    return "";
+  }
+  std::string version_content;
+  if (!ReadFile(local_path_ / "version", &version_content)) {
+    LOG(kError) << "Failed to read downloaded version file";
+    return "";
+  }
+  return version_content;
+}
+
+std::vector<std::string> DownloadManager::RetrieveManifest(fs::path manifest_location) {
+  std::vector<std::string> files;
+  if (!GetAndVerifyFile((manifest_location / "manifest").string(), local_path_)) {
+    LOG(kError) << "Failed to download manifest file";
+    return files;
+  }
+  std::string manifest_content;
+  if (!ReadFile(local_path_ / "manifest", &manifest_content)) {
+    LOG(kError) << "Failed to read downloaded manifest file";
+    return files;
+  }
+  boost::split(files, manifest_content, boost::is_any_of("\n"));
+  remote_path_ = manifest_location;
+  files_in_manifest_ = files;
+  return files;
+}
+
+std::vector<std::string> DownloadManager::UpdateFilesInManifest() {
+  std::vector<std::string> updated_files;
+  if (remote_path_.empty() || files_in_manifest_.empty()) {
+    LOG(kError) << "Manifest has not yet been successfully retrieved";
+  }
+  for (auto file : files_in_manifest_) {
+    if (!GetAndVerifyFile((remote_path_ / file).string(), local_path_)) {
+      LOG(kError) << "Failed to get and verify file: " << file;
+    } else {
+      updated_files.push_back(file);
     }
   }
-  if (latest_version <= version) {
-    LOG(kInfo) << "No newer version of " << current_file;
-    return "";
-  }
-
-  // Download the file and validate the signature
-  if (!GetAndVerifyFile(latest_file, directory))
-    return "";
-
-  return latest_file;
+  return updated_files;
 }
 
 bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& directory) {
@@ -134,10 +146,6 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
   }
 
   return true;
-}
-
-std::string DownloadManager::GetLatestRemoteVersion() {
-  return DownloadFile("version");
 }
 
 std::string DownloadManager::DownloadFile(const std::string& file_name) {

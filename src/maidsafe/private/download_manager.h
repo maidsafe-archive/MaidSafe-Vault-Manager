@@ -31,12 +31,18 @@ class DownloadManager {
   DownloadManager(const std::string& protocol,
                   const std::string& site,
                   const std::string& location);
-  // If a newer version of current_file exists, is sucessfully downloaded to directory, and the
-  // signature verified, then the new file name is returned, else an empty string.
-  std::string UpdateAndVerify(const std::string& current_file,
-                              const boost::filesystem::path& directory);
+  // Retrieves the latest bootstrap file from the server.
+  std::string RetrieveBootstrapInfo();
   // Get the version of the files on the update server
-  std::string GetLatestRemoteVersion();
+  std::string RetrieveLatestRemoteVersion();
+  // Retrieves the manifest file from the specified location.
+  std::vector<std::string> RetrieveManifest(boost::filesystem::path manifest_location);
+  // Update all files in the manifest. Should be called after RetreiveManifest.
+  std::vector<std::string> UpdateFilesInManifest();
+  // Returns the local path to which the DownloadManager downloads files.
+  boost::filesystem::path GetLocalPath() const { return local_path_; }
+  // Returns the remote path from which the DownloadManager downloads the files in the manifest.
+  boost::filesystem::path GetRemotePath() const { return remote_path_; }
 
  private:
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
@@ -48,6 +54,8 @@ class DownloadManager {
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
+  boost::filesystem::path local_path_, remote_path_;
+  std::vector<std::string> files_in_manifest_;
 };
 
 }  // namespace priv
