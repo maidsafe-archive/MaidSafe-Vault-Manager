@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/vaults_manager.h"
+#include "maidsafe/private/process_management/vaults_manager.h"
 
 #include <chrono>
 #include <iostream>
@@ -21,11 +21,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/local_tcp_transport.h"
-#include "maidsafe/private/utils.h"
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/vault_info_pb.h"
+#include "maidsafe/private/process_management/controller_messages_pb.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
+#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/process_management/vault_info_pb.h"
 
 
 namespace bptime = boost::posix_time;
@@ -34,6 +34,8 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace {
 
@@ -782,6 +784,8 @@ void VaultsManager::StopAllVaults() {
 //
 //    return 0;
 //  }
+
+}  // namespace process_management
 
 }  // namespace priv
 

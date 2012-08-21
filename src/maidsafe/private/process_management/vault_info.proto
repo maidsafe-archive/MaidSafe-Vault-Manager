@@ -1,4 +1,4 @@
-package maidsafe.priv.protobuf;
+package maidsafe.priv.process_management.protobuf;
 
 message VaultInfo {
   required bytes account_name = 1;

@@ -22,6 +22,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 enum class MessageType;
 
 namespace detail {
@@ -91,6 +93,8 @@ bool ParseVmidParameter(const std::string& vaults_manager_identifier,
                         uint16_t& vaults_manager_port);
 
 }  // namespace detail
+
+}  // namespace process_management
 
 }  // namespace priv
 

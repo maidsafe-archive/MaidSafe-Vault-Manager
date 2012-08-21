@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/tcp_connection.h"
+#include "maidsafe/private/process_management/tcp_connection.h"
 
 #include <array>
 #include <algorithm>
@@ -23,7 +23,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
 #include "maidsafe/private/return_codes.h"
 
 
@@ -36,6 +36,8 @@ namespace args = std::placeholders;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 TcpConnection::TcpConnection(const std::shared_ptr<LocalTcpTransport>& transport)
     : transport_(transport),
@@ -194,6 +196,8 @@ void TcpConnection::HandleWrite(const bs::error_code& ec) {
       transport->on_error_(kSendFailure);
   }
 }
+
+}  // namespace process_management
 
 }  // namespace priv
 

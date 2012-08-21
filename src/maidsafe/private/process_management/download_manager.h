@@ -26,6 +26,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 namespace test { class DownloadTest_BEH_DownloadFileToDisk_Test; }
 
 class DownloadManager {
@@ -51,6 +53,7 @@ class DownloadManager {
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);
+
   std::string protocol_;
   std::string site_;
   std::string location_;
@@ -61,6 +64,8 @@ class DownloadManager {
   boost::filesystem::path local_path_, remote_path_;
   std::vector<std::string> files_in_manifest_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

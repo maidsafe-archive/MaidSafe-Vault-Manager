@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/client_controller.h"
+#include "maidsafe/private/process_management/client_controller.h"
 
 #include <chrono>
 #include <limits>
@@ -17,11 +17,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/local_tcp_transport.h"
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/utils.h"
-#include "maidsafe/private/vaults_manager.h"
+#include "maidsafe/private/process_management/controller_messages_pb.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
+#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/process_management/vaults_manager.h"
 
 
 namespace bptime = boost::posix_time;
@@ -30,6 +30,8 @@ namespace bs2 = boost::signals2;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 ClientController::ClientController()
     : vaults_manager_port_(VaultsManager::kMinPort() - 1),
@@ -433,6 +435,7 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
   on_new_version_available_(new_version_available.new_version_filepath());
 }
 
+}  // namespace process_management
 
 }  // namespace priv
 

@@ -25,6 +25,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 typedef uint32_t ProcessIndex;
 
 /*enum class ProcessStatus {
@@ -108,6 +110,8 @@ class ProcessManager {
   ProcessIndex current_max_id_;
   mutable std::mutex mutex_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 
