@@ -37,24 +37,24 @@ class DownloadManager {
   std::string RetrieveBootstrapInfo();
   // Check for an update and carry out required updates. Populates updated_files with list of files
   // that were updated. Return code indicates success/type of failure.
-  int Update(std::vector<std::string>* updated_files);
+  int Update(std::vector<std::string>& updated_files);
   // Returns the local path to which the DownloadManager downloads files.
   boost::filesystem::path GetLocalPath() const { return local_path_; }
   // Returns the remote path from which the DownloadManager downloads the files in the manifest.
   boost::filesystem::path GetRemotePath() const { return remote_path_; }
-  void SetLatestLocalVersion(std::string version) { latest_local_version_ = version; }
-  std::string latest_local_version() { return latest_local_version_; }
+  void SetLatestLocalVersion(const std::string& version) { latest_local_version_ = version; }
+  std::string latest_local_version() const { return latest_local_version_; }
 
  private:
   // Get the version of the files on the update server
   std::string RetrieveLatestRemoteVersion();
   // Retrieves the manifest file from the specified location.
-  void RetrieveManifest(boost::filesystem::path manifest_location);
+  void RetrieveManifest(const boost::filesystem::path& manifest_location);
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
   bool PrepareDownload(const std::string& file_name,
-                                        boost::asio::streambuf* response_buffer,
-                                        std::istream* response_stream,
-                                        boost::asio::ip::tcp::socket* socket);
+                       boost::asio::streambuf* response_buffer,
+                       std::istream* response_stream,
+                       boost::asio::ip::tcp::socket* socket);
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);
 

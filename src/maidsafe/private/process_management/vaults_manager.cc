@@ -117,7 +117,6 @@ VaultsManager::VaultsManager()
       stop_listening_for_updates_(false),
       shutdown_requested_(false),
       config_file_path_(),
-      latest_local_version_("0.00.00"),
       bootstrap_nodes_() {
   if (!EstablishConfigFilePath() && !WriteConfigFile()) {
     LOG(kError) << "VaultsManager failed to start - failed to find existing config file in "
@@ -218,8 +217,7 @@ bool VaultsManager::ReadConfigFile() {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
   }
-  latest_local_version_ = config.latest_local_version();
-  download_manager_.SetLatestLocalVersion(latest_local_version_);
+  download_manager_.SetLatestLocalVersion(config.latest_local_version());
   update_interval_ = bptime::seconds(config.update_interval());
 
   for (int i(0); i != config.vault_info_size(); ++i) {
@@ -253,8 +251,7 @@ bool VaultsManager::WriteConfigFile() {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
   }
-  latest_local_version_ = download_manager_.latest_local_version();
-  config.set_latest_local_version(latest_local_version_);
+  config.set_latest_local_version(download_manager_.latest_local_version());
   config.set_bootstrap_nodes(bootstrap_nodes_);
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   for (auto& vault_info : vault_infos_) {
@@ -578,7 +575,7 @@ void VaultsManager::CheckForUpdates(const boost::system::error_code& ec) {
     WriteConfigFile();
   }
   std::vector<std::string> updated_files;
-  if (download_manager_.Update(&updated_files) == kSuccess)
+  if (download_manager_.Update(updated_files) == kSuccess)
     WriteConfigFile();
   update_timer_.expires_from_now(update_interval_);
   update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)

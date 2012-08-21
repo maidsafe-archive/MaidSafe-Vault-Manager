@@ -55,7 +55,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
       local_path_(),
       remote_path_(),
       files_in_manifest_(),
-      latest_local_version_() {
+      latest_local_version_("0.00.00") {
   asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
@@ -83,7 +83,7 @@ std::string DownloadManager::RetrieveBootstrapInfo() {
   return bootstrap_content;
 }
 
-int DownloadManager::Update(std::vector<std::string>* updated_files) {
+int DownloadManager::Update(std::vector<std::string>& updated_files) {
   std::string latest_remote_version(RetrieveLatestRemoteVersion());
   LOG(kVerbose) << "Latest local version is " << latest_local_version_;
   LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
@@ -99,10 +99,9 @@ int DownloadManager::Update(std::vector<std::string>* updated_files) {
     if (!GetAndVerifyFile((remote_path_ / file).string(), local_path_)) {
       LOG(kError) << "Failed to get and verify file: " << file;
       return kDownloadFailure;
-    } else {
-      LOG(kInfo) << "Updated file: " << file;
-      updated_files->push_back(file);
     }
+    LOG(kInfo) << "Updated file: " << file;
+    updated_files.push_back(file);
   }
   latest_local_version_ = latest_remote_version;
   return kSuccess;
@@ -121,7 +120,7 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
   return version_content;
 }
 
-void DownloadManager::RetrieveManifest(fs::path manifest_location) {
+void DownloadManager::RetrieveManifest(const fs::path& manifest_location) {
   std::vector<std::string> files;
   if (!GetAndVerifyFile((manifest_location / "manifest").string(), local_path_)) {
     LOG(kError) << "Failed to download manifest file";
@@ -223,7 +222,7 @@ bool DownloadManager::PrepareDownload(const std::string& file_name,
 }
 
 bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
-                                         const boost::filesystem3::path& directory) {
+                                         const fs::path& directory) {
   ip::tcp::socket socket(io_service_);
   std::vector<char> char_buffer(1024);
   asio::streambuf response_buffer(1024);

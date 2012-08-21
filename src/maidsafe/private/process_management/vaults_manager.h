@@ -162,7 +162,6 @@ class VaultsManager {
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
-  std::string latest_local_version_;
   std::string bootstrap_nodes_;
 };
 
