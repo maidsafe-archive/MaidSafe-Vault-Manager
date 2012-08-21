@@ -29,8 +29,8 @@
 #include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/process_management/utils.h"
-
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -54,7 +54,8 @@ DownloadManager::DownloadManager(const std::string& protocol,
       query_(site_, protocol_),
       local_path_(),
       remote_path_(),
-      files_in_manifest_() {
+      files_in_manifest_(),
+      latest_local_version_() {
   asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
@@ -82,6 +83,31 @@ std::string DownloadManager::RetrieveBootstrapInfo() {
   return bootstrap_content;
 }
 
+int DownloadManager::Update(std::vector<std::string>* updated_files) {
+  std::string latest_remote_version(RetrieveLatestRemoteVersion());
+  LOG(kVerbose) << "Latest local version is " << latest_local_version_;
+  LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
+  if (detail::VersionToInt(latest_remote_version) > detail::VersionToInt(latest_local_version_)) {
+    fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version);
+    RetrieveManifest(remote_update_path);
+    if (remote_path_.empty() || files_in_manifest_.empty()) {
+      LOG(kError) << "Manifest was not successfully retrieved";
+      return kManifestFailure;
+    }
+  }
+  for (auto file : files_in_manifest_) {
+    if (!GetAndVerifyFile((remote_path_ / file).string(), local_path_)) {
+      LOG(kError) << "Failed to get and verify file: " << file;
+      return kDownloadFailure;
+    } else {
+      LOG(kInfo) << "Updated file: " << file;
+      updated_files->push_back(file);
+    }
+  }
+  latest_local_version_ = latest_remote_version;
+  return kSuccess;
+}
+
 std::string DownloadManager::RetrieveLatestRemoteVersion() {
   if (!GetAndVerifyFile("version", local_path_)) {
     LOG(kError) << "Failed to download version file";
@@ -95,37 +121,20 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
   return version_content;
 }
 
-std::vector<std::string> DownloadManager::RetrieveManifest(fs::path manifest_location) {
+void DownloadManager::RetrieveManifest(fs::path manifest_location) {
   std::vector<std::string> files;
   if (!GetAndVerifyFile((manifest_location / "manifest").string(), local_path_)) {
     LOG(kError) << "Failed to download manifest file";
-    return files;
+    return;
   }
   std::string manifest_content;
   if (!ReadFile(local_path_ / "manifest", &manifest_content)) {
     LOG(kError) << "Failed to read downloaded manifest file";
-    return files;
+    return;
   }
   boost::split(files, manifest_content, boost::is_any_of("\n"));
   remote_path_ = manifest_location;
   files_in_manifest_ = files;
-  return files;
-}
-
-std::vector<std::string> DownloadManager::UpdateFilesInManifest() {
-  std::vector<std::string> updated_files;
-  if (remote_path_.empty() || files_in_manifest_.empty()) {
-    LOG(kError) << "Manifest has not yet been successfully retrieved";
-  }
-  for (auto file : files_in_manifest_) {
-    if (!GetAndVerifyFile((remote_path_ / file).string(), local_path_)) {
-      LOG(kError) << "Failed to get and verify file: " << file;
-    } else {
-      LOG(kError) << "Updated file: " << file;
-      updated_files.push_back(file);
-    }
-  }
-  return updated_files;
 }
 
 bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& directory) {

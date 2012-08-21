@@ -37,19 +37,22 @@ class DownloadManager {
                   const std::string& location);
   // Retrieves the latest bootstrap file from the server.
   std::string RetrieveBootstrapInfo();
-  // Get the version of the files on the update server
-  std::string RetrieveLatestRemoteVersion();
-  // Retrieves the manifest file from the specified location.
-  std::vector<std::string> RetrieveManifest(boost::filesystem::path manifest_location);
-  // Update all files in the manifest. Should be called after RetreiveManifest.
-  std::vector<std::string> UpdateFilesInManifest();
+  // Check for an update and carry out required updates. Populates updated_files with list of files
+  // that were updated. Return code indicates success/type of failure.
+  int Update(std::vector<std::string>* updated_files);
   // Returns the local path to which the DownloadManager downloads files.
   boost::filesystem::path GetLocalPath() const { return local_path_; }
   // Returns the remote path from which the DownloadManager downloads the files in the manifest.
   boost::filesystem::path GetRemotePath() const { return remote_path_; }
+  void SetLatestLocalVersion(std::string version) { latest_local_version_ = version; }
+  std::string latest_local_version() { return latest_local_version_; }
 
  private:
   friend class test::DownloadTest_BEH_DownloadFileToDisk_Test;
+  // Get the version of the files on the update server
+  std::string RetrieveLatestRemoteVersion();
+  // Retrieves the manifest file from the specified location.
+  void RetrieveManifest(boost::filesystem::path manifest_location);
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
   bool PrepareDownload(const std::string& file_name,
                                         boost::asio::streambuf* response_buffer,
@@ -67,6 +70,7 @@ class DownloadManager {
   boost::asio::ip::tcp::resolver::query query_;
   boost::filesystem::path local_path_, remote_path_;
   std::vector<std::string> files_in_manifest_;
+  std::string latest_local_version_;
 };
 
 }  // namespace process_management

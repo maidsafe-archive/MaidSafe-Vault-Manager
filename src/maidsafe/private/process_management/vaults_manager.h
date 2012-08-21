@@ -128,7 +128,6 @@ class VaultsManager {
   boost::posix_time::time_duration GetUpdateInterval() const;
 
   // Update handling
-  std::string FindLatestLocalVersion() const;
   void CheckForUpdates(const boost::system::error_code& ec);
 
   // General
