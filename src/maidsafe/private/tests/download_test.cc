@@ -18,7 +18,9 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
+
 #include "maidsafe/private/process_management/download_manager.h"
+#include "maidsafe/private/return_codes.h"
 
 // Note: These tests assume that there exists nonempty files publicly available on
 // dash.maidsafe.net/~phil called e.g.
@@ -91,6 +93,77 @@ namespace test {
   EXPECT_TRUE(download_manager.DownloadFileToDisk("warandpeace_linux_32_1_2", *test_path));
   EXPECT_FALSE(download_manager.DownloadFileToDisk("non_existent_file", *test_path));
 }*/
+
+TEST(DownloadTest, BEH_Update_Successful) {
+  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_successful");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.01");
+  EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
+  EXPECT_TRUE(updated_files.empty());
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file1"));
+  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file2"));
+  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file3"));
+}
+
+TEST(DownloadTest, BEH_Update_HasLatestVersion) {
+  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_has_latest");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.02");
+  EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
+  EXPECT_TRUE(updated_files.empty());
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file1"));
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file2"));
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+}
+
+TEST(DownloadTest, BEH_Update_NoManifestFile) {
+  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_no_manifest");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.01");
+  EXPECT_EQ(kManifestFailure, download_manager.Update(updated_files));
+  EXPECT_TRUE(updated_files.empty());
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file1"));
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file2"));
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+}
+
+TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
+  DownloadManager download_manager("http", "dash.maidsafe.net",
+                                   "~phil/tests/test_incorrect_manifest");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.01");
+  EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+}
+
+TEST(DownloadTest, BEH_Update_NoSignature) {
+  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_no_signature");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.01");
+  EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+}
+
+TEST(DownloadTest, BEH_Update_InvalidSignature) {
+  DownloadManager download_manager("http", "dash.maidsafe.net",
+                                   "~phil/tests/test_incorrect_signature");
+  std::vector<std::string> updated_files;
+  // NOTE: version file on server MUST be set to "1.01.02"
+  download_manager.SetLatestLocalVersion("1.01.01");
+  EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
+  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+}
 
 }  // namespace test
 

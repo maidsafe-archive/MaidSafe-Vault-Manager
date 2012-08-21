@@ -19,6 +19,8 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
 project(private)
 
+# set(USE_TEST_KEYS ON)
+
 set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
@@ -132,6 +134,9 @@ ms_add_static_library(private ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
                               ${ALL_FILES_PRIVATE_UTILS_DIR})
+
+ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTvaults_manager "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
@@ -144,14 +149,18 @@ ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/privat
 ms_add_executable(vaults-manager VaultsManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vaults_manager_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
+target_link_libraries(maidsafe_process_management maidsafe_common)
+target_link_libraries(maidsafe_process_management_test maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
-target_link_libraries(DUMMYprocess maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(DUMMYclient maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(TESTvaults_manager maidsafe_private ${BoostProgramOptionsLibs})
-target_link_libraries(vaults-manager maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYprocess maidsafe_process_management_test ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYclient maidsafe_process_management_test ${BoostProgramOptionsLibs})
+target_link_libraries(TESTvaults_manager maidsafe_process_management_test ${BoostProgramOptionsLibs})
+target_link_libraries(vaults-manager maidsafe_process_management ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 
 add_dependencies(TESTvaults_manager DUMMYprocess)
+
+set_target_properties(maidsafe_process_management_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
 
 rename_outdated_built_exes()
 

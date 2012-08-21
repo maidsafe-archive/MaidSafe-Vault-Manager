@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
-#define MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_DOWNLOAD_MANAGER_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_DOWNLOAD_MANAGER_H_
 
 #include <string>
 #include <vector>
@@ -76,4 +76,4 @@ class DownloadManager {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_DOWNLOAD_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_DOWNLOAD_MANAGER_H_

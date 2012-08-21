@@ -56,9 +56,6 @@ DownloadManager::DownloadManager(const std::string& protocol,
       remote_path_(),
       files_in_manifest_(),
       latest_local_version_("0.00.00") {
-  asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
-  if (!asymm::ValidateKey(maidsafe_public_key_))
-    LOG(kError) << "MaidSafe public key invalid";
   boost::system::error_code error_code;
   fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code)));
   if (!fs::exists(temp_path, error_code))
@@ -68,6 +65,16 @@ DownloadManager::DownloadManager(const std::string& protocol,
   } else {
     local_path_ = temp_path;
   }
+#ifdef USE_TEST_KEYS
+  LOG(kError) << "Using the test keys.";
+  std::string public_key(DownloadFileToMemory("public_key.dat"));
+  asymm::DecodePublicKey(public_key, &maidsafe_public_key_);
+#else
+  LOG(kError) << "Using the production keys.";
+  asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
+#endif
+  if (!asymm::ValidateKey(maidsafe_public_key_))
+    LOG(kError) << "MaidSafe public key invalid";
 }
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
