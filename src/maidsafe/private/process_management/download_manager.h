@@ -57,6 +57,7 @@ class DownloadManager {
                                         boost::asio::ip::tcp::socket* socket);
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);
+
   std::string protocol_;
   std::string site_;
   std::string location_;

@@ -32,8 +32,6 @@
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/process_management/utils.h"
 
-
-
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace fs = boost::filesystem;
