@@ -51,6 +51,10 @@ class DownloadManager {
  private:
   friend class test::DownloadTest_BEH_DownloadFileToDisk_Test;
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
+  bool PrepareDownload(const std::string& file_name,
+                                        boost::asio::streambuf* response_buffer,
+                                        std::istream* response_stream,
+                                        boost::asio::ip::tcp::socket* socket);
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);
 

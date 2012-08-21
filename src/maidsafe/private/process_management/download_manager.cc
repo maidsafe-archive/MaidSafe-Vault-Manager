@@ -58,12 +58,15 @@ DownloadManager::DownloadManager(const std::string& protocol,
   asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
-  std::string prefix(RandomAlphaNumericString(8));
   boost::system::error_code error_code;
-  fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code) / prefix));
-  if (!fs::exists(temp_path))
-    fs::create_directories(temp_path);
-  local_path_ = temp_path;
+  fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code)));
+  if (!fs::exists(temp_path, error_code))
+    fs::create_directories(temp_path, error_code);
+  if (error_code) {
+    LOG(kError) << "Problem establishing temporary path for downloads.";
+  } else {
+    local_path_ = temp_path;
+  }
 }
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
@@ -118,6 +121,7 @@ std::vector<std::string> DownloadManager::UpdateFilesInManifest() {
     if (!GetAndVerifyFile((remote_path_ / file).string(), local_path_)) {
       LOG(kError) << "Failed to get and verify file: " << file;
     } else {
+      LOG(kError) << "Updated file: " << file;
       updated_files.push_back(file);
     }
   }
@@ -144,7 +148,10 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
   if (result != kSuccess)  {
     LOG(kError) << "Signature of " << file << " is invalid. Removing file.  Check returned "
                 << result;
-    fs::remove(directory / file);
+    boost::system::error_code error;
+    fs::remove(directory / file, error);
+    if (error)
+      LOG(kError) << "Filed to remove file " << file << " with invalid signature.";
     return false;
   }
   LOG(kVerbose) << "Signature of " << file << " is valid.";
@@ -152,21 +159,14 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
   return true;
 }
 
-bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
-                                                const boost::filesystem3::path& directory) {
-  asio::io_service io_service;
-  ip::tcp::resolver resolver(io_service);
-  ip::tcp::resolver::query query(site_, protocol_);
-  ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-  // Try each endpoint until we successfully establish a connection.
-  ip::tcp::socket socket(io_service);
-  asio::connect(socket, endpoint_iterator);
-  std::vector<char> char_buffer(1024);
-  asio::streambuf current_file_buffer(1024);
-  std::istream current_file_stream(&current_file_buffer);
-  asio::streambuf request;
-  std::ostream request_stream(&request);
+bool DownloadManager::PrepareDownload(const std::string& file_name,
+                                      asio::streambuf* response_buffer,
+                                      std::istream* response_stream,
+                                      ip::tcp::socket* socket) {
   try {
+    asio::streambuf request_buffer;
+    std::ostream request_stream(&request_buffer);
+    asio::connect(*socket, resolver_.resolve(query_));
     // Form the request. We specify the "Connection: close" header so that the
     // server will close the socket after transmitting the response. This will
     // allow us to treat all data up until the EOF as the content.
@@ -175,44 +175,55 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n\r\n";
     // Send the request.
-    asio::write(socket, request);
+    asio::write(*socket, request_buffer);
     // Read the response status line. The response streambuf will automatically
     // grow to accommodate the entire line. The growth may be limited by passing
     // a maximum size to the streambuf constructor.
-    asio::read_until(socket, current_file_buffer, "\r\n");
+    asio::read_until(*socket, *response_buffer, "\r\n");
     // Check that response is OK.
     std::string http_version;
-    current_file_stream >> http_version;
+    *response_stream >> http_version;
     unsigned int status_code;
-    current_file_stream >> status_code;
+    *response_stream >> status_code;
     std::string status_message;
-    std::getline(current_file_stream, status_message);
-    if (!(current_file_stream) || http_version.substr(0, 5) != "HTTP/") {
-      LOG(kError) << "DownloadFileToDisk: Error downloading file: Invalid response";
+    std::getline(*response_stream, status_message);
+    if (!(*response_stream) || http_version.substr(0, 5) != "HTTP/") {
+      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << file_name
+                  << "  Invalid response.";
       return false;
     }
     if (status_code != 200) {
-      LOG(kError) << "DownloadFileToDisk: Error downloading file: Response returned "
-                  << "with status code " << status_code;
+      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << file_name
+                  << "  Returned " << status_code;
       return false;
     }
     // Read the response headers, which are terminated by a blank line.
     /*boost::asio::read_until(socket_, *response, "\r\n\r\n");*/
     // Process the response headers.
     std::string header;
-    while (std::getline(current_file_stream, header)) {
+    while (std::getline(*response_stream, header)) {
       if (header == "\r")
         break;
     }
-  }
-  catch(const std::exception &e) {
-    LOG(kError) << "DownloadFileToDisk: Exception: " << e.what();
+  } catch(const std::exception &e) {
+    LOG(kError) << "Error preparing downloading of " << site_ << "/" << location_ << "/"
+                << file_name << "  : " << e.what();
     return false;
   }
+  return true;
+}
 
+bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
+                                         const boost::filesystem3::path& directory) {
+  ip::tcp::socket socket(io_service_);
+  std::vector<char> char_buffer(1024);
+  asio::streambuf response_buffer(1024);
+  std::istream response_stream(&response_buffer);
+  if (!PrepareDownload(file_name, &response_buffer, &response_stream, &socket))
+    return false;
   try {
     boost::filesystem::ofstream file_out(directory / file_name,
-                                        std::ios::out | std::ios::trunc | std::ios::binary);
+                                         std::ios::out | std::ios::trunc | std::ios::binary);
     if (!file_out.good()) {
       LOG(kError) << "DownloadFileToDisk: Can't get ofstream created for "
                   << directory / file_name;
@@ -220,11 +231,10 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
     }
     boost::system::error_code error;
     // Read until EOF, copies 1024 byte chunks of file into memory at a time before adding to file
-    std::size_t size;
-    std::streamsize length = current_file_stream.readsome(&char_buffer[0], std::streamsize(1024));
+    std::streamsize length = response_stream.readsome(&char_buffer[0], std::streamsize(1024));
     std::string current_block(char_buffer.begin(), char_buffer.begin() + static_cast<int>(length));
     file_out.write(current_block.c_str(), current_block.size());
-    size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
+    std::size_t size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     while (size > 0) {
       if (error && error != boost::asio::error::eof) {
         LOG(kError) << "DownloadFileToDisk: Error downloading file " << file_name << ": "
@@ -240,7 +250,7 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
     file_out.close();
     return true;
   } catch(const std::exception &e) {
-    LOG(kError) << "DownloadFileToDisk: Failed to write file " << directory / file_name
+    LOG(kError) << "DownloadFileToDisk: Exception " << directory / file_name
                 << ": " << e.what();
     return false;
   }
@@ -248,51 +258,12 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
 
 std::string DownloadManager::DownloadFileToMemory(const std::string& file_name) {
   ip::tcp::socket socket(io_service_);
-  asio::streambuf request_buffer, response_buffer;
+  asio::streambuf response_buffer;
   std::istream response_stream(&response_buffer);
-  std::ostream request_stream(&request_buffer);
+  if (!PrepareDownload(file_name, &response_buffer, &response_stream, &socket))
+    return "";
   try {
-    asio::connect(socket, resolver_.resolve(query_));
-    // Form the request. We specify the "Connection: close" header so that the
-    // server will close the socket after transmitting the response. This will
-    // allow us to treat all data up until the EOF as the content.
-    request_stream << "GET /" << location_ << "/" << file_name << " HTTP/1.0\r\n";
-    request_stream << "Host: " << site_ << "\r\n";
-    request_stream << "Accept: */*\r\n";
-    request_stream << "Connection: close\r\n\r\n";
-    // Send the request.
-    asio::write(socket, request_buffer);
-    // Read the response status line. The response streambuf will automatically
-    // grow to accommodate the entire line. The growth may be limited by passing
-    // a maximum size to the streambuf constructor.
-    asio::read_until(socket, response_buffer, "\r\n");
-    // Check that response is OK.
-    std::string http_version;
-    response_stream >> http_version;
-    unsigned int status_code;
-    response_stream >> status_code;
-    std::string status_message;
-    std::getline(response_stream, status_message);
-    if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << file_name
-                  << "  Invalid response.";
-      return "";
-    }
-    if (status_code != 200) {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << file_name
-                  << "  Returned " << status_code;
-      return "";
-    }
-    // Read the response headers, which are terminated by a blank line.
-    /*asio::read_until(socket_, *response, "\r\n\r\n");*/
-    // Process the response headers.
-    std::string header;
-    while (std::getline(response_stream, header)) {
-      if (header == "\r")
-        break;
-    }
-
-    // Read until EOF, puts whole file list in memory but this should be of manageable size
+    // Read until EOF, puts whole file in memory, so this should be of manageable size
     boost::system::error_code error_code;
     while (asio::read(socket, response_buffer, asio::transfer_at_least(1), error_code))
       boost::this_thread::interruption_point();
