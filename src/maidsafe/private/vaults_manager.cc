@@ -217,6 +217,7 @@ bool VaultsManager::ReadConfigFile() {
     return false;
   }
   latest_local_version_ = config.latest_local_version();
+  download_manager_.SetLatestLocalVersion(latest_local_version_);
   update_interval_ = bptime::seconds(config.update_interval());
 
   for (int i(0); i != config.vault_info_size(); ++i) {
@@ -250,6 +251,7 @@ bool VaultsManager::WriteConfigFile() {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
   }
+  latest_local_version_ = download_manager_.latest_local_version();
   config.set_latest_local_version(latest_local_version_);
   config.set_bootstrap_nodes(bootstrap_nodes_);
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
@@ -562,10 +564,6 @@ bptime::time_duration VaultsManager::GetUpdateInterval() const {
   return update_interval_;
 }
 
-std::string VaultsManager::FindLatestLocalVersion() const {
-  return latest_local_version_;
-}
-
 void VaultsManager::CheckForUpdates(const boost::system::error_code& ec) {
   if (ec) {
     if (ec != boost::asio::error::operation_aborted)
@@ -573,32 +571,13 @@ void VaultsManager::CheckForUpdates(const boost::system::error_code& ec) {
     return;
   }
   std::string bootstrap_nodes(download_manager_.RetrieveBootstrapInfo());
-  if (!bootstrap_nodes.empty())
+  if (!bootstrap_nodes.empty()) {
     bootstrap_nodes_ = bootstrap_nodes;
-  std::string latest_remote_version(download_manager_.RetrieveLatestRemoteVersion());
-  LOG(kVerbose) << "Latest local version is " << latest_local_version_;
-  LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
-
-  if (detail::VersionToInt(latest_remote_version) > detail::VersionToInt(latest_local_version_)) {
-    fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version);
-    std::vector<std::string> applications(download_manager_.RetrieveManifest(remote_update_path));
-
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    std::vector<std::string> updated_applications;
-    if (!applications.empty())
-      updated_applications = download_manager_.UpdateFilesInManifest();
-    else
-      LOG(kError) << "Manifest retrieved was empty";
-    /*if (restart_vault) {
-      // stop all vaults, restart vaults
-      StopAllVaults();
-      for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
-        RestartVault((*itr)->keys.identity);
-      }
-    }*/
-    latest_local_version_ = latest_remote_version;
+    WriteConfigFile();
   }
-  WriteConfigFile();
+  std::vector<std::string> updated_files;
+  if (download_manager_.Update(&updated_files) == kSuccess)
+    WriteConfigFile();
   update_timer_.expires_from_now(update_interval_);
   update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }

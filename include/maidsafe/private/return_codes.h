@@ -45,6 +45,10 @@ enum ReturnCode {
   kChunkNotModified = -150025,
   kDataNotPublicKey = -150026,
 
+  // Download Manager
+  kManifestFailure = -250001,
+  kDownloadFailure = -250002,
+
   // Transport
   kAlreadyStarted = -350001,
   kInvalidAddress = -350002,
