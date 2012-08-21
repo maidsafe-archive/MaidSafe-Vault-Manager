@@ -162,16 +162,12 @@ void LoadPublicKey() {
 void SignFile() {
   std::string filename = Get<std::string>("please enter filename to sign");
   fs::path file(filename);
-  std::string data, signature;
-  if (!maidsafe::ReadFile(file, &data)) {
-    std::cout << "error reading file\n";
-    return;
-  }
+  std::string signature;
   if (!maidsafe::rsa::ValidateKey(Keys.private_key)) {
     std::cout << "private key invalid, aborting!!\n";
   }
 
-  if (maidsafe::rsa::Sign(data, Keys.private_key, &signature) != 0) {
+  if (maidsafe::rsa::SignFile(file, Keys.private_key, signature) != 0) {
     std::cout << "cannot sign data, aborting\n";
     return;
   }
@@ -188,8 +184,8 @@ void ValidateSignature() {
   fs::path file(filename);
   fs::path sigfile(filename + ".sig");
 
-  std::string data, signature;
-  if (!maidsafe::ReadFile(file, &data) || !maidsafe::ReadFile(sigfile, &signature)) {
+  std::string signature;
+  if (!maidsafe::ReadFile(sigfile, &signature)) {
     std::cout << "error reading file\n";
     return;
   }
@@ -197,7 +193,7 @@ void ValidateSignature() {
     std::cout << "public key invalid, aborting!!\n";
   }
 
-  if (maidsafe::rsa::CheckSignature(data, signature, Keys.public_key) == 0)  {
+  if (maidsafe::rsa::CheckFileSignature(file, signature, Keys.public_key) == 0)  {
     std::cout << "Signature valid\n";
   } else {
     std::cout << "Invalid signature !! \n";
