@@ -15,11 +15,11 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/client_controller.h"
+#include "maidsafe/private/process_management/client_controller.h"
 
 
 int main(int /*ac*/, char* /*av*/[]) {
-  maidsafe::priv::ClientController client;
+  maidsafe::priv::process_management::ClientController client;
   maidsafe::asymm::Keys keys;
   std::string account_name("ACCOUNT1");
   maidsafe::asymm::GenerateKeyPair(&keys);

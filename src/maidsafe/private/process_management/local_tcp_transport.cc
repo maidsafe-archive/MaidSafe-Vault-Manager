@@ -9,14 +9,14 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/local_tcp_transport.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
 
 #include <functional>
 
 #include "maidsafe/common/log.h"
 
 #include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/tcp_connection.h"
+#include "maidsafe/private/process_management/tcp_connection.h"
 
 
 namespace asio = boost::asio;
@@ -27,6 +27,8 @@ namespace args = std::placeholders;
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // NOLINT
     : asio_service_(asio_service),
@@ -176,6 +178,8 @@ void LocalTcpTransport::RemoveConnection(ConnectionPtr connection) {
 void LocalTcpTransport::DoRemoveConnection(ConnectionPtr connection) {
   connections_.erase(connection);
 }
+
+}  // namespace process_management
 
 }  // namespace priv
 

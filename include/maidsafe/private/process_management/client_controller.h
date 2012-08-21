@@ -32,6 +32,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 class LocalTcpTransport;
 
 typedef boost::signals2::signal<void(const std::string&)> OnNewVersionAvailable;
@@ -100,6 +102,8 @@ class ClientController {
   std::condition_variable cond_var_;
   enum State { kInitialising, kVerified, kFailed } state_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

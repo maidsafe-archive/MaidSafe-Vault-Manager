@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/utils.h"
+#include "maidsafe/private/process_management/utils.h"
 
 #include <cstdint>
 #include <iterator>
@@ -19,15 +19,17 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/controller_messages_pb.h"
-#include "maidsafe/private/local_tcp_transport.h"
-#include "maidsafe/private/process_manager.h"
-#include "maidsafe/private/vaults_manager.h"
+#include "maidsafe/private/process_management/controller_messages_pb.h"
+#include "maidsafe/private/process_management/local_tcp_transport.h"
+#include "maidsafe/private/process_management/process_manager.h"
+#include "maidsafe/private/process_management/vaults_manager.h"
 
 
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace detail {
 
@@ -380,6 +382,8 @@ bool ParseVmidParameter(const std::string& vaults_manager_identifier,
 }
 
 }  // namespace detail
+
+}  //  namespace process_management
 
 }  //  namespace priv
 

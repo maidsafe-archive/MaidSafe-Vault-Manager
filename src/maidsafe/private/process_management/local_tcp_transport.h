@@ -28,6 +28,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 class TcpConnection;
 
 typedef uint16_t Port;
@@ -86,6 +88,8 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   ConnectionSet connections_;
   boost::asio::io_service::strand strand_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

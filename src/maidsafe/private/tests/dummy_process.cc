@@ -17,7 +17,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/vault_controller.h"
+#include "maidsafe/private/process_management/vault_controller.h"
 
 namespace po = boost::program_options;
 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
     }
     std::string vaults_manager_id = variables_map["vmid"].as<std::string>();
     LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
-    maidsafe::priv::VaultController vault_controller;
+    maidsafe::priv::process_management::VaultController vault_controller;
     vault_controller.Start(vaults_manager_id.c_str(), [&] { StopHandler(); });  // NOLINT
     maidsafe::asymm::Keys keys;
     std::string account_name;

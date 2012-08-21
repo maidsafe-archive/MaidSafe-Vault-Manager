@@ -26,7 +26,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace test { class DownloadTest_BEH_DownloadFileToDisk_Test; }
+namespace process_management {
 
 class DownloadManager {
  public:
@@ -46,7 +46,6 @@ class DownloadManager {
   std::string latest_local_version() { return latest_local_version_; }
 
  private:
-  friend class test::DownloadTest_BEH_DownloadFileToDisk_Test;
   // Get the version of the files on the update server
   std::string RetrieveLatestRemoteVersion();
   // Retrieves the manifest file from the specified location.
@@ -69,6 +68,8 @@ class DownloadManager {
   std::vector<std::string> files_in_manifest_;
   std::string latest_local_version_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 

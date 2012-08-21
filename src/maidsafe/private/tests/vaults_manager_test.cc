@@ -16,9 +16,9 @@
 
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 
-#include "maidsafe/private/client_controller.h"
-#include "maidsafe/private/vault_controller.h"
-#include "maidsafe/private/vaults_manager.h"
+#include "maidsafe/private/process_management/client_controller.h"
+#include "maidsafe/private/process_management/vault_controller.h"
+#include "maidsafe/private/process_management/vaults_manager.h"
 
 
 namespace bptime = boost::posix_time;
@@ -27,14 +27,16 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 namespace test {
 
 TEST(VaultsManagerTest, BEH_StartStop) {
   // Write 1 byte local config file
   WriteFile(fs::path(".") / VaultsManager::kConfigFileName(), "~");
 
-  maidsafe::priv::VaultsManager vaults_manager;
-  maidsafe::priv::ClientController client_controller;
+  VaultsManager vaults_manager;
+  ClientController client_controller;
 
   int max_seconds = VaultsManager::kMaxUpdateInterval().total_seconds();
   EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
@@ -51,6 +53,8 @@ TEST(VaultsManagerTest, BEH_StartStop) {
 }
 
 }  // namespace test
+
+}  // namespace process_management
 
 }  // namespace priv
 

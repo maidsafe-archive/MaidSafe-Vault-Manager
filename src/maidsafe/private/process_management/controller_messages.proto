@@ -1,4 +1,4 @@
-package maidsafe.priv.protobuf;
+package maidsafe.priv.process_management.protobuf;
 
 // All following messages are serialised into the payload field, and the message type added.
 message WrapperMessage {

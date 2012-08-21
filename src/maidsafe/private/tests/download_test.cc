@@ -18,7 +18,7 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/private/download_manager.h"
+#include "maidsafe/private/process_management/download_manager.h"
 
 // Note: These tests assume that there exists nonempty files publicly available on
 // dash.maidsafe.net/~phil called e.g.
@@ -28,6 +28,8 @@
 namespace maidsafe {
 
 namespace priv {
+
+namespace process_management {
 
 namespace test {
 
@@ -82,15 +84,17 @@ namespace test {
   EXPECT_EQ("lifestufflocal_win64_5.05.04.exe", newest_version);
 }*/
 
-TEST(DownloadTest, BEH_DownloadFileToDisk) {
+/*TEST(DownloadTest, BEH_DownloadFileToDisk) {
   maidsafe::test::TestPath test_path(
       maidsafe::test::CreateTestPath("MaidSafe_Test_DownloadManager"));
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil");
   EXPECT_TRUE(download_manager.DownloadFileToDisk("warandpeace_linux_32_1_2", *test_path));
   EXPECT_FALSE(download_manager.DownloadFileToDisk("non_existent_file", *test_path));
-}
+}*/
 
 }  // namespace test
+
+}  // namespace process_management
 
 }  // namespace priv
 

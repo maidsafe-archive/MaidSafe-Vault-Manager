@@ -27,6 +27,8 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace process_management {
+
 class LocalTcpTransport;
 
 #ifdef __GNUC__
@@ -78,6 +80,8 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   std::vector<unsigned char> size_buffer_, data_buffer_;
   size_t data_size_, data_received_;
 };
+
+}  // namespace process_management
 
 }  // namespace priv
 
