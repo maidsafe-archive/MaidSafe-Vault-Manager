@@ -39,10 +39,10 @@ namespace {
 
 bool HandleBootstrapFile(const asymm::Identity& identity) {
   std::string short_vault_id(EncodeToBase32(crypto::Hash<crypto::SHA1>(identity)));
-  fs::path vault_bootstrap_path(GetSystemAppDir() / ("bootstrap-" + short_vault_id + ".dat"));
+  fs::path vault_bootstrap_path(GetSystemAppSupportDir() / ("bootstrap-" + short_vault_id + ".dat"));
 
   boost::system::error_code error_code;
-  if (!fs::create_directories(maidsafe::GetSystemAppDir(), error_code) || error_code) {
+  if (!fs::create_directories(maidsafe::GetSystemAppSupportDir(), error_code) || error_code) {
     LOG(kError) << "HandleBootstrapFile: Could not create application directory. ("
                 << error_code.message() << ")";
     return false;
@@ -112,7 +112,7 @@ VaultManager::VaultManager(const std::string& parent_path)
       config_file_path_() {
   if (!EstablishConfigFilePath() && !WriteConfigFile()) {
     LOG(kError) << "VaultManager failed to start - failed to find existing config file in "
-                << fs::current_path() << " or in " << GetSystemAppDir()
+                << fs::current_path() << " or in " << GetSystemAppSupportDir()
                 << " and failed to write new one at " << config_file_path_;
     return;
   }
@@ -185,7 +185,7 @@ bool VaultManager::EstablishConfigFilePath() {
   boost::system::error_code error_code;
   if (!fs::exists(local_config_file_path, error_code) || error_code) {
     // Try for one in system app dir
-    config_file_path_ = fs::path(GetSystemAppDir() / kConfigFileName());
+    config_file_path_ = fs::path(GetSystemAppSupportDir() / kConfigFileName());
     return (fs::exists(config_file_path_, error_code) && !error_code);
   } else {
     config_file_path_ = local_config_file_path;
@@ -306,7 +306,7 @@ void VaultManager::HandleStartVaultRequest(const std::string& request, std::stri
   std::unique_ptr<VaultInfo> vault_info(new VaultInfo);
   vault_info->account_name = start_vault_request.account_name();
   asymm::ParseKeys(start_vault_request.keys(), vault_info->keys);
-  vault_info->chunkstore_path = (/*GetSystemAppDir() /*/ "TestVault")/*.string()*/ + RandomAlphaNumericString(5) + "/";
+  vault_info->chunkstore_path = (/*GetSystemAppSupportDir() /*/ "TestVault")/*.string()*/ + RandomAlphaNumericString(5) + "/";
   if (!HandleBootstrapFile(vault_info->keys.identity)) {
     LOG(kError) << "Failed to set bootstrap file for vault "
                 << HexSubstr(vault_info->keys.identity);
@@ -438,7 +438,7 @@ std::string VaultManager::FindLatestLocalVersion(const std::string& application)
   detail::Platform platform(detail::Platform::Type::kUnknown);
   int latest_version(detail::kInvalidVersion), version(detail::kInvalidVersion);
   std::string latest_file;
-          for (fs::directory_iterator itr(GetSystemAppDir()); itr != fs::directory_iterator(); ++itr) {
+          for (fs::directory_iterator itr(GetSystemAppSupportDir()); itr != fs::directory_iterator(); ++itr) {
     // Allow directory iteration to be interrupted
     boost::this_thread::interruption_point();
     std::string file_name((*itr).path().stem().string());
@@ -479,7 +479,7 @@ void VaultManager::ListenForUpdates(const boost::system::error_code& ec) {
     if (!updated_file.empty()) {  // A new version was downloaded
       boost::system::error_code error_code;
 #ifndef MAIDSAFE_WIN32
-      fs::path symlink(GetSystemAppDir() / application);
+      fs::path symlink(GetSystemAppSupportDir() / application);
       if (!fs::remove(symlink, error_code) || error_code)
         LOG(kWarning) << "Failed to remove symlink " << symlink << ": " << error_code.message();
 
@@ -589,7 +589,7 @@ void VaultManager::StopVault(const std::string& account_name) {
 //  }
 
 //  int32_t VaultManager::ListVaults(bool select) const {
-//    fs::path path((GetSystemAppDir() / "config.txt"));
+//    fs::path path((GetSystemAppSupportDir() / "config.txt"));
 //
 //    std::string content;
 //    ReadFile(path, &content);
