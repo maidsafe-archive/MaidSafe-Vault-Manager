@@ -124,7 +124,7 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
     LOG(kError) << "Failed to read downloaded version file";
     return "";
   }
-  return version_content;
+  return version_content.substr(0, version_content.size() - 1);
 }
 
 void DownloadManager::RetrieveManifest(const fs::path& manifest_location) {
@@ -140,6 +140,10 @@ void DownloadManager::RetrieveManifest(const fs::path& manifest_location) {
   }
   boost::split(files, manifest_content, boost::is_any_of("\n"));
   remote_path_ = manifest_location;
+  files.erase(files.end() - 1);
+  for (std::string file : files) {
+    LOG(kError) << "file in manifest: " << file;
+  }
   files_in_manifest_ = files;
 }
 
@@ -152,8 +156,10 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
   if (!DownloadFileToDisk(file, directory)) {
     return false;
   }
+  fs::path file_path(file);
+  std::string local_file = file_path.filename().string();
   std::string file_contents;
-  ReadFile(directory / file, &file_contents);
+  ReadFile(directory / local_file, &file_contents);
   if (file_contents.empty()) {
     LOG(kWarning) << "Failed to download " << file;
     return false;
@@ -161,15 +167,15 @@ bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& 
 
   int result(asymm::CheckSignature(file_contents, signature, maidsafe_public_key_));
   if (result != kSuccess)  {
-    LOG(kError) << "Signature of " << file << " is invalid. Removing file.  Check returned "
+    LOG(kError) << "Signature of " << local_file << " is invalid. Removing file.  Check returned "
                 << result;
     boost::system::error_code error;
-    fs::remove(directory / file, error);
+    fs::remove(directory / local_file, error);
     if (error)
-      LOG(kError) << "Filed to remove file " << file << " with invalid signature.";
+      LOG(kError) << "Filed to remove file " << local_file << " with invalid signature.";
     return false;
   }
-  LOG(kVerbose) << "Signature of " << file << " is valid.";
+  LOG(kVerbose) << "Signature of " << local_file << " is valid.";
 
   return true;
 }
@@ -234,14 +240,16 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
   std::vector<char> char_buffer(1024);
   asio::streambuf response_buffer(1024);
   std::istream response_stream(&response_buffer);
+  fs::path file_name_path(file_name);
+  std::string local_file_name = file_name_path.filename().string();
   if (!PrepareDownload(file_name, &response_buffer, &response_stream, &socket))
     return false;
   try {
-    boost::filesystem::ofstream file_out(directory / file_name,
+    boost::filesystem::ofstream file_out(directory / local_file_name,
                                          std::ios::out | std::ios::trunc | std::ios::binary);
     if (!file_out.good()) {
       LOG(kError) << "DownloadFileToDisk: Can't get ofstream created for "
-                  << directory / file_name;
+                  << directory / local_file_name;
       return false;
     }
     boost::system::error_code error;
@@ -252,7 +260,7 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
     std::size_t size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     while (size > 0) {
       if (error && error != boost::asio::error::eof) {
-        LOG(kError) << "DownloadFileToDisk: Error downloading file " << file_name << ": "
+        LOG(kError) << "DownloadFileToDisk: Error downloading file " << local_file_name << ": "
                     << error.message();
         return false;
       }
@@ -260,12 +268,12 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name,
       file_out.write(current_block.c_str(), current_block.size());
       size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
     }
-    LOG(kInfo) << "DownloadFileToDisk: Finished downloading file " << file_name
+    LOG(kInfo) << "DownloadFileToDisk: Finished downloading file " << local_file_name
                << ", closing file.";
     file_out.close();
     return true;
   } catch(const std::exception &e) {
-    LOG(kError) << "DownloadFileToDisk: Exception " << directory / file_name
+    LOG(kError) << "DownloadFileToDisk: Exception " << directory / local_file_name
                 << ": " << e.what();
     return false;
   }

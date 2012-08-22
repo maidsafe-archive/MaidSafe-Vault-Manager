@@ -100,11 +100,19 @@ TEST(DownloadTest, BEH_Update_Successful) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
-  EXPECT_TRUE(updated_files.empty());
+  EXPECT_FALSE(updated_files.empty());
   boost::filesystem::path local_path(download_manager.GetLocalPath());
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file1"));
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file2"));
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  fs::remove(local_path / "test_file1", error);
+  fs::remove(local_path / "test_file2", error);
+  fs::remove(local_path / "test_file3", error);
+  if (error) {
+    LOG(kError) << "Failed to remove test files.";
+    FAIL();
+  }
 }
 
 TEST(DownloadTest, BEH_Update_HasLatestVersion) {
@@ -142,6 +150,15 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   boost::filesystem::path local_path(download_manager.GetLocalPath());
   ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  if (fs::exists(local_path / "test_file1"))
+    fs::remove(local_path / "test_file1", error);
+  if (fs::exists(local_path / "test_file2"))
+    fs::remove(local_path / "test_file2", error);
+  if (error) {
+    LOG(kError) << "Failed to remove test files.";
+    FAIL();
+  }
 }
 
 TEST(DownloadTest, BEH_Update_NoSignature) {
@@ -152,6 +169,15 @@ TEST(DownloadTest, BEH_Update_NoSignature) {
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   boost::filesystem::path local_path(download_manager.GetLocalPath());
   ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  if (fs::exists(local_path / "test_file1"))
+    fs::remove(local_path / "test_file1", error);
+  if (fs::exists(local_path / "test_file2"))
+    fs::remove(local_path / "test_file2", error);
+  if (error) {
+    LOG(kError) << "Failed to remove test files.";
+    FAIL();
+  }
 }
 
 TEST(DownloadTest, BEH_Update_InvalidSignature) {
@@ -163,6 +189,15 @@ TEST(DownloadTest, BEH_Update_InvalidSignature) {
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   boost::filesystem::path local_path(download_manager.GetLocalPath());
   ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  if (fs::exists(local_path / "test_file1"))
+    fs::remove(local_path / "test_file1", error);
+  if (fs::exists(local_path / "test_file2"))
+    fs::remove(local_path / "test_file2", error);
+  if (error) {
+    LOG(kError) << "Failed to remove test files.";
+    FAIL();
+  }
 }
 
 }  // namespace test
