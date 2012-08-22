@@ -49,7 +49,8 @@ class DownloadManager {
   // Get the version of the files on the update server
   std::string RetrieveLatestRemoteVersion();
   // Retrieves the manifest file from the specified location.
-  void RetrieveManifest(const boost::filesystem::path& manifest_location);
+  void RetrieveManifest(const boost::filesystem::path& manifest_location,
+                        std::vector<std::string>& files_in_manifest);
   bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
   bool PrepareDownload(const std::string& file_name,
                        boost::asio::streambuf* response_buffer,
@@ -58,16 +59,12 @@ class DownloadManager {
   bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
   std::string DownloadFileToMemory(const std::string& file_name);
 
-  std::string protocol_;
-  std::string site_;
-  std::string location_;
+  std::string protocol_, site_, location_, latest_local_version_;
   asymm::PublicKey maidsafe_public_key_;
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
   boost::filesystem::path local_path_, remote_path_;
-  std::vector<std::string> files_in_manifest_;
-  std::string latest_local_version_;
 };
 
 }  // namespace process_management

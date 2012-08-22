@@ -120,7 +120,7 @@ VaultsManager::VaultsManager()
       bootstrap_nodes_() {
   if (!EstablishConfigFilePath() && !WriteConfigFile()) {
     LOG(kError) << "VaultsManager failed to start - failed to find existing config file in "
-                << fs::current_path() << " or in " << GetSystemAppDir()
+                << fs::current_path() << " or in " << GetSystemAppSupportDir()
                 << " and failed to write new one at " << config_file_path_;
     return;
   }
@@ -193,7 +193,7 @@ bool VaultsManager::EstablishConfigFilePath() {
   boost::system::error_code error_code;
   if (!fs::exists(local_config_file_path, error_code) || error_code) {
     // Try for one in system app dir
-    config_file_path_ = fs::path(GetSystemAppDir() / kConfigFileName());
+    config_file_path_ = fs::path(GetSystemAppSupportDir() / kConfigFileName());
     return (fs::exists(config_file_path_, error_code) && !error_code);
   } else {
     config_file_path_ = local_config_file_path;
