@@ -94,6 +94,7 @@ TEST(DownloadTest, BEH_Update_Successful) {
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
   EXPECT_FALSE(updated_files.empty());
   boost::filesystem::path local_path(download_manager.GetLocalPath());
+  LOG(kError) << "local_path: " << local_path;
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file1"));
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file2"));
   ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file3"));

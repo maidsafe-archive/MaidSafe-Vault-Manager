@@ -214,6 +214,7 @@ bool VaultsManager::CreateConfigFile() {
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
     return false;
+
   }
   return true;
 }
