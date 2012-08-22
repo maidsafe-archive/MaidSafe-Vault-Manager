@@ -56,7 +56,9 @@ DownloadManager::DownloadManager(const std::string& protocol,
       local_path_(),
       remote_path_() {
   boost::system::error_code error_code;
-  fs::path temp_path(fs::unique_path(fs::temp_directory_path(error_code)));
+  fs::path temp_path(fs::temp_directory_path(error_code) /
+                     fs::unique_path("%%%%-%%%%-%%%%-%%%%", error_code));
+  LOG(kError) << "temp_path: " << temp_path;
   if (!fs::exists(temp_path, error_code))
     fs::create_directories(temp_path, error_code);
   if (error_code) {
@@ -78,6 +80,11 @@ DownloadManager::DownloadManager(const std::string& protocol,
 #endif
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
+}
+
+DownloadManager::~DownloadManager() {
+  boost::system::error_code error_code;
+  fs::remove_all(local_path_, error_code);
 }
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
@@ -135,7 +142,6 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
 
 void DownloadManager::RetrieveManifest(const fs::path& manifest_location,
                                        std::vector<std::string>& files_in_manifest) {
-  std::vector<std::string> files;
   if (!GetAndVerifyFile((manifest_location / "manifest").string(), local_path_)) {
     LOG(kError) << "Failed to download manifest file";
     return;
@@ -147,7 +153,7 @@ void DownloadManager::RetrieveManifest(const fs::path& manifest_location,
   }
   boost::split(files_in_manifest, manifest_content, boost::is_any_of("\n"));
   remote_path_ = manifest_location;
-  files_in_manifest.erase(files.end() - 1);
+  files_in_manifest.erase(files_in_manifest.end() - 1);
 
 #ifdef DEBUG
   for (std::string file : files_in_manifest)
@@ -158,25 +164,25 @@ void DownloadManager::RetrieveManifest(const fs::path& manifest_location,
 bool DownloadManager::GetAndVerifyFile(const std::string& file, const fs::path& directory) {
   std::string signature(DownloadFileToMemory(file + detail::kSignatureExtension));
   if (signature.empty()) {
-    LOG(kWarning) << "Failed to download signature for file " << file;
+    LOG(kWarning) << "Failed to download signature for file " << (directory / file);
     return false;
   }
   if (!DownloadFileToDisk(file, directory)) {
-    LOG(kWarning) << "Failed to download file " << file;
+    LOG(kWarning) << "Failed to download file " << (directory / file);
     return false;
   }
 
-  fs::path file_path(file);
+  fs::path file_path(directory / fs::path(file).filename());
   int result(asymm::CheckFileSignature(file_path, signature, maidsafe_public_key_));
   if (result != kSuccess)  {
-    LOG(kError) << "Signature of " << file << " is invalid. Removing file: " << result;
+    LOG(kError) << "Signature of " << file_path << " is invalid. Removing file: " << result;
     boost::system::error_code error;
-    fs::remove(directory / file, error);
+    fs::remove(file_path, error);
     if (error)
-      LOG(kError) << "Filed to remove file " << file << " with invalid signature.";
+      LOG(kError) << "Filed to remove file " << file_path << " with invalid signature.";
     return false;
   }
-  LOG(kVerbose) << "Signature of " << file << " is valid.";
+  LOG(kVerbose) << "Signature of " << file_path << " is valid.";
 
   return true;
 }
@@ -248,10 +254,11 @@ bool DownloadManager::DownloadFileToDisk(const std::string& file_name, const fs:
     return false;
   }
 
+  fs::path local_download_path(directory / fs::path(file_name).filename());
   try {
-    boost::filesystem::ofstream file_out(directory / file_name, std::ios::trunc | std::ios::binary);
+    std::ofstream file_out(local_download_path.c_str(), std::ios::trunc | std::ios::binary);
     if (!file_out.good()) {
-      LOG(kError) << "DownloadFileToDisk: Can't get ofstream created for " << directory / file_name;
+      LOG(kError) << "DownloadFileToDisk: Can't get ofstream created for " << local_download_path;
       return false;
     }
 

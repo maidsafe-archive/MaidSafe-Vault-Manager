@@ -33,6 +33,7 @@ class DownloadManager {
   DownloadManager(const std::string& protocol,
                   const std::string& site,
                   const std::string& location);
+  ~DownloadManager();
   // Retrieves the latest bootstrap file from the server.
   std::string RetrieveBootstrapInfo();
   // Check for an update and carry out required updates. Populates updated_files with list of files
