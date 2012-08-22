@@ -11,7 +11,7 @@ message VaultInfo {
 message VaultsManagerConfig {
   required uint32 update_interval = 1;  // In seconds
   required bytes bootstrap_nodes = 2;
-  optional bytes latest_local_version = 3;
+  required bytes latest_local_version = 3;
   optional bytes vault_permissions = 4;
   repeated VaultInfo vault_info = 5;
 }

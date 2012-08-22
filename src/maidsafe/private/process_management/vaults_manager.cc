@@ -104,9 +104,13 @@ void VaultsManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_
 
 VaultsManager::VaultsManager()
     : process_manager_(),
+#ifdef USE_TEST_KEYS
+      download_manager_("http", "dash.maidsafe.net", "~phil/tests/test_vault_manager"),
+#else
       download_manager_("http", "dash.maidsafe.net", "~phil"),  // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
+#endif
       asio_service_(3),
-      update_interval_(bptime::hours(24)),
+      update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
       update_timer_(asio_service_.service()),
       update_mutex_(),
       transport_(new LocalTcpTransport(asio_service_.service())),
@@ -118,13 +122,17 @@ VaultsManager::VaultsManager()
       shutdown_requested_(false),
       config_file_path_(),
       bootstrap_nodes_() {
-  if (!EstablishConfigFilePath() && !WriteConfigFile()) {
-    LOG(kError) << "VaultsManager failed to start - failed to find existing config file in "
-                << fs::current_path() << " or in " << GetSystemAppDir()
-                << " and failed to write new one at " << config_file_path_;
-    return;
+  if (!EstablishConfigFilePath()) {
+    LOG(kError) << "VaultsManager failed to find existing config file in "
+                << fs::current_path() << " or in " << GetSystemAppSupportDir();
+  } else {
+    if (!CreateConfigFile()) {
+      LOG(kError) << "VaultsManager failed to create new config file at " << config_file_path_
+                  << ". Shutting down.";
+      return;
+    }
   }
-  LOG(kInfo) << "VaultManager started";
+  LOG(kInfo) << "VaultsManager started";
   asio_service_.Start();
   transport_->on_message_received().connect(
       [this](const std::string& message, Port peer_port) {
@@ -133,13 +141,10 @@ VaultsManager::VaultsManager()
   transport_->on_error().connect([](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
   });
-
   if (!ReadConfigFile()) {
-    LOG(kError) << "VaultsManager failed to start - failed to read existing config file at "
-                << config_file_path_;
-    return;
+    LOG(kError) << "VaultsManager - failed to read config file at " << config_file_path_
+                << ". Shutting down.";
   }
-
   // Invoke update immediately.  Thereafter, invoked every update_interval_.
   boost::system::error_code ec;
   CheckForUpdates(ec);
@@ -188,15 +193,27 @@ void VaultsManager::RestartVaultsManager(const std::string& latest_file,
 
 bool VaultsManager::EstablishConfigFilePath() {
   assert(config_file_path_.empty());
-  // Favour config file in ./
-  fs::path local_config_file_path(fs::path(".") / kConfigFileName());
+#ifdef USE_TEST_KEYS
+  fs::path config_file_path(fs::path(".") / kConfigFileName());
+#else
+  fs::path config_file_path(GetSystemAppSupportDir() / kConfigFileName());
+#endif
+  config_file_path_ = config_file_path;
   boost::system::error_code error_code;
-  if (!fs::exists(local_config_file_path, error_code) || error_code) {
-    // Try for one in system app dir
-    config_file_path_ = fs::path(GetSystemAppDir() / kConfigFileName());
-    return (fs::exists(config_file_path_, error_code) && !error_code);
-  } else {
-    config_file_path_ = local_config_file_path;
+  return (fs::exists(config_file_path_, error_code) && !error_code);
+}
+
+bool VaultsManager::CreateConfigFile() {
+  protobuf::VaultsManagerConfig config;
+  {
+    std::lock_guard<std::mutex> lock(update_mutex_);
+    config.set_update_interval(update_interval_.total_seconds());
+  }
+  config.set_latest_local_version("0.00.00");  // TODO(Philip): get version of this executable
+  config.set_bootstrap_nodes(download_manager_.RetrieveBootstrapInfo());
+  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+    LOG(kError) << "Failed to create config file " << config_file_path_;
+    return false;
   }
   return true;
 }
@@ -219,7 +236,7 @@ bool VaultsManager::ReadConfigFile() {
   }
   download_manager_.SetLatestLocalVersion(config.latest_local_version());
   update_interval_ = bptime::seconds(config.update_interval());
-
+  bootstrap_nodes_ = config.bootstrap_nodes();
   for (int i(0); i != config.vault_info_size(); ++i) {
     std::shared_ptr<VaultInfo> vault_info(new VaultInfo);
     vault_info->FromProtobuf(config.vault_info(i));
@@ -315,6 +332,7 @@ void VaultsManager::HandlePing(const std::string& request, std::string& response
     LOG(kError) << "Failed to parse ping.";
     return;
   }
+  ping.set_bootstrap_nodes(bootstrap_nodes_);
   response = detail::WrapMessage(MessageType::kPing, request);
 }
 
@@ -430,6 +448,7 @@ void VaultsManager::HandleVaultIdentityRequest(const std::string& request,
                 << " hasn't been added.";
     vault_identity_response.set_account_name("");
     vault_identity_response.set_keys("");
+    vault_identity_response.set_bootstrap_nodes("");
   } else {
     std::string serialised_keys;
     if (!asymm::SerialiseKeys((*itr)->keys, serialised_keys)) {
@@ -437,9 +456,11 @@ void VaultsManager::HandleVaultIdentityRequest(const std::string& request,
                   << vault_identity_request.process_index();
       vault_identity_response.set_account_name("");
       vault_identity_response.set_keys("");
+      vault_identity_response.set_bootstrap_nodes("");
     } else {
       vault_identity_response.set_account_name((*itr)->account_name);
       vault_identity_response.set_keys(serialised_keys);
+      vault_identity_response.set_bootstrap_nodes(bootstrap_nodes_);
       // Notify so that waiting client StartVaultResponse can be sent
       std::lock_guard<std::mutex> local_lock((*itr)->mutex);
       (*itr)->vault_port = vault_port;
@@ -574,9 +595,19 @@ void VaultsManager::CheckForUpdates(const boost::system::error_code& ec) {
     bootstrap_nodes_ = bootstrap_nodes;
     WriteConfigFile();
   }
+
   std::vector<std::string> updated_files;
-  if (download_manager_.Update(updated_files) == kSuccess)
+  if (download_manager_.Update(updated_files) == kSuccess) {
+    // DO WINDOWS, LINUX AND MAC LOCATION SPECIFIC STUFF
     WriteConfigFile();
+    // IF LINUX
+    //  FIND INSTALLER IN UPDATED FILES
+    //  RUN DPKG ON INSTALLER
+    // ELSE IF WINDOWS
+    //  TELL CLIENT TO RUN INSTALLER AND RESTART VM
+    // ELSE IF OSX
+    //  ????????
+  }
   update_timer_.expires_from_now(update_interval_);
   update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }

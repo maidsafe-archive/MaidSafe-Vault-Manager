@@ -106,6 +106,7 @@ class VaultsManager {
 
   // Config file handling
   bool EstablishConfigFilePath();
+  bool CreateConfigFile();
   bool ReadConfigFile();
   bool WriteConfigFile();
 

@@ -32,24 +32,32 @@ namespace process_management {
 namespace test {
 
 TEST(VaultsManagerTest, BEH_StartStop) {
-  // Write 1 byte local config file
-  WriteFile(fs::path(".") / VaultsManager::kConfigFileName(), "~");
-
-  VaultsManager vaults_manager;
-  ClientController client_controller;
-
-  int max_seconds = VaultsManager::kMaxUpdateInterval().total_seconds();
-  EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
-  EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
-  int min_seconds = VaultsManager::kMinUpdateInterval().total_seconds();
-  EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
-  EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
-
-  asymm::Keys keys;
-  ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
-  EXPECT_TRUE(client_controller.StartVault(keys, "F"));
-
-  Sleep(boost::posix_time::seconds(10));
+  // test case for startup (non-existent bootstrap file)
+  {
+    VaultsManager vaults_manager;
+    ClientController client_controller;
+    if (fs::exists(fs::path(".") / VaultsManager::kConfigFileName()))
+      fs::remove(fs::path(".") / VaultsManager::kConfigFileName());
+    ASSERT_FALSE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
+    int max_seconds = VaultsManager::kMaxUpdateInterval().total_seconds();
+    EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
+    EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
+    int min_seconds = VaultsManager::kMinUpdateInterval().total_seconds();
+    EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
+    EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
+    Sleep(boost::posix_time::seconds(10));
+    ASSERT_TRUE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
+  }
+  // test case for existing bootstrap file with minimum content (generated in previous test case)
+  {
+    VaultsManager vaults_manager;
+    ClientController client_controller;
+    asymm::Keys keys;
+    ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
+    EXPECT_TRUE(client_controller.StartVault(keys, "F"));
+    Sleep(boost::posix_time::seconds(10));
+    ASSERT_TRUE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
+  }
 }
 
 }  // namespace test

@@ -12,6 +12,7 @@ message WrapperMessage {
 // VaultsManager receives this from a Client looking for the correct port and echos it back.
 message Ping {
   optional bytes ping = 1;
+  optional bytes bootstrap_nodes = 2;
 }
 
 
@@ -36,10 +37,12 @@ message VaultIdentityRequest {
   required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
-// VaultsManager sends this to a requesting Vault. It contains the ID that the Vault can assume.
+// VaultsManager sends this to a requesting Vault. It contains the ID that the Vault can assume,
+// plus bootstrap nodes.
 message VaultIdentityResponse {
   required bytes account_name = 1;
   required bytes keys = 2;
+  required bytes bootstrap_nodes = 3;
 }
 
 
@@ -75,7 +78,7 @@ message VaultShutdownRequest {
   required uint32 process_index = 1;  // as assigned by ProcessManager
 }
 
-// Vault replies with this to a requesting VaultsManager. It contains a boolean incdicating whether
+// Vault replies with this to a requesting VaultsManager. It contains a boolean indicating whether
 // or not the vault is shutting down.
 message VaultShutdownResponse {
   required bool shutdown = 1;

@@ -86,14 +86,6 @@ namespace test {
   EXPECT_EQ("lifestufflocal_win64_5.05.04.exe", newest_version);
 }*/
 
-/*TEST(DownloadTest, BEH_DownloadFileToDisk) {
-  maidsafe::test::TestPath test_path(
-      maidsafe::test::CreateTestPath("MaidSafe_Test_DownloadManager"));
-  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil");
-  EXPECT_TRUE(download_manager.DownloadFileToDisk("warandpeace_linux_32_1_2", *test_path));
-  EXPECT_FALSE(download_manager.DownloadFileToDisk("non_existent_file", *test_path));
-}*/
-
 TEST(DownloadTest, BEH_Update_Successful) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_successful");
   std::vector<std::string> updated_files;

@@ -288,8 +288,8 @@ std::string DownloadManager::DownloadFileToMemory(const std::string& file_name) 
   try {
     // Read until EOF, puts whole file in memory, so this should be of manageable size
     boost::system::error_code error_code;
-    while (asio::read(socket, response_buffer, asio::transfer_at_least(1), error_code))
-      boost::this_thread::interruption_point();
+    while (asio::read(socket, response_buffer, asio::transfer_at_least(1), error_code)) {}
+      /*boost::this_thread::interruption_point();*/
     if (error_code != asio::error::eof) {
       LOG(kWarning) << "Error downloading " << site_ << "/" << location_ << "/" << file_name
                   << "  : " << error_code.message();
