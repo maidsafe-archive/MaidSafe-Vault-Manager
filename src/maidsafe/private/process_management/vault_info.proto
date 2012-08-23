@@ -8,7 +8,7 @@ message VaultInfo {
   required bool requested_to_run = 5;
 }
 
-message VaultsManagerConfig {
+message InvigilatorConfig {
   required uint32 update_interval = 1;  // In seconds
   required bytes bootstrap_nodes = 2;
   required bytes latest_local_version = 3;

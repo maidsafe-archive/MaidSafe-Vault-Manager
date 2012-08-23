@@ -56,15 +56,15 @@ class ClientController {
                  const asymm::Signature& signature,
                  const asymm::Identity& identity);
 
-  // Blocking call which attempts to set the VaultsManager's update interval.  The limits are
-  // defined in VaultsManager::kMinUpdateInterval() and VaultsManager::kMaxUpdateInterval().
+  // Blocking call which attempts to set the Invigilator's update interval.  The limits are
+  // defined in Invigilator::kMinUpdateInterval() and Invigilator::kMaxUpdateInterval().
   bool SetUpdateInterval(const boost::posix_time::seconds& update_interval);
 
-  // Blocking call which returns the VaultsManager's current interval between update checks.  If the
+  // Blocking call which returns the Invigilator's current interval between update checks.  If the
   // call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
-  // Blocking call which returns the bootstrap nodes provided by the VaultsManager.  If the
+  // Blocking call which returns the bootstrap nodes provided by the Invigilator.  If the
   // call fails, an empty string is returned.
   std::string GetBootstrapNodes();
 
@@ -76,15 +76,15 @@ class ClientController {
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
-  void ConnectToVaultsManager();
-  void PingVaultsManager(
+  void ConnectToInvigilator();
+  void PingInvigilator(
       const std::string& random_data,
       std::shared_ptr<boost::signals2::connection> on_message_received_connection,
       std::shared_ptr<boost::signals2::connection> on_error_connection);
   void HandlePingResponse(
       const std::string& data_sent,
       const std::string& message,
-      uint16_t vaults_manager_port,
+      uint16_t invigilator_port,
       std::shared_ptr<boost::signals2::connection> on_message_received_connection,
       std::shared_ptr<boost::signals2::connection> on_error_connection);
   template<typename ResponseType>
@@ -98,7 +98,7 @@ class ClientController {
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
 
-  uint16_t vaults_manager_port_;
+  uint16_t invigilator_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   OnNewVersionAvailable on_new_version_available_;

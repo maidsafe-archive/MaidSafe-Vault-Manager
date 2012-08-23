@@ -42,7 +42,7 @@ include_directories(${common_SOURCE_DIR}/include)
 ###################################################################################################
 ####    CODE    ####
 file(GLOB SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vaults_manager_main.cc")
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 file(GLOB HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.h")
 file(GLOB API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/process_management/*.h")
 
@@ -138,15 +138,15 @@ ms_add_static_library(private ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
 ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-ms_add_executable(TESTvaults_manager "Tests/Private"
+ms_add_executable(TESTinvigilator "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/utils_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/vaults_manager_test.cc")
+                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/invigilator_test.cc")
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(vaults-manager VaultsManager "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vaults_manager_main.cc")
+ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(maidsafe_process_management maidsafe_common)
@@ -154,11 +154,11 @@ target_link_libraries(maidsafe_process_management_test maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(DUMMYprocess maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(DUMMYclient maidsafe_process_management_test ${BoostProgramOptionsLibs})
-target_link_libraries(TESTvaults_manager maidsafe_process_management_test ${BoostProgramOptionsLibs})
-target_link_libraries(vaults-manager maidsafe_process_management ${BoostProgramOptionsLibs})
+target_link_libraries(TESTinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
+target_link_libraries(invigilator maidsafe_process_management ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 
-add_dependencies(TESTvaults_manager DUMMYprocess)
+add_dependencies(TESTinvigilator DUMMYprocess)
 
 set_target_properties(maidsafe_process_management_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
 
@@ -186,6 +186,6 @@ endif()
 ###################################################################################################
 add_style_test(${STYLE_CHECK_FILES})
 add_gtests(TESTprivate)
-add_gtests(TESTvaults_manager)
+add_gtests(TESTinvigilator)
 add_project_experimental()
 test_summary_output()

@@ -89,12 +89,12 @@ bool TokeniseFileName(const std::string& file_name,
 
 // Returns a string which can be used as the --vmid argument of the PD vault.
 std::string GenerateVmidParameter(const uint32_t& process_index,
-                                  const uint16_t& vaults_manager_port);
+                                  const uint16_t& invigilator_port);
 
 // Parses a --vmid argument of the PD vault into its constituent parts.
-bool ParseVmidParameter(const std::string& vaults_manager_identifier,
+bool ParseVmidParameter(const std::string& invigilator_identifier,
                         uint32_t& process_index,
-                        uint16_t& vaults_manager_port);
+                        uint16_t& invigilator_port);
 
 }  // namespace detail
 

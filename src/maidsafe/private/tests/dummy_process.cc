@@ -88,10 +88,10 @@ int main(int argc, char* argv[]) {
       LOG(kInfo) << "DUMMYprocess: You must supply a vaults manager ID";
       return 1;
     }
-    std::string vaults_manager_id = variables_map["vmid"].as<std::string>();
+    std::string invigilator_id = variables_map["vmid"].as<std::string>();
     LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
     maidsafe::priv::process_management::VaultController vault_controller;
-    vault_controller.Start(vaults_manager_id.c_str(), [&] { StopHandler(); });  // NOLINT
+    vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); });  // NOLINT
     maidsafe::asymm::Keys keys;
     std::string account_name;
     vault_controller.GetIdentity(&keys, &account_name);

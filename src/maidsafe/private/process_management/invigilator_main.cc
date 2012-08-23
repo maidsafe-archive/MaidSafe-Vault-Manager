@@ -29,7 +29,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/process_management/vaults_manager.h"
+#include "maidsafe/private/process_management/invigilator.h"
 
 
 namespace {
@@ -38,8 +38,8 @@ boost::mutex g_mutex;
 boost::condition_variable g_cond_var;
 bool g_shutdown_service(false);
 
-void ShutDownVaultsManager(int /*signal*/) {
-  LOG(kInfo) << "Stopping vaults_manager.";
+void ShutDownInvigilator(int /*signal*/) {
+  LOG(kInfo) << "Stopping invigilator.";
   boost::mutex::scoped_lock lock(g_mutex);
   g_shutdown_service = true;
   g_cond_var.notify_one();
@@ -48,13 +48,13 @@ void ShutDownVaultsManager(int /*signal*/) {
 #ifdef MAIDSAFE_WIN32
 
 enum {
-  kMaidSafeVaultsManagerStdException = 0x1,
+  kMaidSafeInvigilatorStdException = 0x1,
   kMaidSafeVaultServiceUnknownException
 };
 
 SERVICE_STATUS g_service_status;
 SERVICE_STATUS_HANDLE g_service_status_handle;
-wchar_t g_service_name[22] = L"MaidSafeVaultsManager";
+wchar_t g_service_name[22] = L"MaidSafeInvigilator";
 
 void StopService(DWORD exit_code, DWORD error_code) {
   g_service_status.dwCurrentState = SERVICE_STOPPED;
@@ -66,17 +66,17 @@ void StopService(DWORD exit_code, DWORD error_code) {
 void ControlHandler(DWORD request) {
   switch (request) {
     case SERVICE_CONTROL_STOP:
-      LOG(kInfo) << "MaidSafe VaultsManager SERVICE_CONTROL_STOP received - service stopping.";
+      LOG(kInfo) << "MaidSafe Invigilator SERVICE_CONTROL_STOP received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownVaultsManager(0);
+      ShutDownInvigilator(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     case SERVICE_CONTROL_SHUTDOWN:
-      LOG(kInfo) << "MaidSafe VaultsManager SERVICE_CONTROL_SHUTDOWN received - service stopping.";
+      LOG(kInfo) << "MaidSafe Invigilator SERVICE_CONTROL_SHUTDOWN received - service stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownVaultsManager(0);
+      ShutDownInvigilator(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     default:
@@ -103,7 +103,7 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   try {
-    maidsafe::priv::VaultsManager vaults_manager;
+    maidsafe::priv::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -114,7 +114,7 @@ void ServiceMain() {
   }
   catch(const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
-    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultsManagerStdException);
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeInvigilatorStdException);
     return;
   }
   catch(...) {
@@ -139,12 +139,12 @@ int main() {
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
 #else
-  signal(SIGINT, ShutDownVaultsManager);
+  signal(SIGINT, ShutDownInvigilator);
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   {
-    maidsafe::priv::process_management::VaultsManager vaults_manager;
+    maidsafe::priv::process_management::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }

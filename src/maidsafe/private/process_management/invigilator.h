@@ -66,15 +66,15 @@ enum class MessageType {
   kNewVersionAvailableAck
 };
 
-// The VaultsManager has several responsibilities:
+// The Invigilator has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file as having been started before.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
 // * Regularly checks for (and downloads) updated client or vault executables.
-class VaultsManager {
+class Invigilator {
  public:
-  VaultsManager();
-  ~VaultsManager();
+  Invigilator();
+  ~Invigilator();
   static std::string kConfigFileName() { return "config-global.dat"; }
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5582; }
@@ -99,9 +99,9 @@ class VaultsManager {
     enum JoinedState { kPending, kJoined, kNotJoined } joined_network;
   };
 
-  VaultsManager(const VaultsManager&);
-  VaultsManager operator=(const VaultsManager&);
-  void RestartVaultsManager(const std::string& latest_file,
+  Invigilator(const Invigilator&);
+  Invigilator operator=(const Invigilator&);
+  void RestartInvigilator(const std::string& latest_file,
                             const std::string& executable_name) const;
 
   // Config file handling
@@ -147,7 +147,7 @@ class VaultsManager {
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
   static std::string kDummyName() { return "DUMMYprocess"; }
-  static std::string kVaultsManagerName() { return "vault-manager"; }
+  static std::string kInvigilatorName() { return "invigilator"; }
 
 
   ProcessManager process_manager_;

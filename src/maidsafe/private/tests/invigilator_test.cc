@@ -18,7 +18,7 @@
 
 #include "maidsafe/private/process_management/client_controller.h"
 #include "maidsafe/private/process_management/vault_controller.h"
-#include "maidsafe/private/process_management/vaults_manager.h"
+#include "maidsafe/private/process_management/invigilator.h"
 
 
 namespace bptime = boost::posix_time;
@@ -31,34 +31,34 @@ namespace process_management {
 
 namespace test {
 
-TEST(VaultsManagerTest, BEH_StartStop) {
+TEST(InvigilatorTest, BEH_StartStop) {
   // test case for startup (non-existent config file)
   LOG(kError) << "Test 1 starting";
   {
-    if (fs::exists(fs::path(".") / VaultsManager::kConfigFileName()))
-      fs::remove(fs::path(".") / VaultsManager::kConfigFileName());
-    ASSERT_FALSE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
-    VaultsManager vaults_manager;
+    if (fs::exists(fs::path(".") / Invigilator::kConfigFileName()))
+      fs::remove(fs::path(".") / Invigilator::kConfigFileName());
+    ASSERT_FALSE(fs::exists(fs::path(".") / Invigilator::kConfigFileName()));
+    Invigilator invigilator;
     ClientController client_controller;
-    int max_seconds = VaultsManager::kMaxUpdateInterval().total_seconds();
+    int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
-    int min_seconds = VaultsManager::kMinUpdateInterval().total_seconds();
+    int min_seconds = Invigilator::kMinUpdateInterval().total_seconds();
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_TRUE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
+    EXPECT_TRUE(fs::exists(fs::path(".") / Invigilator::kConfigFileName()));
   }
   LOG(kError) << "Test 1 finished";
   // test case for existing config file with minimum content (generated in previous test case)
   {
-    VaultsManager vaults_manager;
+    Invigilator invigilator;
     ClientController client_controller;
     asymm::Keys keys;
     ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
     EXPECT_TRUE(client_controller.StartVault(keys, "F"));
     Sleep(boost::posix_time::seconds(3));
-    EXPECT_TRUE(fs::exists(fs::path(".") / VaultsManager::kConfigFileName()));
+    EXPECT_TRUE(fs::exists(fs::path(".") / Invigilator::kConfigFileName()));
   }
   LOG(kError) << "Test 2 finished";
 }

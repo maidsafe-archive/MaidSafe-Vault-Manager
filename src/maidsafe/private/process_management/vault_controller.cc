@@ -21,7 +21,7 @@
 #include "maidsafe/private/process_management/controller_messages_pb.h"
 #include "maidsafe/private/process_management/local_tcp_transport.h"
 #include "maidsafe/private/process_management/utils.h"
-#include "maidsafe/private/process_management/vaults_manager.h"
+#include "maidsafe/private/process_management/invigilator.h"
 
 
 namespace maidsafe {
@@ -32,7 +32,7 @@ namespace process_management {
 
 VaultController::VaultController()
     : process_index_(),
-      vaults_manager_port_(0),
+      invigilator_port_(0),
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       keys_(),
@@ -46,12 +46,12 @@ VaultController::~VaultController() {
   asio_service_.Stop();
 }
 
-bool VaultController::Start(const std::string& vaults_manager_identifier,
+bool VaultController::Start(const std::string& invigilator_identifier,
                             std::function<void()> stop_callback) {
-  if (!detail::ParseVmidParameter(vaults_manager_identifier,
+  if (!detail::ParseVmidParameter(invigilator_identifier,
                                   process_index_,
-                                  vaults_manager_port_)) {
-    LOG(kError) << "Invalid --vmid parameter " << vaults_manager_identifier;
+                                  invigilator_port_)) {
+    LOG(kError) << "Invalid --vmid parameter " << invigilator_identifier;
     return false;
   }
 
@@ -59,8 +59,8 @@ bool VaultController::Start(const std::string& vaults_manager_identifier,
   asio_service_.Start();
   RequestVaultIdentity();
   receiving_transport_->on_message_received().connect(
-      [this](const std::string& message, Port vaults_manager_port) {
-        HandleReceivedRequest(message, vaults_manager_port);
+      [this](const std::string& message, Port invigilator_port) {
+        HandleReceivedRequest(message, invigilator_port);
       });
   receiving_transport_->on_error().connect([](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -70,7 +70,7 @@ bool VaultController::Start(const std::string& vaults_manager_identifier,
 }
 
 bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) {
-  if (vaults_manager_port_ == 0 || !keys || !account_name)
+  if (invigilator_port_ == 0 || !keys || !account_name)
     return false;
   keys->private_key = keys_.private_key;
   keys->public_key = keys_.public_key;
@@ -95,12 +95,12 @@ void VaultController::ConfirmJoin(bool joined) {
   };
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(vaults_manager_port_) != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to VaultsManager.";
+  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to Invigilator.";
       return;
   }
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*vaults_manager_port*/) {
+      [this, callback](const std::string& message, Port /*invigilator_port*/) {
         HandleVaultJoinedAck(message, callback);
       });
   request_transport->on_error().connect([callback](const int& error) {
@@ -109,10 +109,10 @@ void VaultController::ConfirmJoin(bool joined) {
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending joined notification to port " << vaults_manager_port_;
+  LOG(kVerbose) << "Sending joined notification to port " << invigilator_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinedNetwork,
                                               vault_joined_network.SerializeAsString()),
-                          vaults_manager_port_);
+                          invigilator_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; }))  // NOLINT (Fraser)
     LOG(kError) << "Timed out waiting for reply.";
@@ -145,13 +145,13 @@ void VaultController::RequestVaultIdentity() {
   vault_identity_request.set_process_index(process_index_);
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(vaults_manager_port_) != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to VaultsManager.";
+  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to Invigilator.";
       return;
   }
   request_transport->on_message_received().connect(
       [this, &local_mutex, &local_cond_var](const std::string& message,
-                                            Port /*vaults_manager_port*/) {
+                                            Port /*invigilator_port*/) {
         HandleVaultIdentityResponse(message, local_mutex, local_cond_var);
       });
   request_transport->on_error().connect([](const int& error) {
@@ -159,10 +159,10 @@ void VaultController::RequestVaultIdentity() {
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending request for vault identity to port " << vaults_manager_port_;
+  LOG(kVerbose) << "Sending request for vault identity to port " << invigilator_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
                                               vault_identity_request.SerializeAsString()),
-                          vaults_manager_port_);
+                          invigilator_port_);
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(3),
@@ -206,7 +206,7 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message,
 }
 
 void VaultController::HandleReceivedRequest(const std::string& message, Port peer_port) {
-  assert(peer_port == vaults_manager_port_);
+  assert(peer_port == invigilator_port_);
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
