@@ -35,57 +35,6 @@ namespace process_management {
 
 namespace test {
 
-/*TEST(DownloadTest, BEH_UpdateAndVerify) {
-  maidsafe::test::TestPath test_path(
-      maidsafe::test::CreateTestPath("MaidSafe_Test_DownloadManager"));
-  DownloadManager download_manager("http", "dash.maidsafe.net", "~phil");
-
-  // Test case for non-existent file
-  std::string newest_version(download_manager.UpdateAndVerify("non-existent", *test_path));
-  EXPECT_TRUE(newest_version.empty());
-
-  // Test case for file with malformed name
-  newest_version = download_manager.UpdateAndVerify("lifestuff_osx64_1.1.02", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-
-  // Test case for unsigned file
-  newest_version = download_manager.UpdateAndVerify("lifestufflocaltest_win64_4.04.06", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-
-  // Test case for file with invalid signature
-  newest_version =
-      download_manager.UpdateAndVerify("lifestuff-bad-sig_win64_1.01.02.exe", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-
-  // Test case for files where we already have the newest version
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_linux32_5.05.04", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_linux64_5.05.04", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_osx32_5.05.04", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_osx64_5.05.04", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_win32_5.05.04.exe", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_win64_5.05.04.exe", *test_path);
-  EXPECT_TRUE(newest_version.empty());
-
-  // Test case for files where we don't have the newest version
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_linux32_5.05.03", *test_path);
-  EXPECT_EQ("lifestufflocal_linux32_5.05.04", newest_version);
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_linux64_5.04.04", *test_path);
-  EXPECT_EQ("lifestufflocal_linux64_5.05.04", newest_version);
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_osx32_4.05.03", *test_path);
-  EXPECT_EQ("lifestufflocal_osx32_5.05.04", newest_version);
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_osx64_5.04.99", *test_path);
-  EXPECT_EQ("lifestufflocal_osx64_5.05.04", newest_version);
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_win32_4.99.04.exe", *test_path);
-  EXPECT_EQ("lifestufflocal_win32_5.05.04.exe", newest_version);
-  newest_version = download_manager.UpdateAndVerify("lifestufflocal_win64_4.99.99.exe", *test_path);
-  EXPECT_EQ("lifestufflocal_win64_5.05.04.exe", newest_version);
-}*/
-
 TEST(DownloadTest, BEH_Update_Successful) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_successful");
   std::vector<std::string> updated_files;
@@ -95,17 +44,15 @@ TEST(DownloadTest, BEH_Update_Successful) {
   EXPECT_FALSE(updated_files.empty());
   fs::path local_path(download_manager.GetLocalPath());
   LOG(kError) << "local_path: " << local_path;
-  ASSERT_TRUE(fs::exists(local_path / "test_file1"));
-  ASSERT_TRUE(fs::exists(local_path / "test_file2"));
-  ASSERT_TRUE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
-  fs::remove(local_path / "test_file1", error);
-  fs::remove(local_path / "test_file2", error);
-  fs::remove(local_path / "test_file3", error);
-  if (error) {
-    LOG(kError) << "Failed to remove test files.";
-    FAIL();
-  }
+  ASSERT_TRUE(fs::exists(local_path / "test_file1", error));
+  ASSERT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  ASSERT_TRUE(fs::exists(local_path / "test_file2", error));
+  ASSERT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  ASSERT_TRUE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::success, error.value());
 }
 
 TEST(DownloadTest, BEH_Update_HasLatestVersion) {
@@ -116,9 +63,15 @@ TEST(DownloadTest, BEH_Update_HasLatestVersion) {
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
   fs::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(fs::exists(local_path / "test_file1"));
-  ASSERT_FALSE(fs::exists(local_path / "test_file2"));
-  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  ASSERT_FALSE(fs::exists(local_path / "test_file1", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  error.clear();
+  ASSERT_FALSE(fs::exists(local_path / "test_file2", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  error.clear();
+  ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
 TEST(DownloadTest, BEH_Update_NoManifestFile) {
@@ -129,9 +82,15 @@ TEST(DownloadTest, BEH_Update_NoManifestFile) {
   EXPECT_EQ(kManifestFailure, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
   fs::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(fs::exists(local_path / "test_file1"));
-  ASSERT_FALSE(fs::exists(local_path / "test_file2"));
-  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
+  boost::system::error_code error;
+  ASSERT_FALSE(fs::exists(local_path / "test_file1", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  error.clear();
+  ASSERT_FALSE(fs::exists(local_path / "test_file2", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  error.clear();
+  ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
 TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
@@ -142,16 +101,9 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   fs::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
-  if (fs::exists(local_path / "test_file1"))
-    fs::remove(local_path / "test_file1", error);
-  if (fs::exists(local_path / "test_file2"))
-    fs::remove(local_path / "test_file2", error);
-  if (error) {
-    LOG(kError) << "Failed to remove test files.";
-    FAIL();
-  }
+  ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
 TEST(DownloadTest, BEH_Update_NoSignature) {
@@ -161,16 +113,9 @@ TEST(DownloadTest, BEH_Update_NoSignature) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   fs::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
-  if (fs::exists(local_path / "test_file1"))
-    fs::remove(local_path / "test_file1", error);
-  if (fs::exists(local_path / "test_file2"))
-    fs::remove(local_path / "test_file2", error);
-  if (error) {
-    LOG(kError) << "Failed to remove test files.";
-    FAIL();
-  }
+  ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
 TEST(DownloadTest, BEH_Update_InvalidSignature) {
@@ -181,16 +126,9 @@ TEST(DownloadTest, BEH_Update_InvalidSignature) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
   fs::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
-  if (fs::exists(local_path / "test_file1"))
-    fs::remove(local_path / "test_file1", error);
-  if (fs::exists(local_path / "test_file2"))
-    fs::remove(local_path / "test_file2", error);
-  if (error) {
-    LOG(kError) << "Failed to remove test files.";
-    FAIL();
-  }
+  ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
+  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
 }  // namespace test
