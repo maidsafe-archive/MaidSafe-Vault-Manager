@@ -101,6 +101,8 @@ void LocalTcpTransport::StopListening() {
     boost::system::error_code ec;
     acceptor_.close(ec);
   });
+  for (ConnectionPtr connection : connections_)
+    connection->Close();
 }
 
 void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
