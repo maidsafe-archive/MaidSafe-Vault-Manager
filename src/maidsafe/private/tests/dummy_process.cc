@@ -104,6 +104,7 @@ int main(int argc, char* argv[]) {
     LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
     LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
     LOG(kInfo) << "Account name: " << account_name;
+    vault_controller.ConfirmJoin(true);
     if (variables_map.count("runtime")) {
       int runtime = variables_map["runtime"].as<int>();
       LOG(kInfo) << "Running for " << runtime << " seconds.";

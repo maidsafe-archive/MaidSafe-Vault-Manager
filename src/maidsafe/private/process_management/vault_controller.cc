@@ -47,7 +47,9 @@ VaultController::~VaultController() {
 
 bool VaultController::Start(const std::string& vaults_manager_identifier,
                             std::function<void()> stop_callback) {
-  if (detail::ParseVmidParameter(vaults_manager_identifier, process_index_, vaults_manager_port_)) {
+  if (!detail::ParseVmidParameter(vaults_manager_identifier,
+                                  process_index_,
+                                  vaults_manager_port_)) {
     LOG(kError) << "Invalid --vmid parameter " << vaults_manager_identifier;
     return false;
   }
