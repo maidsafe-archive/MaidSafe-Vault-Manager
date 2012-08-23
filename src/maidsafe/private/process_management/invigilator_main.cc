@@ -103,7 +103,7 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   try {
-    maidsafe::priv::Invigilator invigilator;
+    maidsafe::priv::process_management::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);

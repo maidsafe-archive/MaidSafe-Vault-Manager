@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
 
 #include <mutex>
 #include <cstdint>
@@ -117,4 +117,4 @@ class ProcessManager {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_

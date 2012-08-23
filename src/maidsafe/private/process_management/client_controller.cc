@@ -174,7 +174,7 @@ bool ClientController::StartVault(const asymm::Keys& keys,
     LOG(kVerbose) << "Setting bootstrap endpoint to " << start_vault_request.bootstrap_endpoint();
   }
 
-  std::function<void(bool)> callback =
+  std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);
       local_result = result;
@@ -230,7 +230,7 @@ bool ClientController::StopVault(const asymm::PlainText& data,
   stop_vault_request.set_signature(signature);
   stop_vault_request.set_identity(identity);
 
-  std::function<void(bool)> callback =
+  std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);
       local_result = result;

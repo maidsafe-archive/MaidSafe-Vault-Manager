@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_H_
-#define MAIDSAFE_PRIVATE_UTILS_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_
 
 #include <cstdint>
 #include <string>
@@ -104,4 +104,4 @@ bool ParseVmidParameter(const std::string& invigilator_identifier,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_UTILS_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_

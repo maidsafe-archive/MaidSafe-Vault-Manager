@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_TCP_CONNECTION_H_
-#define MAIDSAFE_PRIVATE_TCP_CONNECTION_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_
 
 #include <memory>
 #include <string>
@@ -87,4 +87,4 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_TCP_CONNECTION_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_

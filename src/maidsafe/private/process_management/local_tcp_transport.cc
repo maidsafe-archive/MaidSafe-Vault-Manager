@@ -39,7 +39,7 @@ LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // N
       strand_(asio_service) {}
 
 LocalTcpTransport::~LocalTcpTransport() {
-  for (ConnectionPtr connection : connections_)
+  for (auto connection : connections_)
     connection->Close();
 }
 
@@ -96,12 +96,12 @@ int LocalTcpTransport::StartListening(Port port) {
   return kSuccess;
 }
 
-void LocalTcpTransport::StopListening() {
+void LocalTcpTransport::StopListeningAndCloseConnections() {
   strand_.dispatch([this] {
     boost::system::error_code ec;
     acceptor_.close(ec);
   });
-  for (ConnectionPtr connection : connections_)
+  for (auto connection : connections_)
     connection->Close();
 }
 

@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULTS_MANAGER_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULTS_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -140,7 +140,7 @@ class Invigilator {
                                    const std::string& bootstrap_endpoint);
   void RestartVault(const std::string& identity);
   void HandleVaultShutdownResponse(const std::string& message,
-                                   const std::function<void(bool)>& callback);
+                                   const std::function<void(bool)>& callback);  // NOLINT (Fraser)
   bool StopVault(const std::string& identity);
   void StopAllVaults();
 //  void EraseVault(const std::string& identity);
@@ -173,4 +173,4 @@ class Invigilator {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULTS_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_

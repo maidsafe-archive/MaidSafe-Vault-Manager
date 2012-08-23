@@ -55,8 +55,9 @@ LocalChunkManager::LocalChunkManager(
     local_version_directory = simulation_directory;
   }
   lock_directory_ =  lock_directory;
-  if (!fs::exists(lock_directory_))
-    fs::create_directory(lock_directory_);
+  boost::system::error_code error_code;
+  if (!fs::exists(lock_directory_, error_code))
+    fs::create_directory(lock_directory_, error_code);
   if (!file_chunk_store->Init(simulation_directory)) {
     LOG(kError) << "Failed to initialise file chunk store";
     return;
@@ -92,8 +93,9 @@ void LocalChunkManager::GetChunk(const std::string &name,
   }
   std::string content, existing_lock, transaction_id;
   fs::path lock_file = lock_directory_ / EncodeToBase32(name);
+  boost::system::error_code error_code;
   if (lock) {
-    while (fs::exists(lock_file)) {
+    while (fs::exists(lock_file, error_code)) {
       LOG(kInfo) << "GetChunk - Before Get, lock file exists for " << Base32Substr(name);
       ReadFile(lock_file, &existing_lock);
       std::string lock_timestamp_string(existing_lock.substr(0, existing_lock.find_first_of(' ')));
@@ -212,7 +214,8 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
     return;
   }
   fs::path lock_file = lock_directory_ / EncodeToBase32(name);
-  if (fs::exists(lock_file)) {
+  boost::system::error_code error_code;
+  if (fs::exists(lock_file, error_code)) {
     std::string existing_lock;
     LOG(kInfo) << "GetChunk - Modify, lock file exists for "
                << Base32Substr(name);
@@ -221,7 +224,7 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
     std::string lock_transaction_id(
         existing_lock.substr(existing_lock.find_first_of(' ') + 1));
     if (lock_transaction_id == expected_transaction_id) {
-      fs::remove(lock_file);
+      fs::remove(lock_file, error_code);
     LOG(kInfo) << "Removed lock file for " << Base32Substr(name);
     }
   }

@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
-#define MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
+#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
+#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -114,4 +114,4 @@ class ClientController {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CLIENT_CONTROLLER_H_
+#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_

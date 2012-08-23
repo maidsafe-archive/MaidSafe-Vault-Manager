@@ -159,6 +159,8 @@ bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
     return false;
   }
   boost::split(files_in_manifest, manifest_content, boost::is_any_of("\n"));
+  if (files_in_manifest.size() < 2)
+    return false;
   files_in_manifest.erase(files_in_manifest.end() - 1);
 
 #ifdef DEBUG

@@ -159,7 +159,7 @@ Invigilator::~Invigilator() {
     std::lock_guard<std::mutex> lock(update_mutex_);
     update_timer_.cancel();
   }
-  transport_->StopListening();
+  transport_->StopListeningAndCloseConnections();
   asio_service_.Stop();
 }
 
@@ -725,7 +725,7 @@ bool Invigilator::StopVault(const std::string& identity) {
 }
 
 void Invigilator::HandleVaultShutdownResponse(const std::string& message,
-                                                const std::function<void(bool)>& callback) {
+                                              const std::function<void(bool)>& callback) {  // NOLINT (Fraser)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
