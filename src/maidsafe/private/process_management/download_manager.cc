@@ -225,12 +225,12 @@ bool DownloadManager::PrepareDownload(const fs::path& from_path,
     std::string status_message;
     std::getline(*response_stream, status_message);
     if (!(*response_stream) || http_version.substr(0, 5) != "HTTP/") {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path
+      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path.string()
                   << "  Invalid response.";
       return false;
     }
     if (status_code != 200) {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path
+      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path.string()
                   << "  Returned " << status_code;
       return false;
     }
@@ -244,7 +244,7 @@ bool DownloadManager::PrepareDownload(const fs::path& from_path,
   }
   catch(const std::exception &e) {
     LOG(kError) << "Error preparing downloading of " << site_ << "/" << location_ << "/"
-                << from_path << "  : " << e.what();
+                << from_path.string() << "  : " << e.what();
     return false;
   }
 
