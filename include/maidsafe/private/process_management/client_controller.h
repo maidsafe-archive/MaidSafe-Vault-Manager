@@ -64,6 +64,10 @@ class ClientController {
   // call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
+  // Blocking call which returns the bootstrap nodes provided by the VaultsManager.  If the
+  // call fails, an empty string is returned.
+  std::string GetBootstrapNodes();
+
   // Returns reference to signal which will be fired when a new version of the client software is
   // available.  The slot will be passed the filename of the new version.
   OnNewVersionAvailable& on_new_version_available() { return on_new_version_available_; }
@@ -101,6 +105,7 @@ class ClientController {
   std::mutex mutex_;
   std::condition_variable cond_var_;
   enum State { kInitialising, kVerified, kFailed } state_;
+  std::string bootstrap_nodes_;
 };
 
 }  // namespace process_management

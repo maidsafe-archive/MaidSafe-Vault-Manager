@@ -39,6 +39,9 @@ class VaultController {
   bool Start(const std::string& vaults_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(asymm::Keys* keys, std::string* account_name);
   void ConfirmJoin(bool joined);
+  // Blocking call which returns the bootstrap nodes provided by the VaultsManager.  If the
+  // call fails, an empty string is returned.
+  std::string GetBootstrapNodes();
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
@@ -58,6 +61,7 @@ class VaultController {
   TransportPtr receiving_transport_;
   asymm::Keys keys_;
   std::string account_name_;
+  std::string bootstrap_nodes_;
   bool shutdown_requested_;
   std::function<void()> stop_callback_;
 };

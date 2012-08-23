@@ -125,6 +125,7 @@ void ClientController::HandlePingResponse(
     return PingVaultsManager(data_sent, on_message_received_connection, on_error_connection);
   }
 
+  bootstrap_nodes_ = ping.bootstrap_nodes();
   std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
   LOG(kSuccess) << "Successfully connected to VaultsManager on port " << vaults_manager_port_;
@@ -299,6 +300,17 @@ bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval)
 
 bptime::time_duration ClientController::GetUpdateInterval() {
   return SetOrGetUpdateInterval(bptime::pos_infin);
+}
+
+std::string ClientController::GetBootstrapNodes() {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ != kVerified) {
+      LOG(kError) << "Not connected to VaultsManager.";
+      return "";
+    }
+  }
+  return bootstrap_nodes_;
 }
 
 bptime::time_duration ClientController::SetOrGetUpdateInterval(

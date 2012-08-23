@@ -37,6 +37,7 @@ VaultController::VaultController()
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       keys_(),
       account_name_(),
+      bootstrap_nodes_(),
       shutdown_requested_(false),
       stop_callback_() {}
 
