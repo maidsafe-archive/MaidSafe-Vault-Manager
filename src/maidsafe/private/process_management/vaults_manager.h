@@ -146,6 +146,7 @@ class VaultsManager {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   static std::string kVaultName() { return "pd-vault"; }
+  static std::string kDummyName() { return "DUMMYprocess"; }
   static std::string kVaultsManagerName() { return "vault-manager"; }
 
 

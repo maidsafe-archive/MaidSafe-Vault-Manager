@@ -142,8 +142,7 @@ VaultsManager::VaultsManager()
     LOG(kError) << "Transport reported error code " << error;
   });
   if (!ReadConfigFile()) {
-    LOG(kError) << "VaultsManager - failed to read config file at " << config_file_path_
-                << ". Shutting down.";
+    LOG(kError) << "VaultsManager - failed to read config file at " << config_file_path_;
   }
   // Invoke update immediately.  Thereafter, invoked every update_interval_.
   boost::system::error_code ec;
@@ -155,12 +154,7 @@ VaultsManager::VaultsManager()
 
 VaultsManager::~VaultsManager() {
   process_manager_.LetAllProcessesDie();
-                                                                                                      {
-                                                                                                        std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-                                                                                                        stop_listening_for_updates_ = true;
-                                                                                                        shutdown_requested_ = true;
-                                                                                                        cond_var_.notify_all();
-                                                                                                      }
+  StopAllVaults();
   {
     std::lock_guard<std::mutex> lock(update_mutex_);
     update_timer_.cancel();
@@ -214,8 +208,8 @@ bool VaultsManager::CreateConfigFile() {
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
     return false;
-
   }
+  LOG(kInfo) << "Created config file " << config_file_path_;
   return true;
 }
 
@@ -419,7 +413,7 @@ void VaultsManager::HandleStartVaultRequest(const std::string& request,
           lock,
           std::chrono::seconds(3),
           [&] { return vault_info->vault_requested; })) {  // NOLINT (Philip)
-    LOG(kError) << "HandleClientStartVaultRequest: wait for Vault timed out";
+    LOG(kError) << "HandleStartVaultRequest: wait for Vault timed out";
     return set_response(false);
   }
 
@@ -429,6 +423,7 @@ void VaultsManager::HandleStartVaultRequest(const std::string& request,
 void VaultsManager::HandleVaultIdentityRequest(const std::string& request,
                                                Port vault_port,
                                                std::string& response) {
+  LOG(kError) << "Received VaultIdentityRequest.";
   protobuf::VaultIdentityRequest vault_identity_request;
   if (!vault_identity_request.ParseFromString(request) || !vault_identity_request.IsInitialized()) {
     // Silently drop
@@ -632,8 +627,13 @@ ProcessIndex VaultsManager::AddVaultToProcesses(const std::string& chunkstore_pa
   Process process;
   LOG(kInfo) << "Creating a vault at " << chunkstore_path << ", with capacity: "
              << chunkstore_capacity;
+#ifdef USE_TEST_KEYS
+  std::string process_name(kDummyName());
+#else
+  std::string process_name(kVaultName());
+#endif
   if (!process.SetExecutablePath(config_file_path_.parent_path() /
-                                 (kVaultName() + detail::kThisPlatform().executable_extension()))) {
+                                 (process_name + detail::kThisPlatform().executable_extension()))) {
     return ProcessManager::kInvalidIndex();
   }
 
@@ -641,11 +641,13 @@ ProcessIndex VaultsManager::AddVaultToProcesses(const std::string& chunkstore_pa
     process.AddArgument("--peer");
     process.AddArgument(bootstrap_endpoint);
   }
+#ifndef USE_TEST_KEYS
   process.AddArgument("--chunk_path");
   process.AddArgument(chunkstore_path);
   process.AddArgument("--chunk_capacity");
   process.AddArgument(boost::lexical_cast<std::string>(chunkstore_capacity));
   process.AddArgument("--start");
+#endif
   LOG(kInfo) << "Process Name: " << process.name();
   return process_manager_.AddProcess(process, local_port_);
 }
@@ -669,9 +671,8 @@ bool VaultsManager::StopVault(const std::string& identity) {
     LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
     return false;
   }
-  process_manager_.StopProcess((*itr)->process_index);
+  /*process_manager_.StopProcess((*itr)->process_index);*/
   (*itr)->requested_to_run = false;
-  WriteConfigFile();
 
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -747,6 +748,7 @@ void VaultsManager::HandleVaultShutdownResponse(const std::string& message,
 void VaultsManager::StopAllVaults() {
   for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
     StopVault((*itr)->keys.identity);
+    WriteConfigFile();
   }
 }
 
