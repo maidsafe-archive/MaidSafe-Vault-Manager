@@ -31,6 +31,10 @@ namespace detail {
 extern const int kInvalidVersion;
 extern const std::string kSignatureExtension;
 extern const std::string kMaidSafePublicKey;
+const std::string kVersionFilename("version");
+const std::string kManifestFilename("manifest");
+const std::string kGlobalConfigFilename("global-config.dat");
+const std::string kBootstrapNodesFilename("bootstrap-global.dat");
 
 class Platform {
  public:

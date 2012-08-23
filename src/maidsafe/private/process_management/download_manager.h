@@ -42,7 +42,6 @@ class DownloadManager {
   // Returns the local path to which the DownloadManager downloads files.
   boost::filesystem::path GetLocalPath() const { return local_path_; }
   // Returns the remote path from which the DownloadManager downloads the files in the manifest.
-  boost::filesystem::path GetRemotePath() const { return remote_path_; }
   void SetLatestLocalVersion(const std::string& version) { latest_local_version_ = version; }
   std::string latest_local_version() const { return latest_local_version_; }
 
@@ -50,22 +49,24 @@ class DownloadManager {
   // Get the version of the files on the update server
   std::string RetrieveLatestRemoteVersion();
   // Retrieves the manifest file from the specified location.
-  void RetrieveManifest(const boost::filesystem::path& manifest_location,
+  bool RetrieveManifest(const boost::filesystem::path& manifest_location,
                         std::vector<std::string>& files_in_manifest);
-  bool GetAndVerifyFile(const std::string& file, const boost::filesystem::path& directory);
-  bool PrepareDownload(const std::string& file_name,
+  bool GetAndVerifyFile(const boost::filesystem::path& from_path,
+                        const boost::filesystem::path& to_path);
+  bool PrepareDownload(const boost::filesystem::path& file_name,
                        boost::asio::streambuf* response_buffer,
                        std::istream* response_stream,
                        boost::asio::ip::tcp::socket* socket);
-  bool DownloadFileToDisk(const std::string& file_name, const boost::filesystem::path& directory);
-  std::string DownloadFileToMemory(const std::string& file_name);
+  bool DownloadFileToDisk(const boost::filesystem::path& from_path,
+                          const boost::filesystem::path& to_path);
+  std::string DownloadFileToMemory(const boost::filesystem::path& from_path);
 
   std::string protocol_, site_, location_, latest_local_version_;
   asymm::PublicKey maidsafe_public_key_;
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
-  boost::filesystem::path local_path_, remote_path_;
+  boost::filesystem::path local_path_;
 };
 
 }  // namespace process_management

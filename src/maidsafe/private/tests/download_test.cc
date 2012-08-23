@@ -93,11 +93,11 @@ TEST(DownloadTest, BEH_Update_Successful) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
   EXPECT_FALSE(updated_files.empty());
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetLocalPath());
   LOG(kError) << "local_path: " << local_path;
-  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file1"));
-  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file2"));
-  ASSERT_TRUE(boost::filesystem::exists(local_path / "test_file3"));
+  ASSERT_TRUE(fs::exists(local_path / "test_file1"));
+  ASSERT_TRUE(fs::exists(local_path / "test_file2"));
+  ASSERT_TRUE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
   fs::remove(local_path / "test_file1", error);
   fs::remove(local_path / "test_file2", error);
@@ -115,10 +115,10 @@ TEST(DownloadTest, BEH_Update_HasLatestVersion) {
   download_manager.SetLatestLocalVersion("1.01.02");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file1"));
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file2"));
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  fs::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(fs::exists(local_path / "test_file1"));
+  ASSERT_FALSE(fs::exists(local_path / "test_file2"));
+  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
 }
 
 TEST(DownloadTest, BEH_Update_NoManifestFile) {
@@ -128,10 +128,10 @@ TEST(DownloadTest, BEH_Update_NoManifestFile) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kManifestFailure, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file1"));
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file2"));
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  fs::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(fs::exists(local_path / "test_file1"));
+  ASSERT_FALSE(fs::exists(local_path / "test_file2"));
+  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
 }
 
 TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
@@ -141,8 +141,8 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  fs::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
   if (fs::exists(local_path / "test_file1"))
     fs::remove(local_path / "test_file1", error);
@@ -160,8 +160,8 @@ TEST(DownloadTest, BEH_Update_NoSignature) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  fs::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
   if (fs::exists(local_path / "test_file1"))
     fs::remove(local_path / "test_file1", error);
@@ -180,8 +180,8 @@ TEST(DownloadTest, BEH_Update_InvalidSignature) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  boost::filesystem::path local_path(download_manager.GetLocalPath());
-  ASSERT_FALSE(boost::filesystem::exists(local_path / "test_file3"));
+  fs::path local_path(download_manager.GetLocalPath());
+  ASSERT_FALSE(fs::exists(local_path / "test_file3"));
   boost::system::error_code error;
   if (fs::exists(local_path / "test_file1"))
     fs::remove(local_path / "test_file1", error);
