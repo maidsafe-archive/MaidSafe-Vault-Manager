@@ -35,6 +35,9 @@ const std::string kVersionFilename("version");
 const std::string kManifestFilename("manifest");
 const std::string kGlobalConfigFilename("global-config.dat");
 const std::string kBootstrapNodesFilename("bootstrap-global.dat");
+const std::string kVaultName("pd-vault");
+const std::string kDummyName("DUMMYprocess");
+const std::string kInvigilatorName("invigilator");
 
 class Platform {
  public:
@@ -95,6 +98,8 @@ std::string GenerateVmidParameter(const uint32_t& process_index,
 bool ParseVmidParameter(const std::string& invigilator_identifier,
                         uint32_t& process_index,
                         uint16_t& invigilator_port);
+
+uint16_t GetRandomPort();
 
 }  // namespace detail
 

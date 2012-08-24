@@ -57,7 +57,8 @@ bool VaultController::Start(const std::string& invigilator_identifier,
 
   stop_callback_ = stop_callback;
   asio_service_.Start();
-  RequestVaultIdentity();
+  uint16_t listening_port(detail::GetRandomPort());
+  RequestVaultIdentity(listening_port);
   receiving_transport_->on_message_received().connect(
       [this](const std::string& message, Port invigilator_port) {
         HandleReceivedRequest(message, invigilator_port);
@@ -65,6 +66,8 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   receiving_transport_->on_error().connect([](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
   });
+
+  receiving_transport_->StartListening(listening_port);
 
   return true;
 }
@@ -133,16 +136,16 @@ void VaultController::HandleVaultJoinedAck(const std::string& message,
     LOG(kError) << "Failed to parse VaultJoinedNetworkAck.";
     return;
   }
-
   callback();
 }
 
-void VaultController::RequestVaultIdentity() {
+void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
 
   protobuf::VaultIdentityRequest vault_identity_request;
   vault_identity_request.set_process_index(process_index_);
+  vault_identity_request.set_listening_port(listening_port);
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   if (request_transport->Connect(invigilator_port_) != kSuccess) {
@@ -206,7 +209,8 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message,
 }
 
 void VaultController::HandleReceivedRequest(const std::string& message, Port peer_port) {
-  assert(peer_port == invigilator_port_);
+  /*assert(peer_port == invigilator_port_);*/  // Invigilator does not currently use
+                                               // its established port to contact VaultController
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -231,6 +235,7 @@ void VaultController::HandleReceivedRequest(const std::string& message, Port pee
 
 void VaultController::HandleVaultShutdownRequest(const std::string& request,
                                                  std::string& response) {
+  LOG(kError) << "Received shutdown request.";
   protobuf::VaultShutdownRequest vault_shutdown_request;
   protobuf::VaultShutdownResponse vault_shutdown_response;
   if (!vault_shutdown_request.ParseFromString(request) ||

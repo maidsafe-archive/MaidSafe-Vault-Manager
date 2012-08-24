@@ -125,7 +125,6 @@ Invigilator::Invigilator()
   if (!EstablishConfigFilePath()) {
     LOG(kError) << "Invigilator failed to find existing config file in "
                 << fs::current_path() << " or in " << GetSystemAppSupportDir();
-  } else {
     if (!CreateConfigFile()) {
       LOG(kError) << "Invigilator failed to create new config file at " << config_file_path_
                   << ". Shutting down.";
@@ -141,13 +140,13 @@ Invigilator::Invigilator()
   transport_->on_error().connect([](const int& error) {
     LOG(kError) << "Transport reported error code " << error;
   });
-  if (!ReadConfigFile()) {
-    LOG(kError) << "Invigilator - failed to read config file at " << config_file_path_;
-  }
   // Invoke update immediately.  Thereafter, invoked every update_interval_.
   boost::system::error_code ec;
   CheckForUpdates(ec);
   ListenForMessages();
+  if (!ReadConfigFile()) {
+    LOG(kError) << "Invigilator - failed to read config file at " << config_file_path_;
+  }
   LOG(kInfo) << "Invigilator started successfully.  Using config file at "
              << (InTestMode() ? fs::current_path() / kConfigFileName() : config_file_path_);
 }
@@ -219,10 +218,6 @@ bool Invigilator::ReadConfigFile() {
     LOG(kError) << "Failed to read config file " << config_file_path_;
     return false;
   }
-
-  // Handle first run with 1 byte config file in local dir (for use in tests)
-  if (content.size() == 1U && InTestMode())
-    return true;
 
   protobuf::InvigilatorConfig config;
   if (!config.ParseFromString(content) || !config.IsInitialized()) {
@@ -375,7 +370,6 @@ void Invigilator::HandleStartVaultRequest(const std::string& request,
                                                   // TODO(Fraser#5#): 2012-08-17 - Check process manager too?
       if ((*itr)->requested_to_run)
         return set_response(true);
-
       (*itr)->requested_to_run = true;
       process_manager_.StartProcess((*itr)->process_index);
     } else {
@@ -391,6 +385,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request,
 
       vault_info->chunkstore_capacity = 0;
       vault_info->client_port = client_port;
+      vault_info->requested_to_run = true;
       LOG(kVerbose) << "Bootstrap endpoint is " << start_vault_request.bootstrap_endpoint();
       vault_info->process_index = AddVaultToProcesses(vault_info->chunkstore_path,
                                                       vault_info->chunkstore_capacity,
@@ -421,7 +416,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request,
 }
 
 void Invigilator::HandleVaultIdentityRequest(const std::string& request,
-                                               Port vault_port,
+                                               Port /*vault_port*/,
                                                std::string& response) {
   LOG(kError) << "Received VaultIdentityRequest.";
   protobuf::VaultIdentityRequest vault_identity_request;
@@ -459,7 +454,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request,
       vault_identity_response.set_bootstrap_nodes(bootstrap_nodes_);
       // Notify so that waiting client StartVaultResponse can be sent
       std::lock_guard<std::mutex> local_lock((*itr)->mutex);
-      (*itr)->vault_port = vault_port;
+      (*itr)->vault_port = vault_identity_request.listening_port();
       (*itr)->vault_requested = true;
       (*itr)->cond_var.notify_one();
     }
@@ -531,7 +526,7 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
     stop_vault_response.set_result(false);
   } else {
     LOG(kInfo) << "Shutting down vault with identity " << HexSubstr(stop_vault_request.identity());
-    stop_vault_response.set_result(StopVault(stop_vault_request.identity()));
+    stop_vault_response.set_result(StopVault(stop_vault_request.identity(), true));
   }
 
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
@@ -628,9 +623,9 @@ ProcessIndex Invigilator::AddVaultToProcesses(const std::string& chunkstore_path
   LOG(kInfo) << "Creating a vault at " << chunkstore_path << ", with capacity: "
              << chunkstore_capacity;
 #ifdef USE_TEST_KEYS
-  std::string process_name(kDummyName());
+  std::string process_name(detail::kDummyName);
 #else
-  std::string process_name(kVaultName());
+  std::string process_name(detail::kVaultName);
 #endif
   if (!process.SetExecutablePath(config_file_path_.parent_path() /
                                  (process_name + detail::kThisPlatform().executable_extension()))) {
@@ -662,7 +657,7 @@ void Invigilator::RestartVault(const std::string& identity) {
   process_manager_.StartProcess((*itr)->process_index);
 }
 
-bool Invigilator::StopVault(const std::string& identity) {
+bool Invigilator::StopVault(const std::string& identity, bool permanent) {
   // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
   //                               Try to reduce lock scope eventually.
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
@@ -672,7 +667,7 @@ bool Invigilator::StopVault(const std::string& identity) {
     return false;
   }
   /*process_manager_.StopProcess((*itr)->process_index);*/
-  (*itr)->requested_to_run = false;
+  (*itr)->requested_to_run = !permanent;
 
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -687,23 +682,25 @@ bool Invigilator::StopVault(const std::string& identity) {
       done = true;
       local_cond_var.notify_one();
     };
-
-  boost::signals2::connection connection1 = transport_->on_message_received().connect(
+  std::shared_ptr<LocalTcpTransport> sending_transport(
+      new LocalTcpTransport(asio_service_.service()));
+  boost::signals2::connection connection1 = sending_transport->on_message_received().connect(
       [this, callback](const std::string& message, Port /*invigilator_port*/) {
         HandleVaultShutdownResponse(message, callback);
       });
   boost::signals2::connection connection2 =
-      transport_->on_error().connect([this, callback](const int& /*error*/) {
+      sending_transport->on_error().connect([this, callback](const int& /*error*/) {
     // TODO(Fraser#5#): 2012-08-17 - Don't want to just callback(false) since this transport
     // could get errors from other concurrent ongoing requests.  Need to handle by maybe chnaging
     // transport's on_error to include the outgoing message, or a messge ID or something.
   });
 
   std::unique_lock<std::mutex> local_lock(local_mutex);
-  transport_->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
-                                       vault_shutdown_request.SerializeAsString()),
+  sending_transport->Connect((*itr)->vault_port);
+  sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
+                                              vault_shutdown_request.SerializeAsString()),
                    (*itr)->vault_port);
-
+  LOG(kInfo) << "Sent shutdown request to vault on port " << (*itr)->vault_port;
   if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
     connection1.disconnect();
@@ -715,8 +712,8 @@ bool Invigilator::StopVault(const std::string& identity) {
   } else {
     protobuf::VaultShutdownResponseAck vault_shutdown_response_ack;
     vault_shutdown_response_ack.set_ack(true);
-    transport_->Send(detail::WrapMessage(MessageType::kVaultShutdownResponseAck,
-                                         vault_shutdown_request.SerializeAsString()),
+    sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownResponseAck,
+                                                vault_shutdown_request.SerializeAsString()),
                      (*itr)->vault_port);
   }
   connection1.disconnect();
@@ -747,7 +744,7 @@ void Invigilator::HandleVaultShutdownResponse(const std::string& message,
 
 void Invigilator::StopAllVaults() {
   for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
-    StopVault((*itr)->keys.identity);
+    StopVault((*itr)->keys.identity, false);
     WriteConfigFile();
   }
 }

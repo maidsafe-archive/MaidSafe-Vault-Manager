@@ -141,14 +141,10 @@ class Invigilator {
   void RestartVault(const std::string& identity);
   void HandleVaultShutdownResponse(const std::string& message,
                                    const std::function<void(bool)>& callback);  // NOLINT (Fraser)
-  bool StopVault(const std::string& identity);
+  bool StopVault(const std::string& identity, bool permanent);
   void StopAllVaults();
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
-  static std::string kVaultName() { return "pd-vault"; }
-  static std::string kDummyName() { return "DUMMYprocess"; }
-  static std::string kInvigilatorName() { return "invigilator"; }
-
 
   ProcessManager process_manager_;
   DownloadManager download_manager_;
