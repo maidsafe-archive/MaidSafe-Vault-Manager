@@ -454,7 +454,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request,
       vault_identity_response.set_bootstrap_nodes(bootstrap_nodes_);
       // Notify so that waiting client StartVaultResponse can be sent
       std::lock_guard<std::mutex> local_lock((*itr)->mutex);
-      (*itr)->vault_port = vault_identity_request.listening_port();
+      (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
       (*itr)->vault_requested = true;
       (*itr)->cond_var.notify_one();
     }
