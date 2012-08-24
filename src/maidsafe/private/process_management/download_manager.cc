@@ -114,8 +114,7 @@ int DownloadManager::Update(std::vector<std::string>& updated_files) {
   }
 
   fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version);
-  if (!RetrieveManifest(remote_update_path / detail::kManifestFilename, files_in_manifest) ||
-      files_in_manifest.empty()) {
+  if (!RetrieveManifest(remote_update_path / detail::kManifestFilename, files_in_manifest)) {
     LOG(kError) << "Manifest was not successfully retrieved";
     return kManifestFailure;
   }
@@ -153,21 +152,28 @@ bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
     LOG(kError) << "Failed to download manifest file";
     return false;
   }
+
   std::string manifest_content;
   if (!ReadFile(local_path_ / detail::kManifestFilename, &manifest_content)) {
     LOG(kError) << "Failed to read downloaded manifest file";
     return false;
   }
+
   boost::split(files_in_manifest, manifest_content, boost::is_any_of("\n"));
-  if (files_in_manifest.size() < 2)
-    return false;
-  files_in_manifest.erase(files_in_manifest.end() - 1);
+  auto itr(files_in_manifest.begin());
+  while (itr != files_in_manifest.end()) {
+    if ((*itr).empty())
+      itr = files_in_manifest.erase(itr);
+    else
+      ++itr;
+  }
 
 #ifdef DEBUG
   for (std::string file : files_in_manifest)
     LOG(kInfo) << "file in manifest: " << file;
 #endif
-  return true;
+
+  return !files_in_manifest.empty();
 }
 
 bool DownloadManager::GetAndVerifyFile(const fs::path& from_path, const fs::path& to_path) {
