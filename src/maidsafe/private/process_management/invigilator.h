@@ -47,7 +47,8 @@ namespace detail { class Platform; }
 class LocalTcpTransport;
 
 enum class MessageType {
-  kPing = 1,
+  kClientRegistrationRequest = 1,
+  kClientRegistrationResponse,
   kStartVaultRequest,
   kStartVaultResponse,
   kStopVaultRequest,
@@ -111,7 +112,7 @@ class Invigilator {
   // Client and vault request handling
   bool ListenForMessages();
   void HandleReceivedMessage(const std::string& message, uint16_t peer_port);
-  void HandlePing(const std::string& request, std::string& response);
+  void HandleClientRegistrationRequest(const std::string& request, std::string& response);
   void HandleStartVaultRequest(const std::string& request, std::string& response);
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
@@ -156,6 +157,8 @@ class Invigilator {
   uint16_t local_port_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
+  std::vector<uint16_t> client_ports_;
+  mutable std::mutex client_ports_mutex_;
   boost::filesystem::path config_file_path_;
 };
 

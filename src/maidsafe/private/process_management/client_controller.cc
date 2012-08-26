@@ -94,11 +94,11 @@ void ClientController::PingInvigilator(
       return cond_var_.notify_one();
     }
   }
-  protobuf::Ping ping;
-  ping.set_ping(random_data);
-  LOG(kVerbose) << "Sending ping to port " << invigilator_port_;
-  receiving_transport_->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
-                             invigilator_port_);
+                                                                                //  protobuf::Ping ping;
+                                                                                //  ping.set_ping(random_data);
+                                                                                //  LOG(kVerbose) << "Sending ping to port " << invigilator_port_;
+                                                                                //  receiving_transport_->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
+                                                                                //                             invigilator_port_);
 }
 
 void ClientController::HandlePingResponse(
@@ -115,18 +115,18 @@ void ClientController::HandlePingResponse(
     return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
   }
 
-  protobuf::Ping ping;
-  if (!ping.ParseFromString(payload) || !ping.IsInitialized()) {
-    LOG(kError) << "Failed to parse Ping.";
-    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
-  }
+                                                                                  //  protobuf::Ping ping;
+                                                                                  //  if (!ping.ParseFromString(payload) || !ping.IsInitialized()) {
+                                                                                  //    LOG(kError) << "Failed to parse Ping.";
+                                                                                  //    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
+                                                                                  //  }
 
-  if (ping.ping() != data_sent) {
-    LOG(kError) << "Ping response didn't contain original data sent.";
-    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
-  }
+                                                                                  //  if (ping.ping() != data_sent) {
+                                                                                  //    LOG(kError) << "Ping response didn't contain original data sent.";
+                                                                                  //    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
+                                                                                  //  }
 
-  bootstrap_nodes_ = ping.bootstrap_nodes();
+                                                                                  //  bootstrap_nodes_ = ping.bootstrap_nodes();
   std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
   LOG(kSuccess) << "Successfully connected to Invigilator on port " << invigilator_port_;

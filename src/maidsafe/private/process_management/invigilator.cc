@@ -81,6 +81,8 @@ Invigilator::Invigilator()
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
+      client_ports_(),
+      client_ports_mutex_(),
 #ifdef USE_TEST_KEYS
       config_file_path_(fs::path(".") / detail::kGlobalConfigFilename) {
 #else
@@ -248,8 +250,8 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
   LOG(kVerbose) << "HandleReceivedMessage: message type " << static_cast<int>(type) << " received.";
   std::string response;
   switch (type) {
-    case MessageType::kPing:
-      HandlePing(payload, response);
+    case MessageType::kClientRegistrationRequest:
+      HandleClientRegistrationRequest(payload, response);
       break;
     case MessageType::kStartVaultRequest:
       HandleStartVaultRequest(payload, response);
@@ -272,16 +274,40 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
   transport_->Send(response, peer_port);
 }
 
-void Invigilator::HandlePing(const std::string& request, std::string& response) {
-  protobuf::Ping ping;
-  if (!ping.ParseFromString(request)) {  // Silently drop
-    LOG(kError) << "Failed to parse ping.";
+void Invigilator::HandleClientRegistrationRequest(const std::string& request,
+                                                  std::string& response) {
+  protobuf::ClientRegistrationRequest client_request;
+  if (!client_request.ParseFromString(request)) {  // Silently drop
+    LOG(kError) << "Failed to parse client registration request.";
     return;
   }
 
-  // TODO(Team): Obtain latest bootstrap contacts and insert them in response.
+  {
+    std::lock_guard<std::mutex> lock(client_ports_mutex_);
+    uint16_t request_port(static_cast<uint16_t>(client_request.listening_port()));
+    auto itr(std::find_if(client_ports_.begin(),
+                          client_ports_.end(),
+                          [&request_port] (const uint16_t &element)->bool {
+                            return element == request_port;
+                          }));
+    if (itr != client_ports_.end())
+      client_ports_.push_back(request_port);
+  }
 
-  response = detail::WrapMessage(MessageType::kPing, ping.SerializeAsString());
+  protobuf::ClientRegistrationResponse client_response;
+  protobuf::InvigilatorConfig config;
+  std::vector<EndPoint> endpoints;
+  if (ReadBootstrapEndpoints(config, endpoints) || !endpoints.empty()) {
+    std::for_each(endpoints.begin(),
+                  endpoints.end(),
+                  [&client_response] (const EndPoint& element) {
+                    client_response.add_bootstrap_endpoint_ip(element.first);
+                    client_response.add_bootstrap_endpoint_port(element.second);
+                  });
+  }
+
+  response = detail::WrapMessage(MessageType::kClientRegistrationResponse,
+                                 client_response.SerializeAsString());
 }
 
 void Invigilator::HandleStartVaultRequest(const std::string& request, std::string& response) {
