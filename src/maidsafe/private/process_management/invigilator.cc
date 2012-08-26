@@ -37,51 +37,15 @@ namespace priv {
 
 namespace process_management {
 
-namespace {
-
-bool HandleBootstrapFile(const std::string& short_vault_id, const fs::path& parent_dir) {
-  fs::path vault_bootstrap_path(parent_dir / ("bootstrap-" + short_vault_id + ".dat"));
-
-  boost::system::error_code error_code;
-  // false returned from create_directories implies the directory pre-existed
-  fs::create_directories(parent_dir, error_code);
-  if (error_code) {
-    LOG(kError) << "Error creating vault directory " << parent_dir << "   " << error_code.message();
-    return false;
-  }
-
-  // Copy global bootstrap file
-  if (!fs::exists(vault_bootstrap_path, error_code)) {
-    if (error_code.value() != boost::system::errc::no_such_file_or_directory)
-      LOG(kError) << error_code.value() << error_code.message();
-    fs::copy_file(parent_dir / "bootstrap-global.dat", vault_bootstrap_path, error_code);
-    if (error_code) {
-      LOG(kError) << "Failed to copy global bootstrap file: " << error_code.message();
-      return false;
-    }
-  }
-
-  // TODO(Phil) set permissions to give vault exclusive access
-
-  return true;
-}
-
-}  // unnamed namespace
-
-
 Invigilator::VaultInfo::VaultInfo()
     : process_index(),
       account_name(),
       keys(),
       chunkstore_path(),
       chunkstore_capacity(0),
-      client_port(0),
       vault_port(0),
-      mutex(),
-      cond_var(),
       requested_to_run(false),
-      vault_requested(false),
-      joined_network(kPending) {}
+      joined_network(false) {}
 
 void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
@@ -117,38 +81,43 @@ Invigilator::Invigilator()
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
-      cond_var_(),
       stop_listening_for_updates_(false),
       shutdown_requested_(false),
-      config_file_path_(),
-      bootstrap_nodes_() {
-  if (!EstablishConfigFilePath()) {
-    LOG(kError) << "Invigilator failed to find existing config file in "
-                << fs::current_path() << " or in " << GetSystemAppSupportDir();
+#ifdef USE_TEST_KEYS
+      config_file_path_(fs::path(".") / detail::kGlobalConfigFilename) {
+#else
+      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename) {
+#endif
+  boost::system::error_code error_code;
+  if (!fs::exists(config_file_path_, error_code) ||
+      error_code.value() == boost::system::errc::no_such_file_or_directory) {
+    LOG(kInfo) << "Invigilator failed to find existing config file in " << config_file_path_;
     if (!CreateConfigFile()) {
       LOG(kError) << "Invigilator failed to create new config file at " << config_file_path_
                   << ". Shutting down.";
       return;
     }
   }
+
+  UpdateExecutor();
+
   LOG(kInfo) << "Invigilator started";
   asio_service_.Start();
   transport_->on_message_received().connect(
-      [this](const std::string& message, Port peer_port) {
+      [this] (const std::string& message, Port peer_port) {
         HandleReceivedMessage(message, peer_port);
       });
-  transport_->on_error().connect([](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-  });
-  // Invoke update immediately.  Thereafter, invoked every update_interval_.
-  boost::system::error_code ec;
-  CheckForUpdates(ec);
-  ListenForMessages();
-  if (!ReadConfigFile()) {
-    LOG(kError) << "Invigilator - failed to read config file at " << config_file_path_;
+  transport_->on_error().connect([] (const int& error) {
+                                   LOG(kError) << "Transport reported error code: " << error;
+                                 });
+
+  if (!ListenForMessages()) {
+    LOG(kError) << "Invigilator failed to create a listening port. Shutting down.";
+    return;
   }
-  LOG(kInfo) << "Invigilator started successfully.  Using config file at "
-             << (InTestMode() ? fs::current_path() / kConfigFileName() : config_file_path_);
+
+  ReadConfigFileAndStartVaults();
+  CheckForUpdates(error_code);
 }
 
 Invigilator::~Invigilator() {
@@ -171,7 +140,7 @@ boost::posix_time::time_duration Invigilator::kMaxUpdateInterval() {
 }
 
 void Invigilator::RestartInvigilator(const std::string& latest_file,
-                                         const std::string& executable_name) const {
+                                     const std::string& executable_name) const {
   // TODO(Fraser#5#): 2012-08-12 - Define command in constant.  Do we need 2 shell scripts?  Do we need 2 parameters to unix script?
 #ifdef MAIDSAFE_WIN32
   std::string command("restart_vm_windows.bat " + latest_file + " " + executable_name);
@@ -184,35 +153,32 @@ void Invigilator::RestartInvigilator(const std::string& latest_file,
     LOG(kWarning) << "Result: " << result;
 }
 
-bool Invigilator::EstablishConfigFilePath() {
-  assert(config_file_path_.empty());
-#ifdef USE_TEST_KEYS
-  fs::path config_file_path(fs::path(".") / kConfigFileName());
-#else
-  fs::path config_file_path(GetSystemAppSupportDir() / kConfigFileName());
-#endif
-  config_file_path_ = config_file_path;
-  boost::system::error_code error_code;
-  return (fs::exists(config_file_path_, error_code) && !error_code);
-}
-
 bool Invigilator::CreateConfigFile() {
   protobuf::InvigilatorConfig config;
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    config.set_update_interval(update_interval_.total_seconds());
+  config.set_update_interval(update_interval_.total_seconds());
+
+  std::string s_major(APPLICATION_VERSION_MAJOR);
+  std::string s_minor(APPLICATION_VERSION_MINOR);
+  std::string s_patch(APPLICATION_VERSION_PATCH);
+  config.set_latest_local_version(s_major + "." + s_minor + "." + s_patch);
+
+  if (!ObtainBootstrapInformation(config)) {
+    LOG(kError) << "Fialed to obtain bootstrap information from server.";
+    return false;
   }
-  config.set_latest_local_version("0.00.00");  // TODO(Philip): get version of this executable
-  config.set_bootstrap_nodes(download_manager_.RetrieveBootstrapInfo());
+
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
     return false;
   }
   LOG(kInfo) << "Created config file " << config_file_path_;
+
+  download_manager_.SetLatestLocalVersion(config.latest_local_version());
+
   return true;
 }
 
-bool Invigilator::ReadConfigFile() {
+bool Invigilator::ReadConfigFileAndStartVaults() {
   std::string content;
   if (!ReadFile(config_file_path_, &content)) {
     LOG(kError) << "Failed to read config file " << config_file_path_;
@@ -220,32 +186,20 @@ bool Invigilator::ReadConfigFile() {
   }
 
   protobuf::InvigilatorConfig config;
-  if (!config.ParseFromString(content) || !config.IsInitialized()) {
+  if (!config.ParseFromString(content)) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
   }
+
   download_manager_.SetLatestLocalVersion(config.latest_local_version());
   update_interval_ = bptime::seconds(config.update_interval());
-  bootstrap_nodes_ = config.bootstrap_nodes();
+
   for (int i(0); i != config.vault_info_size(); ++i) {
-    std::shared_ptr<VaultInfo> vault_info(new VaultInfo);
+    VaultInfoPtr vault_info(new VaultInfo);
     vault_info->FromProtobuf(config.vault_info(i));
-    vault_info->process_index = AddVaultToProcesses(vault_info->chunkstore_path,
-                                                    vault_info->chunkstore_capacity,
-                                                    "");
-    if (vault_info->process_index == ProcessManager::kInvalidIndex())
-      continue;
-    vault_infos_.push_back(vault_info);
     if (vault_info->requested_to_run) {
-      std::unique_lock<std::mutex> vault_lock(vault_info->mutex);
-      process_manager_.StartProcess(vault_info->process_index);
-      LOG(kVerbose) << "Waiting for Vault " << vault_info->process_index << " to confirm joined.";
-      if (!vault_info->cond_var.wait_for(
-              vault_lock,
-              std::chrono::seconds(30),
-              [&] { return vault_info->joined_network != VaultInfo::kPending; })) {  // NOLINT (Fraser)
-        LOG(kError) << "Wait for Vault join confirmation timed out.";
-      }
+      if (!StartVaultProcess(vault_info))
+        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->keys.identity);
     }
   }
 
@@ -259,11 +213,12 @@ bool Invigilator::WriteConfigFile() {
     config.set_update_interval(update_interval_.total_seconds());
   }
   config.set_latest_local_version(download_manager_.latest_local_version());
-  config.set_bootstrap_nodes(bootstrap_nodes_);
-  std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  for (auto& vault_info : vault_infos_) {
-    protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
-    vault_info->ToProtobuf(pb_vault_info);
+  {
+    std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+    for (auto& vault_info : vault_infos_) {
+      protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
+      vault_info->ToProtobuf(pb_vault_info);
+    }
   }
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to write config file " << config_file_path_;
@@ -272,14 +227,16 @@ bool Invigilator::WriteConfigFile() {
   return true;
 }
 
-void Invigilator::ListenForMessages() {
+bool Invigilator::ListenForMessages() {
   while (transport_->StartListening(local_port_) != kSuccess) {
     ++local_port_;
     if (local_port_ > kMaxPort()) {
       LOG(kError) << "Listening failed on all ports in range " << kMinPort() << " - " << kMaxPort();
-      return;
+      return false;
     }
   }
+
+  return true;
 }
 
 void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_port) {
@@ -289,6 +246,7 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
     LOG(kError) << "Failed to handle incoming message.";
     return;
   }
+
   LOG(kVerbose) << "HandleReceivedMessage: message type " << static_cast<int>(type) << " received.";
   std::string response;
   switch (type) {
@@ -296,10 +254,10 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
       HandlePing(payload, response);
       break;
     case MessageType::kStartVaultRequest:
-      HandleStartVaultRequest(payload, peer_port, response);
+      HandleStartVaultRequest(payload, response);
       break;
     case MessageType::kVaultIdentityRequest:
-      HandleVaultIdentityRequest(payload, peer_port, response);
+      HandleVaultIdentityRequest(payload, response);
       break;
     case MessageType::kVaultJoinedNetwork:
       HandleVaultJoinedNetworkRequest(payload, response);
@@ -318,109 +276,96 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
 
 void Invigilator::HandlePing(const std::string& request, std::string& response) {
   protobuf::Ping ping;
-  if (!ping.ParseFromString(request) || !ping.IsInitialized()) {  // Silently drop
+  if (!ping.ParseFromString(request)) {  // Silently drop
     LOG(kError) << "Failed to parse ping.";
     return;
   }
-  ping.set_bootstrap_nodes(bootstrap_nodes_);
-  response = detail::WrapMessage(MessageType::kPing, request);
+
+  // TODO(Team): Obtain latest bootstrap contacts and insert them in response.
+
+  response = detail::WrapMessage(MessageType::kPing, ping.SerializeAsString());
 }
 
-void Invigilator::HandleStartVaultRequest(const std::string& request,
-                                            Port client_port,
-                                            std::string& response) {
+void Invigilator::HandleStartVaultRequest(const std::string& request, std::string& response) {
   protobuf::StartVaultRequest start_vault_request;
-  if (!start_vault_request.ParseFromString(request) || !start_vault_request.IsInitialized()) {
+  if (!start_vault_request.ParseFromString(request)) {
     // Silently drop
     LOG(kError) << "Failed to parse StartVaultRequest.";
     return;
   }
 
-  auto set_response([&response](bool result) {
+  auto set_response([&response] (bool result) {
     protobuf::StartVaultResponse start_vault_response;
     start_vault_response.set_result(result);
     response = detail::WrapMessage(MessageType::kStartVaultResponse,
                                    start_vault_response.SerializeAsString());
   });
 
-  std::shared_ptr<VaultInfo> vault_info(new VaultInfo);
-  asymm::ParseKeys(start_vault_request.keys(), vault_info->keys);
+  VaultInfoPtr vault_info(new VaultInfo);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(std::find_if(
-        vault_infos_.begin(),
-        vault_infos_.end(),
-        [&vault_info](const std::shared_ptr<VaultInfo>& vault_inf) {
-          return vault_info->keys.identity == vault_inf->keys.identity;
-        }));
+    auto itr(std::find_if(vault_infos_.begin(),
+                          vault_infos_.end(),
+                          [&vault_info] (const VaultInfoPtr vault_information) {
+                            return vault_info->keys.identity == vault_information->keys.identity;
+                          }));
     if (itr != vault_infos_.end()) {
-      // This client's vault is already registered - check existing details match.
-      if ((*itr)->account_name != start_vault_request.account_name()) {
-        LOG(kError) << "Client's StartVaultRequest account name doesn't match existing one.";
-        return set_response(false);
+      if (kSuccess != asymm::CheckSignature(start_vault_request.token(),
+                                            start_vault_request.token_signature(),
+                                            vault_info->keys.public_key)) {
+        LOG(kError) << "Communication from someone that does not validate as owner.";
+        return set_response(false);  // TODO(Team): Drop silienty?
       }
 
-      if ((*itr)->keys.validation_token != vault_info->keys.validation_token) {
-        LOG(kError) << "Client's StartVaultRequest keys validation_token doesn't match existing.";
-        return set_response(false);
+      if (!start_vault_request.credential_change()) {
+        if (!(*itr)->joined_network) {
+          (*itr)->requested_to_run = true;
+          process_manager_.StartProcess((*itr)->process_index);
+        }
+      } else  {
+        asymm::Keys temp_keys;
+        if (!asymm::ParseKeys(start_vault_request.keys(), temp_keys)) {
+          LOG(kError) << "Keys provided do not parse.";
+          return set_response(false);
+        }
+        if ((*itr)->joined_network) {
+          // TODO(Team): Stop and restart with new credentials
+        } else {
+          // TODO(Team): Start with new credentials
+          (*itr)->account_name = start_vault_request.account_name();
+          (*itr)->keys = temp_keys;
+          (*itr)->requested_to_run = true;
+        }
       }
-
-      (*itr)->client_port = client_port;
-      // If the vault's already running, we're done here.
                                                   // TODO(Fraser#5#): 2012-08-17 - Check process manager too?
-      if ((*itr)->requested_to_run)
-        return set_response(true);
-      (*itr)->requested_to_run = true;
-      process_manager_.StartProcess((*itr)->process_index);
     } else {
       // The vault is not already registered.
-      vault_info->account_name = start_vault_request.account_name();
-      std::string short_vault_id(EncodeToBase32(crypto::Hash<crypto::SHA1>(vault_info->keys.identity)));
-      vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
-      if (!HandleBootstrapFile(short_vault_id, config_file_path_.parent_path())) {
-        LOG(kError) << "Failed to set bootstrap file for vault "
-                    << HexSubstr(vault_info->keys.identity);
+      if (!asymm::ParseKeys(start_vault_request.keys(), vault_info->keys)) {
+        LOG(kError) << "Keys provided do not parse.";
         return set_response(false);
       }
-
+      vault_info->account_name = start_vault_request.account_name();
+      std::string short_vault_id(crypto::Hash<crypto::SHA1>(vault_info->keys.identity));
+      vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
       vault_info->chunkstore_capacity = 0;
-      vault_info->client_port = client_port;
-      vault_info->requested_to_run = true;
-      LOG(kVerbose) << "Bootstrap endpoint is " << start_vault_request.bootstrap_endpoint();
-      vault_info->process_index = AddVaultToProcesses(vault_info->chunkstore_path,
-                                                      vault_info->chunkstore_capacity,
-                                                      start_vault_request.bootstrap_endpoint());
-      if (vault_info->process_index == ProcessManager::kInvalidIndex())
+      if (!StartVaultProcess(vault_info)) {
+        LOG(kError) << "Failed to start a process for vault ID: "
+                    << Base64Substr(vault_info->keys.identity);
         return set_response(false);
-
-      process_manager_.StartProcess(vault_info->process_index);
-      vault_infos_.push_back(vault_info);
+      }
     }
   }
 
-  WriteConfigFile();
-
-  // Need to block here until new vault has sent VaultIdentityRequest, since response to client will
-  // be sent once this function exits.
-  std::unique_lock<std::mutex> lock(vault_info->mutex);
-  LOG(kVerbose) << "Waiting for Vault " << vault_info->process_index;
-  if (!vault_info->cond_var.wait_for(
-          lock,
-          std::chrono::seconds(3),
-          [&] { return vault_info->vault_requested; })) {  // NOLINT (Philip)
-    LOG(kError) << "HandleStartVaultRequest: wait for Vault timed out";
-    return set_response(false);
-  }
+  if (!WriteConfigFile())
+    LOG(kError) << "Failed to write config to disk with amended vault info... Maybe next time?";
 
   set_response(true);
 }
 
-void Invigilator::HandleVaultIdentityRequest(const std::string& request,
-                                               Port /*vault_port*/,
-                                               std::string& response) {
+void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::string& response) {
   LOG(kError) << "Received VaultIdentityRequest.";
   protobuf::VaultIdentityRequest vault_identity_request;
-  if (!vault_identity_request.ParseFromString(request) || !vault_identity_request.IsInitialized()) {
+  if (!vault_identity_request.ParseFromString(request)) {
     // Silently drop
     LOG(kError) << "Failed to parse VaultIdentityRequest.";
     return;
@@ -428,18 +373,17 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request,
 
   protobuf::VaultIdentityResponse vault_identity_response;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(
-      vault_infos_.begin(),
-      vault_infos_.end(),
-      [&vault_identity_request](const std::shared_ptr<VaultInfo>& vault_info) {
-        return vault_info->process_index == vault_identity_request.process_index();
-      }));
+  auto itr(std::find_if(vault_infos_.begin(),
+                        vault_infos_.end(),
+                        [&vault_identity_request] (const VaultInfoPtr& info) {
+                          return info->process_index == vault_identity_request.process_index();
+                        }));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_identity_request.process_index()
                 << " hasn't been added.";
     vault_identity_response.set_account_name("");
     vault_identity_response.set_keys("");
-    vault_identity_response.set_bootstrap_nodes("");
+    // TODO(Team): Should this be droped silently?
   } else {
     std::string serialised_keys;
     if (!asymm::SerialiseKeys((*itr)->keys, serialised_keys)) {
@@ -447,16 +391,10 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request,
                   << vault_identity_request.process_index();
       vault_identity_response.set_account_name("");
       vault_identity_response.set_keys("");
-      vault_identity_response.set_bootstrap_nodes("");
+      // TODO(Team): Should this be informed with more detail?
     } else {
       vault_identity_response.set_account_name((*itr)->account_name);
       vault_identity_response.set_keys(serialised_keys);
-      vault_identity_response.set_bootstrap_nodes(bootstrap_nodes_);
-      // Notify so that waiting client StartVaultResponse can be sent
-      std::lock_guard<std::mutex> local_lock((*itr)->mutex);
-      (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
-      (*itr)->vault_requested = true;
-      (*itr)->cond_var.notify_one();
     }
   }
 
@@ -465,9 +403,9 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request,
 }
 
 void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
-                                                    std::string& response) {
+                                                  std::string& response) {
   protobuf::VaultJoinedNetwork vault_joined_network;
-  if (!vault_joined_network.ParseFromString(request) || !vault_joined_network.IsInitialized()) {
+  if (!vault_joined_network.ParseFromString(request)) {
     // Silently drop
     LOG(kError) << "Failed to parse VaultJoinedNetwork.";
     return;
@@ -475,12 +413,11 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
 
   protobuf::VaultJoinedNetworkAck vault_joined_network_ack;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(
-      vault_infos_.begin(),
-      vault_infos_.end(),
-      [&vault_joined_network](const std::shared_ptr<VaultInfo>& vault_info) {
-        return vault_info->process_index == vault_joined_network.process_index();
-      }));
+  auto itr(std::find_if(vault_infos_.begin(),
+                        vault_infos_.end(),
+                        [&vault_joined_network] (const VaultInfoPtr& vault_info) {
+                          return vault_info->process_index == vault_joined_network.process_index();
+                        }));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_joined_network.process_index()
                 << " hasn't been added.";
@@ -488,10 +425,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
   } else {
     vault_joined_network_ack.set_ack(true);
     // Notify so that next vault can be started
-    std::lock_guard<std::mutex> local_lock((*itr)->mutex);
-    (*itr)->joined_network =
-        (vault_joined_network.joined() ? VaultInfo::kJoined : VaultInfo::kNotJoined);
-    (*itr)->cond_var.notify_one();
+    (*itr)->joined_network = vault_joined_network.joined();
   }
 
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
@@ -500,7 +434,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
 
 void Invigilator::HandleStopVaultRequest(const std::string& request, std::string& response) {
   protobuf::StopVaultRequest stop_vault_request;
-  if (!stop_vault_request.ParseFromString(request) || !stop_vault_request.IsInitialized()) {
+  if (!stop_vault_request.ParseFromString(request)) {
     // Silently drop
     LOG(kError) << "Failed to parse StopVaultRequest.";
     return;
@@ -510,36 +444,35 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(std::find_if(vault_infos_.begin(),
                         vault_infos_.end(),
-                        [&stop_vault_request](const std::shared_ptr<VaultInfo>& vault_info) {
+                        [&stop_vault_request] (const VaultInfoPtr& vault_info) {
                           return vault_info->keys.identity == stop_vault_request.identity();
-                          // TODO(Fraser#5#): 2012-08-16 - Check client port is same as peer_port for this request
                         }));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << HexSubstr(stop_vault_request.identity())
+    LOG(kError) << "Vault with identity " << Base64Substr(stop_vault_request.identity())
                 << " hasn't been added.";
     stop_vault_response.set_result(false);
-  } else if (!asymm::Validate(stop_vault_request.data(),
-                              stop_vault_request.signature(),
-                              (*itr)->keys.public_key)) {
-    LOG(kError) << "Vault with identity " << HexSubstr(stop_vault_request.identity())
-                << " hasn't been added.";
+  } else if (kSuccess != asymm::CheckSignature(stop_vault_request.data(),
+                                               stop_vault_request.signature(),
+                                               (*itr)->keys.public_key)) {
+    LOG(kError) << "Failure to vaildate request to stop vault ID "
+                << Base64Substr(stop_vault_request.identity());
     stop_vault_response.set_result(false);
   } else {
-    LOG(kInfo) << "Shutting down vault with identity " << HexSubstr(stop_vault_request.identity());
-    stop_vault_response.set_result(StopVault(stop_vault_request.identity(), true));
+    LOG(kInfo) << "Shutting down vault with identity "
+               << Base64Substr(stop_vault_request.identity());
+    stop_vault_response.set_result(StopVault(stop_vault_request.identity(),
+                                             stop_vault_request.data(),
+                                             stop_vault_request.signature(),
+                                             true));
   }
 
   response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
                                  stop_vault_response.SerializeAsString());
-
-                                                    // TODO(Fraser#5#): 2012-08-13 - Do we need this cond_var_ call?
-  cond_var_.notify_all();
 }
 
 void Invigilator::HandleUpdateIntervalRequest(const std::string& request, std::string& response) {
   protobuf::UpdateIntervalRequest update_interval_request;
-  if (!update_interval_request.ParseFromString(request) ||
-      !update_interval_request.IsInitialized()) {  // Silently drop
+  if (!update_interval_request.ParseFromString(request)) {  // Silently drop
     LOG(kError) << "Failed to parse UpdateIntervalRequest.";
     return;
   }
@@ -566,7 +499,7 @@ bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval
   std::lock_guard<std::mutex> lock(update_mutex_);
   update_interval_ = update_interval;
   update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
   return true;
 }
 
@@ -581,9 +514,17 @@ void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
       LOG(kError) << ec.message();
     return;
   }
+
+  UpdateExecutor();
+
+  update_timer_.expires_from_now(update_interval_);
+  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+}
+
+void Invigilator::UpdateExecutor() {
   std::string bootstrap_nodes(download_manager_.RetrieveBootstrapInfo());
   if (!bootstrap_nodes.empty()) {
-    bootstrap_nodes_ = bootstrap_nodes;
+//    bootstrap_nodes_ = bootstrap_nodes;
     WriteConfigFile();
   }
 
@@ -599,71 +540,41 @@ void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
     // ELSE IF OSX
     //  ????????
   }
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this](const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
 bool Invigilator::InTestMode() const {
-  return config_file_path_ == fs::path(".") / kConfigFileName();
+  return config_file_path_ == fs::path(".") / detail::kGlobalConfigFilename;
 }
 
-std::vector<std::shared_ptr<Invigilator::VaultInfo>>::const_iterator  // NOLINT
-    Invigilator::FindFromIdentity(const std::string& identity) const {
+std::vector<Invigilator::VaultInfoPtr>::const_iterator Invigilator::FindFromIdentity(
+    const std::string& identity) const {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
-                      [identity](const std::shared_ptr<VaultInfo>& vault_info) {
+                      [identity] (const VaultInfoPtr& vault_info) {
                         return vault_info->keys.identity == identity;
                       });
-}
-
-ProcessIndex Invigilator::AddVaultToProcesses(const std::string& chunkstore_path,
-                                               const uintmax_t& chunkstore_capacity,
-                                               const std::string& bootstrap_endpoint) {
-  Process process;
-  LOG(kInfo) << "Creating a vault at " << chunkstore_path << ", with capacity: "
-             << chunkstore_capacity;
-#ifdef USE_TEST_KEYS
-  std::string process_name(detail::kDummyName);
-#else
-  std::string process_name(detail::kVaultName);
-#endif
-  if (!process.SetExecutablePath(config_file_path_.parent_path() /
-                                 (process_name + detail::kThisPlatform().executable_extension()))) {
-    return ProcessManager::kInvalidIndex();
-  }
-
-  if (!bootstrap_endpoint.empty()) {
-    process.AddArgument("--peer");
-    process.AddArgument(bootstrap_endpoint);
-  }
-#ifndef USE_TEST_KEYS
-  process.AddArgument("--chunk_path");
-  process.AddArgument(chunkstore_path);
-  process.AddArgument("--chunk_capacity");
-  process.AddArgument(boost::lexical_cast<std::string>(chunkstore_capacity));
-  process.AddArgument("--start");
-#endif
-  LOG(kInfo) << "Process Name: " << process.name();
-  return process_manager_.AddProcess(process, local_port_);
 }
 
 void Invigilator::RestartVault(const std::string& identity) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
     return;
   }
   process_manager_.StartProcess((*itr)->process_index);
 }
 
-bool Invigilator::StopVault(const std::string& identity, bool permanent) {
+bool Invigilator::StopVault(const std::string& identity,
+                            const std::string& data,
+                            const std::string& signature,
+                            bool permanent) {
   // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
   //                               Try to reduce lock scope eventually.
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << HexSubstr(identity) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
     return false;
   }
   /*process_manager_.StopProcess((*itr)->process_index);*/
@@ -674,22 +585,23 @@ bool Invigilator::StopVault(const std::string& identity, bool permanent) {
   bool done(false), local_result(false);
   protobuf::VaultShutdownRequest vault_shutdown_request;
   vault_shutdown_request.set_process_index((*itr)->process_index);
+  vault_shutdown_request.set_data(data);
+  vault_shutdown_request.set_signature(signature);
 
-  std::function<void(bool)> callback =      // NOLINT
-    [&](bool result) {
-      std::lock_guard<std::mutex> lock(local_mutex);
-      local_result = result;
-      done = true;
-      local_cond_var.notify_one();
-    };
+  VoidWithBoolFunction callback = [&] (bool result) {
+                                    std::lock_guard<std::mutex> lock(local_mutex);
+                                    local_result = result;
+                                    done = true;
+                                    local_cond_var.notify_one();
+                                  };
   std::shared_ptr<LocalTcpTransport> sending_transport(
       new LocalTcpTransport(asio_service_.service()));
   boost::signals2::connection connection1 = sending_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
         HandleVaultShutdownResponse(message, callback);
       });
   boost::signals2::connection connection2 =
-      sending_transport->on_error().connect([this, callback](const int& /*error*/) {
+      sending_transport->on_error().connect([this, callback] (const int& /*error*/) {
     // TODO(Fraser#5#): 2012-08-17 - Don't want to just callback(false) since this transport
     // could get errors from other concurrent ongoing requests.  Need to handle by maybe chnaging
     // transport's on_error to include the outgoing message, or a messge ID or something.
@@ -699,7 +611,7 @@ bool Invigilator::StopVault(const std::string& identity, bool permanent) {
   sending_transport->Connect((*itr)->vault_port);
   sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
                                               vault_shutdown_request.SerializeAsString()),
-                   (*itr)->vault_port);
+                                              (*itr)->vault_port);
   LOG(kInfo) << "Sent shutdown request to vault on port " << (*itr)->vault_port;
   if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
@@ -714,7 +626,7 @@ bool Invigilator::StopVault(const std::string& identity, bool permanent) {
     vault_shutdown_response_ack.set_ack(true);
     sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownResponseAck,
                                                 vault_shutdown_request.SerializeAsString()),
-                     (*itr)->vault_port);
+                                                (*itr)->vault_port);
   }
   connection1.disconnect();
   connection2.disconnect();
@@ -722,7 +634,7 @@ bool Invigilator::StopVault(const std::string& identity, bool permanent) {
 }
 
 void Invigilator::HandleVaultShutdownResponse(const std::string& message,
-                                              const std::function<void(bool)>& callback) {  // NOLINT (Fraser)
+                                              const VoidWithBoolFunction& callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -732,8 +644,7 @@ void Invigilator::HandleVaultShutdownResponse(const std::string& message,
   }
 
   protobuf::VaultShutdownResponse vault_shutdown_response;
-  if (!vault_shutdown_response.ParseFromString(payload) ||
-      !vault_shutdown_response.IsInitialized()) {
+  if (!vault_shutdown_response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse VaultShutdownResponse.";
     callback(false);
     return;
@@ -743,10 +654,20 @@ void Invigilator::HandleVaultShutdownResponse(const std::string& message,
 }
 
 void Invigilator::StopAllVaults() {
-  for (auto itr(vault_infos_.begin()); itr != vault_infos_.end(); ++itr) {
-    StopVault((*itr)->keys.identity, false);
-    WriteConfigFile();
-  }
+  std::for_each(vault_infos_.begin(),
+                vault_infos_.end(),
+                [this] (const VaultInfoPtr& info) {
+                  std::string random_data(RandomString(64)), signature;
+                  if (asymm::Sign(random_data, info->keys.private_key, &signature) != kSuccess)
+                    LOG(kError) << "StopAllVaults: failed to sign - "
+                                << Base64Substr(info->keys.identity);
+                  if (!StopVault(info->keys.identity, random_data, signature, false))
+                    LOG(kError) << "StopAllVaults: failed to stop - "
+                                << Base64Substr(info->keys.identity);
+                  if (WriteConfigFile())
+                    LOG(kError) << "StopAllVaults: failed to write config file - "
+                                << Base64Substr(info->keys.identity);
+                });
 }
 
 //  void Invigilator::EraseVault(const std::string& account_name) {
@@ -791,6 +712,49 @@ void Invigilator::StopAllVaults() {
 //
 //    return 0;
 //  }
+
+bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config) {
+  std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());
+  if (serialised_endpoints.empty()) {
+    LOG(kError) << "Retrieved endpoints are empty.";
+    return false;
+  }
+
+  protobuf::BootstrapEndpoints bootstrap_endpoints;
+  if (!bootstrap_endpoints.ParseFromString(serialised_endpoints)) {
+    LOG(kError) << "Retrieved endpoints do not parse.";
+    return false;
+  }
+
+  config.mutable_bootstrap_endpoint()->CopyFrom(bootstrap_endpoints);
+
+  return true;
+}
+
+bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
+  Process process;
+#ifdef USE_TEST_KEYS
+  std::string process_name(detail::kDummyName);
+#else
+  std::string process_name(detail::kVaultName);
+#endif
+  if (!process.SetExecutablePath(GetAppInstallDir() /
+                                 (process_name + detail::kThisPlatform().executable_extension()))) {
+    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->keys.identity);
+    return false;
+  }
+
+  LOG(kInfo) << "Process Name: " << process.name();
+  vault_info->process_index = process_manager_.AddProcess(process, local_port_);
+  if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
+    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->keys.identity);
+    return false;
+  }
+
+  vault_infos_.push_back(vault_info);
+  process_manager_.StartProcess(vault_info->process_index);
+  return true;
+}
 
 }  // namespace process_management
 

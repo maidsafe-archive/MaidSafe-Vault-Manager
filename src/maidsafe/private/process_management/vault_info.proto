@@ -1,5 +1,10 @@
 package maidsafe.priv.process_management.protobuf;
 
+message BootstrapEndpoints {
+  repeated bytes bootstrap_endpoint_ip = 1;
+  repeated uint32 bootstrap_endpoint_port = 2;
+}
+
 message VaultInfo {
   required bytes account_name = 1;
   required bytes keys = 2;
@@ -10,8 +15,8 @@ message VaultInfo {
 
 message InvigilatorConfig {
   required uint32 update_interval = 1;  // In seconds
-  required bytes bootstrap_nodes = 2;
-  required bytes latest_local_version = 3;
-  optional bytes vault_permissions = 4;
-  repeated VaultInfo vault_info = 5;
+  required bytes latest_local_version = 2;
+  required BootstrapEndpoints bootstrap_endpoint = 3;
+  repeated VaultInfo vault_info = 4;
+  optional bytes vault_permissions = 5;
 }

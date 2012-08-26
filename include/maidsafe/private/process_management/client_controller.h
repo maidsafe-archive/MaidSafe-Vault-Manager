@@ -45,10 +45,7 @@ class ClientController {
   ~ClientController();
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const asymm::Keys& keys,
-                  const std::string& account_name,
-                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint =
-                      boost::asio::ip::udp::endpoint());
+  bool StartVault(const asymm::Keys& keys, const std::string& account_name);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.
@@ -64,9 +61,6 @@ class ClientController {
   // call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
-  // Blocking call which returns the bootstrap nodes provided by the Invigilator.  If the
-  // call fails, an empty string is returned.
-  std::string GetBootstrapNodes();
 
   // Returns reference to signal which will be fired when a new version of the client software is
   // available.  The slot will be passed the filename of the new version.
@@ -74,8 +68,10 @@ class ClientController {
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
+
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
+
   void ConnectToInvigilator();
   void PingInvigilator(
       const std::string& random_data,

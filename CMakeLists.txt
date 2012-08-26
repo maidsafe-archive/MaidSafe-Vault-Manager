@@ -19,8 +19,6 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
 project(private)
 
-# set(USE_TEST_KEYS ON)
-
 set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)

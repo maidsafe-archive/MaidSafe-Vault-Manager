@@ -32,6 +32,8 @@ namespace process_management {
 
 namespace test {
 
+namespace {
+
 int GetNumRunningProcesses() {
   std::string dummy(detail::kDummyName);
 #ifdef MAIDSAFE_WIN32
@@ -40,7 +42,11 @@ int GetNumRunningProcesses() {
 #else
   std::string command("ps -ef | grep " + dummy + " | wc -l > process_count.txt");
 #endif
-  system(command.c_str());
+  int result(system(command.c_str()));
+  if (result != 0) {
+    LOG(kError) << "Failed to execute command that checks processes: " << command;
+    return -1;
+  }
 
   std::string process_string;
   ReadFile(fs::path(".") / "process_count.txt", &process_string);
@@ -58,17 +64,19 @@ int GetNumRunningProcesses() {
   }
   catch(const std::exception& e) {
     LOG(kError) << e.what();
-    return 0;
+    return -1;
   }
 }
+
+}  // namespace
 
 TEST(InvigilatorTest, BEH_StartStop) {
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
   {
-    if (fs::exists(fs::path(".") / Invigilator::kConfigFileName(), error_code))
-      fs::remove(fs::path(".") / Invigilator::kConfigFileName(), error_code);
-    ASSERT_FALSE(fs::exists(fs::path(".") / Invigilator::kConfigFileName(), error_code));
+    if (fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code))
+      fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error_code);
+    ASSERT_FALSE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
     Invigilator invigilator;
     ClientController client_controller;
     int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
@@ -78,11 +86,11 @@ TEST(InvigilatorTest, BEH_StartStop) {
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_TRUE(fs::exists(fs::path(".") / Invigilator::kConfigFileName(), error_code));
+    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
     EXPECT_EQ(0, GetNumRunningProcesses());
   }
   std::string config_contents;
-  maidsafe::ReadFile(fs::path(".") / Invigilator::kConfigFileName(), &config_contents);
+  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   protobuf::InvigilatorConfig invigilator_config;
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(0, invigilator_config.vault_info_size());
@@ -100,11 +108,11 @@ TEST(InvigilatorTest, BEH_StartStop) {
     Sleep(boost::posix_time::seconds(1));
     EXPECT_EQ(1, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_TRUE(fs::exists(fs::path(".") / Invigilator::kConfigFileName(), error_code));
+    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / Invigilator::kConfigFileName(), &config_contents);
+  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(1, invigilator_config.vault_info_size());
 
@@ -121,11 +129,11 @@ TEST(InvigilatorTest, BEH_StartStop) {
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_TRUE(fs::exists(fs::path(".") / Invigilator::kConfigFileName(), error_code));
+    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / Invigilator::kConfigFileName(), &config_contents);
+  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(2, invigilator_config.vault_info_size());
 }

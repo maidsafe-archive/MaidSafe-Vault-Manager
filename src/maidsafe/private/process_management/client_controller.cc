@@ -145,9 +145,7 @@ void ClientController::HandlePingResponse(
   cond_var_.notify_one();
 }
 
-bool ClientController::StartVault(const asymm::Keys& keys,
-                                  const std::string& account_name,
-                                  const boost::asio::ip::udp::endpoint& bootstrap_endpoint) {
+bool ClientController::StartVault(const asymm::Keys& keys, const std::string& account_name) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     if (state_ != kVerified) {
@@ -167,12 +165,6 @@ bool ClientController::StartVault(const asymm::Keys& keys,
     return false;
   }
   start_vault_request.set_keys(serialised_keys);
-  if (!bootstrap_endpoint.address().is_unspecified()) {
-    start_vault_request.set_bootstrap_endpoint(
-        bootstrap_endpoint.address().to_string() + ":" +
-        boost::lexical_cast<std::string>(bootstrap_endpoint.port()));
-    LOG(kVerbose) << "Setting bootstrap endpoint to " << start_vault_request.bootstrap_endpoint();
-  }
 
   std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
@@ -301,17 +293,6 @@ bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval)
 
 bptime::time_duration ClientController::GetUpdateInterval() {
   return SetOrGetUpdateInterval(bptime::pos_infin);
-}
-
-std::string ClientController::GetBootstrapNodes() {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kVerified) {
-      LOG(kError) << "Not connected to Invigilator.";
-      return "";
-    }
-  }
-  return bootstrap_nodes_;
 }
 
 bptime::time_duration ClientController::SetOrGetUpdateInterval(

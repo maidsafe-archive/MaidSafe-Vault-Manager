@@ -34,14 +34,13 @@
 #include "maidsafe/private/process_management/download_manager.h"
 #include "maidsafe/private/process_management/process_manager.h"
 #include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/process_management/vault_info_pb.h"
 
 namespace maidsafe {
 
 namespace priv {
 
 namespace process_management {
-
-namespace protobuf { class VaultInfo; }
 
 namespace detail { class Platform; }
 
@@ -75,7 +74,6 @@ class Invigilator {
  public:
   Invigilator();
   ~Invigilator();
-  static std::string kConfigFileName() { return "config-global.dat"; }
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5582; }
                                     // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
@@ -92,36 +90,32 @@ class Invigilator {
     asymm::Keys keys;
     std::string chunkstore_path;
     uintmax_t chunkstore_capacity;
-    uint16_t client_port, vault_port;
-    std::mutex mutex;
-    std::condition_variable cond_var;
-    bool requested_to_run, vault_requested;
-    enum JoinedState { kPending, kJoined, kNotJoined } joined_network;
+    uint16_t vault_port;
+    bool requested_to_run, joined_network;
   };
+  typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
+  typedef std::function<void(bool)> VoidWithBoolFunction;
 
   Invigilator(const Invigilator&);
   Invigilator operator=(const Invigilator&);
+
   void RestartInvigilator(const std::string& latest_file,
-                            const std::string& executable_name) const;
+                          const std::string& executable_name) const;
 
   // Config file handling
-  bool EstablishConfigFilePath();
   bool CreateConfigFile();
-  bool ReadConfigFile();
+  bool ReadConfigFileAndStartVaults();
   bool WriteConfigFile();
 
   // Client and vault request handling
-  void ListenForMessages();
+  bool ListenForMessages();
   void HandleReceivedMessage(const std::string& message, uint16_t peer_port);
   void HandlePing(const std::string& request, std::string& response);
-  void HandleStartVaultRequest(const std::string& request,
-                               uint16_t client_port,
-                               std::string& response);
-  void HandleVaultIdentityRequest(const std::string& request,
-                                  uint16_t vault_port,
-                                  std::string& response);
+  void HandleStartVaultRequest(const std::string& request, std::string& response);
+  void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
+
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
   void SendVaultShutdownRequest(const std::string& identity);
@@ -130,21 +124,24 @@ class Invigilator {
 
   // Update handling
   void CheckForUpdates(const boost::system::error_code& ec);
+  void UpdateExecutor();
 
   // General
   bool InTestMode() const;
-  std::vector<std::shared_ptr<VaultInfo>>::const_iterator  // NOLINT
-      FindFromIdentity(const std::string& identity) const;
-  ProcessIndex AddVaultToProcesses(const std::string& chunkstore_path,
-                                   const uintmax_t& chunkstore_capacity,
-                                   const std::string& bootstrap_endpoint);
+  std::vector<VaultInfoPtr>::const_iterator FindFromIdentity(const std::string& identity) const;
+  bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const std::string& identity);
   void HandleVaultShutdownResponse(const std::string& message,
-                                   const std::function<void(bool)>& callback);  // NOLINT (Fraser)
-  bool StopVault(const std::string& identity, bool permanent);
+                                   const VoidWithBoolFunction& callback);  // NOLINT (Fraser)
+  bool StopVault(const std::string& identity,
+                 const std::string& data,
+                 const std::string& signature,
+                 bool permanent);
   void StopAllVaults();
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
+  bool ObtainBootstrapInformation(protobuf::InvigilatorConfig& config);
+
 
   ProcessManager process_manager_;
   DownloadManager download_manager_;
@@ -154,13 +151,11 @@ class Invigilator {
   mutable std::mutex update_mutex_;
   std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
-  std::vector<std::shared_ptr<VaultInfo>> vault_infos_;
+  std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
-  std::condition_variable cond_var_;
   bool stop_listening_for_updates_;
   bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
-  std::string bootstrap_nodes_;
 };
 
 }  // namespace process_management
