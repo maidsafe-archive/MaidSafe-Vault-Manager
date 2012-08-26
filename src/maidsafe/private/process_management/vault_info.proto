@@ -16,7 +16,7 @@ message VaultInfo {
 message InvigilatorConfig {
   required uint32 update_interval = 1;  // In seconds
   required bytes latest_local_version = 2;
-  required BootstrapEndpoints bootstrap_endpoint = 3;
+  required BootstrapEndpoints bootstrap_endpoints = 3;
   repeated VaultInfo vault_info = 4;
   optional bytes vault_permissions = 5;
 }

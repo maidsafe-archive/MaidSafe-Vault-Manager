@@ -95,6 +95,7 @@ class Invigilator {
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
   typedef std::function<void(bool)> VoidWithBoolFunction;
+  typedef std::pair<std::string, uint16_t> EndPoint;
 
   Invigilator(const Invigilator&);
   Invigilator operator=(const Invigilator&);
@@ -141,7 +142,9 @@ class Invigilator {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   bool ObtainBootstrapInformation(protobuf::InvigilatorConfig& config);
-
+  bool ReadBootstrapEndpoints(protobuf::InvigilatorConfig& config,
+                              std::vector<EndPoint>& endpoints);
+  bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);
 
   ProcessManager process_manager_;
   DownloadManager download_manager_;
@@ -153,8 +156,6 @@ class Invigilator {
   uint16_t local_port_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
-  bool stop_listening_for_updates_;
-  bool shutdown_requested_;
   boost::filesystem::path config_file_path_;
 };
 
