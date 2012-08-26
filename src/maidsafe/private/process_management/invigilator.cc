@@ -328,11 +328,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
   VaultInfoPtr vault_info(new VaultInfo);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(std::find_if(vault_infos_.begin(),
-                          vault_infos_.end(),
-                          [&vault_info] (const VaultInfoPtr vault_information) {
-                            return vault_info->keys.identity == vault_information->keys.identity;
-                          }));
+    auto itr(FindFromIdentity(vault_info->keys.identity));
     if (itr != vault_infos_.end()) {
       if (kSuccess != asymm::CheckSignature(start_vault_request.token(),
                                             start_vault_request.token_signature(),
@@ -397,11 +393,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
 
   protobuf::VaultIdentityResponse vault_identity_response;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(vault_infos_.begin(),
-                        vault_infos_.end(),
-                        [&vault_identity_request] (const VaultInfoPtr& info) {
-                          return info->process_index == vault_identity_request.process_index();
-                        }));
+  auto itr(FindFromProcessIndex(vault_identity_request.process_index()));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_identity_request.process_index()
                 << " hasn't been added.";
@@ -455,11 +447,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
 
   protobuf::VaultJoinedNetworkAck vault_joined_network_ack;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(vault_infos_.begin(),
-                        vault_infos_.end(),
-                        [&vault_joined_network] (const VaultInfoPtr& vault_info) {
-                          return vault_info->process_index == vault_joined_network.process_index();
-                        }));
+  auto itr(FindFromProcessIndex(vault_joined_network.process_index()));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_joined_network.process_index()
                 << " hasn't been added.";
@@ -483,11 +471,7 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
 
   protobuf::StopVaultResponse stop_vault_response;
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(std::find_if(vault_infos_.begin(),
-                        vault_infos_.end(),
-                        [&stop_vault_request] (const VaultInfoPtr& vault_info) {
-                          return vault_info->keys.identity == stop_vault_request.identity();
-                        }));
+  auto itr(FindFromIdentity(stop_vault_request.identity()));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with identity " << Base64Substr(stop_vault_request.identity())
                 << " hasn't been added.";
@@ -581,12 +565,21 @@ bool Invigilator::InTestMode() const {
   return config_file_path_ == fs::path(".") / detail::kGlobalConfigFilename;
 }
 
-std::vector<Invigilator::VaultInfoPtr>::const_iterator Invigilator::FindFromIdentity(
-    const std::string& identity) const {
+std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromIdentity(
+    const std::string& identity) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
-                      [identity] (const VaultInfoPtr& vault_info) {
+                      [identity] (const VaultInfoPtr& vault_info)->bool {
                         return vault_info->keys.identity == identity;
+                      });
+}
+
+std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromProcessIndex(
+    ProcessIndex process_index) {
+  return std::find_if(vault_infos_.begin(),
+                      vault_infos_.end(),
+                      [process_index] (const VaultInfoPtr& vault_info)->bool {
+                        return vault_info->process_index == process_index;
                       });
 }
 
@@ -705,6 +698,7 @@ void Invigilator::StopAllVaults() {
                 });
 }
 
+/*
 //  void Invigilator::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {
 //      auto itr(processes_.begin() + (index - 1));
@@ -747,6 +741,7 @@ void Invigilator::StopAllVaults() {
 //
 //    return 0;
 //  }
+*/
 
 bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config) {
   std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());

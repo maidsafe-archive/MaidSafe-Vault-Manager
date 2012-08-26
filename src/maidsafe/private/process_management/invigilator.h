@@ -130,7 +130,8 @@ class Invigilator {
 
   // General
   bool InTestMode() const;
-  std::vector<VaultInfoPtr>::const_iterator FindFromIdentity(const std::string& identity) const;
+  std::vector<VaultInfoPtr>::iterator FindFromIdentity(const std::string& identity);
+  std::vector<Invigilator::VaultInfoPtr>::iterator FindFromProcessIndex(ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const std::string& identity);
   void HandleVaultShutdownResponse(const std::string& message,
