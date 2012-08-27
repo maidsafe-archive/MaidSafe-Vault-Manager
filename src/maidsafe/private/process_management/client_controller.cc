@@ -53,21 +53,19 @@ ClientController::~ClientController() {
 
 void ClientController::ConnectToInvigilator() {
   invigilator_port_ = Invigilator::kMinPort() - 1;
-  std::string random_data(RandomAlphaNumericString(64));
-  std::shared_ptr<bs2::connection> on_message_received_connection(new bs2::connection);
-  std::shared_ptr<bs2::connection> on_error_connection(new bs2::connection);
-  *on_message_received_connection = receiving_transport_->on_message_received().connect(
-          [=](const std::string& message, Port invigilator_port) {
-            HandlePingResponse(random_data, message, invigilator_port,
-                               on_message_received_connection, on_error_connection);
-          });
-  *on_error_connection = receiving_transport_->on_error().connect(
-          [=](const int& error) {
-            LOG(kError) << "Transport reported error code " << error;
-            PingInvigilator(random_data, on_message_received_connection, on_error_connection);
-          });
-  PingInvigilator(random_data, on_message_received_connection, on_error_connection);
-
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  Port client_port(detail::GetRandomPort());
+  request_transport->on_message_received().connect(
+        [=](const std::string& message, Port invigilator_port) {
+          HandleRegisterResponse(message, invigilator_port, client_port, request_transport);
+        });
+  request_transport->on_error().connect(
+        [=](const int& error) {
+          LOG(kError) << "Transport reported error code " << error;
+          RegisterWithInvigilator(client_port, request_transport);
+        });
+  RegisterWithInvigilator(client_port, request_transport);
+  receiving_transport_->StartListening(client_port);
   std::unique_lock<std::mutex> lock(mutex_);
   if (!cond_var_.wait_for(lock,
                           std::chrono::seconds(3),
@@ -79,61 +77,48 @@ void ClientController::ConnectToInvigilator() {
   }
 }
 
-void ClientController::PingInvigilator(
-    const std::string& random_data,
-    std::shared_ptr<bs2::connection> on_message_received_connection,
-    std::shared_ptr<bs2::connection> on_error_connection) {
-  while (receiving_transport_->Connect(++invigilator_port_) != kSuccess) {
+void ClientController::RegisterWithInvigilator(Port client_port, TransportPtr request_transport) {
+  while (request_transport->Connect(++invigilator_port_) != kSuccess) {
     if (invigilator_port_ == Invigilator::kMaxPort()) {
       LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
                   << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
-      on_message_received_connection->disconnect();
-      on_error_connection->disconnect();
       std::lock_guard<std::mutex> lock(mutex_);
       state_ = kFailed;
       return cond_var_.notify_one();
     }
   }
-                                                                                //  protobuf::Ping ping;
-                                                                                //  ping.set_ping(random_data);
-                                                                                //  LOG(kVerbose) << "Sending ping to port " << invigilator_port_;
-                                                                                //  receiving_transport_->Send(detail::WrapMessage(MessageType::kPing, ping.SerializeAsString()),
-                                                                                //                             invigilator_port_);
+  protobuf::ClientRegistrationRequest request;
+  request.set_listening_port(client_port);
+  request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
+                                              request.SerializeAsString()),
+                          invigilator_port_);
+  LOG(kVerbose) << "Sending registration request to port " << invigilator_port_;
 }
 
-void ClientController::HandlePingResponse(
-    const std::string& data_sent,
-    const std::string& message,
-    Port /*invigilator_port*/,
-    std::shared_ptr<bs2::connection> on_message_received_connection,
-    std::shared_ptr<bs2::connection> on_error_connection) {
+void ClientController::HandleRegisterResponse(const std::string& message,
+                                          Port /*invigilator_port*/,
+                                          Port client_port,
+                                          TransportPtr request_transport) {
   MessageType type;
   std::string payload;
 
   if (!detail::UnwrapMessage(message, type, payload)) {
     LOG(kError) << "Failed to handle incoming message.";
-    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
+    return RegisterWithInvigilator(client_port, request_transport);
+  }
+  protobuf::ClientRegistrationResponse response;
+  if (!response.ParseFromString(payload) || !response.IsInitialized()) {
+    LOG(kError) << "Failed to parse ClientRegistrationResponse.";
+    return RegisterWithInvigilator(client_port, request_transport);
   }
 
-                                                                                  //  protobuf::Ping ping;
-                                                                                  //  if (!ping.ParseFromString(payload) || !ping.IsInitialized()) {
-                                                                                  //    LOG(kError) << "Failed to parse Ping.";
-                                                                                  //    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
-                                                                                  //  }
+  // bootstrap_nodes_ = response.bootstrap_nodes();
 
-                                                                                  //  if (ping.ping() != data_sent) {
-                                                                                  //    LOG(kError) << "Ping response didn't contain original data sent.";
-                                                                                  //    return PingInvigilator(data_sent, on_message_received_connection, on_error_connection);
-                                                                                  //  }
-
-                                                                                  //  bootstrap_nodes_ = ping.bootstrap_nodes();
   std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
-  LOG(kSuccess) << "Successfully connected to Invigilator on port " << invigilator_port_;
+  LOG(kSuccess) << "Successfully registered with Invigilator on port " << invigilator_port_;
 
-  // Success - disconnect current slots and connect service functions
-  on_message_received_connection->disconnect();
-  on_error_connection->disconnect();
+  // Success - connect service functions to receiving transport
   receiving_transport_->on_message_received().connect(
       [this](const std::string& message, Port invigilator_port) {
         HandleReceivedRequest(message, invigilator_port);

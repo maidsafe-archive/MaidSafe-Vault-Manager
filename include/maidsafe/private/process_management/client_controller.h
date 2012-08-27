@@ -73,16 +73,11 @@ class ClientController {
   ClientController& operator=(const ClientController&);
 
   void ConnectToInvigilator();
-  void PingInvigilator(
-      const std::string& random_data,
-      std::shared_ptr<boost::signals2::connection> on_message_received_connection,
-      std::shared_ptr<boost::signals2::connection> on_error_connection);
-  void HandlePingResponse(
-      const std::string& data_sent,
-      const std::string& message,
-      uint16_t invigilator_port,
-      std::shared_ptr<boost::signals2::connection> on_message_received_connection,
-      std::shared_ptr<boost::signals2::connection> on_error_connection);
+  void RegisterWithInvigilator(uint16_t client_port, TransportPtr request_transport);
+  void HandleRegisterResponse(const std::string& message,
+                          uint16_t invigilator_port,
+                          uint16_t client_port,
+                          TransportPtr request_transport);
   template<typename ResponseType>
   void HandleStartStopVaultResponse(const std::string& message,
                                     const std::function<void(bool)>& callback);  // NOLINT
