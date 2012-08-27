@@ -25,39 +25,6 @@ namespace {
 
 bool g_check_finished(false);
 
-// bool CheckTerminateFlag(int32_t id, bi::managed_shared_memory& shared_mem) {
-//   std::pair<TerminateVector*, std::size_t> t =
-//       shared_mem.find<TerminateVector>("terminate_info");
-//   size_t size(0);
-//   if (t.first) {
-//     size = (*t.first).size();
-//   } else {
-//     std::cout << "CheckTerminateFlag: failed to access IPC shared memory";
-//     return false;
-//   }
-//   if (size <= static_cast<size_t>(id - 1) || id - 1 < 0) {
-//     std::cout << "CheckTerminateFlag: given process id is invalid or outwith range of "
-//               << "terminate vector";
-//     return false;
-//   }
-//   if ((*t.first).at(id - 1) == TerminateStatus::kTerminate) {
-//     std::cout << "Process terminating. ";
-//     return true;
-//   }
-//   return false;
-// }
-//
-// void ListenForTerminate(std::string shared_mem_name, int id) {
-//     bi::managed_shared_memory shared_mem(bi::open_or_create,
-//                                                           shared_mem_name.c_str(),
-//                                                           1024);
-//     while (!CheckTerminateFlag(static_cast<int32_t>(id), shared_mem) && !check_finished)
-//       maidsafe::Sleep(boost::posix_time::milliseconds(500));
-//     if (check_finished)
-//       return;
-//     exit(0);
-// }
-
 void StopHandler() {
   LOG(kInfo) << "Process stopping, asked to stop by parent.";
   exit(0);
@@ -91,7 +58,11 @@ int main(int argc, char* argv[]) {
     std::string invigilator_id = variables_map["vmid"].as<std::string>();
     LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
     maidsafe::priv::process_management::VaultController vault_controller;
-    vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); });  // NOLINT
+    if (!vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
+      LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
+      return 1;
+    }
+
     maidsafe::asymm::Keys keys;
     std::string account_name;
     vault_controller.GetIdentity(&keys, &account_name);

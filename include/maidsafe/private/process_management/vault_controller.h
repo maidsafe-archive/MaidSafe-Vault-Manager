@@ -48,8 +48,8 @@ class VaultController {
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
-  void RequestVaultIdentity(uint16_t listening_port);
-  void HandleVaultIdentityResponse(const std::string& message,
+  bool RequestVaultIdentity(uint16_t listening_port);
+  bool HandleVaultIdentityResponse(const std::string& message,
                                    std::mutex& mutex,
                                    std::condition_variable& cond_var);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
