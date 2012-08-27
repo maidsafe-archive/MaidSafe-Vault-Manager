@@ -163,7 +163,7 @@ bool Invigilator::CreateConfigFile() {
   config.set_latest_local_version(s_major + "." + s_minor + "." + s_patch);
 
   if (!ObtainBootstrapInformation(config)) {
-    LOG(kError) << "Fialed to obtain bootstrap information from server.";
+    LOG(kError) << "Failed to obtain bootstrap information from server.";
     return false;
   }
 
@@ -342,7 +342,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
           (*itr)->requested_to_run = true;
           process_manager_.StartProcess((*itr)->process_index);
         }
-      } else  {
+      } else {
         asymm::Keys temp_keys;
         if (!asymm::ParseKeys(start_vault_request.keys(), temp_keys)) {
           LOG(kError) << "Keys provided do not parse.";
@@ -413,10 +413,18 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
       protobuf::InvigilatorConfig config;
       std::vector<EndPoint> endpoints;
       if (!ReadBootstrapEndpoints(config, endpoints) || endpoints.empty()) {
-        LOG(kError) << "Failed to get endpoints for process_index "
-                    << vault_identity_request.process_index();
-        vault_identity_response.set_account_name("");
-        vault_identity_response.set_keys("");
+        if (!ObtainBootstrapInformation(config)) {
+          LOG(kError) << "Failed to get endpoints for process_index "
+                      << vault_identity_request.process_index();
+          vault_identity_response.set_account_name("");
+          vault_identity_response.set_keys("");
+        } else {
+          if (!ReadBootstrapEndpoints(config, endpoints)) {
+            LOG(kError) << "Failed to read endpoints obtained from server.";
+            vault_identity_response.set_account_name("");
+            vault_identity_response.set_keys("");
+          }
+        }
       } else {
         vault_identity_response.set_account_name((*itr)->account_name);
         vault_identity_response.set_keys(serialised_keys);
@@ -551,7 +559,7 @@ void Invigilator::UpdateExecutor() {
   std::vector<std::string> updated_files;
   if (download_manager_.Update(updated_files) == kSuccess) {
     // DO WINDOWS, LINUX AND MAC LOCATION SPECIFIC STUFF
-    WriteConfigFile();
+//    WriteConfigFile();
     // IF LINUX
     //  FIND INSTALLER IN UPDATED FILES
     //  RUN DPKG ON INSTALLER
@@ -693,9 +701,6 @@ void Invigilator::StopAllVaults() {
                   if (!StopVault(info->keys.identity, random_data, signature, false))
                     LOG(kError) << "StopAllVaults: failed to stop - "
                                 << Base64Substr(info->keys.identity);
-                  if (WriteConfigFile())
-                    LOG(kError) << "StopAllVaults: failed to write config file - "
-                                << Base64Substr(info->keys.identity);
                 });
 }
 
@@ -806,8 +811,7 @@ bool ReadFileToInvigilatorConfig(const fs::path& file_path, protobuf::Invigilato
 
 bool Invigilator::ReadBootstrapEndpoints(protobuf::InvigilatorConfig& config,
                                          std::vector<EndPoint >& endpoints) {
-  ;
-  if (ReadFileToInvigilatorConfig(config_file_path_, config)) {
+  if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
     // TODO(Team): Should have counter for failures to trigger recreation?
     LOG(kError) << "Failed to read & parse config file " << config_file_path_;
     return false;
@@ -903,7 +907,6 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
                   << Base64Substr(vault_info->keys.identity);
       return false;
     }
-
   }
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to write config file after adding endpoint.";
