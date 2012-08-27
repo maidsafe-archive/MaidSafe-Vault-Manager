@@ -357,7 +357,6 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
           (*itr)->requested_to_run = true;
         }
       }
-                                                  // TODO(Fraser#5#): 2012-08-17 - Check process manager too?
     } else {
       // The vault is not already registered.
       if (!asymm::ParseKeys(start_vault_request.keys(), vault_info->keys)) {
@@ -374,10 +373,12 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
         return set_response(false);
       }
     }
+    if (!AmendVaultDetailsInConfigFile(vault_info, itr != vault_infos_.end())) {
+      LOG(kError) << "Failed to amend details in config file for vault ID: "
+                  << Base64Substr(vault_info->keys.identity);
+      return set_response(false);
+    }
   }
-
-  if (!WriteConfigFile())
-    LOG(kError) << "Failed to write config to disk with amended vault info... Maybe next time?";
 
   set_response(true);
 }
@@ -849,6 +850,64 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
     }
   } else {
     LOG(kInfo) << "Endpoint " << ip << ":" << port << "already in config file.";
+  }
+
+  return true;
+}
+
+bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
+                                                bool existing_vault) {
+  protobuf::InvigilatorConfig config;
+  if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+    LOG(kError) << "Failed to read config file to amend details of vault ID "
+                << Base64Substr(vault_info->keys.identity);
+    return false;
+  }
+
+  if (existing_vault) {
+    for (int n(0); n < config.vault_info_size(); ++n) {
+      asymm::Keys keys;
+      if (kSuccess != asymm::ParseKeys(config.vault_info(n).keys(), keys))
+        continue;
+      if (vault_info->keys.identity == keys.identity) {
+        std::string serialised_keys;
+        if (!asymm::SerialiseKeys(vault_info->keys, serialised_keys)) {
+          LOG(kError) << "Failed to serialise keys to amend details of vault ID "
+                      << Base64Substr(vault_info->keys.identity);
+          return false;
+        }
+
+        protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
+        p_info->set_account_name(vault_info->account_name);
+        p_info->set_keys(serialised_keys);
+        p_info->set_chunkstore_capacity(vault_info->chunkstore_capacity);
+        p_info->set_chunkstore_path(vault_info->chunkstore_path);
+        n = config.vault_info_size();
+      }
+    }
+  } else {
+    protobuf::VaultInfo* p_info = config.add_vault_info();
+    p_info->set_account_name(vault_info->account_name);
+    std::string serialised_keys;
+    if (!asymm::SerialiseKeys(vault_info->keys, serialised_keys)) {
+      LOG(kError) << "Failed to serialise keys to amend details of vault ID "
+                  << Base64Substr(vault_info->keys.identity);
+      return false;
+    }
+    p_info->set_keys(serialised_keys);
+    p_info->set_chunkstore_path(vault_info->chunkstore_path);
+    p_info->set_chunkstore_capacity(vault_info->chunkstore_capacity);
+    p_info->set_requested_to_run(true);
+    if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+      LOG(kError) << "Failed to write config file to amend details of vault ID "
+                  << Base64Substr(vault_info->keys.identity);
+      return false;
+    }
+
+  }
+  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+    LOG(kError) << "Failed to write config file after adding endpoint.";
+    return false;
   }
 
   return true;
