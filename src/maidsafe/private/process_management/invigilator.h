@@ -57,6 +57,8 @@ enum class MessageType {
   kVaultIdentityResponse,
   kVaultJoinedNetwork,
   kVaultJoinedNetworkAck,
+  kVaultJoinConfirmation,
+  kVaultJoinConfirmationAck,
   kVaultShutdownRequest,
   kVaultShutdownResponse,
   kVaultShutdownResponseAck,
@@ -82,6 +84,7 @@ class Invigilator {
   static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
 
  private:
+  typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   struct VaultInfo {
     VaultInfo();
     void ToProtobuf(protobuf::VaultInfo* pb_vault_info) const;
@@ -91,7 +94,7 @@ class Invigilator {
     asymm::Keys keys;
     std::string chunkstore_path;
     uintmax_t chunkstore_capacity;
-    uint16_t vault_port;
+    uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
@@ -120,9 +123,19 @@ class Invigilator {
 
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
-  void SendVaultShutdownRequest(const std::string& identity);
   bool SetUpdateInterval(const boost::posix_time::time_duration& update_interval);
   boost::posix_time::time_duration GetUpdateInterval() const;
+
+  // Requests to vault
+  void SendVaultShutdownRequest(const std::string& identity);
+
+  // Requests to client
+  // NOTE: vault_info_mutex_ must be locked when calling this function.
+  void SendVaultJoinConfirmation(const std::string& identity, bool join_result);
+
+  // Response handling from client
+  void HandleVaultJoinConfirmationAck(const std::string& message,
+                                      std::function<void(bool)> callback);  // NOLINT (Philip)
 
   // Update handling
   void CheckForUpdates(const boost::system::error_code& ec);

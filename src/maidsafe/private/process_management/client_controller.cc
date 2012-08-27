@@ -35,19 +35,21 @@ namespace process_management {
 
 ClientController::ClientController()
     : invigilator_port_(Invigilator::kMinPort() - 1),
+      local_port_(0),
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       on_new_version_available_(),
       mutex_(),
       cond_var_(),
       state_(kInitialising),
-      bootstrap_nodes_() {
+      bootstrap_nodes_(),
+      joining_vaults_() {
   asio_service_.Start();
   ConnectToInvigilator();
 }
 
 ClientController::~ClientController() {
-  receiving_transport_.reset();
+  receiving_transport_->StopListeningAndCloseConnections();
   asio_service_.Stop();
 }
 
@@ -65,7 +67,6 @@ void ClientController::ConnectToInvigilator() {
           RegisterWithInvigilator(client_port, request_transport);
         });
   RegisterWithInvigilator(client_port, request_transport);
-  receiving_transport_->StartListening(client_port);
   std::unique_lock<std::mutex> lock(mutex_);
   if (!cond_var_.wait_for(lock,
                           std::chrono::seconds(3),
@@ -75,6 +76,9 @@ void ClientController::ConnectToInvigilator() {
   if (state_ != kVerified) {
     LOG(kError) << "ClientController is uninitialised.";
   }
+  receiving_transport_->StartListening(client_port);
+  local_port_ = client_port;
+  request_transport->StopListeningAndCloseConnections();
 }
 
 void ClientController::RegisterWithInvigilator(Port client_port, TransportPtr request_transport) {
@@ -107,7 +111,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
     return RegisterWithInvigilator(client_port, request_transport);
   }
   protobuf::ClientRegistrationResponse response;
-  if (!response.ParseFromString(payload) || !response.IsInitialized()) {
+  if (!response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse ClientRegistrationResponse.";
     return RegisterWithInvigilator(client_port, request_transport);
   }
@@ -117,7 +121,6 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   std::lock_guard<std::mutex> lock(mutex_);
   state_ = kVerified;
   LOG(kSuccess) << "Successfully registered with Invigilator on port " << invigilator_port_;
-
   // Success - connect service functions to receiving transport
   receiving_transport_->on_message_received().connect(
       [this](const std::string& message, Port invigilator_port) {
@@ -150,7 +153,13 @@ bool ClientController::StartVault(const asymm::Keys& keys, const std::string& ac
     return false;
   }
   start_vault_request.set_keys(serialised_keys);
-
+  std::string token(maidsafe::RandomString(16));
+  std::string signature;
+  asymm::Sign(token, keys.private_key, &signature);
+  start_vault_request.set_token(token);
+  start_vault_request.set_token_signature(signature);
+  start_vault_request.set_credential_change(false);
+  start_vault_request.set_client_port(local_port_);
   std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);
@@ -178,14 +187,25 @@ bool ClientController::StartVault(const asymm::Keys& keys, const std::string& ac
                                               start_vault_request.SerializeAsString()),
                           invigilator_port_);
 
-  std::unique_lock<std::mutex> lock(local_mutex);
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
+  std::unique_lock<std::mutex> local_lock(local_mutex);
+  if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
-  if (!local_result)
+  if (!local_result) {
     LOG(kError) << "Failed starting vault.";
-  return local_result;
+    return false;
+  }
+  local_lock.unlock();
+  std::unique_lock<std::mutex> lock(mutex_);
+  joining_vaults_[keys.identity] = false;
+  if (!cond_var_.wait_for(lock, std::chrono::seconds(10),
+                               [&] { return joining_vaults_[keys.identity]; })) {
+    LOG(kError) << "Timed out waiting for vault join confirmation.";
+    return false;
+  }
+  joining_vaults_.erase(keys.identity);
+  return true;
 }
 
 bool ClientController::StopVault(const asymm::PlainText& data,
@@ -256,7 +276,7 @@ void ClientController::HandleStartStopVaultResponse(const std::string& message,
   }
 
   ResponseType vault_response;
-  if (!vault_response.ParseFromString(payload) || !vault_response.IsInitialized()) {
+  if (!vault_response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse response.";
     callback(false);
     return;
@@ -368,7 +388,8 @@ void ClientController::HandleUpdateIntervalResponse(
 }
 
 void ClientController::HandleReceivedRequest(const std::string& message, Port peer_port) {
-  assert(peer_port == invigilator_port_);
+  /*assert(peer_port == invigilator_port_);*/  // Invigilator does not currently use
+                                               // its established port to contact ClientController
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -381,6 +402,9 @@ void ClientController::HandleReceivedRequest(const std::string& message, Port pe
     case MessageType::kNewVersionAvailable:
       HandleNewVersionAvailable(payload, response);
       break;
+    case MessageType::kVaultJoinConfirmation:
+      HandleVaultJoinConfirmation(payload, response);
+      break;
     default:
       return;
   }
@@ -391,7 +415,7 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
                                                  std::string& response) {
   protobuf::NewVersionAvailable new_version_available;
   protobuf::NewVersionAvailableAck new_version_available_ack;
-  if (!new_version_available.ParseFromString(request) || !new_version_available.IsInitialized()) {
+  if (!new_version_available.ParseFromString(request)) {
     LOG(kError) << "Failed to parse NewVersionAvailable.";
     new_version_available_ack.set_new_version_filepath("");
   } else {
@@ -412,6 +436,29 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
   response = detail::WrapMessage(MessageType::kNewVersionAvailableAck,
                                  new_version_available_ack.SerializeAsString());
   on_new_version_available_(new_version_available.new_version_filepath());
+}
+
+void ClientController::HandleVaultJoinConfirmation(const std::string& request,
+                                                   std::string& response) {
+  protobuf::VaultJoinConfirmation vault_join_confirmation;
+  protobuf::VaultJoinConfirmationAck vault_join_confirmation_ack;
+  if (!vault_join_confirmation.ParseFromString(request)) {
+    LOG(kError) << "Failed to parse VaultJoinConfirmation.";
+    vault_join_confirmation_ack.set_ack(false);
+  } else {
+    asymm::Identity identity(vault_join_confirmation.identity());
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (joining_vaults_.find(identity) == joining_vaults_.end()) {
+      LOG(kError) << "Identity is not in list of joining vaults.";
+      vault_join_confirmation_ack.set_ack(false);
+    } else {
+      joining_vaults_[identity] = true;
+      cond_var_.notify_all();
+      vault_join_confirmation_ack.set_ack(true);
+    }
+  }
+  response = detail::WrapMessage(MessageType::kVaultJoinConfirmationAck,
+                                 vault_join_confirmation_ack.SerializeAsString());
 }
 
 }  // namespace process_management

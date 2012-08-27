@@ -26,6 +26,7 @@ message StartVaultRequest {
   required bytes token = 3;
   required bytes token_signature = 4;
   required bool credential_change = 5;
+  required uint32 client_port = 6;
 }
 
 // Invigilator sends this in response to a StartVaultRequest. It details whether or not the
@@ -59,6 +60,17 @@ message VaultJoinedNetwork {
 }
 
 message VaultJoinedNetworkAck {
+  required bool ack = 1;
+}
+
+// Client receives this from Invigilator once Vault has joined or failed to join the network and
+// Client replies with the VaultJoinConfirmationAck.
+message VaultJoinConfirmation {
+  required bytes identity = 1;
+  required bool joined = 2;
+}
+
+message VaultJoinConfirmationAck {
   required bool ack = 1;
 }
 

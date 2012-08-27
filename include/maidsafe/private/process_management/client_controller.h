@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <map>
 
 #include "boost/asio/ip/udp.hpp"
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
@@ -88,8 +89,9 @@ class ClientController {
       const std::function<void(boost::posix_time::time_duration)>& callback);  // NOLINT
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
+  void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
 
-  uint16_t invigilator_port_;
+  uint16_t invigilator_port_, local_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   OnNewVersionAvailable on_new_version_available_;
@@ -97,6 +99,7 @@ class ClientController {
   std::condition_variable cond_var_;
   enum State { kInitialising, kVerified, kFailed } state_;
   std::string bootstrap_nodes_;
+  std::map<asymm::Identity, bool> joining_vaults_;
 };
 
 }  // namespace process_management
