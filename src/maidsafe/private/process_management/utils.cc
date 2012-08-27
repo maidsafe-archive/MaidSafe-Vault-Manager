@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <iterator>
+#include <set>
 
 #include "boost/lexical_cast.hpp"
 #include "boost/tokenizer.hpp"
@@ -393,6 +394,15 @@ uint16_t GetRandomPort() {
   if (failed_attempts > 1000)
     LOG(kError) << "Unable to generate unique ports";
   return port;
+}
+
+bool GenerateFakeBootstrapFile(const int& number_of_entries) {
+  protobuf::BootstrapEndpoints eps;
+  for (int i(0); i < number_of_entries; ++i) {
+    eps.add_bootstrap_endpoint_ip("127.0.0.1");
+    eps.add_bootstrap_endpoint_port(5483);
+  }
+  return WriteFile(fs::path(".") / "fake_bootstrap.dat", eps.SerializeAsString());
 }
 
 }  // namespace detail

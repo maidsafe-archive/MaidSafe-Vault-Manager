@@ -102,7 +102,7 @@ TEST(InvigilatorTest, BEH_StartStop) {
     Invigilator invigilator;
     ClientController client_controller;
     asymm::Keys keys;
-    ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
+    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
     keys.identity = "FirstVault";
     EXPECT_TRUE(client_controller.StartVault(keys, "F"));
     Sleep(boost::posix_time::seconds(1));
@@ -123,7 +123,7 @@ TEST(InvigilatorTest, BEH_StartStop) {
     Invigilator invigilator;
     ClientController client_controller;
     asymm::Keys keys;
-    ASSERT_EQ(kSuccess, rsa::GenerateKeyPair(&keys));
+    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
     keys.identity = "SecondVault";
     EXPECT_TRUE(client_controller.StartVault(keys, "G"));
     Sleep(boost::posix_time::seconds(2));

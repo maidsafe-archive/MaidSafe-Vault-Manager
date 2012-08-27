@@ -101,6 +101,8 @@ bool ParseVmidParameter(const std::string& invigilator_identifier,
 
 uint16_t GetRandomPort();
 
+bool GenerateFakeBootstrapFile(const int& number_of_entries);
+
 }  // namespace detail
 
 }  // namespace process_management
