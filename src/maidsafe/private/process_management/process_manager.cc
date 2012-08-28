@@ -203,7 +203,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   std::string result;
   std::string line;
   while (std::getline(stdout_stream, line))
-    result += line + '\n';
+    /*result +=*/ std::cout << line + '\n';
 
   bool stderr_message(false);
   while (std::getline(stderr_stream, line)) {
@@ -211,7 +211,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
       stderr_message = true;
       result += "\nstd::err: ";
     }
-    result += line + '\n';
+    /*result +=*/ std::cout << line + '\n';
   }
 
   if (logging) {
@@ -370,7 +370,7 @@ void ProcessManager::TerminateAll() {
       SetInstruction(i.id, ProcessInstruction::kTerminate);
     }*/
       LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
-    if (process.thread.joinable())
+    if (process.thread.joinable() && process.status == ProcessStatus::kRunning)
       process.thread.join();
   }
   processes_.clear();
