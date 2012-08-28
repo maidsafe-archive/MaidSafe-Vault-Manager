@@ -13,14 +13,15 @@
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
 
 #include <condition_variable>
-#include <mutex>
 #include <cstdint>
 #include <functional>
-#include <memory>
-#include <string>
 #include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "boost/asio/ip/udp.hpp"
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/signals2/connection.hpp"
 #include "boost/signals2/signal.hpp"

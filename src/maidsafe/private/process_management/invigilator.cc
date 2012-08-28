@@ -42,7 +42,6 @@ Invigilator::VaultInfo::VaultInfo()
       account_name(),
       keys(),
       chunkstore_path(),
-      chunkstore_capacity(0),
       vault_port(0),
       client_port(0),
       requested_to_run(false),
@@ -54,7 +53,6 @@ void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) cons
   asymm::SerialiseKeys(keys, serialized_keys);
   pb_vault_info->set_keys(serialized_keys);
   pb_vault_info->set_chunkstore_path(chunkstore_path);
-  pb_vault_info->set_chunkstore_capacity(chunkstore_capacity);
   pb_vault_info->set_requested_to_run(requested_to_run);
 }
 
@@ -62,7 +60,6 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
   account_name = pb_vault_info.account_name();
   asymm::ParseKeys(pb_vault_info.keys(), keys);
   chunkstore_path = pb_vault_info.chunkstore_path();
-  chunkstore_capacity = pb_vault_info.chunkstore_capacity();
   requested_to_run = pb_vault_info.requested_to_run();
 }
 
@@ -72,7 +69,8 @@ Invigilator::Invigilator()
 #ifdef USE_TEST_KEYS
       download_manager_("http", "dash.maidsafe.net", "~phil/tests/test_vault_manager"),
 #else
-      download_manager_("http", "dash.maidsafe.net", "~phil"),  // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
+      // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
+      download_manager_("http", "dash.maidsafe.net", "~phil"),
 #endif
       asio_service_(3),
       update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
@@ -142,7 +140,8 @@ boost::posix_time::time_duration Invigilator::kMaxUpdateInterval() {
 
 void Invigilator::RestartInvigilator(const std::string& latest_file,
                                      const std::string& executable_name) const {
-  // TODO(Fraser#5#): 2012-08-12 - Define command in constant.  Do we need 2 shell scripts?  Do we need 2 parameters to unix script?
+  // TODO(Fraser#5#): 2012-08-12 - Define command in constant.  Do we need 2 shell scripts?
+  //                               Do we need 2 parameters to unix script?
 #ifdef MAIDSAFE_WIN32
   std::string command("restart_vm_windows.bat " + latest_file + " " + executable_name);
 #else
@@ -383,7 +382,6 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
       std::string short_vault_id(EncodeToBase64(crypto::Hash<crypto::SHA1>(
                                                     vault_info->keys.identity)));
       vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
-      vault_info->chunkstore_capacity = 0;
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
@@ -448,7 +446,6 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
         vault_identity_response.set_account_name((*itr)->account_name);
         vault_identity_response.set_keys(serialised_keys);
         vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
-        vault_identity_response.set_chunkstore_capacity((*itr)->chunkstore_capacity);
         (*itr)->vault_port = vault_identity_request.listening_port();
         std::for_each(endpoints.begin(),
                       endpoints.end(),
@@ -921,7 +918,6 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
         p_info->set_account_name(vault_info->account_name);
         p_info->set_keys(serialised_keys);
-        p_info->set_chunkstore_capacity(vault_info->chunkstore_capacity);
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
         LOG(kError) << "Setting vault requested to run existing: " << vault_info->requested_to_run;
@@ -939,7 +935,6 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
     }
     p_info->set_keys(serialised_keys);
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
-    p_info->set_chunkstore_capacity(vault_info->chunkstore_capacity);
     p_info->set_requested_to_run(true);
     LOG(kError) << "Setting vault requested to run: true";
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {

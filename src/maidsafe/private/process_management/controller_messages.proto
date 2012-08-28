@@ -47,9 +47,8 @@ message VaultIdentityResponse {
   required bytes account_name = 1;
   required bytes keys = 2;
   required bytes chunkstore_path = 3;
-  required uint64 chunkstore_capacity = 4;
-  repeated bytes bootstrap_endpoint_ip = 5;
-  repeated uint32 bootstrap_endpoint_port = 6;
+  repeated bytes bootstrap_endpoint_ip = 4;
+  repeated uint32 bootstrap_endpoint_port = 5;
 }
 
 // Invigilator receives this from Vault once it has joined or failed to join the network and

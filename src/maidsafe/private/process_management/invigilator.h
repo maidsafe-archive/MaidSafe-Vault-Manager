@@ -79,7 +79,8 @@ class Invigilator {
   ~Invigilator();
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5582; }
-                                    // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
+
+  // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
   static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
 
@@ -93,7 +94,6 @@ class Invigilator {
     std::string account_name;
     asymm::Keys keys;
     std::string chunkstore_path;
-    uintmax_t chunkstore_capacity;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
   };

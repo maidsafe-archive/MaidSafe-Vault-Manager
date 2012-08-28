@@ -59,6 +59,8 @@ list(REMOVE_ITEM HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${HEADER_PROTO_FILE
 set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
                       ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
                       ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/controller_messages.pb.h"
+                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vault_info.pb.h")
 
 source_group("Private Source Files" FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 source_group("Private Header Files" FILES ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
