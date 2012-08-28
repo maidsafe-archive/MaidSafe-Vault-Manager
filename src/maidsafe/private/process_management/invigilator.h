@@ -98,7 +98,6 @@ class Invigilator {
     bool requested_to_run, joined_network;
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
-  typedef std::function<void(bool)> VoidWithBoolFunction;
   typedef std::pair<std::string, uint16_t> EndPoint;
 
   Invigilator(const Invigilator&);
@@ -147,8 +146,6 @@ class Invigilator {
   std::vector<Invigilator::VaultInfoPtr>::iterator FindFromProcessIndex(ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const std::string& identity);
-  void HandleVaultShutdownResponse(const std::string& message,
-                                   const VoidWithBoolFunction& callback);  // NOLINT (Fraser)
   bool StopVault(const std::string& identity,
                  const std::string& data,
                  const std::string& signature,

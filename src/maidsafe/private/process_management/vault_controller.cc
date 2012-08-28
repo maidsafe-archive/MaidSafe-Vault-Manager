@@ -40,7 +40,6 @@ VaultController::VaultController()
       keys_(),
       account_name_(),
       bootstrap_nodes_(),
-      shutdown_requested_(false),
       stop_callback_() {}
 
 VaultController::~VaultController() {
@@ -216,7 +215,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
   return true;
 }
 
-void VaultController::HandleReceivedRequest(const std::string& message, Port peer_port) {
+void VaultController::HandleReceivedRequest(const std::string& message, Port /*peer_port*/) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -229,19 +228,14 @@ void VaultController::HandleReceivedRequest(const std::string& message, Port pee
     case MessageType::kVaultShutdownRequest:
       HandleVaultShutdownRequest(payload, response);
       break;
-    case MessageType::kVaultShutdownResponseAck:
-      HandleVaultShutdownResponseAck(payload, response);
-      break;
     default:
       return;
   }
-  if (type != MessageType::kVaultShutdownResponseAck)
-    receiving_transport_->Send(response, peer_port);
 }
 
 void VaultController::HandleVaultShutdownRequest(const std::string& request,
-                                                 std::string& response) {
-  LOG(kError) << "Received shutdown request.";
+                                                 std::string& /*response*/) {
+  LOG(kInfo) << "Received shutdown request.";
   protobuf::VaultShutdownRequest vault_shutdown_request;
   protobuf::VaultShutdownResponse vault_shutdown_response;
   if (!vault_shutdown_request.ParseFromString(request)) {
@@ -254,24 +248,7 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
     vault_shutdown_response.set_shutdown(true);
   }
   vault_shutdown_response.set_process_index(process_index_);
-  response = detail::WrapMessage(MessageType::kVaultShutdownResponse,
-                                 vault_shutdown_response.SerializeAsString());
-  shutdown_requested_ = true;
-}
-
-void VaultController::HandleVaultShutdownResponseAck(const std::string& request,
-                                                     std::string& response) {
-  protobuf::VaultShutdownResponseAck vault_shutdown_response_ack;
-  if (!vault_shutdown_response_ack.ParseFromString(request)) {
-    LOG(kError) << "Failed to parse VaultShutdownResponseAck.";
-  } else if (!vault_shutdown_response_ack.ack()) {
-    LOG(kError) << "VaultShutdownResponseAck is false.";
-  } else if (!shutdown_requested_) {
-    LOG(kError) << "VaultShutdownResponseAck is unexpected.";
-  } else {
-    stop_callback_();
-  }
-  response.clear();
+  stop_callback_();
 }
 
 }  // namespace process_management

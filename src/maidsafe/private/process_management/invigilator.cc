@@ -697,80 +697,23 @@ bool Invigilator::StopVault(const std::string& identity,
     LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
     return false;
   }
-  /*process_manager_.StopProcess((*itr)->process_index);*/
+
   (*itr)->requested_to_run = !permanent;
 
-  std::mutex local_mutex;
-  std::condition_variable local_cond_var;
-  bool done(false), local_result(false);
   protobuf::VaultShutdownRequest vault_shutdown_request;
   vault_shutdown_request.set_process_index((*itr)->process_index);
   vault_shutdown_request.set_data(data);
   vault_shutdown_request.set_signature(signature);
 
-  VoidWithBoolFunction callback = [&] (bool result) {
-                                    std::lock_guard<std::mutex> lock(local_mutex);
-                                    local_result = result;
-                                    done = true;
-                                    local_cond_var.notify_one();
-                                  };
   std::shared_ptr<LocalTcpTransport> sending_transport(
       new LocalTcpTransport(asio_service_.service()));
-  boost::signals2::connection connection1 = sending_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
-        HandleVaultShutdownResponse(message, callback);
-      });
-  boost::signals2::connection connection2 =
-      sending_transport->on_error().connect([this, callback] (const int& /*error*/) {
-    // TODO(Fraser#5#): 2012-08-17 - Don't want to just callback(false) since this transport
-    // could get errors from other concurrent ongoing requests.  Need to handle by maybe chnaging
-    // transport's on_error to include the outgoing message, or a messge ID or something.
-  });
 
-  std::unique_lock<std::mutex> local_lock(local_mutex);
   sending_transport->Connect((*itr)->vault_port);
   sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
                                               vault_shutdown_request.SerializeAsString()),
                                               (*itr)->vault_port);
   LOG(kInfo) << "Sent shutdown request to vault on port " << (*itr)->vault_port;
-  if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
-    LOG(kError) << "Timed out waiting for reply.";
-    connection1.disconnect();
-    connection2.disconnect();
-    return false;
-  }
-  if (!local_result) {
-    LOG(kError) << "Vault shutdown failed.";
-  } else {
-    protobuf::VaultShutdownResponseAck vault_shutdown_response_ack;
-    vault_shutdown_response_ack.set_ack(true);
-    sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownResponseAck,
-                                                vault_shutdown_request.SerializeAsString()),
-                                                (*itr)->vault_port);
-  }
-  connection1.disconnect();
-  connection2.disconnect();
-  sending_transport->StopListeningAndCloseConnections();
-  return local_result;
-}
-
-void Invigilator::HandleVaultShutdownResponse(const std::string& message,
-                                              const VoidWithBoolFunction& callback) {
-  MessageType type;
-  std::string payload;
-  if (!detail::UnwrapMessage(message, type, payload)) {
-    LOG(kError) << "Failed to handle incoming message.";
-    callback(false);
-    return;
-  }
-
-  protobuf::VaultShutdownResponse vault_shutdown_response;
-  if (!vault_shutdown_response.ParseFromString(payload)) {
-    LOG(kError) << "Failed to parse VaultShutdownResponse.";
-    callback(false);
-    return;
-  }
-  callback(vault_shutdown_response.shutdown());
+  return process_manager_.WaitForProcessToStop((*itr)->process_index);
 }
 
 void Invigilator::StopAllVaults() {
