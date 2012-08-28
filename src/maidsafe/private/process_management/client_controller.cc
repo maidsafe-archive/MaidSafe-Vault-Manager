@@ -39,13 +39,24 @@ ClientController::ClientController()
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       on_new_version_available_(),
-      mutex_(),
-      cond_var_(),
       state_(kInitialising),
       bootstrap_nodes_(),
-      joining_vaults_() {
+      joining_vaults_(),
+      joining_vaults_mutex_(),
+      joining_vaults_conditional_() {
   asio_service_.Start();
-  ConnectToInvigilator();
+
+  if (!StartListeningPort()) {
+    LOG(kError) << "Failed to start listening port. Won't be able to start vaults.";
+    state_ = kFailed;
+  }
+
+  if (!ConnectToInvigilator()) {
+    LOG(kError) << "Failed to connect to invigilator. Object useless.";
+    state_ = kFailed;
+  }
+
+  state_ = kVerified;
 }
 
 ClientController::~ClientController() {
@@ -53,93 +64,144 @@ ClientController::~ClientController() {
   asio_service_.Stop();
 }
 
-void ClientController::ConnectToInvigilator() {
-  invigilator_port_ = Invigilator::kMinPort() - 1;
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  Port client_port(detail::GetRandomPort());
-  request_transport->on_message_received().connect(
-        [=](const std::string& message, Port invigilator_port) {
-          HandleRegisterResponse(message, invigilator_port, client_port, request_transport);
-        });
-  request_transport->on_error().connect(
-        [=](const int& error) {
-          LOG(kError) << "Transport reported error code " << error;
-          RegisterWithInvigilator(client_port, request_transport);
-        });
-  RegisterWithInvigilator(client_port, request_transport);
-  std::unique_lock<std::mutex> lock(mutex_);
-  if (!cond_var_.wait_for(lock,
-                          std::chrono::seconds(3),
-                          [&] { return state_ != kInitialising; })) {
-    LOG(kError) << "Timed out waiting for ClientController initialisation.";
-  }
+bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {
-    LOG(kError) << "ClientController is uninitialised.";
+    LOG(kError) << "Not connected to Invigilator.";
+    return false;
   }
-  receiving_transport_->StartListening(client_port);
-  local_port_ = client_port;
-  request_transport->StopListeningAndCloseConnections();
+
+  endpoints = bootstrap_nodes_;
+  return true;
 }
 
-void ClientController::RegisterWithInvigilator(Port client_port, TransportPtr request_transport) {
+
+bool ClientController::StartListeningPort() {
+  local_port_ = detail::GetRandomPort();
+  int count(0), result(0);
+  while (kSuccess != (result = receiving_transport_->StartListening(local_port_)) &&
+         count++ < 100) {
+    local_port_ = detail::GetRandomPort();
+  }
+
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to start listening port. Aborting initialisation.";
+    return false;
+  }
+
+  receiving_transport_->on_message_received().connect(
+      [this] (const std::string& message, Port invigilator_port) {
+        HandleReceivedRequest(message, invigilator_port);
+      });
+  receiving_transport_->on_error().connect(
+      [] (const int& error) {
+        LOG(kError) << "Transport reported error code " << error;
+      });
+
+  return true;
+}
+
+bool ClientController::ConnectToInvigilator() {
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  std::mutex mutex;
+  std::condition_variable condition_variable;
+  State state(kInitialising);
+
+  request_transport->on_message_received().connect(
+      [&mutex, &condition_variable, &state, this] (const std::string& message,
+                                                   Port invigilator_port) {
+        HandleRegisterResponse(message, invigilator_port, mutex, condition_variable, state);
+      });
+  request_transport->on_error().connect(
+      [&mutex, &condition_variable, &state] (const int& error) {
+        std::unique_lock<std::mutex> lock(mutex);
+        state = kFailed;
+        condition_variable.notify_one();
+        LOG(kError) << "Transport reported error code " << error;
+      });
+
   while (request_transport->Connect(++invigilator_port_) != kSuccess) {
     if (invigilator_port_ == Invigilator::kMaxPort()) {
       LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
                   << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
-      std::lock_guard<std::mutex> lock(mutex_);
-      state_ = kFailed;
-      return cond_var_.notify_one();
+      return false;
     }
   }
+
   protobuf::ClientRegistrationRequest request;
-  request.set_listening_port(client_port);
+  request.set_listening_port(local_port_);
   request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
                                               request.SerializeAsString()),
                           invigilator_port_);
   LOG(kVerbose) << "Sending registration request to port " << invigilator_port_;
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    if (!condition_variable.wait_for(lock,
+                                     std::chrono::seconds(3),
+                                     [&state] { return state != kInitialising; })) {
+      LOG(kError) << "Timed out waiting for ClientController initialisation.";
+      state = kFailed;
+    }
+  }
+
+  if (state != kVerified) {
+    LOG(kError) << "ClientController is uninitialised.";
+    return false;
+  }
+
+  request_transport->StopListeningAndCloseConnections();
+  return true;
 }
 
 void ClientController::HandleRegisterResponse(const std::string& message,
-                                          Port /*invigilator_port*/,
-                                          Port client_port,
-                                          TransportPtr request_transport) {
+                                              Port /*invigilator_port*/,
+                                              std::mutex& mutex,
+                                              std::condition_variable& condition_variable,
+                                              State& state) {
   MessageType type;
   std::string payload;
-
   if (!detail::UnwrapMessage(message, type, payload)) {
     LOG(kError) << "Failed to handle incoming message.";
-    return RegisterWithInvigilator(client_port, request_transport);
+    std::unique_lock<std::mutex> lock(mutex);
+    state = kFailed;
+    condition_variable.notify_one();
+    return;
   }
   protobuf::ClientRegistrationResponse response;
   if (!response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse ClientRegistrationResponse.";
-    return RegisterWithInvigilator(client_port, request_transport);
+    std::unique_lock<std::mutex> lock(mutex);
+    state = kFailed;
+    condition_variable.notify_one();
+    return;
   }
 
-  // bootstrap_nodes_ = response.bootstrap_nodes();
+  if (response.bootstrap_endpoint_ip_size() == 0 || response.bootstrap_endpoint_port_size() == 0) {
+    LOG(kError) << "Response has no bootstrap nodes.";
+    std::unique_lock<std::mutex> lock(mutex);
+    state = kFailed;
+    condition_variable.notify_one();
+    return;
+  }
 
-  std::lock_guard<std::mutex> lock(mutex_);
-  state_ = kVerified;
+  int max_index(response.bootstrap_endpoint_ip_size() >
+                response.bootstrap_endpoint_port_size() ?
+                    response.bootstrap_endpoint_port_size() :
+                    response.bootstrap_endpoint_ip_size());
+  for (int n(0); n < max_index; ++n) {
+    bootstrap_nodes_.push_back(std::make_pair(response.bootstrap_endpoint_ip(n),
+                                              response.bootstrap_endpoint_port(n)));
+  }
+
   LOG(kSuccess) << "Successfully registered with Invigilator on port " << invigilator_port_;
-  // Success - connect service functions to receiving transport
-  receiving_transport_->on_message_received().connect(
-      [this](const std::string& message, Port invigilator_port) {
-        HandleReceivedRequest(message, invigilator_port);
-      });
-  receiving_transport_->on_error().connect([](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-  });
-
-  cond_var_.notify_one();
+  std::lock_guard<std::mutex> lock(mutex);
+  state = kVerified;
+  condition_variable.notify_one();
 }
 
 bool ClientController::StartVault(const asymm::Keys& keys, const std::string& account_name) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kVerified) {
-      LOG(kError) << "Not connected to Invigilator.";
-      return false;
-    }
+  if (state_ != kVerified) {
+    LOG(kError) << "Not connected to Invigilator.";
+    return false;
   }
 
   std::mutex local_mutex;
@@ -186,37 +248,37 @@ bool ClientController::StartVault(const asymm::Keys& keys, const std::string& ac
   request_transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
                                               start_vault_request.SerializeAsString()),
                           invigilator_port_);
+  {
+    std::unique_lock<std::mutex> local_lock(local_mutex);
+    if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
+      LOG(kError) << "Timed out waiting for reply.";
+      return false;
+    }
+    if (!local_result) {
+      LOG(kError) << "Failed starting vault.";
+      return false;
+    }
+  }
 
-  std::unique_lock<std::mutex> local_lock(local_mutex);
-  if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
-    LOG(kError) << "Timed out waiting for reply.";
-    return false;
-  }
-  if (!local_result) {
-    LOG(kError) << "Failed starting vault.";
-    return false;
-  }
-  local_lock.unlock();
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
   joining_vaults_[keys.identity] = false;
-  if (!cond_var_.wait_for(lock, std::chrono::seconds(10),
-                               [&] { return joining_vaults_[keys.identity]; })) {
+  if (!joining_vaults_conditional_.wait_for(lock,
+                                            std::chrono::seconds(10),
+                                            [&] { return joining_vaults_[keys.identity]; })) {
     LOG(kError) << "Timed out waiting for vault join confirmation.";
     return false;
   }
   joining_vaults_.erase(keys.identity);
+
   return true;
 }
 
 bool ClientController::StopVault(const asymm::PlainText& data,
                                  const asymm::Signature& signature,
                                  const asymm::Identity& identity) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kVerified) {
-      LOG(kError) << "Not connected to Invigilator.";
-      return false;
-    }
+  if (state_ != kVerified) {
+    LOG(kError) << "Not connected to Invigilator.";
+    return false;
   }
 
   std::mutex local_mutex;
@@ -302,12 +364,9 @@ bptime::time_duration ClientController::GetUpdateInterval() {
 
 bptime::time_duration ClientController::SetOrGetUpdateInterval(
       const bptime::time_duration& update_interval) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ != kVerified) {
-      LOG(kError) << "Not connected to Invigilator.";
-      return bptime::pos_infin;
-    }
+  if (state_ != kVerified) {
+    LOG(kError) << "Not connected to Invigilator.";
+    return bptime::pos_infin;
   }
 
   std::mutex local_mutex;
@@ -447,13 +506,13 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
     vault_join_confirmation_ack.set_ack(false);
   } else {
     asymm::Identity identity(vault_join_confirmation.identity());
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
     if (joining_vaults_.find(identity) == joining_vaults_.end()) {
       LOG(kError) << "Identity is not in list of joining vaults.";
       vault_join_confirmation_ack.set_ack(false);
     } else {
       joining_vaults_[identity] = true;
-      cond_var_.notify_all();
+      joining_vaults_conditional_.notify_all();
       vault_join_confirmation_ack.set_ack(true);
     }
   }

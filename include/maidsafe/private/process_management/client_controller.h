@@ -38,12 +38,14 @@ namespace process_management {
 class LocalTcpTransport;
 
 typedef boost::signals2::signal<void(const std::string&)> OnNewVersionAvailable;
-
+typedef std::pair<std::string, uint16_t> EndPoint;
 
 class ClientController {
  public:
   ClientController();
   ~ClientController();
+
+  bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
   // Blocking call to start a vault with the specified identity information and account name.
   bool StartVault(const asymm::Keys& keys, const std::string& account_name);
@@ -69,16 +71,18 @@ class ClientController {
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
+  enum State { kInitialising, kVerified, kFailed };
 
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
 
-  void ConnectToInvigilator();
-  void RegisterWithInvigilator(uint16_t client_port, TransportPtr request_transport);
+  bool ConnectToInvigilator();
+  bool StartListeningPort();
   void HandleRegisterResponse(const std::string& message,
-                          uint16_t invigilator_port,
-                          uint16_t client_port,
-                          TransportPtr request_transport);
+                              uint16_t invigilator_port,
+                              std::mutex& mutex,
+                              std::condition_variable& condition_variable,
+                              State& state);
   template<typename ResponseType>
   void HandleStartStopVaultResponse(const std::string& message,
                                     const std::function<void(bool)>& callback);  // NOLINT
@@ -95,11 +99,11 @@ class ClientController {
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   OnNewVersionAvailable on_new_version_available_;
-  std::mutex mutex_;
-  std::condition_variable cond_var_;
-  enum State { kInitialising, kVerified, kFailed } state_;
-  std::string bootstrap_nodes_;
+  State state_;
+  std::vector<EndPoint> bootstrap_nodes_;
   std::map<asymm::Identity, bool> joining_vaults_;
+  std::mutex joining_vaults_mutex_;
+  std::condition_variable joining_vaults_conditional_;
 };
 
 }  // namespace process_management

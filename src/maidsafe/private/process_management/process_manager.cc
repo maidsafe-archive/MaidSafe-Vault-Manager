@@ -337,9 +337,9 @@ void ProcessManager::TerminateAll() {
   for (auto& process : processes_) {
     /*if (CheckInstruction(i.id) != ProcessInstruction::kTerminate) {
       i.done = true;
-      LOG(kInfo) << "TerminateAll: SetInstruction to kTerminate";
       SetInstruction(i.id, ProcessInstruction::kTerminate);
     }*/
+      LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
     if (process.thread.joinable())
       process.thread.join();
   }
