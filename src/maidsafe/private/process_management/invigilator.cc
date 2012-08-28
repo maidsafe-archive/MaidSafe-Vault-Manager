@@ -341,7 +341,9 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
     auto itr(FindFromIdentity(vault_info->keys.identity));
+    bool existing_vault(false);
     if (itr != vault_infos_.end()) {
+      existing_vault = true;
       if (kSuccess != asymm::CheckSignature(start_vault_request.token(),
                                             start_vault_request.token_signature(),
                                             vault_info->keys.public_key)) {
@@ -389,7 +391,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
         return set_response(false);
       }
     }
-    if (!AmendVaultDetailsInConfigFile(vault_info, itr != vault_infos_.end())) {
+    if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
                   << Base64Substr(vault_info->keys.identity);
       return set_response(false);
