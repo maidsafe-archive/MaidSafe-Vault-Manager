@@ -75,7 +75,8 @@ ProcessManager::ProcessInfo::ProcessInfo(ProcessManager::ProcessInfo&& other)
       index(std::move(other.index)),
       port(std::move(other.port)),
       restart_count(std::move(other.restart_count)),
-      done(std::move(other.done)) {}
+      done(std::move(other.done)),
+      status(std::move(other.status)) {}
 
 ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
     ProcessManager::ProcessInfo&& other) {
@@ -85,12 +86,13 @@ ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
   port = std::move(other.port);
   restart_count = std::move(other.restart_count);
   done = std::move(other.done);
+  status = std::move(other.status);
   return *this;
 }
 
 
 
-ProcessManager::ProcessManager() : processes_(), current_max_id_(0), mutex_() {}
+ProcessManager::ProcessManager() : processes_(), current_max_id_(0), mutex_(), cond_var_() {}
 
 ProcessManager::~ProcessManager() {
   TerminateAll();
@@ -104,6 +106,7 @@ ProcessIndex ProcessManager::AddProcess(Process process, Port port) {
   ProcessInfo info;
   info.index = ++current_max_id_;
   info.done = false;
+  info.status = ProcessStatus::kStopped;
   info.restart_count = 0;
   info.port = port;
   LOG(kVerbose) << "Restart count on init: " << info.restart_count;
@@ -153,9 +156,6 @@ void ProcessManager::StartProcess(const ProcessIndex& index) {
   (*itr).done = false;
   (*itr).restart_count = 0;
   LOG(kInfo) << "StartProcess: AddStatus. ID: " << index;
-  // ProcessManagerStruct status;
-  // status.instruction = ProcessInstruction::kRun;
-  // AddStatus(id, status);
   (*itr).thread = std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
 }
 
@@ -188,6 +188,8 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   context.stderr_behavior = bp::capture_stream();
   context.stdout_behavior = bp::capture_stream();
   bp::child child;
+  SetProcessStatus(index, ProcessStatus::kRunning);
+
   try {
     child = bp::child(bp::launch(process_name, process_args, context));
   }
@@ -229,6 +231,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
 #endif
   LOG(kInfo) << "Process " << index << " completes. Output: ";
   LOG(kInfo) << result;
+  SetProcessStatus(index, ProcessStatus::kStopped);
 #ifndef MAIDSAFE_WIN32
   if (status.exited()) {
     LOG(kInfo) << "Program returned exit code " << status.exit_status();
@@ -330,6 +333,33 @@ void ProcessManager::RestartProcess(const ProcessIndex& index) {
     return;
   (*itr).done = false;
   // SetInstruction(id, ProcessInstruction::kTerminate);
+}
+
+ProcessStatus ProcessManager::GetProcessStatus(const ProcessIndex& index) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(index);
+  if (itr == processes_.end())
+    return ProcessStatus::kError;
+  return (*itr).status;
+}
+
+bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  auto itr = FindProcess(index);
+  if (itr == processes_.end())
+    return false;
+  cond_var_.wait(lock, [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; });  //NOLINT (Philip)
+  return true;
+}
+
+bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto itr = FindProcess(index);
+  if (itr == processes_.end())
+    return false;
+  (*itr).status = status;
+  cond_var_.notify_all();
+  return true;
 }
 
 void ProcessManager::TerminateAll() {

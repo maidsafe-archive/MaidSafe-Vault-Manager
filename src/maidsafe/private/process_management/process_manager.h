@@ -13,6 +13,7 @@
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
 
 #include <mutex>
+#include <condition_variable>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -29,13 +30,14 @@ namespace process_management {
 
 typedef uint32_t ProcessIndex;
 
-/*enum class ProcessStatus {
-  Running,
-  Stopped,
-  Crashed
+enum class ProcessStatus {
+  kRunning = 1,
+  kStopped = 2,
+  kCrashed = 3,
+  kError = 4
 };
 
-enum ProcessInstruction {
+/*enum ProcessInstruction {
   kRun = 1,
   kStop = 2,
   kTerminate = 3,
@@ -85,11 +87,19 @@ class ProcessManager {
   void KillProcess(const ProcessIndex& index);
   void StopProcess(const ProcessIndex& index);
   void RestartProcess(const ProcessIndex& index);
+  ProcessStatus GetProcessStatus(const ProcessIndex& index);
+  bool WaitForProcessToStop(const ProcessIndex& index);
   static ProcessIndex kInvalidIndex() { return std::numeric_limits<ProcessIndex>::max(); }
 
  private:
   struct ProcessInfo {
-    ProcessInfo() : process(), thread(), index(0), port(0), restart_count(0), done(false) {}
+    ProcessInfo() : process(),
+                    thread(),
+                    index(0),
+                    port(0),
+                    restart_count(0),
+                    done(false),
+                    status(ProcessStatus::kStopped) {}
     ProcessInfo(ProcessInfo&& other);
     ProcessInfo& operator=(ProcessInfo&& other);
     Process process;
@@ -98,6 +108,7 @@ class ProcessManager {
     uint16_t port;
     int32_t restart_count;
     bool done;
+    ProcessStatus status;
   };
 
   ProcessManager(const ProcessManager&);
@@ -105,10 +116,12 @@ class ProcessManager {
   std::vector<ProcessInfo>::iterator FindProcess(const ProcessIndex& index);
   void RunProcess(const ProcessIndex& index, bool restart, bool logging);
   void TerminateAll();
+  bool SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status);
 
   std::vector<ProcessInfo> processes_;
   ProcessIndex current_max_id_;
   mutable std::mutex mutex_;
+  std::condition_variable cond_var_;
 };
 
 }  // namespace process_management
