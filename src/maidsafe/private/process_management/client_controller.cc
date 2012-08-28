@@ -312,7 +312,7 @@ bool ClientController::StopVault(const asymm::PlainText& data,
   });
 
   LOG(kVerbose) << "Sending request to stop vault to port " << invigilator_port_;
-  request_transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
+  request_transport->Send(detail::WrapMessage(MessageType::kStopVaultRequest,
                                               stop_vault_request.SerializeAsString()),
                           invigilator_port_);
 
