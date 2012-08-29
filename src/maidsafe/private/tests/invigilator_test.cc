@@ -70,7 +70,7 @@ int GetNumRunningProcesses() {
 
 }  // namespace
 
-TEST(InvigilatorTest, BEH_StartStop) {
+TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
   {
@@ -119,13 +119,13 @@ TEST(InvigilatorTest, BEH_StartStop) {
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and
   // both saved to the config file when the Invigilator is destroyed.
+  asymm::Keys second_keys;
   {
     Invigilator invigilator;
     ClientController client_controller;
-    asymm::Keys keys;
-    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
-    keys.identity = "SecondVault";
-    EXPECT_TRUE(client_controller.StartVault(keys, "G"));
+    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&second_keys));
+    second_keys.identity = "SecondVault";
+    EXPECT_TRUE(client_controller.StartVault(second_keys, "G"));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
@@ -145,9 +145,10 @@ TEST(InvigilatorTest, BEH_StartStop) {
     ClientController client_controller;
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
-    asymm::Signature signature;
-    asymm::Sign(data, first_keys.private_key, &signature);
-    EXPECT_TRUE(client_controller.StopVault(data, signature, "FirstVault"));
+    asymm::Signature signature1, signature2;
+    asymm::Sign(data, first_keys.private_key, &signature1);
+    asymm::Sign(data, second_keys.private_key, &signature2);
+    EXPECT_TRUE(client_controller.StopVault(data, signature1, "FirstVault"));
     EXPECT_EQ(1, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
@@ -161,24 +162,28 @@ TEST(InvigilatorTest, BEH_StartStop) {
   if (invigilator_config.vault_info(1).requested_to_run())
     ++run_count;
   EXPECT_EQ(1, run_count);
+
   // test case for existing config file with two vaults (generated in previous test case, one
-  // deactivated). One vault is started by config. A client is then used to start 10 more vaults.
+  // deactivated). One vault is started by config. Two clients are then used to start 30 new vaults.
   LOG(kError) << "START TEST 4";
   {
     EXPECT_EQ(0, GetNumRunningProcesses());
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
-    ClientController client_controller;
+    ClientController client_controller1, client_controller2;
     asymm::Keys keys;
-    for (int i(0); i < 10; ++i) {
-      EXPECT_EQ(i + 1, GetNumRunningProcesses());
+    for (int i(0); i < 30; ++i) {
       ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
-      keys.identity = RandomString(64);
-      EXPECT_TRUE(client_controller.StartVault(keys, RandomAlphaNumericString(16)));
+      keys.identity = RandomAlphaNumericString(64);
+      if (i % 2 == 0)
+        EXPECT_TRUE(client_controller1.StartVault(keys, RandomAlphaNumericString(16)));
+      else
+        EXPECT_TRUE(client_controller2.StartVault(keys, RandomAlphaNumericString(16)));
     }
-    EXPECT_EQ(11, GetNumRunningProcesses());
+    EXPECT_EQ(31, GetNumRunningProcesses());
   }
+  EXPECT_EQ(0, GetNumRunningProcesses());
   boost::system::error_code error;
   fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error);
 }

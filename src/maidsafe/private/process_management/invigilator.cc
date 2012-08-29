@@ -389,7 +389,6 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
         return set_response(false);
       }
     }
-    LOG(kError) << "calling AmendVaultDetailsInConfigFile, existing vault: " << existing_vault;
     if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
                   << Base64Substr(vault_info->keys.identity);
@@ -483,6 +482,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
     (*itr)->joined_network = vault_joined_network.joined();
   }
   vault_joined_network_ack.set_ack(join_result);
+  if ((*itr)->client_port != 0)
   SendVaultJoinConfirmation((*itr)->keys.identity, join_result);
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_joined_network_ack.SerializeAsString());
@@ -506,7 +506,7 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
   } else if (kSuccess != asymm::CheckSignature(stop_vault_request.data(),
                                                stop_vault_request.signature(),
                                                (*itr)->keys.public_key)) {
-    LOG(kError) << "Failure to vaildate request to stop vault ID "
+    LOG(kError) << "Failure to validate request to stop vault ID "
                 << Base64Substr(stop_vault_request.identity());
     stop_vault_response.set_result(false);
   } else {
@@ -517,7 +517,6 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
                                              stop_vault_request.signature(),
                                              true));
   }
-  LOG(kError) << "calling AmendVaultDetailsInConfigFile (on stopping vault), existing vault: true";
   if (!AmendVaultDetailsInConfigFile(*itr, true)) {
     LOG(kError) << "Failed to amend details in config file for vault ID: "
                 << Base64Substr((*itr)->keys.identity);
@@ -703,7 +702,7 @@ bool Invigilator::StopVault(const std::string& identity,
     return false;
   }
   (*itr)->requested_to_run = !permanent;
-
+  process_manager_.LetProcessDie((*itr)->process_index);
   protobuf::VaultShutdownRequest vault_shutdown_request;
   vault_shutdown_request.set_process_index((*itr)->process_index);
   vault_shutdown_request.set_data(data);
@@ -879,7 +878,7 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
                        }));
 
   if (it == endpoints.end()) {
-    protobuf::BootstrapEndpoints *eps =  config.mutable_bootstrap_endpoints();
+    protobuf::BootstrapEndpoints *eps = config.mutable_bootstrap_endpoints();
     eps->add_bootstrap_endpoint_ip(ip);
     eps->add_bootstrap_endpoint_port(port);
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
@@ -905,7 +904,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
       asymm::Keys keys;
-      if (kSuccess != asymm::ParseKeys(config.vault_info(n).keys(), keys))
+      if (!asymm::ParseKeys(config.vault_info(n).keys(), keys))
         continue;
       if (vault_info->keys.identity == keys.identity) {
         std::string serialised_keys;
@@ -920,7 +919,6 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
         p_info->set_keys(serialised_keys);
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
-        LOG(kError) << "Setting vault requested to run existing: " << vault_info->requested_to_run;
         n = config.vault_info_size();
       }
     }
@@ -936,7 +934,6 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
     p_info->set_keys(serialised_keys);
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
-    LOG(kError) << "Setting vault requested to run: true";
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
       LOG(kError) << "Failed to write config file to amend details of vault ID "
                   << Base64Substr(vault_info->keys.identity);
