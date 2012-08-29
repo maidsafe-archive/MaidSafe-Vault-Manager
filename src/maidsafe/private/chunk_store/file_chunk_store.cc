@@ -11,6 +11,8 @@
 
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 
+#include <limits>
+
 #include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/crypto.h"
@@ -58,6 +60,15 @@ bool FileChunkStore::Init(const fs::path &storage_location,
       }
       ResetChunkCount();
       ChunkStore::Clear();
+    }
+    // Check the space available can be read by boost::filesystem
+    fs::space_info space_info(fs::space(storage_location));
+    if (space_info.available == std::numeric_limits<uintmax_t>::max() ||
+        space_info.capacity == std::numeric_limits<uintmax_t>::max()) {
+      LOG(kError) << "Failed to read filesystem info for path " << storage_location
+                  << ".   Available: " << space_info.available << " bytes.   Capacity: "
+                  << space_info.capacity;
+      return false;
     }
 
     storage_location_ = storage_location;
@@ -493,6 +504,16 @@ uintmax_t FileChunkStore::Size(const std::string &name) const {
   return 0;
 }
 
+uintmax_t FileChunkStore::Capacity() const {
+  return Size() + SpaceAvailable();
+}
+
+void FileChunkStore::SetCapacity(const uintmax_t & /*capacity*/) {}
+
+bool FileChunkStore::Vacant(const uintmax_t &required_size) const {
+  return required_size <= SpaceAvailable();
+}
+
 uintmax_t FileChunkStore::Count() const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -648,6 +669,31 @@ std::vector<ChunkData> FileChunkStore::GetChunks() const {
 
   return chunk_list;
 }
+
+uintmax_t FileChunkStore::SpaceAvailable() const {
+  boost::system::error_code error_code;
+  fs::space_info space_info(fs::space(storage_location_, error_code));
+  if (space_info.available == std::numeric_limits<uintmax_t>::max() ||
+      space_info.capacity == std::numeric_limits<uintmax_t>::max() ||
+      error_code) {
+    LOG(kError) << "Failed to read space available for path " << storage_location_ << " - "
+                << error_code.message();
+    return 1;
+  }
+
+  // Check hard limit hasn't been exceeded
+  if (space_info.available < (space_info.capacity / 10)) {
+    LOG(kWarning) << "Available space of " << space_info.available
+                  << " bytes is less than 10% of partition capacity of " << space_info.capacity
+                  << " bytes.";
+    return 1;
+  }
+
+  LOG(kVerbose) << "Reporting " << space_info.available / 2 << " bytes available for chunkstore at "
+                << storage_location_;
+  return space_info.available / 2;
+}
+
 
 }  // namespace chunk_store
 

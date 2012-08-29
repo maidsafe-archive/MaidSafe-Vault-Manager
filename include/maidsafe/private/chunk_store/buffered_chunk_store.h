@@ -190,7 +190,7 @@ class BufferedChunkStore : public ChunkStore {
   mutable std::list<std::string> cached_chunks_;
   std::list<std::string> removable_chunks_;
   std::multiset<std::string> pending_xfers_;
-  uintmax_t perm_capacity_, perm_size_;
+  uintmax_t perm_size_;
   bool initialised_;
 };
 

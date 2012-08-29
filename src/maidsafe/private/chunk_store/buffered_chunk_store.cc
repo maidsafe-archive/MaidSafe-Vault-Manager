@@ -41,7 +41,6 @@ BufferedChunkStore::BufferedChunkStore(boost::asio::io_service &asio_service)  /
       cached_chunks_(),
       removable_chunks_(),
       pending_xfers_(),
-      perm_capacity_(0),
       perm_size_(0),
       initialised_(false) {}
 
@@ -63,7 +62,6 @@ bool BufferedChunkStore::Init(const fs::path &storage_location,
     return false;
   }
 
-  perm_capacity_ = internal_perm_chunk_store_->Capacity();
   perm_size_ = internal_perm_chunk_store_->Size();
   removable_chunks_ = removable_chunks;
   initialised_ = true;
@@ -303,9 +301,9 @@ bool BufferedChunkStore::Modify(const std::string &name,
     if (content.size() > current_perm_content.size()) {
       content_size_difference = content.size() - current_perm_content.size();
       increase_size = true;
-      if (perm_capacity_ > 0) {  // Check if Perm Chunk Store Size is Infinite
+      if (perm_chunk_store_->Capacity() > 0) {  // Check if Perm Chunk Store Size is Infinite
         // Wait For Space in Perm Store
-        while (perm_size_ + content_size_difference > perm_capacity_) {
+        while (perm_size_ + content_size_difference > perm_chunk_store_->Capacity()) {
           if (removable_chunks_.empty()) {
             LOG(kError) << "Modify - Can't make space for changes to "
                         << Base32Substr(name);
@@ -505,7 +503,7 @@ uintmax_t BufferedChunkStore::CacheSize() const {
 
 uintmax_t BufferedChunkStore::Capacity() const {
   boost::lock_guard<boost::mutex> lock(xfer_mutex_);
-  return perm_capacity_;
+  return perm_chunk_store_->Capacity();
 }
 
 uintmax_t BufferedChunkStore::CacheCapacity() const {
@@ -522,7 +520,6 @@ void BufferedChunkStore::SetCapacity(const uintmax_t &capacity) {
     return;
   }
   perm_chunk_store_->SetCapacity(capacity);
-  perm_capacity_ = perm_chunk_store_->Capacity();
 }
 
 void BufferedChunkStore::SetCacheCapacity(const uintmax_t &capacity) {
@@ -532,7 +529,7 @@ void BufferedChunkStore::SetCacheCapacity(const uintmax_t &capacity) {
 
 bool BufferedChunkStore::Vacant(const uintmax_t &required_size) const {
   boost::lock_guard<boost::mutex> lock(xfer_mutex_);
-  return perm_capacity_ == 0 || perm_size_ + required_size <= perm_capacity_;
+  return perm_size_ + required_size <= perm_chunk_store_->Capacity();
 }
 
 bool BufferedChunkStore::CacheVacant(
@@ -596,7 +593,6 @@ void BufferedChunkStore::Clear() {
   removable_chunks_.clear();
   cache_chunk_store_->Clear();
   perm_chunk_store_->Clear();
-  perm_capacity_ = perm_chunk_store_->Capacity();
   perm_size_ = 0;
 }
 
@@ -733,16 +729,16 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
   RemoveDeletionMarks(name);
 
   // Check whether permanent store has capacity to store chunk
-  if (perm_capacity_ > 0) {
-    if (size > perm_capacity_) {
+  if (perm_chunk_store_->Capacity() > 0) {
+    if (size > perm_chunk_store_->Capacity()) {
       LOG(kError) << "MakeChunkPermanent - Chunk " << Base32Substr(name)
                   << " too big (" << BytesToBinarySiUnits(size) << " vs. "
-                  << BytesToBinarySiUnits(perm_capacity_) << ").";
+                  << BytesToBinarySiUnits(perm_chunk_store_->Capacity()) << ").";
       return false;
     }
 
     bool is_new(true);
-    if (perm_size_ + size > perm_capacity_) {
+    if (perm_size_ + size > perm_chunk_store_->Capacity()) {
       if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
             return pending_xfers_.empty();
           })) {
@@ -754,7 +750,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
         is_new = false;
       } else {
         // Make space in permanent store
-        while (perm_size_ + size > perm_capacity_) {
+        while (perm_size_ + size > perm_chunk_store_->Capacity()) {
           if (removable_chunks_.empty()) {
             LOG(kError) << "MakeChunkPermanent - Can't make space for "
                         << Base32Substr(name);
