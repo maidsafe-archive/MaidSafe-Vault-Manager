@@ -41,7 +41,8 @@ int main(int argc, char* argv[]) {
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
-      ("vmid", po::value<std::string>(), "vaults manager ID");
+      ("vmid", po::value<std::string>(), "vaults manager ID")
+      ("nocontroller", "set to use no vault controller");
   try {
     po::variables_map variables_map;
     po::store(po::parse_command_line(argc, argv, options_description), variables_map);
@@ -56,26 +57,28 @@ int main(int argc, char* argv[]) {
       return 1;
     }
     std::string invigilator_id = variables_map["vmid"].as<std::string>();
-    LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
-    maidsafe::priv::process_management::VaultController vault_controller;
-    if (!vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
-      LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
-      return 1;
-    }
+    if (!variables_map.count("nocontroller")) {
+      LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
+      maidsafe::priv::process_management::VaultController vault_controller;
+      if (!vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
+        LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
+        return 1;
+      }
 
-    maidsafe::asymm::Keys keys;
-    std::string account_name;
-    vault_controller.GetIdentity(&keys, &account_name);
-    LOG(kInfo) << "DUMMYprocess: Identity: " << (keys.identity);
-    LOG(kInfo) << "Validation Token: " << (keys.validation_token);
-    std::string public_key_string;
-    maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
-    std::string private_key_string;
-    maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
-    LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
-    LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
-    LOG(kInfo) << "Account name: " << account_name;
-    vault_controller.ConfirmJoin(true);
+      maidsafe::asymm::Keys keys;
+      std::string account_name;
+      vault_controller.GetIdentity(&keys, &account_name);
+      LOG(kInfo) << "DUMMYprocess: Identity: " << (keys.identity);
+      LOG(kInfo) << "Validation Token: " << (keys.validation_token);
+      std::string public_key_string;
+      maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
+      std::string private_key_string;
+      maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
+      LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
+      LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
+      LOG(kInfo) << "Account name: " << account_name;
+      vault_controller.ConfirmJoin(true);
+    }
     if (variables_map.count("runtime")) {
       int runtime = variables_map["runtime"].as<int>();
       LOG(kInfo) << "Running for " << runtime << " seconds.";

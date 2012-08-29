@@ -249,6 +249,7 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
+  test.AddArgument("--nocontroller");
 
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
@@ -364,25 +365,28 @@ TEST_F(ProcessManagerTest, BEH_StartThreeProcesses) {
   test.AddArgument("--runtime");
   test.AddArgument("2");
   test.AddArgument("--nocrash");
+  test.AddArgument("--nocontroller");
 
   Process test1;
   ASSERT_TRUE(test1.SetExecutablePath(kExecutablePath_));
   test1.AddArgument("--runtime");
   test1.AddArgument("2");
   test1.AddArgument("--nocrash");
+  test1.AddArgument("--nocontroller");
 
   Process test2;
   ASSERT_TRUE(test2.SetExecutablePath(kExecutablePath_));
   test2.AddArgument("--runtime");
   test2.AddArgument("2");
   test2.AddArgument("--nocrash");
+  test2.AddArgument("--nocontroller");
 
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
-  ProcessIndex process_index = process_manager_.AddProcess(test, 0);
-  ProcessIndex process_index1 = process_manager_.AddProcess(test1, 0);
-  ProcessIndex process_index2 = process_manager_.AddProcess(test2, 0);
+  ProcessIndex process_index = process_manager_.AddProcess(test, 5483);
+  ProcessIndex process_index1 = process_manager_.AddProcess(test1, 5483);
+  ProcessIndex process_index2 = process_manager_.AddProcess(test2, 5483);
   auto start(boost::posix_time::microsec_clock::universal_time());
   process_manager_.StartProcess(process_index);
   process_manager_.StartProcess(process_index1);
@@ -413,6 +417,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     test_5.AddArgument("--runtime");
     test_5.AddArgument("5");
     test_5.AddArgument("--nocrash");
+    test_5.AddArgument("--nocontroller");
     processes_5.push_back(test_5);
   }
   for (int i(0); i < 5; ++i) {
@@ -421,6 +426,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
     test_10.AddArgument("--runtime");
     test_10.AddArgument("10");
     test_10.AddArgument("--nocrash");
+    test_10.AddArgument("--nocontroller");
     processes_10.push_back(test_10);
   }
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
