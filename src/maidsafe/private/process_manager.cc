@@ -208,8 +208,12 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
     bp::initializers::inherit_env()
   ));
 
-  auto exit_code = wait_for_exit(child);
-  LOG(kInfo) << "Process " << index << " has completed with exit code " << exit_code;
+  if (error_code) {
+    LOG(kError) << "Failed to execute " << process_name << ": " << error_code.message();
+  } else {
+    auto exit_code = wait_for_exit(child);
+    LOG(kInfo) << "Process " << index << " has completed with exit code " << exit_code;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
