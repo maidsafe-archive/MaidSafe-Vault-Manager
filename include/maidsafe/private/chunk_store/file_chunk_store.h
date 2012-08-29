@@ -38,9 +38,7 @@ namespace priv {
 
 namespace chunk_store {
 
-namespace test {
-class FileChunkStoreTest_BEH_Methods_Test;
-}  // namespace test
+namespace test { class FileChunkStoreTest_BEH_Methods_Test; }
 
 class FileChunkStore : public ChunkStore {
  public:
@@ -102,6 +100,7 @@ class FileChunkStore : public ChunkStore {
   uintmax_t GetChunkReferenceCount(const fs::path &) const;
   uintmax_t GetNumFromString(const std::string &) const;
   uintmax_t SpaceAvailable() const;
+  static std::string InfoFileName() { return "info"; }
 
   bool initialised_;
   fs::path storage_location_;

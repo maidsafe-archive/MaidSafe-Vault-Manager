@@ -73,8 +73,7 @@ bool FileChunkStore::Init(const fs::path &storage_location,
 
     storage_location_ = storage_location;
     dir_depth_ = dir_depth;
-    std::string info_name("info");
-    info_file_.open(storage_location_ / info_name,
+    info_file_.open(storage_location_ / InfoFileName(),
                     std::ios_base::out | std::ios_base::trunc);
     SaveChunkStoreState();
     initialised_ = info_file_.good();
@@ -547,6 +546,7 @@ void FileChunkStore::Clear() {
                   << ec.message();
   }
   ChunkStore::Clear();
+  Init(storage_location_, dir_depth_);
 }
 
 fs::path FileChunkStore::ChunkNameToFilePath(const std::string &chunk_name,
@@ -577,8 +577,7 @@ FileChunkStore::RestoredChunkStoreInfo FileChunkStore::RetrieveChunkInfo(
   chunk_store_info.first = 0;
   chunk_store_info.second = 0;
 
-  std::string info_name("info");
-  fs::fstream info(location / info_name, std::ios_base::in);
+  fs::fstream info(location / InfoFileName(), std::ios_base::in);
   if (info.good())
     info >> chunk_store_info.first >> chunk_store_info.second;
 
@@ -652,19 +651,23 @@ uintmax_t FileChunkStore::GetNumFromString(const std::string &str) const {
 
 std::vector<ChunkData> FileChunkStore::GetChunks() const {
   std::vector<ChunkData> chunk_list;
-
-  for (fs::recursive_directory_iterator it(storage_location_);
-       it != fs::recursive_directory_iterator(); ++it) {
-    if (fs::is_regular_file(it->status()) && it->path().filename().string() != "info") {
-      std::string chunk_name(it->path().string().substr(storage_location_.string().size()));
-      for (unsigned int i = 0; i < dir_depth_ + 1; ++i) {
-        chunk_name.erase(i, 1);
+  try {
+    for (fs::recursive_directory_iterator it(storage_location_);
+         it != fs::recursive_directory_iterator(); ++it) {
+      if (fs::is_regular_file(it->status()) && it->path().filename().string() != InfoFileName()) {
+        std::string chunk_name(it->path().string().substr(storage_location_.string().size()));
+        for (unsigned int i = 0; i < dir_depth_ + 1; ++i) {
+          chunk_name.erase(i, 1);
+        }
+        chunk_name = DecodeFromBase32(chunk_name);
+        uintmax_t chunk_size = Size(chunk_name);
+        ChunkData chunk_data(chunk_name, chunk_size);
+        chunk_list.push_back(chunk_data);
       }
-      chunk_name = DecodeFromBase32(chunk_name);
-      uintmax_t chunk_size = Size(chunk_name);
-      ChunkData chunk_data(chunk_name, chunk_size);
-      chunk_list.push_back(chunk_data);
     }
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
   }
 
   return chunk_list;
