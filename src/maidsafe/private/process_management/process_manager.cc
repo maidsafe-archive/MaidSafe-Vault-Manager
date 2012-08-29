@@ -13,20 +13,13 @@
 
 #include <algorithm>
 
-#ifdef __MSVC__
-#  pragma warning(push)
-#  pragma warning(disable: 4244 4250 4267)
-#endif
-
-#include "boost/process.hpp"
-
-#ifdef __MSVC__
-#  pragma warning(pop)
-#endif
-
-#include "boost/filesystem/fstream.hpp"
 #include "boost/archive/text_oarchive.hpp"
+#include "boost/filesystem/fstream.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "boost/process/child.hpp"
+#include "boost/process/execute.hpp"
+#include "boost/process/initializers.hpp"
+#include "boost/process/wait_for_exit.hpp"
 #include "boost/system/error_code.hpp"
 
 #include "maidsafe/common/log.h"
@@ -46,6 +39,32 @@ namespace maidsafe {
 namespace priv {
 
 namespace process_management {
+
+namespace {
+
+std::wstring StringToWstring(const std::string &input) {
+  std::unique_ptr<wchar_t[]> buffer(new wchar_t[input.size()]);
+  size_t num_chars = mbstowcs(buffer.get(), input.c_str(), input.size());
+  return std::wstring(buffer.get(), num_chars);
+}
+
+#ifdef MAIDSAFE_WIN32
+std::wstring ConstructCommandLine(std::vector<std::string> process_args) {
+  std::string args;
+  for (auto arg : process_args)
+    args += (arg + " ");
+  return StringToWstring(args);
+}
+#else
+std::string ConstructCommandLine(std::vector<std::string> process_args) {
+  std::string args;
+  for (auto arg : process_args)
+    args += (arg + " ");
+  return args;
+}
+#endif
+
+}  // unnamed namespace
 
 bool Process::SetExecutablePath(const fs::path& executable_path) {
   boost::system::error_code ec;
@@ -183,68 +202,19 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
       log::Logging::instance().SetAsync(true);
     }
   }
-  bp::context context;
-  context.environment = bp::self::get_environment();
-  context.stderr_behavior = bp::capture_stream();
-  context.stdout_behavior = bp::capture_stream();
-  bp::child child;
-  SetProcessStatus(index, ProcessStatus::kRunning);
 
-  try {
-    child = bp::child(bp::launch(process_name, process_args, context));
-  }
-  catch(const std::exception& e) {
-    LOG(kError) << "Failed to launch " << process_name << "  : " << e.what();
-    return;
-  }
+  boost::system::error_code error_code;
+  // TODO(Fraser#5#): 2012-08-29 - Handle logging to a file.  See:
+  // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams  NOLINT (Fraser)
+  bp::child child(bp::execute(
+    bp::initializers::run_exe(process_name),
+    bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
+    bp::initializers::set_on_error(error_code),
+    bp::initializers::inherit_env()
+  ));
 
-  bp::pistream& stdout_stream = child.get_stdout();
-  bp::pistream& stderr_stream = child.get_stderr();
-  std::string result;
-  std::string line;
-  while (std::getline(stdout_stream, line))
-    /*result +=*/ std::cout << line + '\n';
-
-  bool stderr_message(false);
-  while (std::getline(stderr_stream, line)) {
-    if (!stderr_message) {
-      stderr_message = true;
-      result += "\nstd::err: ";
-    }
-    /*result +=*/ std::cout << line + '\n';
-  }
-
-  if (logging) {
-    fs::path filename("Logging.txt");
-    fs::ofstream ofstream(filename);
-    boost::archive::text_oarchive text_oarchive(ofstream);
-    std::string line;
-    std::string content;
-    while (std::getline(stdout_stream, line))
-      content += line + "\n";
-    text_oarchive & content;
-  }
-#ifdef MAIDSAFE_WIN32
-  child.wait();
-#else
-  bp::posix_status status = child.wait();
-#endif
-  LOG(kInfo) << "Process " << index << " completes. Output: ";
-  LOG(kInfo) << result;
-  SetProcessStatus(index, ProcessStatus::kStopped);
-#ifndef MAIDSAFE_WIN32
-  if (status.exited()) {
-    LOG(kInfo) << "Program returned exit code " << status.exit_status();
-  } else if (status.stopped()) {
-    LOG(kInfo) << "Program stopped by signal " << status.stop_signal();
-  } else if (status.signaled()) {
-    LOG(kInfo) << "Program received signal " << status.term_signal();
-    if (status.dumped_core())
-      LOG(kInfo) << "Program also dumped core";
-  } else {
-    LOG(kInfo) << "Program terminated for unknown reason";
-  }
-#endif
+  auto exit_code = wait_for_exit(child);
+  LOG(kInfo) << "Process " << index << " has completed with exit code " << exit_code;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     auto itr(FindProcess(index));
