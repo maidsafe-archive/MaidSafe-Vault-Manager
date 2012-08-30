@@ -228,12 +228,15 @@ bool Invigilator::WriteConfigFile() {
 }
 
 bool Invigilator::ListenForMessages() {
-  while (transport_->StartListening(local_port_) != kSuccess) {
+  int result(0);
+  transport_->StartListening(local_port_, result);
+  while (result != kSuccess) {
     ++local_port_;
     if (local_port_ > kMaxPort()) {
       LOG(kError) << "Listening failed on all ports in range " << kMinPort() << " - " << kMaxPort();
       return false;
     }
+    transport_->StartListening(local_port_, result);
   }
 
   return true;
@@ -598,7 +601,9 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
       local_cond_var.notify_one();
     };
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect((*itr)->client_port) != kSuccess) {
+  int result(0);
+  request_transport->Connect((*itr)->client_port, result);
+  if (result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to client.";
     callback(false);
   }
@@ -709,7 +714,13 @@ bool Invigilator::StopVault(const std::string& identity,
   vault_shutdown_request.set_signature(signature);
   std::shared_ptr<LocalTcpTransport> sending_transport(
       new LocalTcpTransport(asio_service_.service()));
-  sending_transport->Connect((*itr)->vault_port);
+  int result(0);
+  sending_transport->Connect((*itr)->vault_port, result);
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to connect sending transport to vault.";
+    return false;
+  }
+
   sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
                                               vault_shutdown_request.SerializeAsString()),
                                               (*itr)->vault_port);

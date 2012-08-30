@@ -78,9 +78,10 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
 bool ClientController::StartListeningPort() {
   local_port_ = detail::GetRandomPort();
   int count(0), result(0);
-  while (kSuccess != (result = receiving_transport_->StartListening(local_port_)) &&
-         count++ < 100) {
+  receiving_transport_->StartListening(local_port_, result);
+  while (result != kSuccess && count++ < 100) {
     local_port_ = detail::GetRandomPort();
+    receiving_transport_->StartListening(local_port_, result);
   }
 
   if (result != kSuccess) {
@@ -118,13 +119,15 @@ bool ClientController::ConnectToInvigilator() {
         condition_variable.notify_one();
         LOG(kError) << "Transport reported error code " << error;
       });
-
-  while (request_transport->Connect(++invigilator_port_) != kSuccess) {
+  int result(0);
+  request_transport->Connect(++invigilator_port_, result);
+  while (result != kSuccess) {
     if (invigilator_port_ == Invigilator::kMaxPort()) {
       LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
                   << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
       return false;
     }
+    request_transport->Connect(++invigilator_port_, result);
   }
 
   protobuf::ClientRegistrationRequest request;
@@ -231,7 +234,9 @@ bool ClientController::StartVault(const asymm::Keys& keys, const std::string& ac
     };
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to Invigilator.";
     return false;
   }
@@ -298,7 +303,9 @@ bool ClientController::StopVault(const asymm::PlainText& data,
     };
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to Invigilator.";
     return false;
   }
@@ -384,7 +391,9 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
       };
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to Invigilator.";
       return bptime::pos_infin;
   }

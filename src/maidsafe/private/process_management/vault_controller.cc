@@ -59,8 +59,12 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   stop_callback_ = stop_callback;
   asio_service_.Start();
   uint16_t listening_port(detail::GetRandomPort());
-  while (kSuccess != receiving_transport_->StartListening(listening_port))
+  int result(0);
+  receiving_transport_->StartListening(listening_port, result);
+  while (result != kSuccess) {
     ++listening_port;
+    receiving_transport_->StartListening(listening_port, result);
+  }
 
   receiving_transport_->on_message_received().connect(
       [this] (const std::string& message, Port invigilator_port) {
@@ -100,7 +104,9 @@ void VaultController::ConfirmJoin(bool joined) {
   };
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to Invigilator.";
     return;
   }
@@ -149,7 +155,9 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
   vault_identity_request.set_listening_port(listening_port);
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  if (request_transport->Connect(invigilator_port_) != kSuccess) {
+  int connect_result(0);
+  request_transport->Connect(invigilator_port_, connect_result);
+  if (connect_result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to Invigilator.";
     return false;
   }

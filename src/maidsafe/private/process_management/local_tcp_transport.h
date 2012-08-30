@@ -16,6 +16,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <mutex>
 
 #include "boost/asio/io_service.hpp"
 #include "boost/asio/strand.hpp"
@@ -51,9 +52,11 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
 
   explicit LocalTcpTransport(boost::asio::io_service& asio_service);  // NOLINT (Fraser)
   ~LocalTcpTransport();
-  int StartListening(Port port);
+  void StartListening(Port port, int& result);
+  void DoStartListening(Port port, int& result);
   void StopListeningAndCloseConnections();
-  int Connect(Port server_port);
+  void Connect(Port server_port, int& result);
+  void DoConnect(Port server_port, int& result);
   void Send(const std::string& data, Port port);
   OnMessageReceived& on_message_received() { return on_message_received_; }
   OnError& on_error() { return on_error_; }
