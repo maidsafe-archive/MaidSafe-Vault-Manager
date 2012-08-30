@@ -202,18 +202,22 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
       log::Logging::instance().SetAsync(true);
     }
   }
-
   boost::system::error_code error_code;
   // TODO(Fraser#5#): 2012-08-29 - Handle logging to a file.  See:
   // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams  NOLINT (Fraser)
+  SetProcessStatus(index, ProcessStatus::kRunning);
   bp::child child(bp::execute(
     bp::initializers::run_exe(process_name),
     bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
     bp::initializers::set_on_error(error_code),
     bp::initializers::inherit_env()
   ));
-
-  auto exit_code = wait_for_exit(child);
+  boost::system::error_code error;
+  auto exit_code = wait_for_exit(child, error);
+  if (error) {
+    LOG(kError) << "Error waiting for child to exit: " << error.message();
+  }
+  SetProcessStatus(index, ProcessStatus::kStopped);
   LOG(kInfo) << "Process " << index << " has completed with exit code " << exit_code;
   {
     std::lock_guard<std::mutex> lock(mutex_);
