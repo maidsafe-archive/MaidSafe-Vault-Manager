@@ -249,12 +249,12 @@ TYPED_TEST_P(ChunkStoreTest, BEH_Store) {
   EXPECT_EQ(new_name,
             crypto::Hash<crypto::SHA512>(this->chunk_store_->Get(new_name)));
   EXPECT_FALSE(fs::exists(path));
-  EXPECT_TRUE(this->chunk_store_->Store(new_name, new_path, true));
+  EXPECT_FALSE(this->chunk_store_->Store(new_name, new_path, true));
   EXPECT_FALSE(this->chunk_store_->Empty());
   EXPECT_EQ(3, this->chunk_store_->Count());
   EXPECT_EQ(912, this->chunk_store_->Size());
   EXPECT_TRUE(this->chunk_store_->Has(new_name));
-  EXPECT_EQ(2, this->chunk_store_->Count(new_name));
+  EXPECT_EQ(1, this->chunk_store_->Count(new_name));
   EXPECT_EQ(333, this->chunk_store_->Size(new_name));
 }
 

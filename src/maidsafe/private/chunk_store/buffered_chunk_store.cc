@@ -149,7 +149,11 @@ bool BufferedChunkStore::Store(const std::string &name,
   }
 
   boost::system::error_code ec;
-  uintmax_t size(fs::file_size(source_file_name, ec));
+  uintmax_t size(source_file_name.empty() ? 0 : fs::file_size(source_file_name, ec));
+  if (ec) {
+    LOG(kError) << "Store - non-existent file passed: " << ec.message();
+    return false;
+  }
 
   if (!DoCacheStore(name, size, source_file_name, false)) {
     LOG(kError) << "Failed to cache: " << Base32Substr(name);

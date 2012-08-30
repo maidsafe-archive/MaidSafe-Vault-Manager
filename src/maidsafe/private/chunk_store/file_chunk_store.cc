@@ -254,7 +254,13 @@ bool FileChunkStore::Store(const std::string &name,
       return false;
     }
   } else {
-    //  chunk already exists
+    //  chunk already exists - check valid path or empty path was passed in.
+    boost::system::error_code ec;
+    if (!source_file_name.empty() && (!fs::exists(source_file_name, ec) || ec)) {
+      LOG(kError) << "Store - non-existent file passed: " << ec.message();
+      return false;
+    }
+
     fs::path old_path(chunk_file), new_path(chunk_file);
     old_path.replace_extension(
         "." + boost::lexical_cast<std::string>(ref_count));
