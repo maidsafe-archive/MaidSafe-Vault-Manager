@@ -48,10 +48,12 @@ bool FileChunkStore::Init(const fs::path &storage_location,
     }
 
     if (fs::exists(storage_location)) {
-      //  retrieve the number of chunks and total size
-      RestoredChunkStoreInfo chunk_info = RetrieveChunkInfo(storage_location);
-      ResetChunkCount(chunk_info.first);
-      IncreaseSize(chunk_info.second);
+      if (!info_file_.is_open()) {
+        //  retrieve the number of chunks and total size
+        RestoredChunkStoreInfo chunk_info = RetrieveChunkInfo(storage_location);
+        ResetChunkCount(chunk_info.first);
+        IncreaseSize(chunk_info.second);
+      }
     } else {
       if (!fs::create_directories(storage_location)) {
         LOG(kError) << "Failed to create storage location directory: "
@@ -73,8 +75,10 @@ bool FileChunkStore::Init(const fs::path &storage_location,
 
     storage_location_ = storage_location;
     dir_depth_ = dir_depth;
-    info_file_.open(storage_location_ / InfoFileName(),
-                    std::ios_base::out | std::ios_base::trunc);
+    if (!info_file_.is_open()) {
+      info_file_.open(storage_location_ / InfoFileName(),
+                      std::ios_base::out | std::ios_base::trunc);
+    }
     SaveChunkStoreState();
     initialised_ = info_file_.good();
   }
