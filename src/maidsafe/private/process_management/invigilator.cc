@@ -627,7 +627,6 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
     LOG(kError) << "Timed out waiting for reply.";
   if (!local_result)
     LOG(kError) << "Failed to confirm joining of vault to client.";
-  request_transport->StopListeningAndCloseConnections();
 }
 
 void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
@@ -652,13 +651,15 @@ void Invigilator::UpdateExecutor() {
   if (download_manager_.Update(updated_files) == kSuccess) {
     // DO WINDOWS, LINUX AND MAC LOCATION SPECIFIC STUFF
 //    WriteConfigFile();
-    // IF LINUX
+#if defined(MAIDSAFE_LINUX)
     //  FIND INSTALLER IN UPDATED FILES
     //  RUN DPKG ON INSTALLER
-    // ELSE IF WINDOWS
-    //  TELL CLIENT TO RUN INSTALLER AND RESTART VM
-    // ELSE IF OSX
-    //  ????????
+#elif defined(MAIDSAFE_APPLE)
+    //  FIND INSTALLER IN UPDATED FILES
+    //  RUN INSTALLER SOMEHOW
+#else
+    //  TELL CLIENT TO RUN INSTALLER AND RESTART INVIGILATOR
+#endif
   }
 }
 

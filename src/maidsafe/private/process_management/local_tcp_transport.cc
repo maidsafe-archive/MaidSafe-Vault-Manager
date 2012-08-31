@@ -80,7 +80,6 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
 #endif
   if (ec) {
     LOG(kError) << "Could not set the reuse address option: " << ec.message();
-    LOG(kError) << "In strand: acceptor close: kSetOptionFailure";
     boost::system::error_code ec;
     acceptor_.close(ec);
     result = kSetOptionFailure;
@@ -90,7 +89,6 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
   acceptor_.bind(endpoint, ec);
   if (ec) {
     LOG(kError) << "Could not bind socket to endpoint: " << ec.message();
-    LOG(kError) << "In strand: acceptor close: kBindError";
     boost::system::error_code ec;
     acceptor_.close(ec);
   result = kBindError;
@@ -100,7 +98,6 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
   acceptor_.listen(asio::socket_base::max_connections, ec);
   if (ec) {
     LOG(kError) << "Could not start listening: " << ec.message();
-    LOG(kError) << "In strand: acceptor close: kListenError";
     boost::system::error_code ec;
     acceptor_.close(ec);
     result = kListenError;
@@ -118,11 +115,13 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
 }
 
 void LocalTcpTransport::StopListeningAndCloseConnections() {
-  /*strand_.dispatch([this] {
-    LOG(kError) << "In strand: acceptor close: StopListeningAndCloseConnections";
+  strand_.dispatch([=] {
     boost::system::error_code ec;
-    acceptor_.close(ec);
-  });*/
+    if (acceptor_.is_open())
+      acceptor_.close(ec);
+    if (ec)
+      LOG(kError) << "Acceptor close error: " << ec.message();
+  });
   for (auto connection : connections_)
     connection->Close();
 }
@@ -130,7 +129,6 @@ void LocalTcpTransport::StopListeningAndCloseConnections() {
 void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
                                      ConnectionPtr connection,
                                      const bs::error_code& ec) {
-  LOG(kError) << "In strand: HandleAccept";
   if (!acceptor.is_open())
     return;
 
@@ -177,7 +175,6 @@ void LocalTcpTransport::Send(const std::string& data, Port port) {
 }
 
 void LocalTcpTransport::DoSend(const std::string& data, Port port) {
-  LOG(kError) << "In strand: DoSend";
   auto itr(std::find_if(connections_.begin(),
                         connections_.end(),
                         [port](ConnectionPtr connection) {
@@ -197,7 +194,6 @@ void LocalTcpTransport::InsertConnection(ConnectionPtr connection) {
 }
 
 void LocalTcpTransport::DoInsertConnection(ConnectionPtr connection) {
-  LOG(kError) << "In strand: DoInsertConnection";
   connections_.insert(connection);
 }
 
@@ -207,7 +203,6 @@ void LocalTcpTransport::RemoveConnection(ConnectionPtr connection) {
 }
 
 void LocalTcpTransport::DoRemoveConnection(ConnectionPtr connection) {
-  LOG(kError) << "In strand: DoRemoveConnection";
   connections_.erase(connection);
 }
 

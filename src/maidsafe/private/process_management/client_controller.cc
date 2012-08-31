@@ -151,7 +151,6 @@ bool ClientController::ConnectToInvigilator() {
     return false;
   }
 
-  request_transport->StopListeningAndCloseConnections();
   return true;
 }
 
