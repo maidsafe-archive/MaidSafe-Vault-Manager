@@ -223,7 +223,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   EXPECT_TRUE(chunk_store->Store(name, content));
 }
 
-TEST_F(FileChunkStoreTest, BEH_Capacity) {
+TEST_F(FileChunkStoreTest, DISABLED_BEH_Capacity) {
   //  create a chunk store with limited capacity
   std::shared_ptr<FileChunkStore> fcs_cap(
       new FileChunkStore());

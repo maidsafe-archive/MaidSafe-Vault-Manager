@@ -14,8 +14,11 @@
 * ============================================================================
 */
 
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/test.h"
 
 int main(int argc, char **argv) {
-  return ExecuteMain(argc, argv);
+  maidsafe::log::FilterMap filter_map;
+  filter_map["*"] = maidsafe::log::kFatal;
+  return ExecuteMain(argc, argv, filter_map, true, maidsafe::log::ColourMode::kFullLine);
 }

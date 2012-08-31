@@ -38,9 +38,7 @@ namespace priv {
 
 namespace chunk_store {
 
-namespace test {
-class FileChunkStoreTest_BEH_Methods_Test;
-}  // namespace test
+namespace test { class FileChunkStoreTest_BEH_Methods_Test; }
 
 class FileChunkStore : public ChunkStore {
  public:
@@ -65,6 +63,9 @@ class FileChunkStore : public ChunkStore {
   bool MoveTo(const std::string &name, ChunkStore *sink_chunk_store);
   uintmax_t Size(const std::string &name) const;
   uintmax_t Size() const { return ChunkStore::Size(); }
+  uintmax_t Capacity() const;
+  void SetCapacity(const uintmax_t &capacity);
+  bool Vacant(const uintmax_t &required_size) const;
   uintmax_t Count(const std::string &name) const;
   uintmax_t Count() const;
   bool Empty() const;
@@ -98,6 +99,8 @@ class FileChunkStore : public ChunkStore {
   bool IsChunkStoreInitialised() const { return initialised_; }
   uintmax_t GetChunkReferenceCount(const fs::path &) const;
   uintmax_t GetNumFromString(const std::string &) const;
+  uintmax_t SpaceAvailable() const;
+  static std::string InfoFileName() { return "info"; }
 
   bool initialised_;
   fs::path storage_location_;

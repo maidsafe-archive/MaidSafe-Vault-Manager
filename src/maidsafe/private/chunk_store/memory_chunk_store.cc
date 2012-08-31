@@ -132,6 +132,13 @@ bool MemoryChunkStore::Store(const std::string &name,
     IncreaseSize(chunk_size);
 //     LOG(kInfo) << "Store - Stored chunk " << Base32Substr(name);
   } else {
+    //  chunk already exists - check valid path or empty path was passed in.
+    boost::system::error_code ec;
+    if (!source_file_name.empty() && (!fs::exists(source_file_name, ec) || ec)) {
+      LOG(kError) << "Store - non-existent file passed: " << ec.message();
+      return false;
+    }
+
     ++(*it).second.first;
 //     LOG(kInfo) << "Store - Increased count of chunk " << Base32Substr(name)
 //                << " to " << (*it).second.first;

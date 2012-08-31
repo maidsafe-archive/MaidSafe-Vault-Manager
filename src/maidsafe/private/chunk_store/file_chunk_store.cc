@@ -11,6 +11,8 @@
 
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 
+#include <limits>
+
 #include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/crypto.h"
@@ -46,10 +48,12 @@ bool FileChunkStore::Init(const fs::path &storage_location,
     }
 
     if (fs::exists(storage_location)) {
-      //  retrieve the number of chunks and total size
-      RestoredChunkStoreInfo chunk_info = RetrieveChunkInfo(storage_location);
-      ResetChunkCount(chunk_info.first);
-      IncreaseSize(chunk_info.second);
+      if (!info_file_.is_open()) {
+        //  retrieve the number of chunks and total size
+        RestoredChunkStoreInfo chunk_info = RetrieveChunkInfo(storage_location);
+        ResetChunkCount(chunk_info.first);
+        IncreaseSize(chunk_info.second);
+      }
     } else {
       if (!fs::create_directories(storage_location)) {
         LOG(kError) << "Failed to create storage location directory: "
@@ -59,12 +63,22 @@ bool FileChunkStore::Init(const fs::path &storage_location,
       ResetChunkCount();
       ChunkStore::Clear();
     }
+    // Check the space available can be read by boost::filesystem
+    fs::space_info space_info(fs::space(storage_location));
+    if (space_info.available == std::numeric_limits<uintmax_t>::max() ||
+        space_info.capacity == std::numeric_limits<uintmax_t>::max()) {
+      LOG(kError) << "Failed to read filesystem info for path " << storage_location
+                  << ".   Available: " << space_info.available << " bytes.   Capacity: "
+                  << space_info.capacity;
+      return false;
+    }
 
     storage_location_ = storage_location;
     dir_depth_ = dir_depth;
-    std::string info_name("info");
-    info_file_.open(storage_location_ / info_name,
-                    std::ios_base::out | std::ios_base::trunc);
+    if (!info_file_.is_open()) {
+      info_file_.open(storage_location_ / InfoFileName(),
+                      std::ios_base::out | std::ios_base::trunc);
+    }
     SaveChunkStoreState();
     initialised_ = info_file_.good();
   }
@@ -240,7 +254,13 @@ bool FileChunkStore::Store(const std::string &name,
       return false;
     }
   } else {
-    //  chunk already exists
+    //  chunk already exists - check valid path or empty path was passed in.
+    boost::system::error_code ec;
+    if (!source_file_name.empty() && (!fs::exists(source_file_name, ec) || ec)) {
+      LOG(kError) << "Store - non-existent file passed: " << ec.message();
+      return false;
+    }
+
     fs::path old_path(chunk_file), new_path(chunk_file);
     old_path.replace_extension(
         "." + boost::lexical_cast<std::string>(ref_count));
@@ -493,6 +513,16 @@ uintmax_t FileChunkStore::Size(const std::string &name) const {
   return 0;
 }
 
+uintmax_t FileChunkStore::Capacity() const {
+  return Size() + SpaceAvailable();
+}
+
+void FileChunkStore::SetCapacity(const uintmax_t & /*capacity*/) {}
+
+bool FileChunkStore::Vacant(const uintmax_t &required_size) const {
+  return required_size <= SpaceAvailable();
+}
+
 uintmax_t FileChunkStore::Count() const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -526,6 +556,7 @@ void FileChunkStore::Clear() {
                   << ec.message();
   }
   ChunkStore::Clear();
+  Init(storage_location_, dir_depth_);
 }
 
 fs::path FileChunkStore::ChunkNameToFilePath(const std::string &chunk_name,
@@ -556,8 +587,7 @@ FileChunkStore::RestoredChunkStoreInfo FileChunkStore::RetrieveChunkInfo(
   chunk_store_info.first = 0;
   chunk_store_info.second = 0;
 
-  std::string info_name("info");
-  fs::fstream info(location / info_name, std::ios_base::in);
+  fs::fstream info(location / InfoFileName(), std::ios_base::in);
   if (info.good())
     info >> chunk_store_info.first >> chunk_store_info.second;
 
@@ -631,23 +661,52 @@ uintmax_t FileChunkStore::GetNumFromString(const std::string &str) const {
 
 std::vector<ChunkData> FileChunkStore::GetChunks() const {
   std::vector<ChunkData> chunk_list;
-
-  for (fs::recursive_directory_iterator it(storage_location_);
-       it != fs::recursive_directory_iterator(); ++it) {
-    if (fs::is_regular_file(it->status()) && it->path().filename().string() != "info") {
-      std::string chunk_name(it->path().string().substr(storage_location_.string().size()));
-      for (unsigned int i = 0; i < dir_depth_ + 1; ++i) {
-        chunk_name.erase(i, 1);
+  try {
+    for (fs::recursive_directory_iterator it(storage_location_);
+         it != fs::recursive_directory_iterator(); ++it) {
+      if (fs::is_regular_file(it->status()) && it->path().filename().string() != InfoFileName()) {
+        std::string chunk_name(it->path().string().substr(storage_location_.string().size()));
+        for (unsigned int i = 0; i < dir_depth_ + 1; ++i) {
+          chunk_name.erase(i, 1);
+        }
+        chunk_name = DecodeFromBase32(chunk_name);
+        uintmax_t chunk_size = Size(chunk_name);
+        ChunkData chunk_data(chunk_name, chunk_size);
+        chunk_list.push_back(chunk_data);
       }
-      chunk_name = DecodeFromBase32(chunk_name);
-      uintmax_t chunk_size = Size(chunk_name);
-      ChunkData chunk_data(chunk_name, chunk_size);
-      chunk_list.push_back(chunk_data);
     }
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
   }
 
   return chunk_list;
 }
+
+uintmax_t FileChunkStore::SpaceAvailable() const {
+  boost::system::error_code error_code;
+  fs::space_info space_info(fs::space(storage_location_, error_code));
+  if (space_info.available == std::numeric_limits<uintmax_t>::max() ||
+      space_info.capacity == std::numeric_limits<uintmax_t>::max() ||
+      error_code) {
+    LOG(kError) << "Failed to read space available for path " << storage_location_ << " - "
+                << error_code.message();
+    return 1;
+  }
+
+  // Check hard limit hasn't been exceeded
+  if (space_info.available < (space_info.capacity / 10)) {
+    LOG(kWarning) << "Available space of " << space_info.available
+                  << " bytes is less than 10% of partition capacity of " << space_info.capacity
+                  << " bytes.";
+    return 1;
+  }
+
+  LOG(kVerbose) << "Reporting " << space_info.available / 2 << " bytes available for chunkstore at "
+                << storage_location_;
+  return space_info.available / 2;
+}
+
 
 }  // namespace chunk_store
 
