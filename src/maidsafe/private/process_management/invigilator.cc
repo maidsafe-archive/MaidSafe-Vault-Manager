@@ -646,15 +646,31 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
-void Invigilator::UpdateExecutor() {
-  std::vector<std::string> updated_files;
-  if (download_manager_.Update(updated_files) == kSuccess) {
-    // DO WINDOWS, LINUX AND MAC LOCATION SPECIFIC STUFF
-//    WriteConfigFile();
+bool Invigilator::IsInstaller(fs::path path) {
 #if defined(MAIDSAFE_LINUX)
+  return (path.extension() == ".dpkg" && path.stem().string().substr(0, 8) == "LifeStuff");
+#else
+  return false;
+#endif
+}
+
+void Invigilator::UpdateExecutor() {
+  std::vector<fs::path> updated_files;
+  if (download_manager_.Update(updated_files) == kSuccess) {
+//    WriteConfigFile();
+#if defined MAIDSAFE_LINUX
+    auto it(std::find_if(updated_files.begin(), updated_files.end(),
+                         [&](fs::path path) { return IsInstaller(path); }));  // NOLINT
+    if (it != updated_files.end()) {
+      LOG(kInfo) << "Found new installer at " << (*it).string();
+      std::string command("dpkg " + (*it).string());
+      system(command.c_str());
+    } else {
+      LOG(kError) << "Update failed: could not find installer in list of updated files";
+    }
     //  FIND INSTALLER IN UPDATED FILES
     //  RUN DPKG ON INSTALLER
-#elif defined(MAIDSAFE_APPLE)
+#elif defined MAIDSAFE_APPLE
     //  FIND INSTALLER IN UPDATED FILES
     //  RUN INSTALLER SOMEHOW
 #else

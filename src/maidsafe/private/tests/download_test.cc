@@ -37,7 +37,7 @@ namespace test {
 
 TEST(DownloadTest, BEH_Update_Successful) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_successful");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
@@ -57,7 +57,7 @@ TEST(DownloadTest, BEH_Update_Successful) {
 
 TEST(DownloadTest, BEH_Update_HasLatestVersion) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_has_latest");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.02");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
@@ -76,7 +76,7 @@ TEST(DownloadTest, BEH_Update_HasLatestVersion) {
 
 TEST(DownloadTest, BEH_Update_NoManifestFile) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_no_manifest");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kManifestFailure, download_manager.Update(updated_files));
@@ -96,7 +96,7 @@ TEST(DownloadTest, BEH_Update_NoManifestFile) {
 TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   DownloadManager download_manager("http", "dash.maidsafe.net",
                                    "~phil/tests/test_incorrect_manifest");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
@@ -108,7 +108,7 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
 
 TEST(DownloadTest, BEH_Update_NoSignature) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_no_signature");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
@@ -121,7 +121,7 @@ TEST(DownloadTest, BEH_Update_NoSignature) {
 TEST(DownloadTest, BEH_Update_InvalidSignature) {
   DownloadManager download_manager("http", "dash.maidsafe.net",
                                    "~phil/tests/test_incorrect_signature");
-  std::vector<std::string> updated_files;
+  std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));

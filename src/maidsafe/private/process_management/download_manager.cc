@@ -102,7 +102,7 @@ std::string DownloadManager::RetrieveBootstrapInfo() {
   return bootstrap_content;
 }
 
-int DownloadManager::Update(std::vector<std::string>& updated_files) {
+int DownloadManager::Update(std::vector<fs::path>& updated_files) {
   std::string latest_remote_version(RetrieveLatestRemoteVersion());
   LOG(kVerbose) << "Latest local version is " << latest_local_version_;
   LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
@@ -126,7 +126,7 @@ int DownloadManager::Update(std::vector<std::string>& updated_files) {
       return kDownloadFailure;
     }
     LOG(kInfo) << "Updated file: " << file;
-    updated_files.push_back(file);
+    updated_files.push_back(local_path_ / file);
   }
   latest_local_version_ = latest_remote_version;
 

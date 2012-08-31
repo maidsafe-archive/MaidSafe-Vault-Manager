@@ -138,6 +138,7 @@ class Invigilator {
 
   // Update handling
   void CheckForUpdates(const boost::system::error_code& ec);
+  bool IsInstaller(boost::filesystem::path path);
   void UpdateExecutor();
 
   // General

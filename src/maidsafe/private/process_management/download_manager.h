@@ -38,7 +38,7 @@ class DownloadManager {
   std::string RetrieveBootstrapInfo();
   // Check for an update and carry out required updates. Populates updated_files with list of files
   // that were updated. Return code indicates success/type of failure.
-  int Update(std::vector<std::string>& updated_files);
+  int Update(std::vector<boost::filesystem::path>& updated_files);
   // Returns the local path to which the DownloadManager downloads files.
   boost::filesystem::path GetLocalPath() const { return local_path_; }
   // Returns the remote path from which the DownloadManager downloads the files in the manifest.
