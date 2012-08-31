@@ -12,6 +12,7 @@
 #include "maidsafe/private/process_management/process_manager.h"
 
 #include <algorithm>
+#include <chrono>
 
 #include "boost/archive/text_oarchive.hpp"
 #include "boost/filesystem/fstream.hpp"
@@ -322,8 +323,9 @@ bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
   auto itr = FindProcess(index);
   if (itr == processes_.end())
     return false;
-  cond_var_.wait(lock, [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; });  //NOLINT (Philip)
-  return true;
+  if (cond_var_.wait_for(lock, std::chrono::seconds(15), [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; }))  //NOLINT (Philip)
+    return true;
+  return false;
 }
 
 bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status) {
@@ -339,10 +341,6 @@ bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessSt
 void ProcessManager::TerminateAll() {
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto& process : processes_) {
-    /*if (CheckInstruction(i.id) != ProcessInstruction::kTerminate) {
-      i.done = true;
-      SetInstruction(i.id, ProcessInstruction::kTerminate);
-    }*/
       LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
     if (process.thread.joinable() && process.status == ProcessStatus::kRunning)
       process.thread.join();
