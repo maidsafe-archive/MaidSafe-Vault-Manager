@@ -97,7 +97,7 @@ Invigilator::Invigilator()
       return;
     }
   }
-
+  maidsafe::WriteFile(fs::path("./old_file"), "FROM THE OLD INVIGILATOR");
   UpdateExecutor();
 
   LOG(kInfo) << "Invigilator started";
@@ -648,7 +648,7 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
 
 bool Invigilator::IsInstaller(fs::path path) {
 #if defined(MAIDSAFE_LINUX)
-  return (path.extension() == ".dpkg" && path.stem().string().substr(0, 8) == "LifeStuff");
+  return (path.extension() == ".deb" && path.stem().string().substr(0, 8) == "LifeStuff");
 #else
   return false;
 #endif
@@ -663,7 +663,7 @@ void Invigilator::UpdateExecutor() {
                          [&](fs::path path) { return IsInstaller(path); }));  // NOLINT
     if (it != updated_files.end()) {
       LOG(kInfo) << "Found new installer at " << (*it).string();
-      std::string command("dpkg " + (*it).string());
+      std::string command("dpkg -i " + (*it).string());
       system(command.c_str());
     } else {
       LOG(kError) << "Update failed: could not find installer in list of updated files";
