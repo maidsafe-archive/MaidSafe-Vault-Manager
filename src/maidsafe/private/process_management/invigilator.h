@@ -62,6 +62,7 @@ enum class MessageType {
   kVaultShutdownRequest,
   kVaultShutdownResponse,
   kVaultShutdownResponseAck,
+  kSendEndpointToInvigilator,
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
   kNewVersionAvailable,

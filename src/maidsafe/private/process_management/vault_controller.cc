@@ -118,7 +118,8 @@ bool VaultController::Start(const std::string& invigilator_identifier,
 
 bool VaultController::GetIdentity(asymm::Keys& keys,
                                   std::string& account_name,
-                                  std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints) {
+                                  std::vector<std::pair<std::string, uint16_t>> &
+                                      bootstrap_endpoints) {
   if (invigilator_port_ == 0) {
     LOG(kError) << "Invalid Invigilator port.";
     return false;
@@ -170,6 +171,23 @@ void VaultController::ConfirmJoin(bool joined) {
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; }))  // NOLINT (Fraser)
     LOG(kError) << "Timed out waiting for reply.";
+}
+
+bool VaultController::SendEndpointToInvigilator(const std::pair<std::string, uint16_t>& endpoint) {
+  protobuf::SendEndpointToInvigilator request;
+  request.set_bootstrap_endpoint_ip(endpoint.first);
+  request.set_bootstrap_endpoint_port(endpoint.second);
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    return false;
+  }
+  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToInvigilator,
+                                              request.SerializeAsString()),
+                          invigilator_port_);
+  return true;
 }
 
 void VaultController::HandleVaultJoinedAck(const std::string& message,

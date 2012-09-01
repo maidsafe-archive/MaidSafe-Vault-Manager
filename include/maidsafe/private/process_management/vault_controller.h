@@ -13,11 +13,13 @@
 #define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULT_CONTROLLER_H_
 
 #include <condition_variable>
-#include <mutex>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "boost/asio.hpp"
 
@@ -41,8 +43,9 @@ class VaultController {
   bool Start(const std::string& invigilator_identifier, std::function<void()> stop_callback);
   bool GetIdentity(asymm::Keys& keys,
                    std::string& account_name,
-                   std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);
+                   std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
+  bool SendEndpointToInvigilator(const std::pair<std::string, uint16_t>& endpoint);
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;

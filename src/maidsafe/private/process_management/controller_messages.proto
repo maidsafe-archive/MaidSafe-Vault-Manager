@@ -73,6 +73,11 @@ message VaultJoinConfirmationAck {
   required bool ack = 1;
 }
 
+message SendEndpointToInvigilator {
+  required bytes bootstrap_endpoint_ip = 4;
+  required uint32 bootstrap_endpoint_port = 5;
+}
+
 // Invigilator receives this from Client and it will then stop vault with keys.identity==identity
 message StopVaultRequest {
   required bytes data = 1;
