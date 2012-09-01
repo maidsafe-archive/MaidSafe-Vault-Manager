@@ -32,6 +32,8 @@ namespace process_management {
 
 typedef std::function<void()> VoidFunction;
 
+namespace bai = boost::asio::ip;
+
 VaultController::VaultController()
     : process_index_(),
       invigilator_port_(0),
@@ -39,7 +41,7 @@ VaultController::VaultController()
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       keys_(),
       account_name_(),
-      bootstrap_nodes_(),
+      bootstrap_endpoints_(),
       stop_callback_(),
       setuid_succeeded_() {
 #ifndef MAIDSAFE_WIN32
@@ -114,7 +116,8 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   return RequestVaultIdentity(listening_port);
 }
 
-bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) {
+bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name,
+                                  std::vector<bai::udp::endpoint>* bootstrap_endpoints) {
   if (invigilator_port_ == 0 || !keys || !account_name)
     return false;
   keys->private_key = keys_.private_key;
@@ -122,6 +125,7 @@ bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name) 
   keys->identity = keys_.identity;
   keys->validation_token = keys_.validation_token;
   *account_name = account_name_;
+  *bootstrap_endpoints = bootstrap_endpoints_;
   return true;
 }
 
@@ -252,6 +256,19 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
   if (account_name_.empty()) {
     LOG(kError) << "Account name is empty.";
     return false;
+  }
+  std::string address;
+  int port;
+  if (vault_identity_response.bootstrap_endpoint_ip_size()
+        != vault_identity_response.bootstrap_endpoint_port_size()) {
+    LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
+  }
+  int size(std::min(vault_identity_response.bootstrap_endpoint_ip_size(),
+                    vault_identity_response.bootstrap_endpoint_port_size()));
+  for (int i(0); i < size; ++i) {
+    address = vault_identity_response.bootstrap_endpoint_ip(i);
+    port = vault_identity_response.bootstrap_endpoint_port(i);
+    bootstrap_endpoints_.push_back(bai::udp::endpoint(bai::address_v4::from_string(address), port));
   }
 
   LOG(kVerbose) << "Received VaultIdentityResponse.";

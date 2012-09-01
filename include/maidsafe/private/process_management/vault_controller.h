@@ -19,6 +19,8 @@
 #include <memory>
 #include <string>
 
+#include "boost/asio.hpp"
+
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
@@ -37,7 +39,8 @@ class VaultController {
   ~VaultController();
 
   bool Start(const std::string& invigilator_identifier, std::function<void()> stop_callback);
-  bool GetIdentity(asymm::Keys* keys, std::string* account_name);
+  bool GetIdentity(asymm::Keys* keys, std::string* account_name,
+                   std::vector<boost::asio::ip::udp::endpoint>* bootstrap_endpoints);
   void ConfirmJoin(bool joined);
   // Blocking call which returns the bootstrap nodes provided by the Invigilator.  If the
   // call fails, an empty string is returned.
@@ -60,7 +63,7 @@ class VaultController {
   TransportPtr receiving_transport_;
   asymm::Keys keys_;
   std::string account_name_;
-  std::string bootstrap_nodes_;
+  std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
   bool setuid_succeeded_;
 };
