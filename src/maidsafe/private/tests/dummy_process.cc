@@ -67,10 +67,10 @@ int main(int argc, char* argv[]) {
 
       maidsafe::asymm::Keys keys;
       std::string account_name;
-      std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
-      vault_controller.GetIdentity(&keys, &account_name, &bootstrap_endpoints);
+      std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
+      vault_controller.GetIdentity(keys, account_name, bootstrap_endpoints);
       for (auto endpoint : bootstrap_endpoints)
-        LOG(kError) << endpoint;
+        LOG(kError) << endpoint.first << ":" << endpoint.second;
       LOG(kInfo) << "DUMMYprocess: Identity: " << (keys.identity);
       LOG(kInfo) << "Validation Token: " << (keys.validation_token);
       std::string public_key_string;

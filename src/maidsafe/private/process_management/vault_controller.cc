@@ -116,16 +116,19 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   return RequestVaultIdentity(listening_port);
 }
 
-bool VaultController::GetIdentity(asymm::Keys* keys, std::string* account_name,
-                                  std::vector<bai::udp::endpoint>* bootstrap_endpoints) {
-  if (invigilator_port_ == 0 || !keys || !account_name)
+bool VaultController::GetIdentity(asymm::Keys& keys,
+                                  std::string& account_name,
+                                  std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints) {
+  if (invigilator_port_ == 0) {
+    LOG(kError) << "Invalid Invigilator port.";
     return false;
-  keys->private_key = keys_.private_key;
-  keys->public_key = keys_.public_key;
-  keys->identity = keys_.identity;
-  keys->validation_token = keys_.validation_token;
-  *account_name = account_name_;
-  *bootstrap_endpoints = bootstrap_endpoints_;
+  }
+  keys.private_key = keys_.private_key;
+  keys.public_key = keys_.public_key;
+  keys.identity = keys_.identity;
+  keys.validation_token = keys_.validation_token;
+  account_name = account_name_;
+  bootstrap_endpoints = bootstrap_endpoints_;
   return true;
 }
 
@@ -258,7 +261,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
   std::string address;
-  int port;
+  uint16_t port(0);
   if (vault_identity_response.bootstrap_endpoint_ip_size()
         != vault_identity_response.bootstrap_endpoint_port_size()) {
     LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
@@ -267,8 +270,8 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
                     vault_identity_response.bootstrap_endpoint_port_size()));
   for (int i(0); i < size; ++i) {
     address = vault_identity_response.bootstrap_endpoint_ip(i);
-    port = vault_identity_response.bootstrap_endpoint_port(i);
-    bootstrap_endpoints_.push_back(bai::udp::endpoint(bai::address_v4::from_string(address), port));
+    port = static_cast<uint16_t>(vault_identity_response.bootstrap_endpoint_port(i));
+    bootstrap_endpoints_.push_back(std::pair<std::string, uint16_t>(address, port));
   }
 
   LOG(kVerbose) << "Received VaultIdentityResponse.";
