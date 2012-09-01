@@ -62,6 +62,7 @@ class VaultController {
   std::string account_name_;
   std::string bootstrap_nodes_;
   std::function<void()> stop_callback_;
+  bool setuid_succeeded_;
 };
 
 }  // namespace process_management

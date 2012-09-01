@@ -40,7 +40,37 @@ VaultController::VaultController()
       keys_(),
       account_name_(),
       bootstrap_nodes_(),
-      stop_callback_() {}
+      stop_callback_(),
+      setuid_succeeded_() {
+#ifndef MAIDSAFE_WIN32
+  system("id -u lifestuff > ./uid.txt");
+  std::string content;
+  ReadFile(fs::path(".") / "uid.txt", &content);
+  content = content.substr(0, content.size() - 1);
+  try {
+    uid_t uid(boost::lexical_cast<uid_t>(content));
+    boost::system::error_code error;
+    fs::remove(fs::path(".") / "uid.txt", error);
+    if (error)
+      LOG(kError) << "Failed to remove uid file.";
+    LOG(kInfo) << "UID of lifestuff user: " << uid;
+    if (uid == 0) {
+      LOG(kError) << "UID is 0, but vault may not run as root.";
+      setuid_succeeded_ = false;
+    } else if (setuid(uid) == -1) {
+      LOG(kError) << "failed to set uid";
+      setuid_succeeded_ = false;
+    } else {
+      LOG(kInfo) << "Successfully set UID to: " << getuid();
+      setuid_succeeded_ = true;
+    }
+    LOG(kVerbose) << "Vault is now running as UID: " << getuid();
+  } catch(...) {
+    setuid_succeeded_ = false;
+    LOG(kError) << "Failed to retrieve uid of lifestuff user.";
+  }
+#endif
+}
 
 VaultController::~VaultController() {
   receiving_transport_.reset();
@@ -49,6 +79,12 @@ VaultController::~VaultController() {
 
 bool VaultController::Start(const std::string& invigilator_identifier,
                             VoidFunction stop_callback) {
+#ifndef USE_TEST_KEYS
+  if (!setuid_succeeded_) {
+    LOG(kError) << "In constructor, failed to set the user ID to the correct user";
+    false
+  }
+#endif
   if (!detail::ParseVmidParameter(invigilator_identifier,
                                   process_index_,
                                   invigilator_port_)) {
