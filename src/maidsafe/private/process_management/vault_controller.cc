@@ -84,7 +84,7 @@ bool VaultController::Start(const std::string& invigilator_identifier,
 #ifndef USE_TEST_KEYS
   if (!setuid_succeeded_) {
     LOG(kError) << "In constructor, failed to set the user ID to the correct user";
-    false
+    return false;
   }
 #endif
   if (!detail::ParseVmidParameter(invigilator_identifier,
