@@ -125,7 +125,7 @@ TEST(UtilsTest, BEH_GenerateVmidParameter) {
   EXPECT_EQ("0_0", GenerateVmidParameter(0, 0));
   EXPECT_EQ("0_65535", GenerateVmidParameter(0, 65535));
   EXPECT_EQ("1_65535", GenerateVmidParameter(1, 65535));
-  EXPECT_EQ("1000_65535", GenerateVmidParameter(10000, 65535));
+  EXPECT_EQ("1000_65535", GenerateVmidParameter(1000, 65535));
   EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
 }
 
