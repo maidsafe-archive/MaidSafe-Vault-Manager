@@ -31,6 +31,7 @@ namespace priv {
 namespace process_management {
 
 typedef std::function<void()> VoidFunction;
+typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 namespace bai = boost::asio::ip;
 
@@ -45,31 +46,36 @@ VaultController::VaultController()
       stop_callback_(),
       setuid_succeeded_() {
 #ifndef MAIDSAFE_WIN32
-  system("id -u lifestuff > ./uid.txt");
-  std::string content;
-  ReadFile(fs::path(".") / "uid.txt", &content);
-  content = content.substr(0, content.size() - 1);
-  try {
-    uid_t uid(boost::lexical_cast<uid_t>(content));
-    boost::system::error_code error;
-    fs::remove(fs::path(".") / "uid.txt", error);
-    if (error)
-      LOG(kError) << "Failed to remove uid file.";
-    LOG(kInfo) << "UID of lifestuff user: " << uid;
-    if (uid == 0) {
-      LOG(kError) << "UID is 0, but vault may not run as root.";
-      setuid_succeeded_ = false;
-    } else if (setuid(uid) == -1) {
-      LOG(kError) << "failed to set uid";
-      setuid_succeeded_ = false;
-    } else {
-      LOG(kInfo) << "Successfully set UID to: " << getuid();
-      setuid_succeeded_ = true;
-    }
-    LOG(kVerbose) << "Vault is now running as UID: " << getuid();
-  } catch(...) {
+  int result(system("id -u lifestuff > ./uid.txt"));
+  if (result) {
     setuid_succeeded_ = false;
-    LOG(kError) << "Failed to retrieve uid of lifestuff user.";
+    LOG(kError) << "Failed to determine uid of lifestuff user";
+  } else {
+    std::string content;
+    ReadFile(fs::path(".") / "uid.txt", &content);
+    content = content.substr(0, content.size() - 1);
+    try {
+      uid_t uid(boost::lexical_cast<uid_t>(content));
+      boost::system::error_code error;
+      fs::remove(fs::path(".") / "uid.txt", error);
+      if (error)
+        LOG(kError) << "Failed to remove uid file.";
+      LOG(kInfo) << "UID of lifestuff user: " << uid;
+      if (uid == 0) {
+        LOG(kError) << "UID is 0, but vault may not run as root.";
+        setuid_succeeded_ = false;
+      } else if (setuid(uid) == -1) {
+        LOG(kError) << "failed to set uid";
+        setuid_succeeded_ = false;
+      } else {
+        LOG(kInfo) << "Successfully set UID to: " << getuid();
+        setuid_succeeded_ = true;
+      }
+      LOG(kVerbose) << "Vault is now running as UID: " << getuid();
+    } catch(...) {
+      setuid_succeeded_ = false;
+      LOG(kError) << "Failed to retrieve uid of lifestuff user.";
+    }
   }
 #endif
 }
@@ -173,23 +179,6 @@ void VaultController::ConfirmJoin(bool joined) {
     LOG(kError) << "Timed out waiting for reply.";
 }
 
-bool VaultController::SendEndpointToInvigilator(const std::pair<std::string, uint16_t>& endpoint) {
-  protobuf::SendEndpointToInvigilator request;
-  request.set_bootstrap_endpoint_ip(endpoint.first);
-  request.set_bootstrap_endpoint_port(endpoint.second);
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  int result(0);
-  request_transport->Connect(invigilator_port_, result);
-  if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
-    return false;
-  }
-  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToInvigilator,
-                                              request.SerializeAsString()),
-                          invigilator_port_);
-  return true;
-}
-
 void VaultController::HandleVaultJoinedAck(const std::string& message,
                                            VoidFunction callback) {
   MessageType type;
@@ -205,6 +194,68 @@ void VaultController::HandleVaultJoinedAck(const std::string& message,
     return;
   }
   callback();
+}
+
+bool VaultController::SendEndpointToInvigilator(
+    const std::pair<std::string, uint16_t>& endpoint) {
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), success(false);
+  protobuf::SendEndpointToInvigilatorRequest request;
+  request.set_bootstrap_endpoint_ip(endpoint.first);
+  request.set_bootstrap_endpoint_port(endpoint.second);
+
+  VoidFunctionBoolParam callback = [&] (bool result) {
+    std::lock_guard<std::mutex> lock(local_mutex);
+    done = true;
+    success = result;
+    local_cond_var.notify_one();
+  };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    return false;
+  }
+    request_transport->on_message_received().connect(
+      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
+        HandleSendEndpointToInvigilatorResponse(message, callback);
+      });
+    request_transport->on_error().connect([callback](const int& error) {
+      LOG(kError) << "Transport reported error code " << error;
+      callback(false);
+  });
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  LOG(kVerbose) << "Sending bootstrap endpoint to port " << invigilator_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToInvigilatorRequest,
+                                              request.SerializeAsString()),
+                          invigilator_port_);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
+    LOG(kError) << "Timed out waiting for reply.";
+    return false;
+  }
+  return true;
+}
+
+void VaultController::HandleSendEndpointToInvigilatorResponse(const std::string& message,
+                                                              VoidFunctionBoolParam callback) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+
+  protobuf::SendEndpointToInvigilatorResponse send_endpoint_response;
+  if (!send_endpoint_response.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse VaultJoinedNetworkAck.";
+    callback(false);
+    return;
+  }
+  callback(send_endpoint_response.result());
 }
 
 bool VaultController::RequestVaultIdentity(uint16_t listening_port) {

@@ -62,7 +62,8 @@ enum class MessageType {
   kVaultShutdownRequest,
   kVaultShutdownResponse,
   kVaultShutdownResponseAck,
-  kSendEndpointToInvigilator,
+  kSendEndpointToInvigilatorRequest,
+  kSendEndpointToInvigilatorResponse,
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
   kNewVersionAvailable,
@@ -120,6 +121,7 @@ class Invigilator {
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
+  void HandleSendEndpointToInvigilatorRequest(const std::string& request, std::string& response);
 
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);

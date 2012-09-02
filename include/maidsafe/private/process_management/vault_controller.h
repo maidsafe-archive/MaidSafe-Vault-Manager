@@ -58,6 +58,8 @@ class VaultController {
                                    std::condition_variable& cond_var);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
+  void HandleSendEndpointToInvigilatorResponse(const std::string& message,
+                                               std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
   uint16_t invigilator_port_;
   AsioService asio_service_;

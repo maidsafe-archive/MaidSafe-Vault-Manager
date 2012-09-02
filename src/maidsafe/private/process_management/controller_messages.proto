@@ -73,9 +73,15 @@ message VaultJoinConfirmationAck {
   required bool ack = 1;
 }
 
-message SendEndpointToInvigilator {
+//Vault sends this to Invigilator when it discovers a suitable bootstrap node.
+// Invigilator replies with the SendEndpointToInvigilatorResponse.
+message SendEndpointToInvigilatorRequest {
   required bytes bootstrap_endpoint_ip = 4;
   required uint32 bootstrap_endpoint_port = 5;
+}
+
+message SendEndpointToInvigilatorResponse {
+  required bool result = 1;
 }
 
 // Invigilator receives this from Client and it will then stop vault with keys.identity==identity

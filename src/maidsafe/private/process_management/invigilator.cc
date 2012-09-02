@@ -271,6 +271,9 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
     case MessageType::kUpdateIntervalRequest:
       HandleUpdateIntervalRequest(payload, response);
       break;
+    case MessageType::kSendEndpointToInvigilatorRequest:
+      HandleSendEndpointToInvigilatorRequest(payload, response);
+      break;
     default:
       return;
   }
@@ -548,6 +551,24 @@ void Invigilator::HandleUpdateIntervalRequest(const std::string& request, std::s
 
   response = detail::WrapMessage(MessageType::kUpdateIntervalResponse,
                                  update_interval_response.SerializeAsString());
+}
+
+void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& request,
+                                                         std::string& response) {
+  protobuf::SendEndpointToInvigilatorRequest send_endpoint_request;
+  protobuf::SendEndpointToInvigilatorResponse send_endpoint_response;
+  if (!send_endpoint_request.ParseFromString(request)) {
+    LOG(kError) << "Failed to parse SendEndpointToInvigilator.";
+    return;
+  }
+  if (AddBootstrapEndPoint(send_endpoint_request.bootstrap_endpoint_ip(),
+                           send_endpoint_request.bootstrap_endpoint_port())) {
+    send_endpoint_response.set_result(true);
+  } else {
+    send_endpoint_response.set_result(false);
+  }
+  response = detail::WrapMessage(MessageType::kSendEndpointToInvigilatorResponse,
+                                 send_endpoint_response.SerializeAsString());
 }
 
 bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval) {
