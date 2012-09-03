@@ -13,7 +13,6 @@
 
 #include <algorithm>
 
-#include "boost/archive/text_oarchive.hpp"
 #include "boost/filesystem/fstream.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/process/child.hpp"

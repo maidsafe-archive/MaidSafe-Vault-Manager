@@ -25,7 +25,6 @@
 #include "boost/bimap/list_of.hpp"
 #include "boost/bimap/multiset_of.hpp"
 #include "boost/filesystem/path.hpp"
-// #include "boost/serialization/access.hpp"
 #include "boost/signals2/signal.hpp"
 #include "boost/thread/condition_variable.hpp"
 #include "boost/thread/mutex.hpp"
@@ -187,10 +186,6 @@ class RemoteChunkStore {
 
   NumPendingOpsSigPtr sig_num_pending_ops() { return sig_num_pending_ops_; }
 
-//   friend class boost::serialization::access;
-//   template<class Archive>
-//   void serialize(Archive &archive, const unsigned int version);  // NOLINT
-//
 //   void StoreOpBackups(std::shared_ptr<boost::asio::deadline_timer> timer,
 //                       const std::string &pmid);
 //   void DoOpBackups(boost::system::error_code error_code,

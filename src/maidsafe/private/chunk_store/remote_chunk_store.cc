@@ -11,11 +11,6 @@
 
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
 
-// #include "boost/archive/text_oarchive.hpp"
-// #include "boost/archive/text_iarchive.hpp"
-// #include "boost/serialization/set.hpp"
-// #include "boost/serialization/list.hpp"
-// #include "boost/serialization/utility.hpp"
 // #include "boost/asio/deadline_timer.hpp"
 
 #include "maidsafe/common/log.h"
