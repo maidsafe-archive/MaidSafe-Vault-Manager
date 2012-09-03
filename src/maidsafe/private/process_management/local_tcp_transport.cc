@@ -119,7 +119,7 @@ void LocalTcpTransport::StopListeningAndCloseConnections() {
     boost::system::error_code ec;
     if (acceptor_.is_open())
       acceptor_.close(ec);
-    if (ec)
+    if (ec.value() != 0)
       LOG(kError) << "Acceptor close error: " << ec.message();
   });
   for (auto connection : connections_)

@@ -334,7 +334,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
                                    start_vault_response.SerializeAsString());
   });
 
-  uint16_t client_port(start_vault_request.client_port());
+  uint16_t client_port(static_cast<uint16_t>(start_vault_request.client_port()));
   auto itr(std::find_if(client_ports_.begin(),
                       client_ports_.end(),
                       [&client_port] (const uint16_t &element)->bool {
@@ -454,7 +454,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
         vault_identity_response.set_account_name((*itr)->account_name);
         vault_identity_response.set_keys(serialised_keys);
         vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
-        (*itr)->vault_port = vault_identity_request.listening_port();
+        (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
         std::for_each(endpoints.begin(),
                       endpoints.end(),
                       [&vault_identity_response] (const EndPoint& element) {
@@ -525,11 +525,11 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
                                              stop_vault_request.data(),
                                              stop_vault_request.signature(),
                                              true));
-  }
-  if (!AmendVaultDetailsInConfigFile(*itr, true)) {
-    LOG(kError) << "Failed to amend details in config file for vault ID: "
-                << Base64Substr((*itr)->keys.identity);
-    stop_vault_response.set_result(false);
+    if (!AmendVaultDetailsInConfigFile(*itr, true)) {
+      LOG(kError) << "Failed to amend details in config file for vault ID: "
+                  << Base64Substr((*itr)->keys.identity);
+      stop_vault_response.set_result(false);
+    }
   }
   response = detail::WrapMessage(MessageType::kStopVaultResponse,
                                  stop_vault_response.SerializeAsString());
@@ -565,7 +565,7 @@ void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& requ
     return;
   }
   if (AddBootstrapEndPoint(send_endpoint_request.bootstrap_endpoint_ip(),
-                           send_endpoint_request.bootstrap_endpoint_port())) {
+                           static_cast<uint16_t>(send_endpoint_request.bootstrap_endpoint_port()))) {
     send_endpoint_response.set_result(true);
   } else {
     send_endpoint_response.set_result(false);
@@ -885,6 +885,11 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 #ifdef USE_TEST_KEYS
   std::string process_name(detail::kDummyName);
   fs::path executable_path(".");
+# ifdef MAIDSAFE_WIN32
+    TCHAR file_name[MAX_PATH];
+    if (GetModuleFileName(NULL, file_name, MAX_PATH))
+      executable_path = fs::path(file_name).parent_path();
+# endif
 #else
   std::string process_name(detail::kVaultName);
   fs::path executable_path(GetAppInstallDir());
