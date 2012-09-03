@@ -702,8 +702,6 @@ uintmax_t FileChunkStore::SpaceAvailable() const {
     return 1;
   }
 
-  LOG(kVerbose) << "Reporting " << space_info.available / 2 << " bytes available for chunkstore at "
-                << storage_location_;
   return space_info.available / 2;
 }
 
