@@ -54,6 +54,9 @@ class LocalChunkManager : public ChunkManager {
                    const std::string &content,
                    const std::shared_ptr<asymm::Keys> &keys);
 
+  int64_t StorageSize();
+  int64_t StorageCapacity();
+
  private:
   LocalChunkManager(const LocalChunkManager&);
   LocalChunkManager& operator=(const LocalChunkManager&);
