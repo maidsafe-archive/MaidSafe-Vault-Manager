@@ -9,12 +9,13 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
+#include "boost/date_time/posix_time/posix_time_duration.hpp"
+#include "boost/algorithm/string.hpp"
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
-
-#include "boost/date_time/posix_time/posix_time_duration.hpp"
 
 #include "maidsafe/private/process_management/client_controller.h"
 #include "maidsafe/private/process_management/vault_controller.h"
@@ -35,6 +36,7 @@ namespace test {
 namespace {
 
 int GetNumRunningProcesses() {
+    
   std::string dummy(detail::kDummyName);
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy +
@@ -47,10 +49,10 @@ int GetNumRunningProcesses() {
     LOG(kError) << "Failed to execute command that checks processes: " << command;
     return -1;
   }
-
   std::string process_string;
   ReadFile(fs::path(".") / "process_count.txt", &process_string);
-  process_string = process_string.substr(0, process_string.size() - 1);
+  boost::trim(process_string);
+    
   try {
 #ifdef MAIDSAFE_WIN32
     // In Windows, adjust for one extra carriage return
@@ -71,6 +73,8 @@ int GetNumRunningProcesses() {
 }  // namespace
 
 TEST(InvigilatorTest, FUNC_StartStop) {
+    maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
   {
@@ -115,6 +119,19 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(1, invigilator_config.vault_info_size());
+
+  protobuf::BootstrapEndpoints end_points(invigilator_config.bootstrap_endpoints());
+  int max_index(end_points.bootstrap_endpoint_ip_size() >
+                end_points.bootstrap_endpoint_port_size() ?
+                    end_points.bootstrap_endpoint_port_size() :
+                    end_points.bootstrap_endpoint_ip_size());
+  int endpoint_matches(0);
+  for (int n(0); n < max_index; ++n) {
+      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46") && (end_points.bootstrap_endpoint_port(n) == 3658)) {
+          endpoint_matches++;
+      }
+  }
+  EXPECT_GE(1, endpoint_matches);
 
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and

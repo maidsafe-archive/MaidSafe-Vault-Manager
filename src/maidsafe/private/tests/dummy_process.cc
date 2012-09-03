@@ -81,7 +81,11 @@ int main(int argc, char* argv[]) {
       LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
       LOG(kInfo) << "Account name: " << account_name;
       vault_controller.ConfirmJoin(true);
+
+      std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
+      vault_controller.SendEndpointToInvigilator(endpoint);
     }
+
     if (variables_map.count("runtime")) {
       int runtime = variables_map["runtime"].as<int>();
       LOG(kInfo) << "Running for " << runtime << " seconds.";
