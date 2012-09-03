@@ -27,7 +27,12 @@ bool g_check_finished(false);
 
 void StopHandler() {
   LOG(kInfo) << "Process stopping, asked to stop by parent.";
-  g_check_finished = true; //exit(0);
+  //g_check_finished = true; 
+#ifdef MAIDSAFE_WIN32
+  ExitProcess(0);
+#else
+  exit(0);
+#endif
 }
 
 }  // unnamed namespace
@@ -98,8 +103,8 @@ int main(int argc, char* argv[]) {
         return 1;
       }
     } else {
-      //for (;;)
-      while(!g_check_finished)
+      for (;;)
+      //while(!g_check_finished)
         maidsafe::Sleep(boost::posix_time::seconds(1));
     }
   }
@@ -107,5 +112,4 @@ int main(int argc, char* argv[]) {
     LOG(kError) << "Error: " << e.what();
     return 1;
   }
-  return 0;
 }

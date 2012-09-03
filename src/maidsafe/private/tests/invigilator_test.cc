@@ -49,10 +49,6 @@ int GetNumRunningProcesses() {
     return -1;
   }
 
-  std::string process_string;
-  ReadFile(fs::path(".") / "process_count.txt", &process_string);
-  boost::trim(process_string);
-
   try {
 #ifdef MAIDSAFE_WIN32
     fs::path file_path(fs::path(".") / "process_count.txt");
@@ -68,7 +64,7 @@ int GetNumRunningProcesses() {
 #else
     std::string process_string;
     ReadFile(fs::path(".") / "process_count.txt", &process_string);
-    process_string = process_string.substr(0, process_string.size() - 1);
+    boost::trim(process_string);
     // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
     // overall ps and the piped grep
     int num_processes(boost::lexical_cast<int>(process_string) - 2);
