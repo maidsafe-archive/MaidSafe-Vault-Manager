@@ -137,3 +137,12 @@ message NewVersionAvailable {
 message NewVersionAvailableAck {
   required bytes new_version_filepath = 1;
 }
+
+message BootstrapRequest {
+  required uint32 message_id = 1;
+}
+
+message BootstrapResponse {
+  repeated bytes bootstrap_endpoint_ip = 1;
+  repeated uint32 bootstrap_endpoint_port = 2;
+}

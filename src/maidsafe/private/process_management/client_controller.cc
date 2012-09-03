@@ -33,6 +33,8 @@ namespace priv {
 
 namespace process_management {
 
+typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
+
 ClientController::ClientController()
     : invigilator_port_(Invigilator::kMinPort() - 1),
       local_port_(0),
@@ -425,6 +427,85 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
     LOG(kError) << "Failed to " << (update_interval.is_pos_infinity() ? "get" : "set")
                 << " update interval.";
   return returned_result;
+}
+
+bool ClientController::GetBootstrapNodes(
+    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), success(false);
+  protobuf::BootstrapRequest request;
+  uint32_t message_id(maidsafe::RandomUint32());
+  request.set_message_id(message_id);
+
+  VoidFunctionBoolParam callback = [&] (bool result) {
+    std::lock_guard<std::mutex> lock(local_mutex);
+    done = true;
+    success = result;
+    local_cond_var.notify_one();
+  };
+
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  int result(0);
+  request_transport->Connect(invigilator_port_, result);
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    return false;
+  }
+  request_transport->on_message_received().connect(
+      [this, callback, &bootstrap_endpoints] (const std::string& message,
+                                             Port /*invigilator_port*/) {
+        HandleBootstrapResponse(message, bootstrap_endpoints, callback);
+      });
+  request_transport->on_error().connect([callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
+  std::unique_lock<std::mutex> lock(local_mutex);
+  LOG(kVerbose) << "Requesting bootstrap nodes from port " << invigilator_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kBootstrapRequest,
+                                              request.SerializeAsString()),
+                          invigilator_port_);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
+    LOG(kError) << "Timed out waiting for reply.";
+    return false;
+  }
+  return success;
+}
+
+void ClientController::HandleBootstrapResponse(const std::string& message,
+                             std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints,
+                             VoidFunctionBoolParam callback) {
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    callback(false);
+    return;
+  }
+
+  protobuf::BootstrapResponse bootstrap_response;
+  if (!bootstrap_response.ParseFromString(payload)) {
+    LOG(kError) << "Failed to parse BootstrapResponse.";
+    callback(false);
+    return;
+  }
+
+  std::string address;
+  uint16_t port(0);
+  if (bootstrap_response.bootstrap_endpoint_ip_size()
+        != bootstrap_response.bootstrap_endpoint_port_size()) {
+    LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
+  }
+  int size(std::min(bootstrap_response.bootstrap_endpoint_ip_size(),
+                    bootstrap_response.bootstrap_endpoint_port_size()));
+  for (int i(0); i < size; ++i) {
+    address = bootstrap_response.bootstrap_endpoint_ip(i);
+    port = static_cast<uint16_t>(bootstrap_response.bootstrap_endpoint_port(i));
+    bootstrap_endpoints.push_back(std::pair<std::string, uint16_t>(address, port));
+  }
+  bootstrap_nodes_ = bootstrap_endpoints;
+  callback(true);
 }
 
 void ClientController::HandleUpdateIntervalResponse(

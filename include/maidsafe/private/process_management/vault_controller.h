@@ -46,6 +46,7 @@ class VaultController {
                    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
   bool SendEndpointToInvigilator(const std::pair<std::string, uint16_t>& endpoint);
+  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
@@ -60,6 +61,9 @@ class VaultController {
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToInvigilatorResponse(const std::string& message,
                                                std::function<void(bool)> callback);  //NOLINT (Philip)
+  void HandleBootstrapResponse(const std::string& message,
+                               std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
+                               std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
   uint16_t invigilator_port_;
   AsioService asio_service_;

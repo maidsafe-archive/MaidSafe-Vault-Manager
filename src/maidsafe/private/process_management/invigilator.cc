@@ -274,6 +274,9 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
     case MessageType::kSendEndpointToInvigilatorRequest:
       HandleSendEndpointToInvigilatorRequest(payload, response);
       break;
+    case MessageType::kBootstrapRequest:
+      HandleBootstrapRequest(payload, response);
+      break;
     default:
       return;
   }
@@ -569,6 +572,36 @@ void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& requ
   }
   response = detail::WrapMessage(MessageType::kSendEndpointToInvigilatorResponse,
                                  send_endpoint_response.SerializeAsString());
+}
+
+void Invigilator::HandleBootstrapRequest(const std::string& request, std::string& response) {
+  protobuf::BootstrapRequest bootstrap_request;
+  protobuf::BootstrapResponse bootstrap_response;
+  if (!bootstrap_request.ParseFromString(request)) {
+    LOG(kError) << "Failed to parse BootstrapRequest.";
+    return;
+  }
+  protobuf::InvigilatorConfig config;
+  std::vector<EndPoint> endpoints;
+  if (!ReadBootstrapEndpoints(config, endpoints) || endpoints.empty()) {
+    if (!ObtainBootstrapInformation(config)) {
+      LOG(kError) << "Failed to get endpoints for message_id "
+                  << bootstrap_request.message_id();
+    } else {
+      if (!ReadBootstrapEndpoints(config, endpoints)) {
+        LOG(kError) << "Failed to read endpoints obtained from server.";
+      }
+    }
+  } else {
+    std::for_each(endpoints.begin(),
+                  endpoints.end(),
+                  [&bootstrap_response] (const EndPoint& element) {
+                    bootstrap_response.add_bootstrap_endpoint_ip(element.first);
+                    bootstrap_response.add_bootstrap_endpoint_port(element.second);
+                  });
+  }
+  response = detail::WrapMessage(MessageType::kBootstrapResponse,
+                                 bootstrap_response.SerializeAsString());
 }
 
 bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval) {

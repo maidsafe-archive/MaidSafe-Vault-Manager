@@ -65,6 +65,8 @@ class ClientController {
   // call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
+  // Blocking call to retrieve the latest bootstrap nodes from the Invigilator.
+  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
 
   // Returns reference to signal which will be fired when a new version of the client software is
   // available.  The slot will be passed the filename of the new version.
@@ -95,6 +97,9 @@ class ClientController {
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
   void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
+  void HandleBootstrapResponse(const std::string& message,
+                               std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
+                               std::function<void(bool)> callback);  //NOLINT (Philip)
 
   uint16_t invigilator_port_, local_port_;
   AsioService asio_service_;

@@ -67,7 +67,9 @@ enum class MessageType {
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
   kNewVersionAvailable,
-  kNewVersionAvailableAck
+  kNewVersionAvailableAck,
+  kBootstrapRequest,
+  kBootstrapResponse
 };
 
 // The Invigilator has several responsibilities:
@@ -122,6 +124,7 @@ class Invigilator {
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToInvigilatorRequest(const std::string& request, std::string& response);
+  void HandleBootstrapRequest(const std::string& request, std::string& response);
 
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
   void HandleUpdateIntervalRequest(const std::string& request, std::string& response);
