@@ -14,6 +14,8 @@
 #include <chrono>
 #include <iterator>
 
+#include "boost/algorithm/string.hpp"
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/utils.h"
@@ -53,7 +55,7 @@ VaultController::VaultController()
   } else {
     std::string content;
     ReadFile(fs::path(".") / "uid.txt", &content);
-    content = content.substr(0, content.size() - 1);
+    boost::trim(content);
     try {
       uid_t uid(boost::lexical_cast<uid_t>(content));
       boost::system::error_code error;
