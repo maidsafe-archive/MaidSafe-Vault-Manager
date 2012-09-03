@@ -1,9 +1,0 @@
-[Unit]
-Description=Vault Manager
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/maidsafe_vault_manager --start
- 
-[Install]
-WantedBy=multi-user.target
