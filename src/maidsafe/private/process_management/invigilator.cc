@@ -1003,6 +1003,9 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
     LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->keys.identity);
     return false;
   }
+  // --vmid argument is added automatically by process_manager_.AddProcess(...)
+  process.AddArgument("--start");
+  process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
