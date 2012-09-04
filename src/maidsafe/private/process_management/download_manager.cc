@@ -177,18 +177,18 @@ bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
 }
 
 bool DownloadManager::GetAndVerifyFile(const fs::path& from_path, const fs::path& to_path) {
-  std::string signature(DownloadFileToMemory(from_path.string() + detail::kSignatureExtension));
+  /*std::string signature(DownloadFileToMemory(from_path.string() + detail::kSignatureExtension));
   if (signature.empty()) {
     LOG(kWarning) << "Failed to download signature for file " << from_path;
     return false;
-  }
+  }*/
 
   if (!DownloadFileToDisk(from_path, to_path)) {
     LOG(kWarning) << "Failed to download file " << from_path;
     return false;
   }
 
-  int result(asymm::CheckFileSignature(to_path, signature, maidsafe_public_key_));
+  /*int result(asymm::CheckFileSignature(to_path, signature, maidsafe_public_key_));
   if (result != kSuccess)  {
     LOG(kError) << "Signature of " << to_path << " is invalid. Removing file: " << result;
     boost::system::error_code error;
@@ -197,7 +197,7 @@ bool DownloadManager::GetAndVerifyFile(const fs::path& from_path, const fs::path
       LOG(kError) << "Filed to remove file " << to_path << " with invalid signature.";
     return false;
   }
-  LOG(kVerbose) << "Signature of " << to_path << " is valid.";
+  LOG(kVerbose) << "Signature of " << to_path << " is valid.";*/
 
   return true;
 }
