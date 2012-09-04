@@ -36,7 +36,6 @@ namespace test {
 namespace {
 
 int GetNumRunningProcesses() {
-    
   std::string dummy(detail::kDummyName);
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
@@ -58,7 +57,7 @@ int GetNumRunningProcesses() {
     std::ifstream file(file_path.string().c_str(), std::ios_base::binary);
     if (!file.good())
       return num_processes;
-    while(file.getline(process_info, number_of_characters))
+    while (file.getline(process_info, number_of_characters))
       ++num_processes;
     num_processes -= 1;
 #else
@@ -134,7 +133,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
                     end_points.bootstrap_endpoint_ip_size());
   int endpoint_matches(0);
   for (int n(0); n < max_index; ++n) {
-      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46") && (end_points.bootstrap_endpoint_port(n) == 3658)) {
+      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46")
+          && (end_points.bootstrap_endpoint_port(n) == 3658)) {
           endpoint_matches++;
       }
   }
@@ -208,19 +208,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       else
         EXPECT_TRUE(client_controller2.StartVault(keys, RandomAlphaNumericString(16)));
     }
-    EXPECT_EQ(51, GetNumRunningProcesses());
+    EXPECT_EQ(41, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(52, invigilator_config.vault_info_size());
-  /*run_count = 0;
-  if (invigilator_config.vault_info(0).requested_to_run())
-    ++run_count;
-  if (invigilator_config.vault_info(1).requested_to_run())
-    ++run_count;
-  EXPECT_EQ(1, run_count);*/
+  EXPECT_EQ(42, invigilator_config.vault_info_size());
   boost::system::error_code error;
   fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error);
 }
