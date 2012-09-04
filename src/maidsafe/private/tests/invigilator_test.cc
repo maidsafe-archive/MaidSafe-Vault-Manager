@@ -163,6 +163,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
           ++endpoint_matches;
         }
     }
+    EXPECT_GE(1, endpoint_matches);
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
