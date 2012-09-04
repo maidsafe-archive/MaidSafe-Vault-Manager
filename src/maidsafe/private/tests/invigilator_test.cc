@@ -157,7 +157,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     std::vector<std::pair<std::string, uint16_t> > bootstrap_endpoints;
     client_controller.GetBootstrapNodes(bootstrap_endpoints);
     endpoint_matches = 0;
-    for (int n(0); n < bootstrap_endpoints.size(); ++n) {
+    for (size_t n(0); n < bootstrap_endpoints.size(); ++n) {
         if (bootstrap_endpoints[n].first.compare("127.0.0.46") &&
             (bootstrap_endpoints[n].second == 3658)) {
           ++endpoint_matches;
