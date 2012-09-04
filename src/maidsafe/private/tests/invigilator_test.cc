@@ -200,7 +200,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(1, GetNumRunningProcesses());
     ClientController client_controller1, client_controller2;
     asymm::Keys keys;
-    for (int i(0); i < 50; ++i) {
+    for (int i(0); i < 40; ++i) {
       ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
       keys.identity = RandomAlphaNumericString(64);
       if (i % 2 == 0)
