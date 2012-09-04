@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
       std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
       vault_controller.SendEndpointToInvigilator(endpoint);
       std::unique_lock<std::mutex> lock(mutex);
-      cond_var.wait(lock, [] { return g_check_finished; });
+      cond_var.wait(lock, [] { return g_check_finished; });  // NOLINT (Fraser)
     }
 
     if (variables_map.count("runtime")) {

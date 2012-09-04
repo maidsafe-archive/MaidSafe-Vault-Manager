@@ -26,9 +26,9 @@ int main(int /*ac*/, char* /*av*/[]) {
   keys.identity = maidsafe::RandomAlphaNumericString(64);
   keys.validation_token = maidsafe::RandomAlphaNumericString(64);
   try {
-  client.StartVault(keys, account_name/*,
-                    boost::asio::ip::udp::endpoint(
-                        boost::asio::ip::address::from_string("127.0.0.1"), 5483)*/);
+    client.StartVault(keys, account_name);
+//                    boost::asio::ip::udp::endpoint(
+//                        boost::asio::ip::address::from_string("127.0.0.1"), 5483));
   } catch(...) {
     LOG(kError) << "DUMMYclient: Problem starting vault " << (keys.identity);
   }

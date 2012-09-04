@@ -36,7 +36,6 @@ namespace test {
 namespace {
 
 int GetNumRunningProcesses() {
-    
   std::string dummy(detail::kDummyName);
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
@@ -58,7 +57,7 @@ int GetNumRunningProcesses() {
     std::ifstream file(file_path.string().c_str(), std::ios_base::binary);
     if (!file.good())
       return num_processes;
-    while(file.getline(process_info, number_of_characters))
+    while (file.getline(process_info, number_of_characters))
       ++num_processes;
     num_processes -= 1;
 #else
@@ -80,7 +79,7 @@ int GetNumRunningProcesses() {
 }  // namespace
 
 TEST(InvigilatorTest, FUNC_StartStop) {
-    maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
 
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
@@ -134,8 +133,9 @@ TEST(InvigilatorTest, FUNC_StartStop) {
                     end_points.bootstrap_endpoint_ip_size());
   int endpoint_matches(0);
   for (int n(0); n < max_index; ++n) {
-      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46") && (end_points.bootstrap_endpoint_port(n) == 3658)) {
-          endpoint_matches++;
+      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46") &&
+          (end_points.bootstrap_endpoint_port(n) == 3658)) {
+        ++endpoint_matches;
       }
   }
   EXPECT_GE(1, endpoint_matches);

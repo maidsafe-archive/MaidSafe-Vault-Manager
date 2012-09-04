@@ -26,7 +26,7 @@ namespace detail {
 
 namespace test {
 
-TEST(UtilsTest, BEH_WrapAndUnwrapMessage) {
+TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) {
   FAIL() << "Needs test";
 }
 
@@ -113,11 +113,11 @@ TEST(UtilsTest, BEH_VersionToInt) {
   EXPECT_EQ(101010, VersionToInt("10.10.10"));
 }
 
-TEST(UtilsTest, BEH_GenerateFileName) {
+TEST(UtilsTest, DISABLED_BEH_GenerateFileName) {
   FAIL() << "Needs test";
 }
 
-TEST(UtilsTest, BEH_TokeniseFileName) {
+TEST(UtilsTest, DISABLED_BEH_TokeniseFileName) {
   FAIL() << "Needs test";
 }
 
@@ -129,7 +129,7 @@ TEST(UtilsTest, BEH_GenerateVmidParameter) {
   EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
 }
 
-TEST(UtilsTest, BEH_ParseVmidParameter) {
+TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) {
   FAIL() << "Needs test";
 }
 

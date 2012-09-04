@@ -563,8 +563,9 @@ void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& requ
     LOG(kError) << "Failed to parse SendEndpointToInvigilator.";
     return;
   }
-  if (AddBootstrapEndPoint(send_endpoint_request.bootstrap_endpoint_ip(),
-                           static_cast<uint16_t>(send_endpoint_request.bootstrap_endpoint_port()))) {
+  if (AddBootstrapEndPoint(
+          send_endpoint_request.bootstrap_endpoint_ip(),
+          static_cast<uint16_t>(send_endpoint_request.bootstrap_endpoint_port()))) {
     send_endpoint_response.set_result(true);
   } else {
     send_endpoint_response.set_result(false);
@@ -699,22 +700,21 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
-bool Invigilator::IsInstaller(const fs::path& path) {
 #if defined MAIDSAFE_LINUX
+bool Invigilator::IsInstaller(const fs::path& path) {
   return path.extension() == ".deb"
          && path.stem().string().length() > 8
          && path.stem().string().substr(0, 9) == "LifeStuff";
-
-#else
-  return false;
-#endif
 }
+#else
+bool Invigilator::IsInstaller(const fs::path& /*path*/) { return false; }
+#endif
 
 void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) == kSuccess) {
 //    WriteConfigFile();
-   #if defined MAIDSAFE_LINUX
+#if defined MAIDSAFE_LINUX
     auto it(std::find_if(updated_files.begin(), updated_files.end(),
                          [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
     if (it != updated_files.end()) {
