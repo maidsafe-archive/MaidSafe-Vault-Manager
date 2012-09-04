@@ -55,6 +55,14 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
   MOCK_METHOD2(DeleteChunk, void(const std::string &chunk_name,
                               const std::shared_ptr<asymm::Keys> &keys));
 
+  int64_t StorageSize() {
+    return chunk_store()->Size();
+  }
+
+  int64_t StorageCapacity() {
+    return chunk_store()->Capacity();
+  }
+
   void Timeout() {
     // do nothing, causing an eventual timeout
   }
