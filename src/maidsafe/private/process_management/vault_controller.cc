@@ -83,6 +83,7 @@ VaultController::VaultController()
 }
 
 VaultController::~VaultController() {
+  receiving_transport_->StopListening();
   receiving_transport_.reset();
   asio_service_.Stop();
 }

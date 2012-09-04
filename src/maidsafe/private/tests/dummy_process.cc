@@ -10,6 +10,8 @@
  **************************************************************************************************/
 
 #include <string>
+#include <mutex>
+#include <condition_variable>
 
 #include "boost/program_options.hpp"
 
@@ -25,9 +27,14 @@ namespace {
 
 bool g_check_finished(false);
 
+std::mutex mutex;
+std::condition_variable cond_var;
+
 void StopHandler() {
   LOG(kInfo) << "Process stopping, asked to stop by parent.";
+  std::lock_guard<std::mutex> lock(mutex);
   g_check_finished = true; //exit(0);
+  cond_var.notify_all();
 }
 
 }  // unnamed namespace
@@ -84,6 +91,8 @@ int main(int argc, char* argv[]) {
 
       std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
       vault_controller.SendEndpointToInvigilator(endpoint);
+      std::unique_lock<std::mutex> lock(mutex);
+      cond_var.wait(lock, [] { return g_check_finished; });
     }
 
     if (variables_map.count("runtime")) {
@@ -97,10 +106,6 @@ int main(int argc, char* argv[]) {
       } else {
         return 1;
       }
-    } else {
-      //for (;;)
-      while(!g_check_finished)
-        maidsafe::Sleep(boost::posix_time::seconds(1));
     }
   }
   catch(const std::exception& e) {

@@ -114,6 +114,16 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
   result = kSuccess;
 }
 
+void LocalTcpTransport::StopListening() {
+  strand_.dispatch([=] {
+    boost::system::error_code ec;
+    if (acceptor_.is_open())
+      acceptor_.close(ec);
+    if (ec.value() != 0)
+      LOG(kError) << "Acceptor close error: " << ec.message();
+  });
+}
+
 void LocalTcpTransport::StopListeningAndCloseConnections() {
   strand_.dispatch([=] {
     boost::system::error_code ec;

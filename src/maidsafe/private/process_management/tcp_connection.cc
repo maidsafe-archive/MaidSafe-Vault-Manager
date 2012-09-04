@@ -105,7 +105,7 @@ void TcpConnection::HandleReadSize(const bs::error_code& ec) {
 
   if (ec) {
     if (ec == asio::error::eof) {
-      Sleep(boost::posix_time::milliseconds(10));
+      /*Sleep(boost::posix_time::milliseconds(10));*/
       strand_.post(std::bind(&TcpConnection::StartReadSize, shared_from_this()));
     } else {
       if (ec != asio::error::connection_reset)

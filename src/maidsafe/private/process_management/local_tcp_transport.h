@@ -54,6 +54,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   ~LocalTcpTransport();
   void StartListening(Port port, int& result);
   void DoStartListening(Port port, int& result);
+  void StopListening();
   void StopListeningAndCloseConnections();
   void Connect(Port server_port, int& result);
   void DoConnect(Port server_port, int& result);
