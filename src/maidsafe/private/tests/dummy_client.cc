@@ -26,7 +26,7 @@ int main(int /*ac*/, char* /*av*/[]) {
   keys.identity = maidsafe::RandomAlphaNumericString(64);
   keys.validation_token = maidsafe::RandomAlphaNumericString(64);
   try {
-  client.StartVault(keys, account_name);
+  client.StartVault(keys, account_name, "");
   } catch(...) {
     LOG(kError) << "DUMMYclient: Problem starting vault " << (keys.identity);
   }
