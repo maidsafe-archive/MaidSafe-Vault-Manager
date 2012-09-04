@@ -721,7 +721,9 @@ void Invigilator::UpdateExecutor() {
     if (it != updated_files.end()) {
       LOG(kInfo) << "Found new installer at " << (*it).string();
       std::string command("dpkg -i " + (*it).string());
-      system(command.c_str());
+      int result(system(command.c_str()));
+      if (result != 0)
+        LOG(kError) << "Update failed: failed to run installer.";
     } else {
       LOG(kError) << "Update failed: could not find installer in list of updated files";
     }
