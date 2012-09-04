@@ -213,7 +213,7 @@ bool DownloadManager::PrepareDownload(const fs::path& from_path,
     // Form the request. We specify the "Connection: close" header so that the
     // server will close the socket after transmitting the response. This will
     // allow us to treat all data up until the EOF as the content.
-    request_stream << "GET /" << location_ << "/" << from_path.string() << " HTTP/1.0\r\n";
+    request_stream << "GET /" << location_ << "/" << from_path.generic_string() << " HTTP/1.0\r\n";
     request_stream << "Host: " << site_ << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n\r\n";
