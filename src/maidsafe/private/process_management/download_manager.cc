@@ -108,7 +108,7 @@ int DownloadManager::Update(std::vector<fs::path>& updated_files) {
   LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
 
   std::vector<std::string> files_in_manifest;
-  if (detail::VersionToInt(latest_remote_version) <= detail::VersionToInt(latest_local_version_)) {
+  if (VersionToInt(latest_remote_version) <= VersionToInt(latest_local_version_)) {
     LOG(kInfo) << "No version change.";
     return kSuccess;
   }

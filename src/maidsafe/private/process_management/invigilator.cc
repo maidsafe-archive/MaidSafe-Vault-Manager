@@ -155,11 +155,7 @@ void Invigilator::RestartInvigilator(const std::string& latest_file,
 bool Invigilator::CreateConfigFile() {
   protobuf::InvigilatorConfig config;
   config.set_update_interval(update_interval_.total_seconds());
-
-  std::string s_major(APPLICATION_VERSION_MAJOR);
-  std::string s_minor(APPLICATION_VERSION_MINOR);
-  std::string s_patch(APPLICATION_VERSION_PATCH);
-  config.set_latest_local_version(s_major + "." + s_minor + "." + s_patch);
+  config.set_latest_local_version(kApplicationVersion);
 
   if (!ObtainBootstrapInformation(config)) {
     LOG(kError) << "Failed to obtain bootstrap information from server.";

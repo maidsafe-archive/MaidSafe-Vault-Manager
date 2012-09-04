@@ -28,7 +28,6 @@ enum class MessageType;
 
 namespace detail {
 
-extern const int kInvalidVersion;
 extern const std::string kSignatureExtension;
 extern const std::string kMaidSafePublicKey;
 const std::string kVersionFilename("version");
@@ -68,15 +67,6 @@ std::string WrapMessage(const MessageType& message_type, const std::string& payl
 bool UnwrapMessage(const std::string& wrapped_message,
                    MessageType& message_type,
                    std::string& payload);
-
-// Takes a version as an int and returns the string form, e.g. 901 returns "0.09.01"
-std::string VersionToString(int version,
-                            std::string* major_version = nullptr,
-                            std::string* minor_version = nullptr,
-                            std::string* patch_version = nullptr);
-
-// Takes a version as a string and returns the int form, e.g. "0.09.01" returns 901
-int VersionToInt(const std::string& version);
 
 // Concatenates the components, placing an underscore between application, platform and version.
 // If platform is kUnknown, or version is invalid, then an empty string is returned.

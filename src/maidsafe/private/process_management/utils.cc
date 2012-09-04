@@ -68,7 +68,6 @@ const char kSeparator('_');
 
 }  // unnamed namespace
 
-const int kInvalidVersion(-1);
 const std::string kSignatureExtension(".sig");
 const std::string kMaidSafePublicKey(key, 268);
 
@@ -185,67 +184,6 @@ bool UnwrapMessage(const std::string& wrapped_message,
     payload.clear();
     return false;
   }
-}
-
-std::string VersionToString(int version,
-                            std::string* major_version,
-                            std::string* minor_version,
-                            std::string* patch_version) {
-  if (version < 0)
-    return "";
-
-  std::string full_version(boost::lexical_cast<std::string>(version));
-  size_t padding_count(6 - full_version.size());
-  full_version.insert(0, padding_count, '0');
-  std::string major_ver(full_version.substr(0, 2));
-  std::string minor_ver(full_version.substr(2, 2));
-  std::string patch_ver(full_version.substr(4, 2));
-
-  if (major_ver.at(0) == '0')
-    major_ver.assign(major_ver.substr(1, 1));
-  if (major_version)
-    *major_version = major_ver;
-  if (minor_version)
-    *minor_version = minor_ver;
-  if (patch_version)
-    *patch_version = patch_ver;
-  return major_ver + "." + minor_ver + "." + patch_ver;
-}
-
-int VersionToInt(const std::string& version) {
-  boost::tokenizer<boost::char_separator<char>> tokens(version, boost::char_separator<char>("."));
-  if (std::distance(tokens.begin(), tokens.end()) != 3)
-    return kInvalidVersion;
-
-  auto itr(tokens.begin());
-
-  int16_t major_version(0), minor_version(0), patch_level(0);
-  try {
-    major_version = boost::lexical_cast<int16_t>(*(itr++));
-
-    minor_version = boost::lexical_cast<int16_t>(*itr);
-    if ((*itr++).size() != 2U) {
-      LOG(kWarning) << "Invalid minor version " << version;
-      return kInvalidVersion;
-    }
-
-    patch_level = boost::lexical_cast<int16_t>(*itr);
-    if ((*itr++).size() != 2U) {
-      LOG(kWarning) << "Invalid patch level " << version;
-      return kInvalidVersion;
-    }
-  }
-  catch(const boost::bad_lexical_cast& e) {
-    LOG(kWarning) << "Invalid version " << version << ": " << e.what();
-    return kInvalidVersion;
-  }
-
-  if (major_version < 0 || minor_version < 0 || patch_level < 0) {
-    LOG(kWarning) << "Invalid version " << version;
-    return kInvalidVersion;
-  }
-
-  return (major_version * 10000) + (minor_version * 100) + patch_level;
 }
 
 std::string GenerateFileName(const std::string& application,
