@@ -41,10 +41,9 @@ enum RcsReturnCode {
 /// Default maximum number of operations to be processed in parallel.
 const int kMaxActiveOps(4);
 /// Time to wait in WaitForCompletion before failing.
-
-const bptime::time_duration kCompletionWaitTimeout(bptime::seconds(60));
+const bptime::time_duration kCompletionWaitTimeout(bptime::minutes(3));
 /// Time to wait in WaitForConflictingOps before failing.
-const bptime::time_duration kOperationWaitTimeout(bptime::seconds(50));
+const bptime::time_duration kOperationWaitTimeout(bptime::seconds(150));  // 2.5 mins
 /// Time period in which not to retry a previously failed get operation.
 const bptime::time_duration kGetRetryTimeout(bptime::seconds(3));
 

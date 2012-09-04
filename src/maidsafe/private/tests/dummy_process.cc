@@ -33,7 +33,7 @@ std::condition_variable cond_var;
 void StopHandler() {
   LOG(kInfo) << "Process stopping, asked to stop by parent.";
   std::lock_guard<std::mutex> lock(mutex);
-  g_check_finished = true; //exit(0);
+  g_check_finished = true;
   cond_var.notify_all();
 }
 
@@ -112,5 +112,4 @@ int main(int argc, char* argv[]) {
     LOG(kError) << "Error: " << e.what();
     return 1;
   }
-  return 0;
 }

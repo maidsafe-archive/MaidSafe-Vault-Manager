@@ -242,6 +242,14 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
   (*sig_chunk_modified_)(name, kSuccess);
 }
 
+int64_t LocalChunkManager::StorageSize() {
+  return simulation_chunk_store_->Size();
+}
+
+int64_t LocalChunkManager::StorageCapacity() {
+  return simulation_chunk_store_->Capacity();
+}
+
 }  // namespace chunk_store
 
 }  // namespace priv

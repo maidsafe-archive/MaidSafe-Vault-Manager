@@ -56,6 +56,9 @@ class ChunkManager {
   virtual void DeleteChunk(const std::string &name,
                            const std::shared_ptr<asymm::Keys> &keys) = 0;
 
+  virtual int64_t StorageSize() = 0;
+  virtual int64_t StorageCapacity() = 0;
+
   ChunkGotSigPtr sig_chunk_got() { return sig_chunk_got_; }
   ChunkStoredSigPtr sig_chunk_stored() { return sig_chunk_stored_; }
   ChunkModifiedSigPtr sig_chunk_modified() { return sig_chunk_modified_; }
