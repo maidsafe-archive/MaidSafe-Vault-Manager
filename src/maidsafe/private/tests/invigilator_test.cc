@@ -208,19 +208,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       else
         EXPECT_TRUE(client_controller2.StartVault(keys, RandomAlphaNumericString(16)));
     }
-    EXPECT_EQ(51, GetNumRunningProcesses());
+    EXPECT_EQ(41, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(52, invigilator_config.vault_info_size());
-  /*run_count = 0;
-  if (invigilator_config.vault_info(0).requested_to_run())
-    ++run_count;
-  if (invigilator_config.vault_info(1).requested_to_run())
-    ++run_count;
-  EXPECT_EQ(1, run_count);*/
+  EXPECT_EQ(42, invigilator_config.vault_info_size());
   boost::system::error_code error;
   fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error);
 }
