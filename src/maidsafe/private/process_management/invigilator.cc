@@ -97,7 +97,6 @@ Invigilator::Invigilator()
       return;
     }
   }
-  maidsafe::WriteFile(fs::path("./old_file"), "FROM THE OLD INVIGILATOR");
   UpdateExecutor();
 
   LOG(kInfo) << "Invigilator started";
@@ -700,9 +699,12 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
-bool Invigilator::IsInstaller(fs::path path) {
-#if defined(MAIDSAFE_LINUX)
-  return (path.extension() == ".deb" && path.stem().string().substr(0, 8) == "LifeStuff");
+bool Invigilator::IsInstaller(const fs::path& path) {
+#if defined MAIDSAFE_LINUX
+  return path.extension() == ".deb"
+         && path.stem().string().length() > 8
+         && path.stem().string().substr(0, 9) == "LifeStuff";
+
 #else
   return false;
 #endif
@@ -712,9 +714,9 @@ void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) == kSuccess) {
 //    WriteConfigFile();
-#if defined MAIDSAFE_LINUX
+   #if defined MAIDSAFE_LINUX
     auto it(std::find_if(updated_files.begin(), updated_files.end(),
-                         [&](fs::path path) { return IsInstaller(path); }));  // NOLINT
+                         [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
     if (it != updated_files.end()) {
       LOG(kInfo) << "Found new installer at " << (*it).string();
       std::string command("dpkg -i " + (*it).string());
