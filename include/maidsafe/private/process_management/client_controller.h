@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
+#include "boost/filesystem/path.hpp"
 #include "boost/signals2/connection.hpp"
 #include "boost/signals2/signal.hpp"
 
@@ -43,13 +44,15 @@ typedef std::pair<std::string, uint16_t> EndPoint;
 
 class ClientController {
  public:
-  explicit ClientController(std::function<void(const std::string&)> on_new_version_available_slot);
+  ClientController(std::function<void(const std::string&)> on_new_version_available_slot);
   ~ClientController();
 
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const asymm::Keys& keys, const std::string& account_name);
+  bool StartVault(const asymm::Keys& keys,
+                  const std::string& account_name,
+                  const boost::filesystem::path& chunkstore);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.

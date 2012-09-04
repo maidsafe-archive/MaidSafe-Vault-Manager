@@ -373,9 +373,13 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
         return set_response(false);
       }
       vault_info->account_name = start_vault_request.account_name();
-      std::string short_vault_id(EncodeToBase64(crypto::Hash<crypto::SHA1>(
-                                                    vault_info->keys.identity)));
-      vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
+      if (start_vault_request.has_chunkstore_path()) {
+        vault_info->chunkstore_path = start_vault_request.chunkstore_path();
+      } else {
+        std::string short_vault_id(EncodeToBase64(crypto::Hash<crypto::SHA1>(
+                                                      vault_info->keys.identity)));
+        vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
+      }
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
@@ -775,8 +779,7 @@ void Invigilator::UpdateExecutor() {
 
   auto it(std::find_if(updated_files.begin(), updated_files.end(),
                        [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
-  bool new_installer(it != updated_files.end());
-  if (new_installer) {
+  if (it != updated_files.end()) {
     latest_local_installer_path_ = *it;
     LOG(kInfo) << "Found new installer at " << latest_local_installer_path_;
   } else {
@@ -792,7 +795,7 @@ void Invigilator::UpdateExecutor() {
   } else {
     LOG(kInfo) << "No new vault exe.";
   }
-    
+
 //    WriteConfigFile();
 #if defined MAIDSAFE_LINUX
   std::string command("dpkg -i " + latest_local_installer_path_.string());
@@ -804,18 +807,18 @@ void Invigilator::UpdateExecutor() {
   //  RUN INSTALLER SOMEHOW
 #endif
 
-  if (new_installer) {
-    // Notify out-of-date clients
-    std::map<uint16_t, int> client_ports_and_versions_copy;
-    {
-      std::lock_guard<std::mutex> lock(client_ports_mutex_);
-      client_ports_and_versions_copy = client_ports_and_versions_;
-    }
-    for (auto entry : client_ports_and_versions_copy) {
-      if (entry.second < VersionToInt(download_manager_.latest_local_version()))
-        SendNewVersionAvailable(entry.first);
-    }
-  } else if (!new_local_vault_path.empty()) {
+  // Notify out-of-date clients
+  std::map<uint16_t, int> client_ports_and_versions_copy;
+  {
+    std::lock_guard<std::mutex> lock(client_ports_mutex_);
+    client_ports_and_versions_copy = client_ports_and_versions_;
+  }
+  for (auto entry : client_ports_and_versions_copy) {
+    if (entry.second < VersionToInt(download_manager_.latest_local_version()))
+      SendNewVersionAvailable(entry.first);
+  }
+
+  if (!new_local_vault_path.empty()) {
     StopAllVaults();
     boost::system::error_code error_code;
     fs::rename(

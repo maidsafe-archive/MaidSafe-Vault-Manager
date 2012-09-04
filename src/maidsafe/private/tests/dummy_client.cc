@@ -19,7 +19,7 @@
 
 
 int main(int /*ac*/, char* /*av*/[]) {
-  maidsafe::priv::process_management::ClientController client;
+  maidsafe::priv::process_management::ClientController client([](std::string){});  // NOLINT (Fraser)
   maidsafe::asymm::Keys keys;
   std::string account_name("ACCOUNT1");
   maidsafe::asymm::GenerateKeyPair(&keys);

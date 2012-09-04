@@ -27,6 +27,7 @@
 
 namespace bptime = boost::posix_time;
 namespace bs2 = boost::signals2;
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
@@ -81,7 +82,6 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   endpoints = bootstrap_nodes_;
   return true;
 }
-
 
 bool ClientController::StartListeningPort() {
   local_port_ = detail::GetRandomPort();
@@ -221,7 +221,9 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   condition_variable.notify_one();
 }
 
-bool ClientController::StartVault(const asymm::Keys& keys, const std::string& account_name) {
+bool ClientController::StartVault(const asymm::Keys& keys,
+                                  const std::string& account_name,
+                                  const fs::path& chunkstore) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to Invigilator.";
     return false;
@@ -245,6 +247,8 @@ bool ClientController::StartVault(const asymm::Keys& keys, const std::string& ac
   start_vault_request.set_token_signature(signature);
   start_vault_request.set_credential_change(false);
   start_vault_request.set_client_port(local_port_);
+  if (!chunkstore.empty())
+    start_vault_request.set_chunkstore_path(chunkstore.string());
   std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);

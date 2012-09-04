@@ -29,6 +29,7 @@ message StartVaultRequest {
   required bytes token_signature = 4;
   required bool credential_change = 5;
   required uint32 client_port = 6;
+  optional bytes chunkstore_path = 7;
 }
 
 // Invigilator sends this in response to a StartVaultRequest. It details whether or not the
