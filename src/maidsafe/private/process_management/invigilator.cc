@@ -700,16 +700,15 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
-bool Invigilator::IsInstaller(const fs::path& path) {
 #if defined MAIDSAFE_LINUX
+bool Invigilator::IsInstaller(const fs::path& path) {
   return path.extension() == ".deb"
          && path.stem().string().length() > 8
          && path.stem().string().substr(0, 9) == "LifeStuff";
-
-#else
-  return false;
-#endif
 }
+#else
+bool Invigilator::IsInstaller(const fs::path& /*path*/) { return false; }
+#endif
 
 void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
