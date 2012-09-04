@@ -43,7 +43,7 @@ typedef std::pair<std::string, uint16_t> EndPoint;
 
 class ClientController {
  public:
-  ClientController();
+  explicit ClientController(std::function<void(const std::string&)> on_new_version_available_slot);
   ~ClientController();
 
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
@@ -68,10 +68,6 @@ class ClientController {
   // Blocking call to retrieve the latest bootstrap nodes from the Invigilator.
   bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
 
-  // Returns reference to signal which will be fired when a new version of the client software is
-  // available.  The slot will be passed the filename of the new version.
-  OnNewVersionAvailable& on_new_version_available() { return on_new_version_available_; }
-
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   enum State { kInitialising, kVerified, kFailed };
@@ -79,13 +75,14 @@ class ClientController {
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
 
-  bool ConnectToInvigilator();
+  bool ConnectToInvigilator(std::string& path_to_new_installer);
   bool StartListeningPort();
   void HandleRegisterResponse(const std::string& message,
                               uint16_t invigilator_port,
                               std::mutex& mutex,
                               std::condition_variable& condition_variable,
-                              State& state);
+                              State& state,
+                              std::string& path_to_new_installer);
   template<typename ResponseType>
   void HandleStartStopVaultResponse(const std::string& message,
                                     const std::function<void(bool)>& callback);  // NOLINT

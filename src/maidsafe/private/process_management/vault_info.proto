@@ -10,12 +10,12 @@ message VaultInfo {
   required bytes keys = 2;
   required bytes chunkstore_path = 3;
   required bool requested_to_run = 4;
+  required int32 version = 5;
 }
 
 message InvigilatorConfig {
   required uint32 update_interval = 1;  // In seconds
-  required bytes latest_local_version = 2;
-  required BootstrapEndpoints bootstrap_endpoints = 3;
-  repeated VaultInfo vault_info = 4;
-  optional bytes vault_permissions = 5;
+  required BootstrapEndpoints bootstrap_endpoints = 2;
+  repeated VaultInfo vault_info = 3;
+  optional bytes vault_permissions = 4;
 }

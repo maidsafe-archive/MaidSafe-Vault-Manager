@@ -16,6 +16,7 @@
 #include <mutex>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -100,6 +101,7 @@ class Invigilator {
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
+    int vault_version;
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
   typedef std::pair<std::string, uint16_t> EndPoint;
@@ -137,10 +139,13 @@ class Invigilator {
   // Requests to client
   // NOTE: vault_info_mutex_ must be locked when calling this function.
   void SendVaultJoinConfirmation(const std::string& identity, bool join_result);
+  void SendNewVersionAvailable(uint16_t client_port);
 
   // Response handling from client
   void HandleVaultJoinConfirmationAck(const std::string& message,
                                       std::function<void(bool)> callback);  // NOLINT (Philip)
+  void HandleNewVersionAvailableAck(const std::string& message,
+                                    std::function<void(bool)> callback);  // NOLINT (Philip)
 
   // Update handling
   void CheckForUpdates(const boost::system::error_code& ec);
@@ -176,9 +181,9 @@ class Invigilator {
   uint16_t local_port_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
-  std::vector<uint16_t> client_ports_;
+  std::map<uint16_t, int> client_ports_and_versions_;
   mutable std::mutex client_ports_mutex_;
-  boost::filesystem::path config_file_path_;
+  boost::filesystem::path config_file_path_, latest_local_installer_path_;
 };
 
 }  // namespace process_management

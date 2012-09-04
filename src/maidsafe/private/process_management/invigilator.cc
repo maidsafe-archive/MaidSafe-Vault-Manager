@@ -45,7 +45,8 @@ Invigilator::VaultInfo::VaultInfo()
       vault_port(0),
       client_port(0),
       requested_to_run(false),
-      joined_network(false) {}
+      joined_network(false),
+      vault_version(kInvalidVersion) {}
 
 void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
@@ -54,6 +55,7 @@ void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) cons
   pb_vault_info->set_keys(serialized_keys);
   pb_vault_info->set_chunkstore_path(chunkstore_path);
   pb_vault_info->set_requested_to_run(requested_to_run);
+  pb_vault_info->set_version(vault_version);
 }
 
 void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
@@ -61,6 +63,7 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
   asymm::ParseKeys(pb_vault_info.keys(), keys);
   chunkstore_path = pb_vault_info.chunkstore_path();
   requested_to_run = pb_vault_info.requested_to_run();
+  vault_version = pb_vault_info.version();
 }
 
 
@@ -80,13 +83,14 @@ Invigilator::Invigilator()
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
-      client_ports_(),
+      client_ports_and_versions_(),
       client_ports_mutex_(),
 #ifdef USE_TEST_KEYS
-      config_file_path_(fs::path(".") / detail::kGlobalConfigFilename) {
+      config_file_path_(fs::path(".") / detail::kGlobalConfigFilename),
 #else
-      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename) {
+      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
 #endif
+      latest_local_installer_path_() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
@@ -137,25 +141,17 @@ boost::posix_time::time_duration Invigilator::kMaxUpdateInterval() {
   return bptime::hours(24 * 7);
 }
 
-void Invigilator::RestartInvigilator(const std::string& latest_file,
-                                     const std::string& executable_name) const {
-  // TODO(Fraser#5#): 2012-08-12 - Define command in constant.  Do we need 2 shell scripts?
-  //                               Do we need 2 parameters to unix script?
-#ifdef MAIDSAFE_WIN32
-  std::string command("restart_vm_windows.bat " + latest_file + " " + executable_name);
-#else
-  std::string command("./restart_vm_linux.sh " + latest_file + " " + executable_name);
-#endif
+void Invigilator::RestartInvigilator(const std::string& /*latest_file*/,
+                                     const std::string& /*executable_name*/) const {
   // system("/etc/init.d/mvm restart");
-  int result(system(command.c_str()));
-  if (result != 0)
-    LOG(kWarning) << "Result: " << result;
+//  int result(system(command.c_str()));
+//  if (result != 0)
+  LOG(kWarning) << "Not implemented";
 }
 
 bool Invigilator::CreateConfigFile() {
   protobuf::InvigilatorConfig config;
   config.set_update_interval(update_interval_.total_seconds());
-  config.set_latest_local_version(kApplicationVersion);
 
   if (!ObtainBootstrapInformation(config)) {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
@@ -168,7 +164,7 @@ bool Invigilator::CreateConfigFile() {
   }
   LOG(kInfo) << "Created config file " << config_file_path_;
 
-  download_manager_.SetLatestLocalVersion(config.latest_local_version());
+  download_manager_.SetLatestLocalVersion(kApplicationVersion);
 
   return true;
 }
@@ -186,7 +182,7 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
     return false;
   }
 
-  download_manager_.SetLatestLocalVersion(config.latest_local_version());
+  download_manager_.SetLatestLocalVersion(kApplicationVersion);
   update_interval_ = bptime::seconds(config.update_interval());
 
   for (int i(0); i != config.vault_info_size(); ++i) {
@@ -207,7 +203,6 @@ bool Invigilator::WriteConfigFile() {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
   }
-  config.set_latest_local_version(download_manager_.latest_local_version());
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
     for (auto& vault_info : vault_infos_) {
@@ -286,16 +281,10 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
     return;
   }
 
+  uint16_t request_port(static_cast<uint16_t>(client_request.listening_port()));
   {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
-    uint16_t request_port(static_cast<uint16_t>(client_request.listening_port()));
-    auto itr(std::find_if(client_ports_.begin(),
-                          client_ports_.end(),
-                          [&request_port] (const uint16_t &element)->bool {
-                            return element == request_port;
-                          }));
-    if (itr == client_ports_.end())
-      client_ports_.push_back(request_port);
+    client_ports_and_versions_[request_port] = client_request.version();
   }
 
   protobuf::ClientRegistrationResponse client_response;
@@ -309,6 +298,8 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                     client_response.add_bootstrap_endpoint_port(element.second);
                   });
   }
+  if (client_request.version() < VersionToInt(download_manager_.latest_local_version()))
+    client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
   response = detail::WrapMessage(MessageType::kClientRegistrationResponse,
                                  client_response.SerializeAsString());
@@ -330,14 +321,13 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
   });
 
   uint16_t client_port(static_cast<uint16_t>(start_vault_request.client_port()));
-  auto itr(std::find_if(client_ports_.begin(),
-                      client_ports_.end(),
-                      [&client_port] (const uint16_t &element)->bool {
-                        return element == client_port;
-                      }));
-  if (itr == client_ports_.end()) {
-    LOG(kError) << "Client is not registered with Invigilator.";
-    return set_response(false);
+  {
+    std::lock_guard<std::mutex> lock(client_ports_mutex_);
+    auto client_itr(client_ports_and_versions_.find(client_port));
+    if (client_itr == client_ports_and_versions_.end()) {
+      LOG(kError) << "Client is not registered with Invigilator.";
+      return set_response(false);
+    }
   }
 
   VaultInfoPtr vault_info(new VaultInfo);
@@ -450,6 +440,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
         vault_identity_response.set_keys(serialised_keys);
         vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
         (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
+        (*itr)->vault_version = vault_identity_request.version();
         std::for_each(endpoints.begin(),
                       endpoints.end(),
                       [&vault_identity_response] (const EndPoint& element) {
@@ -680,7 +671,7 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
 }
 
 void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
-                                    std::function<void(bool)> callback) {  // NOLINT (Philip)
+                                                 std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -696,6 +687,77 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
+void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
+  protobuf::NewVersionAvailable new_version_available;
+  std::mutex local_mutex;
+  std::condition_variable local_cond_var;
+  bool done(false), local_result(false);
+  std::function<void(bool)> callback =                                            // NOLINT (Fraser)
+    [&](bool result) {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+      local_cond_var.notify_one();
+    };
+  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  int result(0);
+  request_transport->Connect(client_port, result);
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to connect request transport to client.";
+    callback(false);
+  }
+  request_transport->on_message_received().connect(
+      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+        HandleNewVersionAvailableAck(message, callback);
+      });
+  request_transport->on_error().connect([this, callback](const int& error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
+  new_version_available.set_new_version_filepath(latest_local_installer_path_.string());
+  LOG(kVerbose) << "Sending new version available to client on port " << client_port;
+  request_transport->Send(detail::WrapMessage(MessageType::kNewVersionAvailable,
+                                              new_version_available.SerializeAsString()),
+                          client_port);
+
+  std::unique_lock<std::mutex> lock(local_mutex);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
+    LOG(kError) << "Timed out waiting for reply.";
+    return;
+  }
+  if (!local_result) {
+    LOG(kError) << "Failed to confirm joining of vault to client.";
+    return;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(client_ports_mutex_);
+    auto client_itr(client_ports_and_versions_.find(client_port));
+    if (client_itr == client_ports_and_versions_.end()) {
+      LOG(kError) << "Client is not registered with Invigilator.";
+      return;
+    }
+    (*client_itr).second = VersionToInt(download_manager_.latest_local_version());
+  }
+}
+
+void Invigilator::HandleNewVersionAvailableAck(const std::string& message,
+                                               std::function<void(bool)> callback) {  // NOLINT (Philip)
+  MessageType type;
+  std::string payload;
+  if (!detail::UnwrapMessage(message, type, payload)) {
+    LOG(kError) << "Failed to handle incoming message.";
+    return;
+  }
+  if (type != MessageType::kNewVersionAvailableAck) {
+    LOG(kError) << "Incoming message is of incorrect type.";
+    return;
+  }
+  protobuf::NewVersionAvailableAck ack;
+  ack.ParseFromString(payload);
+  callback(true);
+}
+
 #if defined MAIDSAFE_LINUX
 bool Invigilator::IsInstaller(const fs::path& path) {
   return path.extension() == ".deb"
@@ -708,28 +770,67 @@ bool Invigilator::IsInstaller(const fs::path& /*path*/) { return false; }
 
 void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
-  if (download_manager_.Update(updated_files) == kSuccess) {
+  if (download_manager_.Update(updated_files) != kSuccess)
+    return;  // Either failed or no updated files.
+
+  auto it(std::find_if(updated_files.begin(), updated_files.end(),
+                       [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
+  bool new_installer(it != updated_files.end());
+  if (new_installer) {
+    latest_local_installer_path_ = *it;
+    LOG(kInfo) << "Found new installer at " << latest_local_installer_path_;
+  } else {
+    LOG(kInfo) << "No new installer";
+  }
+
+  it = (std::find_if(updated_files.begin(), updated_files.end(),
+                       [&](const fs::path& path) { return path.stem() == detail::kVaultName; }));  // NOLINT
+  fs::path new_local_vault_path;
+  if (it != updated_files.end()) {
+    new_local_vault_path = *it;
+    LOG(kInfo) << "Found new vault exe at " << new_local_vault_path;
+  } else {
+    LOG(kInfo) << "No new vault exe.";
+  }
+    
 //    WriteConfigFile();
 #if defined MAIDSAFE_LINUX
-    auto it(std::find_if(updated_files.begin(), updated_files.end(),
-                         [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
-    if (it != updated_files.end()) {
-      LOG(kInfo) << "Found new installer at " << (*it).string();
-      std::string command("dpkg -i " + (*it).string());
-      int result(system(command.c_str()));
-      if (result != 0)
-        LOG(kError) << "Update failed: failed to run installer.";
-    } else {
-      LOG(kError) << "Update failed: could not find installer in list of updated files";
-    }
-    //  FIND INSTALLER IN UPDATED FILES
-    //  RUN DPKG ON INSTALLER
+  std::string command("dpkg -i " + latest_local_installer_path_.string());
+  int result(system(command.c_str()));
+  if (result != 0)
+    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
 #elif defined MAIDSAFE_APPLE
-    //  FIND INSTALLER IN UPDATED FILES
-    //  RUN INSTALLER SOMEHOW
-#else
-    //  TELL CLIENT TO RUN INSTALLER AND RESTART INVIGILATOR
+  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
+  //  RUN INSTALLER SOMEHOW
 #endif
+
+  if (new_installer) {
+    // Notify out-of-date clients
+    std::map<uint16_t, int> client_ports_and_versions_copy;
+    {
+      std::lock_guard<std::mutex> lock(client_ports_mutex_);
+      client_ports_and_versions_copy = client_ports_and_versions_;
+    }
+    for (auto entry : client_ports_and_versions_copy) {
+      if (entry.second < VersionToInt(download_manager_.latest_local_version()))
+        SendNewVersionAvailable(entry.first);
+    }
+  } else if (!new_local_vault_path.empty()) {
+    StopAllVaults();
+    boost::system::error_code error_code;
+    fs::rename(
+        new_local_vault_path,
+        GetAppInstallDir() / (detail::kVaultName + detail::kThisPlatform().executable_extension()),
+        error_code);
+    if (error_code)
+      LOG(kError) << "Failed to move new vault executable.";
+
+    {
+      std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+      vault_infos_.clear();
+    }
+    if (!ReadConfigFileAndStartVaults())
+      LOG(kError) << "Failed to restart vaults.";
   }
 }
 
@@ -1006,6 +1107,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
         p_info->set_keys(serialised_keys);
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
+        p_info->set_version(vault_info->vault_version);
         n = config.vault_info_size();
       }
     }
@@ -1021,6 +1123,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
     p_info->set_keys(serialised_keys);
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
+    p_info->set_version(kInvalidVersion);
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
       LOG(kError) << "Failed to write config file to amend details of vault ID "
                   << Base64Substr(vault_info->keys.identity);

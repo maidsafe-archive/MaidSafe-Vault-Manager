@@ -14,6 +14,7 @@
 #include <chrono>
 #include <limits>
 
+#include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -35,17 +36,18 @@ namespace process_management {
 
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
-ClientController::ClientController()
-    : invigilator_port_(Invigilator::kMinPort() - 1),
-      local_port_(0),
-      asio_service_(3),
-      receiving_transport_(new LocalTcpTransport(asio_service_.service())),
-      on_new_version_available_(),
-      state_(kInitialising),
-      bootstrap_nodes_(),
-      joining_vaults_(),
-      joining_vaults_mutex_(),
-      joining_vaults_conditional_() {
+ClientController::ClientController(
+    std::function<void(const std::string&)> on_new_version_available_slot)
+        : invigilator_port_(Invigilator::kMinPort() - 1),
+          local_port_(0),
+          asio_service_(3),
+          receiving_transport_(new LocalTcpTransport(asio_service_.service())),
+          on_new_version_available_(),
+          state_(kInitialising),
+          bootstrap_nodes_(),
+          joining_vaults_(),
+          joining_vaults_mutex_(),
+          joining_vaults_conditional_() {
   asio_service_.Start();
 
   if (!StartListeningPort()) {
@@ -53,12 +55,16 @@ ClientController::ClientController()
     state_ = kFailed;
   }
 
-  if (!ConnectToInvigilator()) {
+  std::string path_to_new_installer;
+  if (!ConnectToInvigilator(path_to_new_installer)) {
     LOG(kError) << "Failed to connect to invigilator. Object useless.";
     state_ = kFailed;
   }
 
   state_ = kVerified;
+  on_new_version_available_.connect(on_new_version_available_slot);
+  if (!path_to_new_installer.empty())
+    on_new_version_available_(path_to_new_installer);
 }
 
 ClientController::~ClientController() {
@@ -103,16 +109,17 @@ bool ClientController::StartListeningPort() {
   return true;
 }
 
-bool ClientController::ConnectToInvigilator() {
+bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) {
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   std::mutex mutex;
   std::condition_variable condition_variable;
   State state(kInitialising);
 
   request_transport->on_message_received().connect(
-      [&mutex, &condition_variable, &state, this] (const std::string& message,
-                                                   Port invigilator_port) {
-        HandleRegisterResponse(message, invigilator_port, mutex, condition_variable, state);
+      [&mutex, &condition_variable, &state, &path_to_new_installer, this]
+      (const std::string& message, Port invigilator_port) {
+        HandleRegisterResponse(message, invigilator_port, mutex, condition_variable, state,
+                               path_to_new_installer);
       });
   request_transport->on_error().connect(
       [&mutex, &condition_variable, &state] (const int& error) {
@@ -134,6 +141,7 @@ bool ClientController::ConnectToInvigilator() {
 
   protobuf::ClientRegistrationRequest request;
   request.set_listening_port(local_port_);
+  request.set_version(VersionToInt(kApplicationVersion));
   request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
                                               request.SerializeAsString()),
                           invigilator_port_);
@@ -160,7 +168,8 @@ void ClientController::HandleRegisterResponse(const std::string& message,
                                               Port /*invigilator_port*/,
                                               std::mutex& mutex,
                                               std::condition_variable& condition_variable,
-                                              State& state) {
+                                              State& state,
+                                              std::string& path_to_new_installer) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -185,6 +194,16 @@ void ClientController::HandleRegisterResponse(const std::string& message,
     state = kFailed;
     condition_variable.notify_one();
     return;
+  }
+
+  if (response.has_path_to_new_installer()) {
+    boost::system::error_code error_code;
+    fs::path new_version(response.path_to_new_installer());
+    if (!fs::exists(new_version, error_code) || error_code) {
+      LOG(kError) << "New version file missing: " << new_version;
+    } else {
+      path_to_new_installer = new_version.string();
+    }
   }
 
   int max_index(response.bootstrap_endpoint_ip_size() >

@@ -88,7 +88,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error_code);
     ASSERT_FALSE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
     Invigilator invigilator;
-    ClientController client_controller;
+    ClientController client_controller([](std::string){});
     int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
@@ -111,7 +111,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   asymm::Keys first_keys;
   {
     Invigilator invigilator;
-    ClientController client_controller;
+    ClientController client_controller([](std::string){});
     ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&first_keys));
     first_keys.identity = "FirstVault";
     EXPECT_TRUE(client_controller.StartVault(first_keys, "F"));
@@ -146,7 +146,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   asymm::Keys second_keys;
   {
     Invigilator invigilator;
-    ClientController client_controller;
+    ClientController client_controller([](std::string){});
     ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&second_keys));
     second_keys.identity = "SecondVault";
     EXPECT_TRUE(client_controller.StartVault(second_keys, "G"));
@@ -176,7 +176,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // down when the Invigilator is destroyed. both should saved to the config file.
   {
     Invigilator invigilator;
-    ClientController client_controller;
+    ClientController client_controller([](std::string){});
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
     asymm::Signature signature1, signature2;
@@ -208,7 +208,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
-    ClientController client_controller1, client_controller2;
+    ClientController client_controller1([](std::string){}), client_controller2([](std::string){});
     asymm::Keys keys;
     for (int i(0); i < 40; ++i) {
       ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
