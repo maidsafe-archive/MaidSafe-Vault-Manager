@@ -130,8 +130,11 @@ class ChunkActionAuthorityTest: public testing::Test {
 
   void ValidStoreTests(const std::string &name, const std::string &content) {
     EXPECT_EQ(kInvalidSignedData, chunk_action_authority_->ValidStore(name, "", key_.public_key));
-    EXPECT_EQ(kInvalidPublicKey,
-              chunk_action_authority_->ValidStore(name, content, asymm::PublicKey()));
+    if (GetDataType(name) == kSignaturePacket)
+      EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(name, content, asymm::PublicKey()));
+    else
+      EXPECT_EQ(kInvalidPublicKey,
+                chunk_action_authority_->ValidStore(name, content, asymm::PublicKey()));
     EXPECT_EQ(kSignatureVerificationFailure,
               chunk_action_authority_->ValidStore(name, content, key1_.public_key));
     EXPECT_EQ(kSuccess, chunk_action_authority_->ValidStore(name, content, key_.public_key));

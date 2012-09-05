@@ -109,12 +109,21 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
     return kInvalidSignedData;
   }
 
-  if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name) << ": invalid public key";
-    return kInvalidPublicKey;
+  asymm::PublicKey decoded_public_key;
+  asymm::DecodePublicKey(chunk.data(), &decoded_public_key);
+  if (!asymm::ValidateKey(decoded_public_key)) {
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data not encoded public key";
+    return kDataNotPublicKey;
   }
 
-  if (asymm::CheckSignature(chunk.data(), chunk.signature(), public_key) != kSuccess) {
+  asymm::PublicKey validating_key;
+  if (asymm::ValidateKey(public_key))
+    validating_key = public_key;
+  else
+    validating_key = decoded_public_key;
+
+
+  if (asymm::CheckSignature(chunk.data(), chunk.signature(), validating_key) != kSuccess) {
     LOG(kError) << "Failed to store " << Base32Substr(name) << ": signature verification failed";
     return kSignatureVerificationFailure;
   }
@@ -122,13 +131,6 @@ int ProcessStore<kSignaturePacket>(const std::string &name,
   if (crypto::Hash<crypto::SHA512>(chunk.data() + chunk.signature()) != RemoveTypeFromName(name)) {
     LOG(kError) << "Failed to validate " << Base32Substr(name) << ": chunk isn't hashable";
     return kNotHashable;
-  }
-
-  asymm::PublicKey decoded_public_key;
-  asymm::DecodePublicKey(chunk.data(), &decoded_public_key);
-  if (!asymm::ValidateKey(decoded_public_key)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data not encoded public key";
-    return kDataNotPublicKey;
   }
 
   return kSuccess;
