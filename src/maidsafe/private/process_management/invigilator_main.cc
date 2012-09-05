@@ -141,7 +141,7 @@ int main() {
 #else
   signal(SIGINT, ShutDownInvigilator);
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
 
   {
     maidsafe::priv::process_management::Invigilator invigilator;

@@ -91,7 +91,7 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
     LOG(kError) << "Could not bind socket to endpoint: " << ec.message();
     boost::system::error_code ec;
     acceptor_.close(ec);
-  result = kBindError;
+    result = kBindError;
     return;
   }
 

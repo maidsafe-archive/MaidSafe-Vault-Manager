@@ -19,14 +19,18 @@
 
 
 int main(int /*ac*/, char* /*av*/[]) {
+  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kVerbose);
+  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
   maidsafe::priv::process_management::ClientController client([](std::string){});  // NOLINT (Fraser)
   maidsafe::asymm::Keys keys;
-  std::string account_name("ACCOUNT1");
+  std::string account_name(maidsafe::RandomAlphaNumericString(16));
   maidsafe::asymm::GenerateKeyPair(&keys);
   keys.identity = maidsafe::RandomAlphaNumericString(64);
   keys.validation_token = maidsafe::RandomAlphaNumericString(64);
   try {
-  client.StartVault(keys, account_name, "");
+  if (!client.StartVault(keys, account_name, "")) {
+    LOG(kError) << "DUMMYclient: Failed to start vault " << (keys.identity);
+  }
   } catch(...) {
     LOG(kError) << "DUMMYclient: Problem starting vault " << (keys.identity);
   }

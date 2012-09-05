@@ -185,7 +185,7 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
 
   update_interval_ = bptime::seconds(config.update_interval());
 
-  protobuf::BootstrapEndpoints end_points(config.bootstrap_endpoints());
+  protobuf::Bootstrap end_points(config.bootstrap_endpoints());
 
   LoadBootstrapEndpoints(end_points);
 
@@ -292,12 +292,27 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
   }
 
   protobuf::ClientRegistrationResponse client_response;
-  std::for_each(endpoints_.begin(),
-                endpoints_.end(),
-                [&client_response] (const EndPoint& element) {
-                  client_response.add_bootstrap_endpoint_ip(element.first);
-                  client_response.add_bootstrap_endpoint_port(element.second);
-                });
+  if (endpoints_.empty()) {
+    protobuf::InvigilatorConfig config;
+    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+      // TODO(Team): Should have counter for failures to trigger recreation?
+      LOG(kError) << "Failed to read & parse config file " << config_file_path_;
+    }
+    if (!ObtainBootstrapInformation(config)) {
+      LOG(kError) << "Failed to get endpoints from bootstrap server";
+    } else {
+      if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+        LOG(kError) << "Failed to write config file after obtaining bootstrap info.";
+      }
+    }
+  } else {
+    std::for_each(endpoints_.begin(),
+                  endpoints_.end(),
+                  [&client_response] (const EndPoint& element) {
+                    client_response.add_bootstrap_endpoint_ip(element.first);
+                    client_response.add_bootstrap_endpoint_port(element.second);
+                  });
+  }
   if (client_request.version() < VersionToInt(download_manager_.latest_local_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
@@ -306,6 +321,7 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
 }
 
 void Invigilator::HandleStartVaultRequest(const std::string& request, std::string& response) {
+  LOG(kError) << "e StartVaultRequest.";
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -982,28 +998,25 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
     LOG(kError) << "Retrieved endpoints are empty.";
     return false;
   }
-
-  protobuf::BootstrapEndpoints end_points;
+  protobuf::Bootstrap end_points;
   if (!end_points.ParseFromString(serialised_endpoints)) {
     LOG(kError) << "Retrieved endpoints do not parse.";
     return false;
   }
-
   LoadBootstrapEndpoints(end_points);
 
   config.mutable_bootstrap_endpoints()->CopyFrom(end_points);
   return true;
 }
 
-void Invigilator::LoadBootstrapEndpoints(protobuf::BootstrapEndpoints& end_points) {
-  int max_index(end_points.bootstrap_endpoint_ip_size() >
-                end_points.bootstrap_endpoint_port_size() ?
-                    end_points.bootstrap_endpoint_port_size() :
-                    end_points.bootstrap_endpoint_ip_size());
+void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
+  int max_index(end_points.bootstrap_contacts_size());
+  LOG(kError) << "num endpoints: " << max_index << " clearing endpoints";
   endpoints_.clear();
   for (int n(0); n < max_index; ++n) {
-    endpoints_.push_back(std::make_pair(end_points.bootstrap_endpoint_ip(n),
-                                        end_points.bootstrap_endpoint_port(n)));
+    std::string ip(end_points.bootstrap_contacts(n).ip());
+    uint16_t port(end_points.bootstrap_contacts(n).port());
+    endpoints_.push_back(std::make_pair(ip, port));
   }
 }
 
@@ -1080,11 +1093,13 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
       return false;
     }
-    protobuf::BootstrapEndpoints *eps = config.mutable_bootstrap_endpoints();
+    protobuf::Bootstrap *eps = config.mutable_bootstrap_endpoints();
     eps->Clear();
+    protobuf::Endpoint* node;
     for (auto itr(endpoints_.begin()); itr != endpoints_.end(); ++itr) {
-      eps->add_bootstrap_endpoint_ip((*itr).first);
-      eps->add_bootstrap_endpoint_port((*itr).second);
+      node = eps->add_bootstrap_contacts();
+      node->set_ip((*itr).first);
+      node->set_port((*itr).second);
     }
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
       LOG(kError) << "Failed to write config file after adding endpoint.";

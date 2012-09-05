@@ -55,8 +55,7 @@ class VaultController {
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   bool RequestVaultIdentity(uint16_t listening_port);
   bool HandleVaultIdentityResponse(const std::string& message,
-                                   std::mutex& mutex,
-                                   std::condition_variable& cond_var);
+                                   std::mutex& mutex);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToInvigilatorResponse(const std::string& message,

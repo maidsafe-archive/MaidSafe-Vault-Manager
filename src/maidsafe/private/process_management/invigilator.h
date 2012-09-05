@@ -168,7 +168,7 @@ class Invigilator {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   bool ObtainBootstrapInformation(protobuf::InvigilatorConfig& config);
-  void LoadBootstrapEndpoints(protobuf::BootstrapEndpoints& end_points);
+  void LoadBootstrapEndpoints(protobuf::Bootstrap& end_points);
   bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);
   bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 

@@ -108,12 +108,14 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   asio_service_.Start();
   uint16_t listening_port(detail::GetRandomPort());
   int result(0);
+  LOG(kError) << "Transport will listen on: " << listening_port;
   receiving_transport_->StartListening(listening_port, result);
   while (result != kSuccess) {
+    LOG(kError) << "Transport failed to listen on: " << listening_port;
     ++listening_port;
     receiving_transport_->StartListening(listening_port, result);
   }
-
+  LOG(kError) << "Transport is listening on: " << listening_port;
   receiving_transport_->on_message_received().connect(
       [this] (const std::string& message, Port invigilator_port) {
         HandleReceivedRequest(message, invigilator_port);
@@ -363,7 +365,10 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
   auto connection(request_transport->on_message_received().connect(
       [this, &local_mutex, &local_cond_var, &result] (const std::string& message,
                                                       Port /*invigilator_port*/) {
-        result = HandleVaultIdentityResponse(message, local_mutex, local_cond_var);
+        result = HandleVaultIdentityResponse(message, local_mutex);
+        if (result)
+          local_cond_var.notify_one();
+        LOG(kError) << "HandleVaultIdentityResponse result set to " << std::boolalpha << result;
       }));
   auto error_connection(request_transport->on_error().connect([] (const int& error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -383,13 +388,12 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
-
+  LOG(kError) << "result is " << std::boolalpha << result;
   return result;
 }
 
 bool VaultController::HandleVaultIdentityResponse(const std::string& message,
-                                                  std::mutex& mutex,
-                                                  std::condition_variable& cond_var) {
+                                                  std::mutex& mutex) {
   MessageType type;
   std::string payload;
   std::lock_guard<std::mutex> lock(mutex);
@@ -428,8 +432,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     bootstrap_endpoints_.push_back(std::pair<std::string, uint16_t>(address, port));
   }
 
-  LOG(kVerbose) << "Received VaultIdentityResponse.";
-  cond_var.notify_one();
+  LOG(kInfo) << "Received VaultIdentityResponse.";
   return true;
 }
 

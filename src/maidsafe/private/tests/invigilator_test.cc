@@ -126,15 +126,12 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(1, invigilator_config.vault_info_size());
 
-  protobuf::BootstrapEndpoints end_points(invigilator_config.bootstrap_endpoints());
-  int max_index(end_points.bootstrap_endpoint_ip_size() >
-                end_points.bootstrap_endpoint_port_size() ?
-                    end_points.bootstrap_endpoint_port_size() :
-                    end_points.bootstrap_endpoint_ip_size());
+  protobuf::Bootstrap end_points(invigilator_config.bootstrap_endpoints());
+  int max_index(end_points.bootstrap_contacts_size());
   int endpoint_matches(0);
   for (int n(0); n < max_index; ++n) {
-      if (end_points.bootstrap_endpoint_ip(n).compare("127.0.0.46") &&
-          (end_points.bootstrap_endpoint_port(n) == 3658)) {
+      if (end_points.bootstrap_contacts(n).ip().compare("127.0.0.46") &&
+          (end_points.bootstrap_contacts(n).port() == 3658)) {
         ++endpoint_matches;
       }
   }

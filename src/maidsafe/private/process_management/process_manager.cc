@@ -22,6 +22,8 @@
 #include "boost/process/wait_for_exit.hpp"
 #include "boost/system/error_code.hpp"
 
+#include "boost/iostreams/device/file_descriptor.hpp"
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
