@@ -44,13 +44,13 @@ namespace process_management {
 
 namespace {
 
+#ifdef MAIDSAFE_WIN32
 std::wstring StringToWstring(const std::string &input) {
   std::unique_ptr<wchar_t[]> buffer(new wchar_t[input.size()]);
   size_t num_chars = mbstowcs(buffer.get(), input.c_str(), input.size());
   return std::wstring(buffer.get(), num_chars);
 }
 
-#ifdef MAIDSAFE_WIN32
 std::wstring ConstructCommandLine(std::vector<std::string> process_args) {
   std::string args;
   for (auto arg : process_args)
