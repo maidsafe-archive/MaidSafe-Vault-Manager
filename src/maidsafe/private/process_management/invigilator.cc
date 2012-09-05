@@ -90,7 +90,8 @@ Invigilator::Invigilator()
 #else
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
 #endif
-      latest_local_installer_path_() {
+      latest_local_installer_path_(),
+      endpoints_() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
@@ -101,6 +102,8 @@ Invigilator::Invigilator()
       return;
     }
   }
+
+  download_manager_.SetLatestLocalVersion(kApplicationVersion);
   UpdateExecutor();
 
   LOG(kInfo) << "Invigilator started";
@@ -164,8 +167,6 @@ bool Invigilator::CreateConfigFile() {
   }
   LOG(kInfo) << "Created config file " << config_file_path_;
 
-  download_manager_.SetLatestLocalVersion(kApplicationVersion);
-
   return true;
 }
 
@@ -182,8 +183,11 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
     return false;
   }
 
-  download_manager_.SetLatestLocalVersion(kApplicationVersion);
   update_interval_ = bptime::seconds(config.update_interval());
+
+  protobuf::BootstrapEndpoints end_points(config.bootstrap_endpoints());
+
+  LoadBootstrapEndpoints(end_points);
 
   for (int i(0); i != config.vault_info_size(); ++i) {
     VaultInfoPtr vault_info(new VaultInfo);
@@ -288,16 +292,12 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
   }
 
   protobuf::ClientRegistrationResponse client_response;
-  protobuf::InvigilatorConfig config;
-  std::vector<EndPoint> endpoints;
-  if (ReadBootstrapEndpoints(config, endpoints) || !endpoints.empty()) {
-    std::for_each(endpoints.begin(),
-                  endpoints.end(),
-                  [&client_response] (const EndPoint& element) {
-                    client_response.add_bootstrap_endpoint_ip(element.first);
-                    client_response.add_bootstrap_endpoint_port(element.second);
-                  });
-  }
+  std::for_each(endpoints_.begin(),
+                endpoints_.end(),
+                [&client_response] (const EndPoint& element) {
+                  client_response.add_bootstrap_endpoint_ip(element.first);
+                  client_response.add_bootstrap_endpoint_port(element.second);
+                });
   if (client_request.version() < VersionToInt(download_manager_.latest_local_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
@@ -406,55 +406,63 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
   }
 
   protobuf::VaultIdentityResponse vault_identity_response;
+  bool successful_response(false);
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
+  std::string serialised_keys;
   auto itr(FindFromProcessIndex(vault_identity_request.process_index()));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_identity_request.process_index()
                 << " hasn't been added.";
-    vault_identity_response.set_account_name("");
-    vault_identity_response.set_keys("");
+    successful_response = false;
     // TODO(Team): Should this be dropped silently?
   } else {
-    std::string serialised_keys;
     if (!asymm::SerialiseKeys((*itr)->keys, serialised_keys)) {
       LOG(kError) << "Failed to serialise keys of vault with process_index "
                   << vault_identity_request.process_index();
-      vault_identity_response.set_account_name("");
-      vault_identity_response.set_keys("");
+      successful_response = false;
       // TODO(Team): Should this be informed with more detail?
     } else {
-      protobuf::InvigilatorConfig config;
-      std::vector<EndPoint> endpoints;
-      if (!ReadBootstrapEndpoints(config, endpoints) || endpoints.empty()) {
+      if (endpoints_.empty()) {
+        protobuf::InvigilatorConfig config;
+        if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+          // TODO(Team): Should have counter for failures to trigger recreation?
+          LOG(kError) << "Failed to read & parse config file " << config_file_path_;
+          successful_response = false;
+        }
         if (!ObtainBootstrapInformation(config)) {
           LOG(kError) << "Failed to get endpoints for process_index "
                       << vault_identity_request.process_index();
-          vault_identity_response.set_account_name("");
-          vault_identity_response.set_keys("");
+          successful_response = false;
         } else {
-          if (!ReadBootstrapEndpoints(config, endpoints)) {
-            LOG(kError) << "Failed to read endpoints obtained from server.";
-            vault_identity_response.set_account_name("");
-            vault_identity_response.set_keys("");
+          if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+            LOG(kError) << "Failed to write config file after obtaining bootstrap info.";
+          } else {
+            successful_response = true;
           }
         }
       } else {
-        itr = FindFromProcessIndex(vault_identity_request.process_index());
-        vault_identity_response.set_account_name((*itr)->account_name);
-        vault_identity_response.set_keys(serialised_keys);
-        vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
-        (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
-        (*itr)->vault_version = vault_identity_request.version();
-        std::for_each(endpoints.begin(),
-                      endpoints.end(),
-                      [&vault_identity_response] (const EndPoint& element) {
-                        vault_identity_response.add_bootstrap_endpoint_ip(element.first);
-                        vault_identity_response.add_bootstrap_endpoint_port(element.second);
-                      });
+        successful_response = true;
       }
     }
   }
-
+  if (successful_response) {
+    itr = FindFromProcessIndex(vault_identity_request.process_index());
+    vault_identity_response.set_account_name((*itr)->account_name);
+    vault_identity_response.set_keys(serialised_keys);
+    vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
+    (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
+    (*itr)->vault_version = vault_identity_request.version();
+    std::for_each(endpoints_.begin(),
+                  endpoints_.end(),
+                  [&vault_identity_response] (const EndPoint& element) {
+                    vault_identity_response.add_bootstrap_endpoint_ip(element.first);
+                    vault_identity_response.add_bootstrap_endpoint_port(element.second);
+                  });
+  } else {
+    vault_identity_response.set_account_name("");
+    vault_identity_response.set_keys("");
+    vault_identity_response.set_chunkstore_path("");
+  }
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_identity_response.SerializeAsString());
 }
@@ -572,20 +580,22 @@ void Invigilator::HandleBootstrapRequest(const std::string& request, std::string
     LOG(kError) << "Failed to parse BootstrapRequest.";
     return;
   }
-  protobuf::InvigilatorConfig config;
-  std::vector<EndPoint> endpoints;
-  if (!ReadBootstrapEndpoints(config, endpoints) || endpoints.empty()) {
+  if (endpoints_.empty()) {
+    protobuf::InvigilatorConfig config;
+    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+      // TODO(Team): Should have counter for failures to trigger recreation?
+      LOG(kError) << "Failed to read & parse config file " << config_file_path_;
+    }
     if (!ObtainBootstrapInformation(config)) {
-      LOG(kError) << "Failed to get endpoints for message_id "
-                  << bootstrap_request.message_id();
+      LOG(kError) << "Failed to get endpoints from bootstrap server";
     } else {
-      if (!ReadBootstrapEndpoints(config, endpoints)) {
-        LOG(kError) << "Failed to read endpoints obtained from server.";
+      if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+        LOG(kError) << "Failed to write config file after obtaining bootstrap info.";
       }
     }
   } else {
-    std::for_each(endpoints.begin(),
-                  endpoints.end(),
+    std::for_each(endpoints_.begin(),
+                  endpoints_.end(),
                   [&bootstrap_response] (const EndPoint& element) {
                     bootstrap_response.add_bootstrap_endpoint_ip(element.first);
                     bootstrap_response.add_bootstrap_endpoint_port(element.second);
@@ -973,15 +983,28 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
     return false;
   }
 
-  protobuf::BootstrapEndpoints bootstrap_endpoints;
-  if (!bootstrap_endpoints.ParseFromString(serialised_endpoints)) {
+  protobuf::BootstrapEndpoints end_points;
+  if (!end_points.ParseFromString(serialised_endpoints)) {
     LOG(kError) << "Retrieved endpoints do not parse.";
     return false;
   }
 
-  config.mutable_bootstrap_endpoints()->CopyFrom(bootstrap_endpoints);
+  LoadBootstrapEndpoints(end_points);
 
+  config.mutable_bootstrap_endpoints()->CopyFrom(end_points);
   return true;
+}
+
+void Invigilator::LoadBootstrapEndpoints(protobuf::BootstrapEndpoints& end_points) {
+  int max_index(end_points.bootstrap_endpoint_ip_size() >
+                end_points.bootstrap_endpoint_port_size() ?
+                    end_points.bootstrap_endpoint_port_size() :
+                    end_points.bootstrap_endpoint_ip_size());
+  endpoints_.clear();
+  for (int n(0); n < max_index; ++n) {
+    endpoints_.push_back(std::make_pair(end_points.bootstrap_endpoint_ip(n),
+                                        end_points.bootstrap_endpoint_port(n)));
+  }
 }
 
 bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
@@ -1004,9 +1027,10 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
+#ifndef USE_TEST_KEYS
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
-
+#endif
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
@@ -1019,7 +1043,8 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   return true;
 }
 
-bool ReadFileToInvigilatorConfig(const fs::path& file_path, protobuf::InvigilatorConfig& config) {
+bool Invigilator::ReadFileToInvigilatorConfig(const fs::path& file_path,
+                                              protobuf::InvigilatorConfig& config) {
   std::string config_content;
   if (!ReadFile(file_path, &config_content) || config_content.empty()) {
     // TODO(Team): Should have counter for failures to trigger recreation?
@@ -1036,45 +1061,31 @@ bool ReadFileToInvigilatorConfig(const fs::path& file_path, protobuf::Invigilato
   return true;
 }
 
-bool Invigilator::ReadBootstrapEndpoints(protobuf::InvigilatorConfig& config,
-                                         std::vector<EndPoint >& endpoints) {
-  if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
-    // TODO(Team): Should have counter for failures to trigger recreation?
-    LOG(kError) << "Failed to read & parse config file " << config_file_path_;
-    return false;
-  }
-
-  protobuf::BootstrapEndpoints end_points(config.bootstrap_endpoints());
-  int max_index(end_points.bootstrap_endpoint_ip_size() >
-                end_points.bootstrap_endpoint_port_size() ?
-                    end_points.bootstrap_endpoint_port_size() :
-                    end_points.bootstrap_endpoint_ip_size());
-  for (int n(0); n < max_index; ++n) {
-    endpoints.push_back(std::make_pair(end_points.bootstrap_endpoint_ip(n),
-                                       end_points.bootstrap_endpoint_port(n)));
-  }
-
-  return true;
-}
-
 bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
-  protobuf::InvigilatorConfig config;
-  std::vector<EndPoint> endpoints;
-  if (!ReadBootstrapEndpoints(config, endpoints)) {
-    LOG(kError) << "Failed to get endpoints.";
-    return false;
-  }
-
-  auto it(std::find_if(endpoints.begin(),
-                       endpoints.end(),
+  auto it(std::find_if(endpoints_.begin(),
+                       endpoints_.end(),
                        [&ip, &port] (const EndPoint& element)->bool {
                          return element.first == ip && element.second == port;
                        }));
 
-  if (it == endpoints.end()) {
+  if (it == endpoints_.end()) {
+    endpoints_.push_back(std::make_pair(ip, port));
+    while (endpoints_.size() > 1000U) {  // TODO(Philip) add constant for max bootstrap file size
+      auto itr(endpoints_.begin());
+      endpoints_.erase(itr);
+    }
+    protobuf::InvigilatorConfig config;
+    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+      // TODO(Team): Should have counter for failures to trigger recreation?
+      LOG(kError) << "Failed to read & parse config file " << config_file_path_;
+      return false;
+    }
     protobuf::BootstrapEndpoints *eps = config.mutable_bootstrap_endpoints();
-    eps->add_bootstrap_endpoint_ip(ip);
-    eps->add_bootstrap_endpoint_port(port);
+    eps->Clear();
+    for (auto itr(endpoints_.begin()); itr != endpoints_.end(); ++itr) {
+      eps->add_bootstrap_endpoint_ip((*itr).first);
+      eps->add_bootstrap_endpoint_port((*itr).second);
+    }
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
       LOG(kError) << "Failed to write config file after adding endpoint.";
       return false;

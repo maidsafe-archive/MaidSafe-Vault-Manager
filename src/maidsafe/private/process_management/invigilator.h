@@ -116,6 +116,8 @@ class Invigilator {
   bool CreateConfigFile();
   bool ReadConfigFileAndStartVaults();
   bool WriteConfigFile();
+  bool ReadFileToInvigilatorConfig(const boost::filesystem::path& file_path,
+                                   protobuf::InvigilatorConfig& config);
 
   // Client and vault request handling
   bool ListenForMessages();
@@ -166,8 +168,7 @@ class Invigilator {
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
   bool ObtainBootstrapInformation(protobuf::InvigilatorConfig& config);
-  bool ReadBootstrapEndpoints(protobuf::InvigilatorConfig& config,
-                              std::vector<EndPoint>& endpoints);
+  void LoadBootstrapEndpoints(protobuf::BootstrapEndpoints& end_points);
   bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);
   bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 
@@ -184,6 +185,7 @@ class Invigilator {
   std::map<uint16_t, int> client_ports_and_versions_;
   mutable std::mutex client_ports_mutex_;
   boost::filesystem::path config_file_path_, latest_local_installer_path_;
+  std::vector<EndPoint> endpoints_;
 };
 
 }  // namespace process_management
