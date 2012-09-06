@@ -292,7 +292,7 @@ bool ClientController::StartVault(const asymm::Keys& keys,
   std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
   joining_vaults_[keys.identity] = false;
   if (!joining_vaults_conditional_.wait_for(lock,
-                                            std::chrono::seconds(10),
+                                            std::chrono::minutes(1),
                                             [&] { return joining_vaults_[keys.identity]; })) {
     LOG(kError) << "Timed out waiting for vault join confirmation.";
     return false;

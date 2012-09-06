@@ -54,6 +54,10 @@ VaultController::VaultController()
   if (result) {
     setuid_succeeded_ = false;
     LOG(kError) << "Failed to determine uid of lifestuff user";
+    boost::system::error_code error;
+    fs::remove(fs::path(".") / "uid.txt", error);
+    if (error)
+      LOG(kError) << "Failed to remove uid file.";
   } else {
     std::string content;
     ReadFile(fs::path(".") / "uid.txt", &content);
