@@ -1015,7 +1015,7 @@ void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
   endpoints_.clear();
   for (int n(0); n < max_index; ++n) {
     std::string ip(end_points.bootstrap_contacts(n).ip());
-    uint16_t port(end_points.bootstrap_contacts(n).port());
+    uint16_t port(static_cast<uint16_t>(end_points.bootstrap_contacts(n).port()));
     endpoints_.push_back(std::make_pair(ip, port));
   }
 }
