@@ -22,6 +22,8 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/thread/thread.hpp"
 
+#include "boost/process/child.hpp"
+
 namespace maidsafe {
 
 namespace priv {
@@ -99,7 +101,8 @@ class ProcessManager {
                     port(0),
                     restart_count(0),
                     done(false),
-                    status(ProcessStatus::kStopped) {}
+                    status(ProcessStatus::kStopped),
+                    child(0) {}
     ProcessInfo(ProcessInfo&& other);
     ProcessInfo& operator=(ProcessInfo&& other);
     Process process;
@@ -109,6 +112,7 @@ class ProcessManager {
     int32_t restart_count;
     bool done;
     ProcessStatus status;
+    boost::process::child child;
   };
 
   ProcessManager(const ProcessManager&);

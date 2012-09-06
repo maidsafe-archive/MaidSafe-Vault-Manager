@@ -20,6 +20,7 @@
 #include "boost/process/execute.hpp"
 #include "boost/process/initializers.hpp"
 #include "boost/process/wait_for_exit.hpp"
+#include "boost/process/terminate.hpp"
 #include "boost/system/error_code.hpp"
 
 #include "boost/iostreams/device/file_descriptor.hpp"
@@ -97,7 +98,8 @@ ProcessManager::ProcessInfo::ProcessInfo(ProcessManager::ProcessInfo&& other)
       port(std::move(other.port)),
       restart_count(std::move(other.restart_count)),
       done(std::move(other.done)),
-      status(std::move(other.status)) {}
+      status(std::move(other.status)),
+      child(std::move(other.child)) {}
 
 ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
     ProcessManager::ProcessInfo&& other) {
@@ -108,6 +110,7 @@ ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
   restart_count = std::move(other.restart_count);
   done = std::move(other.done);
   status = std::move(other.status);
+  child = std::move(other.child);
   return *this;
 }
 
@@ -290,7 +293,7 @@ void ProcessManager::KillProcess(const ProcessIndex& index) {
   if (itr == processes_.end())
     return;
   (*itr).done = true;
-  // SetInstruction(id, ProcessInstruction::kTerminate);
+  bp::terminate((*itr).child);
 }
 
 void ProcessManager::StopProcess(const ProcessIndex& index) {
@@ -299,7 +302,6 @@ void ProcessManager::StopProcess(const ProcessIndex& index) {
   if (itr == processes_.end())
     return;
   (*itr).done = true;
-  // SetInstruction(id, ProcessInstruction::kStop);
 }
 
 void ProcessManager::RestartProcess(const ProcessIndex& index) {
@@ -324,9 +326,12 @@ bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
   auto itr = FindProcess(index);
   if (itr == processes_.end())
     return false;
-  if (cond_var_.wait_for(lock, std::chrono::seconds(15), [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; }))  //NOLINT (Philip)
+  if (cond_var_.wait_for(lock, std::chrono::seconds(5), [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; }))  //NOLINT (Philip)
     return true;
-  return false;
+  LOG(kError) << "Wait for process " << index << " to stop timed out. Terminating...";
+  lock.unlock();
+  KillProcess(index);
+  return true;
 }
 
 bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status) {
