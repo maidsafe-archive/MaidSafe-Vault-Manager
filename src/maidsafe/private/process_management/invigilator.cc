@@ -91,7 +91,8 @@ Invigilator::Invigilator()
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
 #endif
       latest_local_installer_path_(),
-      endpoints_() {
+      endpoints_(),
+      config_file_mutex_() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
@@ -160,7 +161,7 @@ bool Invigilator::CreateConfigFile() {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
     return false;
   }
-
+  std::lock_guard<std::mutex> lock(config_file_mutex_);
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
     return false;
@@ -172,11 +173,13 @@ bool Invigilator::CreateConfigFile() {
 
 bool Invigilator::ReadConfigFileAndStartVaults() {
   std::string content;
-  if (!ReadFile(config_file_path_, &content)) {
-    LOG(kError) << "Failed to read config file " << config_file_path_;
-    return false;
+  {
+    std::lock_guard<std::mutex> lock(config_file_mutex_);
+    if (!ReadFile(config_file_path_, &content)) {
+      LOG(kError) << "Failed to read config file " << config_file_path_;
+      return false;
+    }
   }
-
   protobuf::InvigilatorConfig config;
   if (!config.ParseFromString(content)) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
@@ -214,9 +217,12 @@ bool Invigilator::WriteConfigFile() {
       vault_info->ToProtobuf(pb_vault_info);
     }
   }
-  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-    LOG(kError) << "Failed to write config file " << config_file_path_;
-    return false;
+  {
+    std::lock_guard<std::mutex> lock(config_file_mutex_);
+    if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+      LOG(kError) << "Failed to write config file " << config_file_path_;
+      return false;
+    }
   }
   return true;
 }
@@ -301,6 +307,7 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
     if (!ObtainBootstrapInformation(config)) {
       LOG(kError) << "Failed to get endpoints from bootstrap server";
     } else {
+      std::lock_guard<std::mutex> lock(config_file_mutex_);
       if (!WriteFile(config_file_path_, config.SerializeAsString())) {
         LOG(kError) << "Failed to write config file after obtaining bootstrap info.";
       }
@@ -321,7 +328,6 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
 }
 
 void Invigilator::HandleStartVaultRequest(const std::string& request, std::string& response) {
-  LOG(kError) << "e StartVaultRequest.";
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -450,6 +456,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
                       << vault_identity_request.process_index();
           successful_response = false;
         } else {
+          std::lock_guard<std::mutex> lock(config_file_mutex_);
           if (!WriteFile(config_file_path_, config.SerializeAsString())) {
             LOG(kError) << "Failed to write config file after obtaining bootstrap info.";
           } else {
@@ -1011,7 +1018,7 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
 
 void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
   int max_index(end_points.bootstrap_contacts_size());
-  LOG(kError) << "num endpoints: " << max_index << " clearing endpoints";
+  std::lock_guard<std::mutex> lock(config_file_mutex_);
   endpoints_.clear();
   for (int n(0); n < max_index; ++n) {
     std::string ip(end_points.bootstrap_contacts(n).ip());
@@ -1059,10 +1066,13 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 bool Invigilator::ReadFileToInvigilatorConfig(const fs::path& file_path,
                                               protobuf::InvigilatorConfig& config) {
   std::string config_content;
-  if (!ReadFile(file_path, &config_content) || config_content.empty()) {
-    // TODO(Team): Should have counter for failures to trigger recreation?
-    LOG(kError) << "Failed to read config file " << file_path;
-    return false;
+  {
+    std::lock_guard<std::mutex> lock(config_file_mutex_);
+    if (!ReadFile(file_path, &config_content) || config_content.empty()) {
+      // TODO(Team): Should have counter for failures to trigger recreation?
+      LOG(kError) << "Failed to read config file " << file_path;
+      return false;
+    }
   }
 
   if (!config.ParseFromString(config_content)) {
@@ -1075,6 +1085,7 @@ bool Invigilator::ReadFileToInvigilatorConfig(const fs::path& file_path,
 }
 
 bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
+  std::unique_lock<std::mutex> lock(config_file_mutex_);
   auto it(std::find_if(endpoints_.begin(),
                        endpoints_.end(),
                        [&ip, &port] (const EndPoint& element)->bool {
@@ -1087,6 +1098,7 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
       auto itr(endpoints_.begin());
       endpoints_.erase(itr);
     }
+    lock.unlock();
     protobuf::InvigilatorConfig config;
     if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
@@ -1096,6 +1108,7 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
     protobuf::Bootstrap *eps = config.mutable_bootstrap_endpoints();
     eps->Clear();
     protobuf::Endpoint* node;
+    lock.lock();
     for (auto itr(endpoints_.begin()); itr != endpoints_.end(); ++itr) {
       node = eps->add_bootstrap_contacts();
       node->set_ip((*itr).first);
@@ -1105,8 +1118,9 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
       LOG(kError) << "Failed to write config file after adding endpoint.";
       return false;
     }
+    lock.unlock();
   } else {
-    LOG(kInfo) << "Endpoint " << ip << ":" << port << "already in config file.";
+    LOG(kInfo) << "Endpoint " << ip << ":" << port << " already in config file.";
   }
 
   return true;
@@ -1156,15 +1170,21 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
     p_info->set_version(kInvalidVersion);
-    if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-      LOG(kError) << "Failed to write config file to amend details of vault ID "
-                  << Base64Substr(vault_info->keys.identity);
-      return false;
+    {
+      std::lock_guard<std::mutex> lock(config_file_mutex_);
+      if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+        LOG(kError) << "Failed to write config file to amend details of vault ID "
+                    << Base64Substr(vault_info->keys.identity);
+        return false;
+      }
     }
   }
-  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-    LOG(kError) << "Failed to write config file after adding endpoint.";
-    return false;
+  {
+    std::lock_guard<std::mutex> lock(config_file_mutex_);
+    if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+      LOG(kError) << "Failed to write config file after adding endpoint.";
+      return false;
+    }
   }
 
   return true;

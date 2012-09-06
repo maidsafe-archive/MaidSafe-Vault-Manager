@@ -186,6 +186,7 @@ class Invigilator {
   mutable std::mutex client_ports_mutex_;
   boost::filesystem::path config_file_path_, latest_local_installer_path_;
   std::vector<EndPoint> endpoints_;
+  std::mutex config_file_mutex_;
 };
 
 }  // namespace process_management
