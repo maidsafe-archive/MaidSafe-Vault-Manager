@@ -41,6 +41,7 @@ namespace bai = boost::asio::ip;
 VaultController::VaultController()
     : process_index_(),
       invigilator_port_(0),
+      local_port_(0),
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       keys_(),
@@ -89,6 +90,32 @@ VaultController::~VaultController() {
   asio_service_.Stop();
 }
 
+bool VaultController::StartListeningPort() {
+  local_port_ = detail::GetRandomPort();
+  int count(0), result(1);
+  receiving_transport_->StartListening(local_port_, result);
+  while (result != kSuccess && count++ < 100) {
+    local_port_ = detail::GetRandomPort();
+    receiving_transport_->StartListening(local_port_, result);
+  }
+
+  if (result != kSuccess) {
+    LOG(kError) << "Failed to start listening port. Aborting initialisation.";
+    return false;
+  }
+
+  receiving_transport_->on_message_received().connect(
+      [this] (const std::string& message, Port invigilator_port) {
+        HandleReceivedRequest(message, invigilator_port);
+      });
+  receiving_transport_->on_error().connect(
+      [] (const int& error) {
+        LOG(kError) << "Transport reported error code " << error;
+      });
+
+  return true;
+}
+
 bool VaultController::Start(const std::string& invigilator_identifier,
                             VoidFunction stop_callback) {
 #ifndef USE_TEST_KEYS
@@ -106,26 +133,11 @@ bool VaultController::Start(const std::string& invigilator_identifier,
 
   stop_callback_ = stop_callback;
   asio_service_.Start();
-  uint16_t listening_port(detail::GetRandomPort());
-  int result(0);
-  LOG(kError) << "Transport will listen on: " << listening_port;
-  receiving_transport_->StartListening(listening_port, result);
-  while (result != kSuccess) {
-    LOG(kError) << "Transport failed to listen on: " << listening_port;
-    ++listening_port;
-    receiving_transport_->StartListening(listening_port, result);
+  if (!StartListeningPort()) {
+    LOG(kError) << "Failed to start listening port.";
+    return false;
   }
-  LOG(kError) << "Transport is listening on: " << listening_port;
-  receiving_transport_->on_message_received().connect(
-      [this] (const std::string& message, Port invigilator_port) {
-        HandleReceivedRequest(message, invigilator_port);
-      });
-  receiving_transport_->on_error().connect([] (const int& error) {
-    LOG(kError) << "Transport reported error code: " << error;
-  });
-
-
-  return RequestVaultIdentity(listening_port);
+  return RequestVaultIdentity(local_port_);
 }
 
 bool VaultController::GetIdentity(asymm::Keys& keys,

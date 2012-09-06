@@ -52,6 +52,7 @@ class VaultController {
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
+  bool StartListeningPort();
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   bool RequestVaultIdentity(uint16_t listening_port);
   bool HandleVaultIdentityResponse(const std::string& message,
@@ -64,7 +65,7 @@ class VaultController {
                                std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
                                std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
-  uint16_t invigilator_port_;
+  uint16_t invigilator_port_, local_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   asymm::Keys keys_;
