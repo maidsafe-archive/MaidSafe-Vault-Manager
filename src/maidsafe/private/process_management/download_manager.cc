@@ -49,6 +49,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
       site_(site),
       location_(location),
       latest_local_version_("0.00.00"),
+      latest_remote_version_("0.00.00"),
       maidsafe_public_key_(),
       io_service_(),
       resolver_(io_service_),
@@ -110,7 +111,7 @@ int DownloadManager::Update(std::vector<fs::path>& updated_files) {
   std::vector<std::string> files_in_manifest;
   if (VersionToInt(latest_remote_version) <= VersionToInt(latest_local_version_)) {
     LOG(kInfo) << "No version change.";
-    return kSuccess;
+    return kNoVersionChange;
   }
 
   fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version);
@@ -143,7 +144,8 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
     LOG(kError) << "Failed to read downloaded version file";
     return "";
   }
-  return version_content.substr(0, version_content.size() - 1);
+  latest_remote_version_ = version_content.substr(0, version_content.size() - 1);
+  return latest_remote_version_;
 }
 
 bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,

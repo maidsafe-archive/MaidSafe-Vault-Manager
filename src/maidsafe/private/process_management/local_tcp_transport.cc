@@ -42,8 +42,7 @@ LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // N
       done_(false) {}
 
 LocalTcpTransport::~LocalTcpTransport() {
-  for (auto connection : connections_)
-    connection->Close();
+  CloseConnections();
 }
 
 void LocalTcpTransport::StartListening(Port port, int& result) {
@@ -151,6 +150,10 @@ void LocalTcpTransport::StopListeningAndCloseConnections() {
     if (ec.value() != 0)
       LOG(kError) << "Acceptor close error: " << ec.message();
   });
+  CloseConnections();
+}
+
+void LocalTcpTransport::CloseConnections() {
   for (auto connection : connections_)
     connection->Close();
 }
@@ -179,17 +182,23 @@ void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
 }
 
 void LocalTcpTransport::Connect(Port server_port, int& result) {
-  strand_.dispatch(std::bind(&LocalTcpTransport::DoConnect, shared_from_this(), server_port,
-                             result));
+  std::unique_lock<std::mutex> lock(mutex_);
+  strand_.post(std::bind(&LocalTcpTransport::DoConnect, shared_from_this(), server_port,
+                             &result));
+  cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
+  done_ = false;
 }
 
-void LocalTcpTransport::DoConnect(Port server_port, int& result) {
+void LocalTcpTransport::DoConnect(Port server_port, int* result) {
+  std::unique_lock<std::mutex> lock(mutex_);
   if (acceptor_.is_open())
-    result = kAlreadyStarted;
+    *result = kAlreadyStarted;
   ConnectionPtr connection(new TcpConnection(shared_from_this()));
-  result = connection->Connect(server_port);
-  if (result == kSuccess)
+  *result = connection->Connect(server_port);
+  if (*result == kSuccess)
     InsertConnection(connection);
+  done_ = true;
+  cond_var_.notify_all();
 }
 
 void LocalTcpTransport::Send(const std::string& data, Port port) {

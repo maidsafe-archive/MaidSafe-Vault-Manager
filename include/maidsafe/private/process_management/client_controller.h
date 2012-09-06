@@ -77,7 +77,7 @@ class ClientController {
 
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
-
+  bool FindNextAcceptingPort(TransportPtr requesting_transport);
   bool ConnectToInvigilator(std::string& path_to_new_installer);
   bool StartListeningPort();
   void HandleRegisterResponse(const std::string& message,

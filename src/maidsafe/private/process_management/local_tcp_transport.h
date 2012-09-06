@@ -56,8 +56,8 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   void StartListening(Port port, int& result);
   void StopListening();
   void StopListeningAndCloseConnections();
+  void CloseConnections();
   void Connect(Port server_port, int& result);
-  void DoConnect(Port server_port, int& result);
   void Send(const std::string& data, Port port);
   OnMessageReceived& on_message_received() { return on_message_received_; }
   OnError& on_error() { return on_error_; }
@@ -76,6 +76,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
                     ConnectionPtr connection,
                     const boost::system::error_code& ec);
+  void DoConnect(Port server_port, int* result);
   void DoSend(const std::string& data, Port port);
 
   void InsertConnection(ConnectionPtr connection);

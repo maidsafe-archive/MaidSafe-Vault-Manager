@@ -48,6 +48,7 @@ enum ReturnCode {
   // Download Manager
   kManifestFailure = -250001,
   kDownloadFailure = -250002,
+  kNoVersionChange = -250003,
 
   // Transport
   kAlreadyStarted = -350001,

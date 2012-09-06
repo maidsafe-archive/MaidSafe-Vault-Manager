@@ -43,6 +43,7 @@ class DownloadManager {
   boost::filesystem::path GetLocalPath() const { return local_path_; }
   void SetLatestLocalVersion(const std::string& version) { latest_local_version_ = version; }
   std::string latest_local_version() const { return latest_local_version_; }
+  std::string latest_remote_version() const { return latest_remote_version_; }
 
  private:
   // Get the version of the files on the update server
@@ -60,7 +61,7 @@ class DownloadManager {
                           const boost::filesystem::path& to_path);
   std::string DownloadFileToMemory(const boost::filesystem::path& from_path);
 
-  std::string protocol_, site_, location_, latest_local_version_;
+  std::string protocol_, site_, location_, latest_local_version_, latest_remote_version_;
   asymm::PublicKey maidsafe_public_key_;
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;

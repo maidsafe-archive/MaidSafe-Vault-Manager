@@ -238,7 +238,7 @@ bool Invigilator::ListenForMessages() {
     }
     transport_->StartListening(local_port_, result);
   }
-
+  LOG(kError) << "Listening on " << local_port_;
   return true;
 }
 
@@ -320,7 +320,7 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                     client_response.add_bootstrap_endpoint_port(element.second);
                   });
   }
-  if (client_request.version() < VersionToInt(download_manager_.latest_local_version()))
+  if (client_request.version() < VersionToInt(download_manager_.latest_remote_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
   response = detail::WrapMessage(MessageType::kClientRegistrationResponse,
@@ -808,7 +808,7 @@ bool Invigilator::IsInstaller(const fs::path& /*path*/) { return false; }
 void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) != kSuccess)
-    return;  // Either failed or no updated files.
+    return;  // failed or no updates.
 
   auto it(std::find_if(updated_files.begin(), updated_files.end(),
                        [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
@@ -830,15 +830,15 @@ void Invigilator::UpdateExecutor() {
   }
 
 //    WriteConfigFile();
-#if defined MAIDSAFE_LINUX
-  std::string command("dpkg -i " + latest_local_installer_path_.string());
-  int result(system(command.c_str()));
-  if (result != 0)
-    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
-#elif defined MAIDSAFE_APPLE
-  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
-  //  RUN INSTALLER SOMEHOW
-#endif
+// #if defined MAIDSAFE_LINUX
+//  std::string command("dpkg -i " + latest_local_installer_path_.string());
+//  int result(system(command.c_str()));
+//  if (result != 0)
+//    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
+// #elif defined MAIDSAFE_APPLE
+//  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
+//  //  RUN INSTALLER SOMEHOW
+// #endif
 
   // Notify out-of-date clients
   std::map<uint16_t, int> client_ports_and_versions_copy;
@@ -846,8 +846,9 @@ void Invigilator::UpdateExecutor() {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     client_ports_and_versions_copy = client_ports_and_versions_;
   }
+
   for (auto entry : client_ports_and_versions_copy) {
-    if (entry.second < VersionToInt(download_manager_.latest_local_version()))
+    if (entry.second < VersionToInt(download_manager_.latest_remote_version()))
       SendNewVersionAvailable(entry.first);
   }
 

@@ -60,9 +60,9 @@ ClientController::ClientController(
   if (!ConnectToInvigilator(path_to_new_installer)) {
     LOG(kError) << "Failed to connect to invigilator. Object useless.";
     state_ = kFailed;
+  } else {
+    state_ = kVerified;
   }
-
-  state_ = kVerified;
   on_new_version_available_.connect(on_new_version_available_slot);
   if (!path_to_new_installer.empty())
     on_new_version_available_(path_to_new_installer);
@@ -109,6 +109,21 @@ bool ClientController::StartListeningPort() {
   return true;
 }
 
+bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
+  request_transport->CloseConnections();
+  int result(1);
+  request_transport->Connect(++invigilator_port_, result);
+  while (result != kSuccess) {
+    if (invigilator_port_ == Invigilator::kMaxPort()) {
+      LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
+                  << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
+      return false;
+    }
+    request_transport->Connect(++invigilator_port_, result);
+  }
+  return true;
+}
+
 bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) {
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   std::mutex mutex;
@@ -128,31 +143,23 @@ bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) 
         condition_variable.notify_one();
         LOG(kError) << "Transport reported error code " << error;
       });
-  int result(0);
-  request_transport->Connect(++invigilator_port_, result);
-  while (result != kSuccess) {
-    if (invigilator_port_ == Invigilator::kMaxPort()) {
-      LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
-                  << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
-      return false;
-    }
-    request_transport->Connect(++invigilator_port_, result);
-  }
-
-  protobuf::ClientRegistrationRequest request;
-  request.set_listening_port(local_port_);
-  request.set_version(VersionToInt(kApplicationVersion));
-  request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
-                                              request.SerializeAsString()),
-                          invigilator_port_);
-  LOG(kVerbose) << "Sending registration request to port " << invigilator_port_;
-  {
-    std::unique_lock<std::mutex> lock(mutex);
-    if (!condition_variable.wait_for(lock,
-                                     std::chrono::seconds(3),
-                                     [&state] { return state != kInitialising; })) {
-      LOG(kError) << "Timed out waiting for ClientController initialisation.";
-      state = kFailed;
+  while (FindNextAcceptingPort(request_transport)) {
+    protobuf::ClientRegistrationRequest request;
+    request.set_listening_port(local_port_);
+    request.set_version(VersionToInt(kApplicationVersion));
+    request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
+                                                request.SerializeAsString()),
+                            invigilator_port_);
+    LOG(kVerbose) << "Sending registration request to port " << invigilator_port_;
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      if (!condition_variable.wait_for(lock,
+                                       std::chrono::seconds(3),
+                                       [&state] { return state != kInitialising; })) {
+        LOG(kError) << "Timed out waiting for ClientController initialisation.";
+      } else {
+        break;
+      }
     }
   }
 
