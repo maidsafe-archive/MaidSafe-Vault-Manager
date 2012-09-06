@@ -380,7 +380,6 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
         result = HandleVaultIdentityResponse(message, local_mutex);
         if (result)
           local_cond_var.notify_one();
-        LOG(kError) << "HandleVaultIdentityResponse result set to " << std::boolalpha << result;
       }));
   auto error_connection(request_transport->on_error().connect([] (const int& error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -400,7 +399,6 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
-  LOG(kError) << "result is " << std::boolalpha << result;
   return result;
 }
 

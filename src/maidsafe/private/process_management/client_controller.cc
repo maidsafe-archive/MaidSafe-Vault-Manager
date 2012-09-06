@@ -85,7 +85,7 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
 
 bool ClientController::StartListeningPort() {
   local_port_ = detail::GetRandomPort();
-  int count(0), result(0);
+  int count(0), result(1);
   receiving_transport_->StartListening(local_port_, result);
   while (result != kSuccess && count++ < 100) {
     local_port_ = detail::GetRandomPort();

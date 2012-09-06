@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 #include <mutex>
+#include <condition_variable>
 
 #include "boost/asio/io_service.hpp"
 #include "boost/asio/strand.hpp"
@@ -53,7 +54,6 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   explicit LocalTcpTransport(boost::asio::io_service& asio_service);  // NOLINT (Fraser)
   ~LocalTcpTransport();
   void StartListening(Port port, int& result);
-  void DoStartListening(Port port, int& result);
   void StopListening();
   void StopListeningAndCloseConnections();
   void Connect(Port server_port, int& result);
@@ -72,6 +72,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   typedef std::shared_ptr<TcpConnection> ConnectionPtr;
   typedef std::set<ConnectionPtr> ConnectionSet;
 
+  void DoStartListening(Port port, int* result);
   void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
                     ConnectionPtr connection,
                     const boost::system::error_code& ec);
@@ -91,6 +92,9 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   // a shared_ptr in this map, as well as in the async operation handlers.
   ConnectionSet connections_;
   boost::asio::io_service::strand strand_;
+  std::mutex mutex_;
+  std::condition_variable cond_var_;
+  bool done_;
 };
 
 }  // namespace process_management

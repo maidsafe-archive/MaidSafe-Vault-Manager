@@ -36,7 +36,10 @@ LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // N
       on_error_(),
       acceptor_(asio_service),
       connections_(),
-      strand_(asio_service) {}
+      strand_(asio_service),
+      mutex_(),
+      cond_var_(),
+      done_(false) {}
 
 LocalTcpTransport::~LocalTcpTransport() {
   for (auto connection : connections_)
@@ -44,14 +47,20 @@ LocalTcpTransport::~LocalTcpTransport() {
 }
 
 void LocalTcpTransport::StartListening(Port port, int& result) {
-  strand_.dispatch(std::bind(&LocalTcpTransport::DoStartListening, shared_from_this(), port,
-                             result));
+  std::unique_lock<std::mutex> lock(mutex_);
+  strand_.post(std::bind(&LocalTcpTransport::DoStartListening, shared_from_this(), port,
+                             &result));
+  cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
+  done_ = false;
 }
 
-void LocalTcpTransport::DoStartListening(Port port, int& result) {
+void LocalTcpTransport::DoStartListening(Port port, int* result) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (acceptor_.is_open()) {
     LOG(kError) << "Already listening on port " << port;
-    result = kAlreadyStarted;
+    *result = kAlreadyStarted;
+    done_ = true;
+    cond_var_.notify_all();
     return;
   }
 
@@ -63,7 +72,9 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
     LOG(kError) << "Could not open the socket: " << ec.message();
     boost::system::error_code ec;
     acceptor_.close(ec);
-    result = kInvalidAddress;
+    *result = kInvalidAddress;
+    done_ = true;
+    cond_var_.notify_all();
     return;
   }
 
@@ -82,7 +93,9 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
     LOG(kError) << "Could not set the reuse address option: " << ec.message();
     boost::system::error_code ec;
     acceptor_.close(ec);
-    result = kSetOptionFailure;
+    *result = kSetOptionFailure;
+    done_ = true;
+    cond_var_.notify_all();
     return;
   }
 
@@ -91,7 +104,9 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
     LOG(kError) << "Could not bind socket to endpoint: " << ec.message();
     boost::system::error_code ec;
     acceptor_.close(ec);
-    result = kBindError;
+    *result = kBindError;
+    done_ = true;
+    cond_var_.notify_all();
     return;
   }
 
@@ -100,7 +115,9 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
     LOG(kError) << "Could not start listening: " << ec.message();
     boost::system::error_code ec;
     acceptor_.close(ec);
-    result = kListenError;
+    *result = kListenError;
+    done_ = true;
+    cond_var_.notify_all();
     return;
   }
 
@@ -111,7 +128,9 @@ void LocalTcpTransport::DoStartListening(Port port, int& result) {
                          strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept,
                                                 shared_from_this(), std::ref(acceptor_),
                                                 new_connection, args::_1)));
-  result = kSuccess;
+  *result = kSuccess;
+  done_ = true;
+  cond_var_.notify_all();
 }
 
 void LocalTcpTransport::StopListening() {

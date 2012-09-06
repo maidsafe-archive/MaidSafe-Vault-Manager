@@ -196,7 +196,6 @@ TEST(InvigilatorTest, FUNC_StartStop) {
 
   // test case for existing config file with two vaults (generated in previous test case, one
   // deactivated). One vault is started by config. Two clients are then used to start 30 new vaults.
-  LOG(kError) << "START TEST 4";
   {
     EXPECT_EQ(0, GetNumRunningProcesses());
     config_contents = "";
@@ -207,7 +206,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(1, GetNumRunningProcesses());
     ClientController client_controller1([](std::string){}), client_controller2([](std::string){});  // NOLINT (Fraser)
     asymm::Keys keys;
-    for (int i(0); i < 40; ++i) {
+    for (int i(0); i < 50; ++i) {
       ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
       keys.identity = RandomAlphaNumericString(64);
       if (i % 2 == 0)
@@ -215,13 +214,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       else
         EXPECT_TRUE(client_controller2.StartVault(keys, RandomAlphaNumericString(16), ""));
     }
-    EXPECT_EQ(41, GetNumRunningProcesses());
+    EXPECT_EQ(51, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(42, invigilator_config.vault_info_size());
+  EXPECT_EQ(52, invigilator_config.vault_info_size());
   boost::system::error_code error;
   fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error);
 }
