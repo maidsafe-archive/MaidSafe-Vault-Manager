@@ -102,7 +102,11 @@ class ProcessManager {
                     restart_count(0),
                     done(false),
                     status(ProcessStatus::kStopped),
+#ifdef MAIDSAFE_WIN32
+                    child(PROCESS_INFORMATION()) {}
+#else
                     child(0) {}
+#endif
     ProcessInfo(ProcessInfo&& other);
     ProcessInfo& operator=(ProcessInfo&& other);
     Process process;

@@ -81,6 +81,8 @@ VaultController::VaultController()
       LOG(kError) << "Failed to retrieve uid of lifestuff user.";
     }
   }
+#else
+  setuid_succeeded_ = true;
 #endif
 }
 
