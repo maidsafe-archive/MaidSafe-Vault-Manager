@@ -106,7 +106,7 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
-/*TEST(DownloadTest, BEH_Update_NoSignature) {
+TEST(DownloadTest, DISABLED_BEH_Update_NoSignature) {
   DownloadManager download_manager("http", "dash.maidsafe.net", "~phil/tests/test_no_signature");
   std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
@@ -118,7 +118,7 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
-TEST(DownloadTest, BEH_Update_InvalidSignature) {
+TEST(DownloadTest, DISABLED_BEH_Update_InvalidSignature) {
   DownloadManager download_manager("http", "dash.maidsafe.net",
                                    "~phil/tests/test_incorrect_signature");
   std::vector<fs::path> updated_files;
@@ -129,7 +129,7 @@ TEST(DownloadTest, BEH_Update_InvalidSignature) {
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
-}*/
+}
 
 }  // namespace test
 
