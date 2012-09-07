@@ -56,8 +56,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
       query_(site_, protocol_),
       local_path_() {
   boost::system::error_code error_code;
-  fs::path temp_path(fs::temp_directory_path(error_code) /
-                     fs::unique_path("%%%%-%%%%-%%%%-%%%%", error_code));
+  fs::path temp_path(GetSystemAppSupportDir());
   LOG(kError) << "temp_path: " << temp_path;
   if (!fs::exists(temp_path, error_code))
     fs::create_directories(temp_path, error_code);

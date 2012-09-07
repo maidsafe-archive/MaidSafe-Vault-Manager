@@ -123,6 +123,7 @@ Invigilator::Invigilator()
   }
 
   ReadConfigFileAndStartVaults();
+  error_code.clear();
   CheckForUpdates(error_code);
 }
 
@@ -802,7 +803,9 @@ bool Invigilator::IsInstaller(const fs::path& path) {
          && path.stem().string().substr(0, 9) == "LifeStuff";
 }
 #else
-bool Invigilator::IsInstaller(const fs::path& /*path*/) { return false; }
+bool Invigilator::IsInstaller(const fs::path& path) {
+  return path.extension() == ".exe" && path.stem().string().substr(0, 9) == "LifeStuff";
+}
 #endif
 
 void Invigilator::UpdateExecutor() {
