@@ -41,6 +41,9 @@ class DownloadManager {
   int Update(std::vector<boost::filesystem::path>& updated_files);
   // Returns the local path to which the DownloadManager downloads files.
   boost::filesystem::path GetLocalPath() const { return local_path_; }
+  boost::filesystem::path GetCurrentVersionDownloadPath() const {
+    return local_path_ / latest_remote_version_;
+  }
   void SetLatestLocalVersion(const std::string& version) { latest_local_version_ = version; }
   std::string latest_local_version() const { return latest_local_version_; }
   std::string latest_remote_version() const { return latest_remote_version_; }

@@ -49,6 +49,7 @@ enum ReturnCode {
   kManifestFailure = -250001,
   kDownloadFailure = -250002,
   kNoVersionChange = -250003,
+  kLocalFailure = -250004,
 
   // Transport
   kAlreadyStarted = -350001,

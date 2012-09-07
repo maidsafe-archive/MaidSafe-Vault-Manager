@@ -42,9 +42,13 @@ TEST(DownloadTest, BEH_Update_Successful) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
   EXPECT_FALSE(updated_files.empty());
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   LOG(kError) << "local_path: " << local_path;
   boost::system::error_code error;
+  ASSERT_TRUE(fs::exists(local_path, error));
+  ASSERT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  EXPECT_EQ(local_path, download_manager.GetLocalPath() / "1.01.02");
   ASSERT_TRUE(fs::exists(local_path / "test_file1", error));
   ASSERT_EQ(boost::system::errc::success, error.value());
   error.clear();
@@ -60,9 +64,9 @@ TEST(DownloadTest, BEH_Update_HasLatestVersion) {
   std::vector<fs::path> updated_files;
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.02");
-  EXPECT_EQ(kSuccess, download_manager.Update(updated_files));
+  EXPECT_EQ(kNoVersionChange, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file1", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
@@ -81,7 +85,7 @@ TEST(DownloadTest, BEH_Update_NoManifestFile) {
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kManifestFailure, download_manager.Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file1", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
@@ -100,7 +104,7 @@ TEST(DownloadTest, BEH_Update_IncorrectManifestFile) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
@@ -112,7 +116,7 @@ TEST(DownloadTest, DISABLED_BEH_Update_NoSignature) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
@@ -125,7 +129,7 @@ TEST(DownloadTest, DISABLED_BEH_Update_InvalidSignature) {
   // NOTE: version file on server MUST be set to "1.01.02"
   download_manager.SetLatestLocalVersion("1.01.01");
   EXPECT_EQ(kDownloadFailure, download_manager.Update(updated_files));
-  fs::path local_path(download_manager.GetLocalPath());
+  fs::path local_path(download_manager.GetCurrentVersionDownloadPath());
   boost::system::error_code error;
   ASSERT_FALSE(fs::exists(local_path / "test_file3", error));
   ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());

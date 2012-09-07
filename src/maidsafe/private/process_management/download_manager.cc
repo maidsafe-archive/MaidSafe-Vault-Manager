@@ -56,7 +56,12 @@ DownloadManager::DownloadManager(const std::string& protocol,
       query_(site_, protocol_),
       local_path_() {
   boost::system::error_code error_code;
+#ifdef USE_TEST_KEYS
+  fs::path temp_path(fs::temp_directory_path(error_code) /
+           fs::unique_path("%%%%-%%%%-%%%%-%%%%", error_code));
+#else
   fs::path temp_path(GetSystemAppSupportDir());
+#endif
   LOG(kError) << "temp_path: " << temp_path;
   if (!fs::exists(temp_path, error_code))
     fs::create_directories(temp_path, error_code);
@@ -81,10 +86,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
     LOG(kError) << "MaidSafe public key invalid";
 }
 
-DownloadManager::~DownloadManager() {
-  boost::system::error_code error_code;
-  fs::remove_all(local_path_, error_code);
-}
+DownloadManager::~DownloadManager() {}
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
   if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
@@ -103,32 +105,40 @@ std::string DownloadManager::RetrieveBootstrapInfo() {
 }
 
 int DownloadManager::Update(std::vector<fs::path>& updated_files) {
-  std::string latest_remote_version(RetrieveLatestRemoteVersion());
+  RetrieveLatestRemoteVersion();
   LOG(kVerbose) << "Latest local version is " << latest_local_version_;
-  LOG(kVerbose) << "Latest remote version is " << latest_remote_version;
+  LOG(kVerbose) << "Latest remote version is " << latest_remote_version_;
 
   std::vector<std::string> files_in_manifest;
-  if (VersionToInt(latest_remote_version) <= VersionToInt(latest_local_version_)) {
+  if (VersionToInt(latest_remote_version_) <= VersionToInt(latest_local_version_)) {
     LOG(kInfo) << "No version change.";
     return kNoVersionChange;
   }
 
-  fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version);
+  boost::system::error_code error;
+  fs::create_directories(local_path_ / latest_remote_version_, error);
+  if (error) {
+    LOG(kError) << "Failed to create download directory for latest version "
+                << latest_remote_version_;
+    return kLocalFailure;
+  }
+
+  fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version_);
   if (!RetrieveManifest(remote_update_path / detail::kManifestFilename, files_in_manifest)) {
     LOG(kError) << "Manifest was not successfully retrieved";
     return kManifestFailure;
   }
 
   for (auto file : files_in_manifest) {
-    if (!GetAndVerifyFile(remote_update_path / file, local_path_ / file)) {
+    if (!GetAndVerifyFile(remote_update_path / file, local_path_ / latest_remote_version_ / file)) {
       LOG(kError) << "Failed to get and verify file: " << file;
       updated_files.clear();
       return kDownloadFailure;
     }
     LOG(kInfo) << "Updated file: " << file;
-    updated_files.push_back(local_path_ / file);
+    updated_files.push_back(local_path_ / latest_remote_version_ / file);
   }
-  latest_local_version_ = latest_remote_version;
+  latest_local_version_ = latest_remote_version_;
 
   return kSuccess;
 }
@@ -149,13 +159,15 @@ std::string DownloadManager::RetrieveLatestRemoteVersion() {
 
 bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
                                        std::vector<std::string>& files_in_manifest) {
-  if (!GetAndVerifyFile(manifest_download_path, local_path_ / detail::kManifestFilename)) {
+  if (!GetAndVerifyFile(manifest_download_path, local_path_ / latest_remote_version_ /
+                        detail::kManifestFilename)) {
     LOG(kError) << "Failed to download manifest file";
     return false;
   }
 
   std::string manifest_content;
-  if (!ReadFile(local_path_ / detail::kManifestFilename, &manifest_content)) {
+  if (!ReadFile(local_path_ / latest_remote_version_ / detail::kManifestFilename,
+                &manifest_content)) {
     LOG(kError) << "Failed to read downloaded manifest file";
     return false;
   }
