@@ -109,6 +109,7 @@ class Invigilator {
   Invigilator(const Invigilator&);
   Invigilator operator=(const Invigilator&);
 
+  void Initialise();
   void RestartInvigilator(const std::string& latest_file,
                           const std::string& executable_name) const;
 
@@ -187,6 +188,7 @@ class Invigilator {
   boost::filesystem::path config_file_path_, latest_local_installer_path_;
   std::vector<EndPoint> endpoints_;
   std::mutex config_file_mutex_;
+  bool need_to_stop_;
 };
 
 }  // namespace process_management
