@@ -119,10 +119,6 @@ void Invigilator::Initialise() {
     }
   }
 
-  download_manager_.SetLatestLocalVersion(kApplicationVersion);
-  UpdateExecutor();
-
-  LOG(kInfo) << "Invigilator started";
   while (!ListenForMessages()) {
     if (need_to_stop_)
       return;
@@ -130,9 +126,14 @@ void Invigilator::Initialise() {
     Sleep(boost::posix_time::seconds(1));
   }
 
+  download_manager_.SetLatestLocalVersion(kApplicationVersion);
+  UpdateExecutor();
+
+
   ReadConfigFileAndStartVaults();
   error_code.clear();
   CheckForUpdates(error_code);
+  LOG(kInfo) << "Invigilator started";
 }
 
 
