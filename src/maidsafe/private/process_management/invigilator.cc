@@ -94,11 +94,11 @@ Invigilator::Invigilator()
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false) {
+  asio_service_.Start();
   asio_service_.service().post([&] () { Initialise(); });
 }
 
 void Invigilator::Initialise() {
-  asio_service_.Start();
   transport_->on_message_received().connect(
       [this] (const std::string& message, Port peer_port) {
         HandleReceivedMessage(message, peer_port);
@@ -331,6 +331,10 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                     client_response.add_bootstrap_endpoint_port(element.second);
                   });
   }
+
+  LOG(kError) << "Version that we might inform the user " << download_manager_.latest_remote_version();
+  LOG(kError) << "Version that the user reported " << client_request.version();
+
   if (client_request.version() < VersionToInt(download_manager_.latest_remote_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
