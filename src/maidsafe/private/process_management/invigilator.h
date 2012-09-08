@@ -83,7 +83,7 @@ class Invigilator {
   Invigilator();
   ~Invigilator();
   static uint16_t kMinPort() { return 5483; }
-  static uint16_t kMaxPort() { return 5582; }
+  static uint16_t kMaxPort() { return 5490; }
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes

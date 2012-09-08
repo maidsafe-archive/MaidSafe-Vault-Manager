@@ -94,6 +94,7 @@ Invigilator::Invigilator()
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false) {
+  WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
   asio_service_.Start();
   asio_service_.service().post([&] () { Initialise(); });
 }
