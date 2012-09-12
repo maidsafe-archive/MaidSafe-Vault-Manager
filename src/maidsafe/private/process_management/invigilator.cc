@@ -92,23 +92,14 @@ Invigilator::Invigilator()
 #endif
       latest_local_installer_path_(),
       endpoints_(),
-      config_file_mutex_() {
-  boost::system::error_code error_code;
-  if (!fs::exists(config_file_path_, error_code) ||
-      error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    LOG(kInfo) << "Invigilator failed to find existing config file in " << config_file_path_;
-    if (!CreateConfigFile()) {
-      LOG(kError) << "Invigilator failed to create new config file at " << config_file_path_
-                  << ". Shutting down.";
-      return;
-    }
-  }
-
-  download_manager_.SetLatestLocalVersion(kApplicationVersion);
-  UpdateExecutor();
-
-  LOG(kInfo) << "Invigilator started";
+      config_file_mutex_(),
+      need_to_stop_(false) {
+  WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
   asio_service_.Start();
+  asio_service_.service().post([&] () { Initialise(); });
+}
+
+void Invigilator::Initialise() {
   transport_->on_message_received().connect(
       [this] (const std::string& message, Port peer_port) {
         HandleReceivedMessage(message, peer_port);
@@ -117,17 +108,38 @@ Invigilator::Invigilator()
                                    LOG(kError) << "Transport reported error code: " << error;
                                  });
 
-  if (!ListenForMessages()) {
-    LOG(kError) << "Invigilator failed to create a listening port. Shutting down.";
-    return;
+  boost::system::error_code error_code;
+  if (!fs::exists(config_file_path_, error_code) ||
+      error_code.value() == boost::system::errc::no_such_file_or_directory) {
+    LOG(kInfo) << "Invigilator failed to find existing config file in " << config_file_path_;
+    while (!CreateConfigFile()) {
+      if (need_to_stop_)
+        return;
+      LOG(kError) << "Will retry to to create new config file at " << config_file_path_;
+      Sleep(boost::posix_time::seconds(1));
+    }
   }
+
+  while (!ListenForMessages()) {
+    if (need_to_stop_)
+      return;
+    LOG(kError) << "Invigilator failed to create a listening port. Shutting down.";
+    Sleep(boost::posix_time::seconds(1));
+  }
+
+  download_manager_.SetLatestLocalVersion(kApplicationVersion);
+  UpdateExecutor();
+
 
   ReadConfigFileAndStartVaults();
   error_code.clear();
   CheckForUpdates(error_code);
+  LOG(kInfo) << "Invigilator started";
 }
 
+
 Invigilator::~Invigilator() {
+  need_to_stop_ = true;
   process_manager_.LetAllProcessesDie();
   StopAllVaults();
   {
@@ -321,6 +333,10 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                     client_response.add_bootstrap_endpoint_port(element.second);
                   });
   }
+
+  LOG(kError) << "Version that we might inform the user " << download_manager_.latest_remote_version();
+  LOG(kError) << "Version that the user reported " << client_request.version();
+
   if (client_request.version() < VersionToInt(download_manager_.latest_remote_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
 
@@ -648,9 +664,10 @@ bptime::time_duration Invigilator::GetUpdateInterval() const {
 
 void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
   if (ec) {
-    if (ec != boost::asio::error::operation_aborted)
+    if (ec != boost::asio::error::operation_aborted) {
       LOG(kError) << ec.message();
-    return;
+      return;
+    }
   }
 
   UpdateExecutor();
@@ -672,13 +689,12 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback =                                            // NOLINT (Fraser)
-    [&](bool result) {
-      std::lock_guard<std::mutex> lock(local_mutex);
-      local_result = result;
-      done = true;
-      local_cond_var.notify_one();
-    };
+  std::function<void(bool)> callback = [&] (bool result) {
+                                         std::lock_guard<std::mutex> lock(local_mutex);
+                                         local_result = result;
+                                         done = true;
+                                         local_cond_var.notify_one();
+                                       };
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
   request_transport->Connect((*itr)->client_port, result);
@@ -686,14 +702,15 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
     LOG(kError) << "Failed to connect request transport to client.";
     callback(false);
   }
+
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
         HandleVaultJoinConfirmationAck(message, callback);
       });
-  request_transport->on_error().connect([this, callback](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(false);
-  });
+  request_transport->on_error().connect([this, callback] (const int& error) {
+                                          LOG(kError) << "Transport reported error code " << error;
+                                          callback(false);
+                                        });
   vault_join_confirmation.set_identity(identity);
   vault_join_confirmation.set_joined(join_result);
   LOG(kVerbose) << "Sending vault join confirmation to client on port " << (*itr)->client_port;
@@ -730,13 +747,12 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback =                                            // NOLINT (Fraser)
-    [&](bool result) {
-      std::lock_guard<std::mutex> lock(local_mutex);
-      local_result = result;
-      done = true;
-      local_cond_var.notify_one();
-    };
+  std::function<void(bool)> callback = [&] (bool result) {
+                                         std::lock_guard<std::mutex> lock(local_mutex);
+                                         local_result = result;
+                                         done = true;
+                                         local_cond_var.notify_one();
+                                       };
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
   request_transport->Connect(client_port, result);
@@ -748,10 +764,10 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
       [this, callback](const std::string& message, Port /*invigilator_port*/) {
         HandleNewVersionAvailableAck(message, callback);
       });
-  request_transport->on_error().connect([this, callback](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(false);
-  });
+  request_transport->on_error().connect([this, callback] (const int& error) {
+                                          LOG(kError) << "Transport reported error code " << error;
+                                          callback(false);
+                                        });
   new_version_available.set_new_version_filepath(latest_local_installer_path_.string());
   LOG(kVerbose) << "Sending new version available to client on port " << client_port;
   request_transport->Send(detail::WrapMessage(MessageType::kNewVersionAvailable,
@@ -798,9 +814,9 @@ void Invigilator::HandleNewVersionAvailableAck(const std::string& message,
 
 #if defined MAIDSAFE_LINUX
 bool Invigilator::IsInstaller(const fs::path& path) {
-  return path.extension() == ".deb"
-         && path.stem().string().length() > 8
-         && path.stem().string().substr(0, 9) == "LifeStuff";
+  return path.extension() == ".deb" &&
+         path.stem().string().length() > 8 &&
+         path.stem().string().substr(0, 9) == "LifeStuff";
 }
 #else
 bool Invigilator::IsInstaller(const fs::path& path) {
@@ -810,11 +826,14 @@ bool Invigilator::IsInstaller(const fs::path& path) {
 
 void Invigilator::UpdateExecutor() {
   std::vector<fs::path> updated_files;
-  if (download_manager_.Update(updated_files) != kSuccess)
+  if (download_manager_.Update(updated_files) != kSuccess) {
+    LOG(kInfo) << "No update identified in the server.";
     return;  // failed or no updates.
+  }
 
-  auto it(std::find_if(updated_files.begin(), updated_files.end(),
-                       [&](const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
+  auto it(std::find_if(updated_files.begin(),
+                       updated_files.end(),
+                       [&] (const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
   if (it != updated_files.end()) {
     latest_local_installer_path_ = *it;
     LOG(kInfo) << "Found new installer at " << latest_local_installer_path_;
@@ -822,8 +841,9 @@ void Invigilator::UpdateExecutor() {
     LOG(kInfo) << "No new installer";
   }
 
-  it = (std::find_if(updated_files.begin(), updated_files.end(),
-                       [&](const fs::path& path) { return path.stem() == detail::kVaultName; }));  // NOLINT
+  it = (std::find_if(updated_files.begin(),
+                     updated_files.end(),
+                     [&] (const fs::path& path)->bool { return path.stem() == detail::kVaultName; }));  // NOLINT
   fs::path new_local_vault_path;
   if (it != updated_files.end()) {
     new_local_vault_path = *it;
@@ -858,10 +878,10 @@ void Invigilator::UpdateExecutor() {
   if (!new_local_vault_path.empty()) {
     StopAllVaults();
     boost::system::error_code error_code;
-    fs::rename(
-        new_local_vault_path,
-        GetAppInstallDir() / (detail::kVaultName + detail::kThisPlatform().executable_extension()),
-        error_code);
+    fs::rename(new_local_vault_path,
+               GetAppInstallDir() / (detail::kVaultName +
+                                     detail::kThisPlatform().executable_extension()),
+               error_code);
     if (error_code)
       LOG(kError) << "Failed to move new vault executable.";
 
@@ -945,16 +965,19 @@ void Invigilator::StopAllVaults() {
   std::for_each(vault_infos_.begin(),
                 vault_infos_.end(),
                 [this] (const VaultInfoPtr& info) {
-                  if (process_manager_.GetProcessStatus(info->process_index)
-                          != ProcessStatus::kRunning)
-                  return;
+                  if (process_manager_.GetProcessStatus(info->process_index) !=
+                      ProcessStatus::kRunning) {
+                    return;
+                  }
                   std::string random_data(RandomString(64)), signature;
-                  if (asymm::Sign(random_data, info->keys.private_key, &signature) != kSuccess)
+                  if (asymm::Sign(random_data, info->keys.private_key, &signature) != kSuccess) {
                     LOG(kError) << "StopAllVaults: failed to sign - "
                                 << Base64Substr(info->keys.identity);
-                  if (!StopVault(info->keys.identity, random_data, signature, false))
+                  }
+                  if (!StopVault(info->keys.identity, random_data, signature, false)) {
                     LOG(kError) << "StopAllVaults: failed to stop - "
                                 << Base64Substr(info->keys.identity);
+                  }
                 });
 }
 
