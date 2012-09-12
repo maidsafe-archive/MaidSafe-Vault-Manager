@@ -12,14 +12,13 @@
 #ifndef MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
 #define MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <vector>
 
-#include "boost/thread/condition_variable.hpp"
-#include "boost/thread/mutex.hpp"
-
 #include "maidsafe/common/rsa.h"
-
 
 namespace maidsafe {
 
@@ -39,14 +38,14 @@ std::string SerialisedSignedData(const asymm::Keys &keys);
 int CreateMaidsafeIdentity(asymm::Keys& keys);
 
 void ChunkStoreOperationCallback(const bool &response,
-                                 boost::mutex *mutex,
-                                 boost::condition_variable *cond_var,
+                                 std::mutex *mutex,
+                                 std::condition_variable *cond_var,
                                  int *result);
 
-int WaitForResults(boost::mutex& mutex,
-                   boost::condition_variable& cond_var,
+int WaitForResults(std::mutex& mutex,
+                   std::condition_variable& cond_var,
                    std::vector<int>& results,
-                   boost::posix_time::seconds interval = boost::posix_time::seconds(1));
+                   std::chrono::seconds interval = std::chrono::seconds(1));
 
 }  // namespace utilities
 
