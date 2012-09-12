@@ -96,7 +96,7 @@ Invigilator::Invigilator()
       need_to_stop_(false) {
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
   asio_service_.Start();
-  asio_service_.service().post([&] () { Initialise(); });
+  asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
 }
 
 void Invigilator::Initialise() {
@@ -334,8 +334,9 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                   });
   }
 
-  LOG(kError) << "Version that we might inform the user " << download_manager_.latest_remote_version();
-  LOG(kError) << "Version that the user reported " << client_request.version();
+  LOG(kVerbose) << "Version that we might inform the user "
+                << download_manager_.latest_remote_version();
+  LOG(kVerbose) << "Version that the user reported " << client_request.version();
 
   if (client_request.version() < VersionToInt(download_manager_.latest_remote_version()))
     client_response.set_path_to_new_installer(latest_local_installer_path_.string());
@@ -689,7 +690,7 @@ void Invigilator::SendVaultJoinConfirmation(const std::string& identity, bool jo
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&] (bool result) {
+  std::function<void(bool)> callback = [&] (bool result) {  // NOLINT (Dan)
                                          std::lock_guard<std::mutex> lock(local_mutex);
                                          local_result = result;
                                          done = true;
@@ -747,7 +748,7 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&] (bool result) {
+  std::function<void(bool)> callback = [&] (bool result) {  // NOLINT (Dan)
                                          std::lock_guard<std::mutex> lock(local_mutex);
                                          local_result = result;
                                          done = true;
