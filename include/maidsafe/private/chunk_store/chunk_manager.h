@@ -46,15 +46,15 @@ class ChunkManager {
 
   virtual void GetChunk(const std::string &name,
                         const std::string &local_version,
-                        const std::shared_ptr<asymm::Keys> &keys,
+                        const asymm::Keys &keys,
                         bool lock) = 0;
   virtual void StoreChunk(const std::string &name,
-                          const std::shared_ptr<asymm::Keys> &keys) = 0;
+                          const asymm::Keys &keys) = 0;
   virtual void ModifyChunk(const std::string &name,
                            const std::string &content,
-                           const std::shared_ptr<asymm::Keys> &keys) = 0;
+                           const asymm::Keys &keys) = 0;
   virtual void DeleteChunk(const std::string &name,
-                           const std::shared_ptr<asymm::Keys> &keys) = 0;
+                           const asymm::Keys &keys) = 0;
 
   virtual int64_t StorageSize() = 0;
   virtual int64_t StorageCapacity() = 0;

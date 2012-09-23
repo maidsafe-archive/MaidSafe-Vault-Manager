@@ -42,18 +42,18 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
 
   MOCK_METHOD4(GetChunk, void(const std::string &name,
                               const std::string &local_version,
-                              const std::shared_ptr<asymm::Keys> &keys,
+                              const asymm::Keys &keys,
                               bool lock));
 
   MOCK_METHOD2(StoreChunk, void(const std::string &chunk_name,
-                              const std::shared_ptr<asymm::Keys> &keys));
+                              const asymm::Keys &keys));
 
   MOCK_METHOD3(ModifyChunk, void(const std::string &name,
                                  const std::string &content,
-                              const std::shared_ptr<asymm::Keys> &keys));
+                              const asymm::Keys &keys));
 
   MOCK_METHOD2(DeleteChunk, void(const std::string &chunk_name,
-                              const std::shared_ptr<asymm::Keys> &keys));
+                              const asymm::Keys &keys));
 
   int64_t StorageSize() {
     return chunk_store()->Size();

@@ -45,14 +45,14 @@ class LocalChunkManager : public ChunkManager {
 
   void GetChunk(const std::string &name,
                 const std::string &local_version,
-                const std::shared_ptr<asymm::Keys> &keys, bool lock);
+                const asymm::Keys &keys, bool lock);
   void StoreChunk(const std::string &name,
-                  const std::shared_ptr<asymm::Keys> &keys);
+                  const asymm::Keys &keys);
   void DeleteChunk(const std::string &name,
-                   const std::shared_ptr<asymm::Keys> &keys);
+                   const asymm::Keys &keys);
   void ModifyChunk(const std::string &name,
                    const std::string &content,
-                   const std::shared_ptr<asymm::Keys> &keys);
+                   const asymm::Keys &keys);
 
   int64_t StorageSize();
   int64_t StorageCapacity();

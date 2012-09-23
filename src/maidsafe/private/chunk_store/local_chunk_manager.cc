@@ -72,7 +72,7 @@ LocalChunkManager::~LocalChunkManager() {}
 
 void LocalChunkManager::GetChunk(const std::string &name,
                                  const std::string & local_version,
-                                 const std::shared_ptr<asymm::Keys> &keys,
+                                 const asymm::Keys &keys,
                                  bool lock) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(get_wait_);
@@ -84,7 +84,7 @@ void LocalChunkManager::GetChunk(const std::string &name,
   }
   if (lock && !local_version.empty() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-      LOG(kWarning) << "GetChunk - " << (keys ? HexSubstr(keys->identity) : "Anonymous")
+      LOG(kWarning) << "GetChunk - " << (!keys.identity.empty() ? HexSubstr(keys.identity) : "Anonymous")
                   << " - Won't retrieve " << Base32Substr(name)
                   << " because local and remote versions "
                   << HexSubstr(local_version) << " match.";
@@ -116,7 +116,7 @@ void LocalChunkManager::GetChunk(const std::string &name,
   }
   content = simulation_chunk_action_authority_->Get(name,
                                                     "",
-                                                    keys ? keys->public_key : asymm::PublicKey());
+                                                    keys.public_key);
   if (content.empty()) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_got_)(name, kGetFailure);
@@ -133,17 +133,11 @@ void LocalChunkManager::GetChunk(const std::string &name,
 }
 
 void LocalChunkManager::StoreChunk(const std::string &name,
-                                   const std::shared_ptr<asymm::Keys> &keys) {
+                                   const asymm::Keys &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
   bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
-  if (!is_cacheable && !keys) {
-    LOG(kError) << "StoreChunk - Keys required for " << Base32Substr(name)
-                << " but not passed.";
-    (*sig_chunk_stored_)(name, kGeneralError);
-    return;
-  }
   // TODO(Team): Add check of ID on network
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
@@ -153,7 +147,7 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   }
   asymm::PublicKey public_key;
   if (!is_cacheable)
-    public_key = keys->public_key;
+    public_key = keys.public_key;
   if (!simulation_chunk_action_authority_->Store(name,
                                                  content,
                                                  public_key)) {
@@ -166,18 +160,12 @@ void LocalChunkManager::StoreChunk(const std::string &name,
 }
 
 void LocalChunkManager::DeleteChunk(const std::string &name,
-                                    const std::shared_ptr<asymm::Keys> &keys) {
+                                    const asymm::Keys &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
 
   bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
-  if (!is_cacheable && !keys) {
-    LOG(kError) << "DeleteChunk - Keys required for " << Base32Substr(name)
-                << " but not passed.";
-    (*sig_chunk_deleted_)(name, kGeneralError);
-    return;
-  }
 
   // TODO(Team): Add check of ID on network
   priv::chunk_actions::SignedData ownership_proof;
@@ -185,10 +173,10 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
   asymm::PublicKey public_key;
   if (!is_cacheable) {
     ownership_proof.set_data(RandomString(16));
-    asymm::Sign(ownership_proof.data(), keys->private_key,
+    asymm::Sign(ownership_proof.data(), keys.private_key,
               ownership_proof.mutable_signature());
     ownership_proof.SerializeToString(&ownership_proof_string);
-    public_key = keys->public_key;
+    public_key = keys.public_key;
   }
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   ownership_proof_string,
@@ -203,15 +191,9 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
 
 void LocalChunkManager::ModifyChunk(const std::string &name,
                                     const std::string &content,
-                                    const std::shared_ptr<asymm::Keys> &keys) {
+                                    const asymm::Keys &keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
-  }
-  if (!keys) {
-    LOG(kError) << "ModifyChunk - Keys required for " << Base32Substr(name)
-                << " but not passed.";
-    (*sig_chunk_modified_)(name, kGeneralError);
-    return;
   }
   fs::path lock_file = lock_directory_ / EncodeToBase32(name);
   boost::system::error_code error_code;
@@ -232,7 +214,7 @@ void LocalChunkManager::ModifyChunk(const std::string &name,
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
-                                                  keys->public_key,
+                                                  keys.public_key,
                                                   &operation_diff)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_modified_)(name, kModifyFailure);

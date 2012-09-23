@@ -83,7 +83,7 @@ class RemoteChunkStore {
           callback() {}
     OperationData(const OperationType &op_type,
                   const OpFunctor &callback,
-                  const std::shared_ptr<asymm::Keys> &keys,
+                  const asymm::Keys &keys,
                   bool ready)
         : op_type(op_type),
           active(false),
@@ -94,7 +94,7 @@ class RemoteChunkStore {
           callback(callback) {}
     OperationType op_type;
     bool active, ready;
-    std::shared_ptr<asymm::Keys> keys;
+    asymm::Keys keys;
     std::string local_version, content;
     OpFunctor callback;
   };
@@ -122,26 +122,26 @@ class RemoteChunkStore {
   ~RemoteChunkStore();
 
   std::string Get(const std::string &name,
-                  const std::shared_ptr<asymm::Keys> &keys = nullptr);
+                  const asymm::Keys &keys = asymm::Keys());
 
   int GetAndLock(const std::string &name,
                  const std::string &local_version,
-                 const std::shared_ptr<asymm::Keys> &keys,
+                 const asymm::Keys &keys,
                  std::string *content);
 
   bool Store(const std::string &name,
              const std::string &content,
-             const OpFunctor &callback,
-             const std::shared_ptr<asymm::Keys> &keys = nullptr);
+             const OpFunctor &callback = nullptr,
+             const asymm::Keys keys = asymm::Keys());
 
   bool Delete(const std::string &name,
               const OpFunctor &callback,
-              const std::shared_ptr<asymm::Keys> &keys = nullptr);
+              const asymm::Keys keys = asymm::Keys());
 
   bool Modify(const std::string &name,
               const std::string &content,
               const OpFunctor &callback,
-              const std::shared_ptr<asymm::Keys> &keys);
+              const asymm::Keys keys);
 
   uintmax_t Size() const {
     // TODO(Steve) get from account

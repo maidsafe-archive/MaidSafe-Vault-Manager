@@ -10,7 +10,7 @@
  **************************************************************************************************/
 
 #include "maidsafe/private/chunk_store/remote_chunk_store.h"
-
+#include <algorithm>
 // #include "boost/asio/deadline_timer.hpp"
 
 #include "maidsafe/common/log.h"
@@ -103,7 +103,7 @@ RemoteChunkStore::~RemoteChunkStore() {
 }
 
 std::string RemoteChunkStore::Get(const std::string &name,
-                                  const std::shared_ptr<asymm::Keys> &keys) {
+                                  const asymm::Keys &keys) {
   LOG(kInfo) << "Get - " << Base32Substr(name);
   boost::mutex::scoped_lock lock(mutex_);
   if (!chunk_action_authority_->ValidName(name)) {
@@ -169,15 +169,11 @@ std::string RemoteChunkStore::Get(const std::string &name,
 
 int RemoteChunkStore::GetAndLock(const std::string &name,
                                  const std::string & local_version,
-                                 const std::shared_ptr<asymm::Keys> & keys,
+                                 const asymm::Keys & keys,
                                  std::string *content) {
   LOG(kInfo) << "GetAndLock - " << Base32Substr(name);
   if (!content) {
     LOG(kError) << "GetAndLock - NULL pointer passed for content";
-    return kGeneralError;
-  }
-  if (!keys) {
-    LOG(kError) << "GetAndLock - NULL pointer passed for keys";
     return kGeneralError;
   }
   boost::mutex::scoped_lock lock(mutex_);
@@ -243,7 +239,7 @@ int RemoteChunkStore::GetAndLock(const std::string &name,
 bool RemoteChunkStore::Store(const std::string &name,
                              const std::string &content,
                              const OpFunctor &callback,
-                             const std::shared_ptr<asymm::Keys> &keys) {
+                             const asymm::Keys keys) {
   LOG(kInfo) << "Store - " << Base32Substr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
@@ -254,12 +250,9 @@ bool RemoteChunkStore::Store(const std::string &name,
     LOG(kWarning) << "Store - Terminated early for " << Base32Substr(name);
     return result == kWaitCancelled;
   }
-  asymm::PublicKey public_key;
-  if (keys)
-    public_key = keys->public_key;
   if (!chunk_action_authority_->Store(name,
                                       content,
-                                      public_key)) {
+                                      keys.public_key)) {
     LOG(kError) << "Store - Could not store " << Base32Substr(name)
                 << " locally.";
     pending_ops_.right.erase(id);
@@ -278,7 +271,7 @@ bool RemoteChunkStore::Store(const std::string &name,
 
 bool RemoteChunkStore::Delete(const std::string &name,
                               const OpFunctor &callback,
-                              const std::shared_ptr<asymm::Keys> &keys) {
+                              const asymm::Keys keys) {
   LOG(kInfo) << "Delete - " << Base32Substr(name);
 
   boost::mutex::scoped_lock lock(mutex_);
@@ -290,17 +283,13 @@ bool RemoteChunkStore::Delete(const std::string &name,
     return result == kWaitCancelled;
   }
   std::string data(RandomString(16)), signature;
-  asymm::PublicKey public_key;
-  if (keys) {
-    public_key = keys->public_key;
-    asymm::Sign(data, keys->private_key, &signature);
-  }
+  asymm::Sign(data, keys.private_key, &signature);
   chunk_actions::SignedData proof;
   proof.set_data(data);
   proof.set_signature(signature);
   if (!chunk_action_authority_->Delete(name,
                                        proof.SerializeAsString(),
-                                       public_key)) {
+                                       keys.public_key)) {
     LOG(kError) << "Delete - Could not delete " << Base32Substr(name)
                 << " locally.";
     pending_ops_.right.erase(id);
@@ -321,7 +310,7 @@ bool RemoteChunkStore::Delete(const std::string &name,
 bool RemoteChunkStore::Modify(const std::string &name,
                               const std::string &content,
                               const OpFunctor &callback,
-                              const std::shared_ptr<asymm::Keys> &keys) {
+                              const asymm::Keys keys) {
   LOG(kInfo) << "Modify - " << Base32Substr(name);
 
   if (!chunk_action_authority_->Modifiable(name)) {
@@ -609,7 +598,7 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
     auto it = failed_gets_.begin();
     while (it != failed_gets_.end()) {
       if (it->second + kGetRetryTimeout < now)
-        it = failed_gets_.erase(it);
+        failed_gets_.erase(it++);
       else
         ++it;
     }
