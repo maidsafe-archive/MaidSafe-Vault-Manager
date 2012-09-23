@@ -128,8 +128,7 @@ source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                              ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
                               ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
                               ${ALL_FILES_PRIVATE_UTILS_DIR})
 

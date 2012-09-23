@@ -83,7 +83,7 @@ class Invigilator {
   Invigilator();
   ~Invigilator();
   static uint16_t kMinPort() { return 5483; }
-  static uint16_t kMaxPort() { return 5582; }
+  static uint16_t kMaxPort() { return 5490; }
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
@@ -109,6 +109,7 @@ class Invigilator {
   Invigilator(const Invigilator&);
   Invigilator operator=(const Invigilator&);
 
+  void Initialise();
   void RestartInvigilator(const std::string& latest_file,
                           const std::string& executable_name) const;
 
@@ -187,6 +188,7 @@ class Invigilator {
   boost::filesystem::path config_file_path_, latest_local_installer_path_;
   std::vector<EndPoint> endpoints_;
   std::mutex config_file_mutex_;
+  bool need_to_stop_;
 };
 
 }  // namespace process_management
