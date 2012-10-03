@@ -44,17 +44,17 @@ class ChunkManager {
 
   virtual ~ChunkManager() {}
 
-  virtual void GetChunk(const std::string &name,
-                        const std::string &local_version,
-                        const asymm::Keys &keys,
+  virtual void GetChunk(const ChunkId& name,
+                        const std::string& local_version,
+                        const asymm::Keys& keys,
                         bool lock) = 0;
-  virtual void StoreChunk(const std::string &name,
-                          const asymm::Keys &keys) = 0;
-  virtual void ModifyChunk(const std::string &name,
-                           const std::string &content,
-                           const asymm::Keys &keys) = 0;
-  virtual void DeleteChunk(const std::string &name,
-                           const asymm::Keys &keys) = 0;
+  virtual void StoreChunk(const ChunkId& name,
+                          const asymm::Keys& keys) = 0;
+  virtual void ModifyChunk(const ChunkId& name,
+                           const std::string& content,
+                           const asymm::Keys& keys) = 0;
+  virtual void DeleteChunk(const ChunkId& name,
+                           const asymm::Keys& keys) = 0;
 
   virtual int64_t StorageSize() = 0;
   virtual int64_t StorageCapacity() = 0;
@@ -66,7 +66,7 @@ class ChunkManager {
   std::shared_ptr<ChunkStore> chunk_store() { return chunk_store_; }
 
   boost::posix_time::time_duration lock_timeout() { return lock_timeout_; }
-  void SetLockTimeout(const boost::posix_time::time_duration &value) {
+  void SetLockTimeout(const boost::posix_time::time_duration& value) {
     lock_timeout_ = value;
   }
 

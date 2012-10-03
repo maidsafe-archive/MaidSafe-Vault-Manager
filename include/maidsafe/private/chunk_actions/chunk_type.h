@@ -22,15 +22,13 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace chunk_actions {
-
-const unsigned char kDefaultType(0);
-const unsigned char kAppendableByAll(1);
-const unsigned char kModifiableByOwner(2);
-const unsigned char kSignaturePacket(3);
-const unsigned char kUnknownType(255);
-
-}  // namespace chunk_actions
+enum class ChunkType : char {
+  kDefault = 0,
+  kAppendableByAll = 1,
+  kModifiableByOwner = 2,
+  kSignaturePacket = 3,
+  kUnknown = -128
+};
 
 }  // namespace priv
 

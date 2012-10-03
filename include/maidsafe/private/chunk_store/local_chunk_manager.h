@@ -37,22 +37,22 @@ class ChunkStore;
 class LocalChunkManager : public ChunkManager {
  public:
   LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_chunk_store,
-                    const fs::path &simulation_directory,
-                    const fs::path &lock_directory,
-                    const boost::posix_time::time_duration &millisecs =
+                    const fs::path& simulation_directory,
+                    const fs::path& lock_directory,
+                    const boost::posix_time::time_duration& millisecs =
                         boost::posix_time::milliseconds(0));
   ~LocalChunkManager();
 
-  void GetChunk(const std::string &name,
-                const std::string &local_version,
-                const asymm::Keys &keys, bool lock);
-  void StoreChunk(const std::string &name,
-                  const asymm::Keys &keys);
-  void DeleteChunk(const std::string &name,
-                   const asymm::Keys &keys);
-  void ModifyChunk(const std::string &name,
-                   const std::string &content,
-                   const asymm::Keys &keys);
+  void GetChunk(const ChunkId& name,
+                const std::string& local_version,
+                const asymm::Keys& keys, bool lock);
+  void StoreChunk(const ChunkId& name,
+                  const asymm::Keys& keys);
+  void DeleteChunk(const ChunkId& name,
+                   const asymm::Keys& keys);
+  void ModifyChunk(const ChunkId& name,
+                   const std::string& content,
+                   const asymm::Keys& keys);
 
   int64_t StorageSize();
   int64_t StorageCapacity();

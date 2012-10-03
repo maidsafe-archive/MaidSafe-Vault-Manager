@@ -43,22 +43,22 @@ class MemoryChunkStore : public ChunkStore {
  public:
   MemoryChunkStore();
   ~MemoryChunkStore();
-  std::string Get(const std::string &name) const;
-  bool Get(const std::string &name, const fs::path &sink_file_name) const;
-  bool Store(const std::string &name, const std::string &content);
-  bool Store(const std::string &name,
-             const fs::path &source_file_name,
+  std::string Get(const ChunkId& name) const;
+  bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
+  bool Store(const ChunkId& name, const std::string& content);
+  bool Store(const ChunkId& name,
+             const fs::path& source_file_name,
              bool delete_source_file);
-  bool Delete(const std::string &name);
-  bool Modify(const std::string &name, const std::string &content);
-  bool Modify(const std::string &name,
-              const fs::path &source_file_name,
+  bool Delete(const ChunkId& name);
+  bool Modify(const ChunkId& name, const std::string& content);
+  bool Modify(const ChunkId& name,
+              const fs::path& source_file_name,
               bool delete_source_file);
-  bool Has(const std::string &name) const;
-  bool MoveTo(const std::string &name, ChunkStore *sink_chunk_store);
-  uintmax_t Size(const std::string &name) const;
+  bool Has(const ChunkId& name) const;
+  bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
+  uintmax_t Size(const ChunkId& name) const;
   uintmax_t Size() const { return ChunkStore::Size(); }
-  uintmax_t Count(const std::string &name) const;
+  uintmax_t Count(const ChunkId& name) const;
   uintmax_t Count() const;
   bool Empty() const;
   void Clear();

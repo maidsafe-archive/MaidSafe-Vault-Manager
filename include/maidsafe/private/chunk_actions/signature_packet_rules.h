@@ -24,8 +24,9 @@
 
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_type.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
+
 
 namespace maidsafe {
 
@@ -35,35 +36,37 @@ namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
+namespace detail {
+
 extern const std::string kRevokedSignaturePacket;
 
 // Returns false.
 template <>
-bool IsCacheable<kSignaturePacket>();
+bool IsCacheable<ChunkType::kSignaturePacket>();
 
 // Returns false.
 template <>
-bool IsModifiable<kSignaturePacket>();
+bool IsModifiable<ChunkType::kSignaturePacket>();
 
 // Returns false.
 template <>
-bool DoesModifyReplace<kSignaturePacket>();
+bool DoesModifyReplace<ChunkType::kSignaturePacket>();
 
 // Returns false.
 template <>
-bool IsPayable<kSignaturePacket>();
+bool IsPayable<ChunkType::kSignaturePacket>();
 
 // Returns true if the chunk exists, and
 // name == Hash(chunk.data() + chunk.signature()).
 template <>
-bool IsValidChunk<kSignaturePacket>(
-    const std::string &name,
+bool IsValidChunk<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Returns first 24 bytes of name.
 template <>
-std::string GetVersion<kSignaturePacket>(
-    const std::string &name,
+std::string GetVersion<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Get.
@@ -71,11 +74,11 @@ std::string GetVersion<kSignaturePacket>(
 //   * chunk_store.get() succeeds
 // NB - version is not used in this function.
 template <>
-int ProcessGet<kSignaturePacket>(
-    const std::string &name,
-    const std::string &version,
-    const asymm::PublicKey &public_key,
-    std::string *existing_content,
+int ProcessGet<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
+    const std::string& version,
+    const asymm::PublicKey& public_key,
+    std::string* existing_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Store.
@@ -87,10 +90,10 @@ int ProcessGet<kSignaturePacket>(
 //   * name must match Hash(chunk.data())
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessStore<kSignaturePacket>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &public_key,
+int ProcessStore<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
+    const std::string& content,
+    const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Only owner can Delete.
@@ -103,20 +106,20 @@ int ProcessStore<kSignaturePacket>(
 //   * deletion_token validates with public_key
 // This assumes that public_key has not been revoked on the network.
 template <>
-int ProcessDelete<kSignaturePacket>(
-    const std::string &name,
-    const std::string &ownership_proof,
-    const asymm::PublicKey &public_key,
+int ProcessDelete<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
+    const std::string& ownership_proof,
+    const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Modify is an invalid operation for all users.
 template <>
-int ProcessModify<kSignaturePacket>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &public_key,
-    int64_t *size_difference,
-    std::string *new_content,
+int ProcessModify<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
+    const std::string& content,
+    const asymm::PublicKey& public_key,
+    int64_t* size_difference,
+    std::string* new_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can call Has.
@@ -124,11 +127,13 @@ int ProcessModify<kSignaturePacket>(
 //   * chunk_store.has() succeeds
 // NB - version is not used in this function.
 template <>
-int ProcessHas<kSignaturePacket>(
-    const std::string &name,
-    const std::string &version,
-    const asymm::PublicKey &public_key,
+int ProcessHas<ChunkType::kSignaturePacket>(
+    const ChunkId& name,
+    const std::string& version,
+    const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
+
+}  // namespace detail
 
 }  // namespace chunk_actions
 

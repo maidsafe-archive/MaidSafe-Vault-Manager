@@ -102,8 +102,8 @@ RemoteChunkStore::~RemoteChunkStore() {
   failed_ops_.clear();
 }
 
-std::string RemoteChunkStore::Get(const std::string &name,
-                                  const asymm::Keys &keys) {
+std::string RemoteChunkStore::Get(const ChunkId& name,
+                                  const asymm::Keys& keys) {
   LOG(kInfo) << "Get - " << Base32Substr(name);
   boost::mutex::scoped_lock lock(mutex_);
   if (!chunk_action_authority_->ValidName(name)) {
@@ -167,10 +167,10 @@ std::string RemoteChunkStore::Get(const std::string &name,
   return content;
 }
 
-int RemoteChunkStore::GetAndLock(const std::string &name,
+int RemoteChunkStore::GetAndLock(const ChunkId& name,
                                  const std::string & local_version,
                                  const asymm::Keys & keys,
-                                 std::string *content) {
+                                 std::string* content) {
   LOG(kInfo) << "GetAndLock - " << Base32Substr(name);
   if (!content) {
     LOG(kError) << "GetAndLock - NULL pointer passed for content";
@@ -236,9 +236,9 @@ int RemoteChunkStore::GetAndLock(const std::string &name,
   return kSuccess;
 }
 
-bool RemoteChunkStore::Store(const std::string &name,
-                             const std::string &content,
-                             const OpFunctor &callback,
+bool RemoteChunkStore::Store(const ChunkId& name,
+                             const std::string& content,
+                             const OpFunctor& callback,
                              const asymm::Keys keys) {
   LOG(kInfo) << "Store - " << Base32Substr(name);
 
@@ -269,8 +269,8 @@ bool RemoteChunkStore::Store(const std::string &name,
   return true;
 }
 
-bool RemoteChunkStore::Delete(const std::string &name,
-                              const OpFunctor &callback,
+bool RemoteChunkStore::Delete(const ChunkId& name,
+                              const OpFunctor& callback,
                               const asymm::Keys keys) {
   LOG(kInfo) << "Delete - " << Base32Substr(name);
 
@@ -307,9 +307,9 @@ bool RemoteChunkStore::Delete(const std::string &name,
   return true;
 }
 
-bool RemoteChunkStore::Modify(const std::string &name,
-                              const std::string &content,
-                              const OpFunctor &callback,
+bool RemoteChunkStore::Modify(const ChunkId& name,
+                              const std::string& content,
+                              const OpFunctor& callback,
                               const asymm::Keys keys) {
   LOG(kInfo) << "Modify - " << Base32Substr(name);
 
@@ -386,9 +386,9 @@ void RemoteChunkStore::Clear() {
   chunk_store_->Clear();
 }
 
-void RemoteChunkStore::OnOpResult(const OperationType &op_type,
-                                  const std::string &name,
-                                  const int &result) {
+void RemoteChunkStore::OnOpResult(const OperationType& op_type,
+                                  const ChunkId& name,
+                                  const int& result) {
   boost::mutex::scoped_lock lock(mutex_);
 
   // find first matching and active op
@@ -473,10 +473,10 @@ void RemoteChunkStore::OnOpResult(const OperationType &op_type,
     ProcessPendingOps(&lock);
 }
 
-int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
-                                            const OperationType &op_type,
-                                            const uint32_t &transaction_id,
-                                            boost::mutex::scoped_lock *lock) {
+int RemoteChunkStore::WaitForConflictingOps(const ChunkId& name,
+                                            const OperationType& op_type,
+                                            const uint32_t& transaction_id,
+                                            boost::mutex::scoped_lock* lock) {
   if (transaction_id == 0)  // our op is redundant
     return kWaitCancelled;
 
@@ -511,9 +511,9 @@ int RemoteChunkStore::WaitForConflictingOps(const std::string &name,
   }
 }
 
-bool RemoteChunkStore::WaitForGetOps(const std::string &name,
-                                     const uint32_t &transaction_id,
-                                     boost::mutex::scoped_lock *lock) {
+bool RemoteChunkStore::WaitForGetOps(const ChunkId& name,
+                                     const uint32_t& transaction_id,
+                                     boost::mutex::scoped_lock* lock) {
   while (pending_ops_.right.find(transaction_id) != pending_ops_.right.end()) {
     if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
       LOG(kError) << "WaitForGetOps - Timed out for " << Base32Substr(name)
@@ -528,9 +528,9 @@ bool RemoteChunkStore::WaitForGetOps(const std::string &name,
   return true;
 }
 
-uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
-                                     const OperationData &op_data,
-                                     boost::mutex::scoped_lock *lock) {
+uint32_t RemoteChunkStore::EnqueueOp(const ChunkId& name,
+                                     const OperationData& op_data,
+                                     boost::mutex::scoped_lock* lock) {
   ++op_count_[op_data.op_type];
 
   // Are we able to cancel a previous op for this chunk?
@@ -589,7 +589,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const std::string &name,
   return id;
 }
 
-void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
+void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock* lock) {
 //   LOG(kInfo) << "ProcessPendingOps - " << active_ops_count_ << " of max "
 //              << max_active_ops_ << " ops active.";
   {
@@ -687,7 +687,7 @@ void RemoteChunkStore::ProcessPendingOps(boost::mutex::scoped_lock *lock) {
 
 void RemoteChunkStore::StoreOpBackups(
     std::shared_ptr<boost::asio::deadline_timer> timer,
-    const std::string &pmid) {
+    const std::string& pmid) {
   timer->expires_from_now(boost::posix_time::seconds(10));
   timer->async_wait(std::bind(
       &RemoteChunkStore::DoOpBackups, this, arg::_1, pmid, timer));
@@ -695,7 +695,7 @@ void RemoteChunkStore::StoreOpBackups(
 
 void RemoteChunkStore::DoOpBackups(
     boost::system::error_code error,
-    const std::string &pmid,
+    const std::string& pmid,
     std::shared_ptr<boost::asio::deadline_timer> timer) {
   if (error)
     LOG(kError) << "Error " << error << " occurred.";
@@ -713,7 +713,7 @@ void RemoteChunkStore::DoOpBackups(
 }
 
 template<class Archive>
-void RemoteChunkStore::serialize(Archive &archive, const unsigned int) {  // NOLINT
+void RemoteChunkStore::serialize(Archive& archive, const unsigned int) {  // NOLINT
   boost::mutex::scoped_lock lock(mutex_);
   archive & active_mod_ops_;
   archive & pending_mod_ops_;
@@ -725,29 +725,29 @@ void RemoteChunkStore::serialize(Archive &archive, const unsigned int) {  // NOL
 
 namespace op_archiving {
 
-  int Serialize(const maidsafe::pd::RemoteChunkStore &remote_chunk_store,
-                std::stringstream *output_stream) {
+  int Serialize(const maidsafe::pd::RemoteChunkStore& remote_chunk_store,
+                std::stringstream* output_stream) {
   if (!output_stream) {
     return -1;
   }
   try {
     boost::archive::text_oarchive oa(*output_stream);
     oa << remote_chunk_store;
-  } catch(const std::exception &e) {
+  } catch(const std::exception& e) {
     LOG(kError) << e.what();
     return -1;
   }
   return kSuccess;
 }
 
-int Deserialize(std::stringstream *input_stream,
-                maidsafe::pd::RemoteChunkStore &remote_chunk_store) {
+int Deserialize(std::stringstream* input_stream,
+                maidsafe::pd::RemoteChunkStore& remote_chunk_store) {
   if (!input_stream)
     return -1;
   try {
     boost::archive::text_iarchive ia(*input_stream);
     ia >> remote_chunk_store;
-  } catch(const std::exception &e) {
+  } catch(const std::exception& e) {
     LOG(kError) << e.what();
     return -1;
   }
@@ -759,11 +759,11 @@ int Deserialize(std::stringstream *input_stream,
 */
 
   std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
-    const fs::path &buffered_chunk_store_path,
-    const fs::path &local_chunk_manager_path,
-    const fs::path &chunk_lock_path,
-    boost::asio::io_service &asio_service,  // NOLINT (Dan)
-    const bptime::time_duration &millisecs) {
+    const fs::path& buffered_chunk_store_path,
+    const fs::path& local_chunk_manager_path,
+    const fs::path& chunk_lock_path,
+    boost::asio::io_service& asio_service,  // NOLINT (Dan)
+    const bptime::time_duration& millisecs) {
   std::shared_ptr<BufferedChunkStore> buffered_chunk_store(
       new BufferedChunkStore(asio_service));
   if (!buffered_chunk_store->Init(buffered_chunk_store_path)) {

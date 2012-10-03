@@ -336,7 +336,7 @@ class RemoteChunkStoreTest: public testing::Test {
                      std::string *chunk_name,
                      std::string *chunk_contents) {
     switch (chunk_type) {
-      case priv::chunk_actions::kDefaultType:
+      case priv::chunk_actions::ChunkType::kDefault:
         *chunk_contents = RandomString(chunk_size);
         *chunk_name = crypto::Hash<crypto::SHA512>(*chunk_contents);
         break;
@@ -350,13 +350,13 @@ class RemoteChunkStoreTest: public testing::Test {
           chunk.SerializeToString(chunk_contents);
         }
         break;
-      case priv::chunk_actions::kUnknownType:
+      case priv::chunk_actions::ChunkType::kUnknown:
         {
           priv::chunk_actions::SignedData chunk;
           chunk.set_data(RandomString(chunk_size));
           asymm::Sign(chunk.data(), private_key, chunk.mutable_signature());
           *chunk_name = priv::chunk_actions::ApplyTypeToName(
-              RandomString(64), priv::chunk_actions::kUnknownType);
+              RandomString(64), priv::chunk_actions::ChunkType::kUnknown);
           chunk.SerializeToString(chunk_contents);
         break;
         }
@@ -500,12 +500,12 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
   std::string name;
   // TODO(Philip): Reinstate this test when RemoteChunkStore has been fully
   // updated
-  /*GenerateChunk(priv::chunk_actions::kUnknownType,
+  /*GenerateChunk(priv::chunk_actions::ChunkType::kUnknown,
                    123, keys_.private_key, &name, &content);
   // Deleting chunk of unknown type should fail
   ASSERT_FALSE(this->chunk_store_->Delete(name, delete_failed_callback_,
                                           keys_));*/
-  GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+  GenerateChunk(priv::chunk_actions::ChunkType::kDefault, 123,
                 keys_.private_key, &name, &content);
   EXPECT_TRUE(this->chunk_store_->Get(name, keys_).empty());
   EXPECT_TRUE(this->chunk_store_->Empty());
@@ -532,7 +532,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 
   // test that modifying of chunk of default type fails
   {
-    GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+    GenerateChunk(priv::chunk_actions::ChunkType::kDefault, 123,
                   keys_.private_key, &name, &content);
     GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,
                     keys_.private_key, &dummy, &new_content);
@@ -911,7 +911,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_MultiThreads) {
     while (chunks.size() < kNumChunks) {
       std::string chunk_content;
       std::string chunk_name;
-      GenerateChunk(priv::chunk_actions::kDefaultType, 123,
+      GenerateChunk(priv::chunk_actions::ChunkType::kDefault, 123,
                 keys_.private_key, &chunk_name, &chunk_content);
       chunks[chunk_name] = chunk_content;
     }
@@ -955,7 +955,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
   while (chunks.size() < kNumChunks) {
     std::string chunk_name, chunk_contents;
     if (chunks.size() < kNumChunks / 2)
-      GenerateChunk(priv::chunk_actions::kDefaultType, 123, asymm::PrivateKey(),
+      GenerateChunk(priv::chunk_actions::ChunkType::kDefault, 123, asymm::PrivateKey(),
                     &chunk_name, &chunk_contents);
     else
       GenerateChunk(priv::chunk_actions::kModifiableByOwner, 123,

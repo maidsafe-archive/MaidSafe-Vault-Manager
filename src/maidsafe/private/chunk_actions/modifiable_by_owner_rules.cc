@@ -27,27 +27,30 @@
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
+
 namespace maidsafe {
 
 namespace priv {
 
 namespace chunk_actions {
 
-template <>
-bool IsCacheable<kModifiableByOwner>() { return false; }
+namespace detail {
 
 template <>
-bool IsModifiable<kModifiableByOwner>() { return true; }
+bool IsCacheable<ChunkType::kModifiableByOwner>() { return false; }
 
 template <>
-bool DoesModifyReplace<kModifiableByOwner>() { return true; }
+bool IsModifiable<ChunkType::kModifiableByOwner>() { return true; }
 
 template <>
-bool IsPayable<kModifiableByOwner>() { return false; }
+bool DoesModifyReplace<ChunkType::kModifiableByOwner>() { return true; }
 
 template <>
-bool IsValidChunk<kModifiableByOwner>(
-    const std::string &name,
+bool IsPayable<ChunkType::kModifiableByOwner>() { return false; }
+
+template <>
+bool IsValidChunk<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   // TODO(Fraser#5#): 2011-12-17 - Check this is all that's needed here
   std::string existing_data(chunk_store->Get(name));
@@ -59,20 +62,19 @@ bool IsValidChunk<kModifiableByOwner>(
 }
 
 template <>
-std::string GetVersion<kModifiableByOwner>(
-    const std::string &name,
+std::string GetVersion<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string hash;
-  return (GetContentAndTigerHash(name, chunk_store, nullptr,
-                                 &hash) == kSuccess ? hash : "");
+  return (GetContentAndTigerHash(name, chunk_store, nullptr, &hash) == kSuccess ? hash : "");
 }
 
 template <>
-int ProcessGet<kModifiableByOwner>(
-    const std::string &name,
-    const std::string &version,
-    const asymm::PublicKey &/*public_key*/,
-    std::string *existing_content,
+int ProcessGet<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
+    const std::string& version,
+    const asymm::PublicKey& /*public_key*/,
+    std::string* existing_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (version.empty()) {
     *existing_content = chunk_store->Get(name);
@@ -99,45 +101,46 @@ int ProcessGet<kModifiableByOwner>(
 }
 
 template <>
-int ProcessStore<kModifiableByOwner>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &public_key,
+int ProcessStore<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
+    const std::string& content,
+    const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
-    LOG(kWarning) << "Failed to store " << Base32Substr(name)
-                  << ": chunk already exists";
+    LOG(kWarning) << "Failed to store " << Base32Substr(name) << ": chunk already exists";
     return kKeyNotUnique;
   }
 
   SignedData chunk;
   if (!ParseProtobuf<SignedData>(content, &chunk)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": data doesn't parse as a chunk";
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data doesn't parse as a chunk";
     return kInvalidSignedData;
   }
 
-  if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": invalid public key";
-    return kInvalidPublicKey;
+  bool valid(false);
+  try {
+    valid = asymm::CheckSignature(asymm::PlainText(chunk.data()),
+                                  asymm::Signature(chunk.signature()),
+                                  public_key);
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
+    return kSignatureCheckError;
   }
 
-  if (asymm::CheckSignature(chunk.data(), chunk.signature(), public_key) !=
-      kSuccess) {
-    LOG(kError) << "Failed to store " << Base32Substr(name)
-                << ": signature verification failed";
-    return kSignatureVerificationFailure;
+  if (!valid) {
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": signature verification failed";
+    return kFailedSignatureCheck;
   }
 
   return kSuccess;
 }
 
 template <>
-int ProcessDelete<kModifiableByOwner>(
-    const std::string &name,
-    const std::string &ownership_proof,
-    const asymm::PublicKey &public_key,
+int ProcessDelete<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
+    const std::string& ownership_proof,
+    const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
   if (existing_content.empty()) {
@@ -149,20 +152,23 @@ int ProcessDelete<kModifiableByOwner>(
   if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
     LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
-    return kGeneralError;
+    return kParseFailure;
   }
 
-  if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to delete " << Base32Substr(name)
-                << ": invalid public key";
-    return kInvalidPublicKey;
+  bool valid(false);
+  try {
+    valid = asymm::CheckSignature(asymm::PlainText(existing_chunk.data()),
+                                  asymm::Signature(existing_chunk.signature()),
+                                  public_key);
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
+    return kSignatureCheckError;
   }
 
-  if (asymm::CheckSignature(existing_chunk.data(), existing_chunk.signature(),
-                            public_key) != kSuccess) {
-    LOG(kError) << "Failed to delete " << Base32Substr(name)
-                << ": signature verification failed";
-    return kSignatureVerificationFailure;
+  if (!valid) {
+    LOG(kError) << "Failed to delete " << Base32Substr(name) << ": signature verification failed";
+    return kFailedSignatureCheck;
   }
 
   SignedData deletion_token;
@@ -171,8 +177,18 @@ int ProcessDelete<kModifiableByOwner>(
                 << ": deletion_token doesn't parse - not owner";
     return kNotOwner;
   }
-  if (asymm::CheckSignature(deletion_token.data(), deletion_token.signature(),
-                            public_key) != kSuccess) {
+
+  try {
+    valid = asymm::CheckSignature(asymm::PlainText(deletion_token.data()),
+                                  asymm::Signature(deletion_token.signature()),
+                                  public_key);
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
+    return kSignatureCheckError;
+  }
+
+  if (!valid) {
     LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": signature verification failed - not owner";
     return kNotOwner;
@@ -182,12 +198,12 @@ int ProcessDelete<kModifiableByOwner>(
 }
 
 template <>
-int ProcessModify<kModifiableByOwner>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &public_key,
-    int64_t *size_difference,
-    std::string *new_content,
+int ProcessModify<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
+    const std::string& content,
+    const asymm::PublicKey& public_key,
+    int64_t* size_difference,
+    std::string* new_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   new_content->clear();
   std::string existing_content = chunk_store->Get(name);
@@ -200,17 +216,21 @@ int ProcessModify<kModifiableByOwner>(
   if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
     LOG(kError) << "Failed to modify " << Base32Substr(name)
                 << ": existing data doesn't parse as SignedData";
-    return kGeneralError;
+    return kParseFailure;
   }
 
-  if (!asymm::ValidateKey(public_key)) {
-    LOG(kError) << "Failed to modify " << Base32Substr(name)
-                << ": invalid public key";
-    return kInvalidPublicKey;
+  bool valid(false);
+  try {
+    valid = asymm::CheckSignature(asymm::PlainText(existing_chunk.data()),
+                                  asymm::Signature(existing_chunk.signature()),
+                                  public_key);
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
+    return kSignatureCheckError;
   }
 
-  if (asymm::CheckSignature(existing_chunk.data(), existing_chunk.signature(),
-                            public_key) != kSuccess) {
+  if (!valid) {
     LOG(kError) << "Failed to modify " << Base32Substr(name) << ": not owner";
     return kNotOwner;
   }
@@ -222,24 +242,31 @@ int ProcessModify<kModifiableByOwner>(
     return kInvalidSignedData;
   }
 
-  if (asymm::CheckSignature(new_chunk.data(), new_chunk.signature(),
-                            public_key) != kSuccess) {
-    LOG(kError) << "Failed to modify " << Base32Substr(name)
-                << ": signature verification failed";
-    return kSignatureVerificationFailure;
+  try {
+    valid = asymm::CheckSignature(asymm::PlainText(new_chunk.data()),
+                                  asymm::Signature(new_chunk.signature()),
+                                  public_key);
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << e.what();
+    return kSignatureCheckError;
   }
 
-  *size_difference = static_cast<int64_t>(existing_content.size()) -
-                     content.size();
+  if (!valid) {
+    LOG(kError) << "Failed to modify " << Base32Substr(name) << ": signature verification failed";
+    return kFailedSignatureCheck;
+  }
+
+  *size_difference = static_cast<int64_t>(existing_content.size()) - content.size();
   *new_content = content;
   return kSuccess;
 }
 
 template <>
-int ProcessHas<kModifiableByOwner>(
-    const std::string &name,
-    const std::string &version,
-    const asymm::PublicKey &/*public_key*/,
+int ProcessHas<ChunkType::kModifiableByOwner>(
+    const ChunkId& name,
+    const std::string& version,
+    const asymm::PublicKey& /*public_key*/,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (version.empty()) {
     if (!chunk_store->Has(name)) {
@@ -248,21 +275,21 @@ int ProcessHas<kModifiableByOwner>(
     }
   } else {
     std::string existing_version;
-    int result(GetContentAndTigerHash(name, chunk_store, nullptr,
-                                      &existing_version));
+    int result(GetContentAndTigerHash(name, chunk_store, nullptr, &existing_version));
     if (result != kSuccess) {
       LOG(kError) << "Failed to find " << Base32Substr(name);
       return result;
     }
     if (version != existing_version) {
-      LOG(kError) << "Failed to find requested version of "
-                  << Base32Substr(name);
+      LOG(kError) << "Failed to find requested version of " << Base32Substr(name);
       return kDifferentVersion;
     }
   }
 
   return kSuccess;
 }
+
+}  // namespace detail
 
 }  // namespace chunk_actions
 

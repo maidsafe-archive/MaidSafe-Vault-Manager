@@ -25,7 +25,7 @@ MemoryChunkStore::MemoryChunkStore() : ChunkStore(), chunks_() {}
 
 MemoryChunkStore::~MemoryChunkStore() {}
 
-std::string MemoryChunkStore::Get(const std::string &name) const {
+std::string MemoryChunkStore::Get(const ChunkId& name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
@@ -35,8 +35,8 @@ std::string MemoryChunkStore::Get(const std::string &name) const {
   return (*it).second.second;
 }
 
-bool MemoryChunkStore::Get(const std::string &name,
-                           const fs::path &sink_file_name) const {
+bool MemoryChunkStore::Get(const ChunkId& name,
+                           const fs::path& sink_file_name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
@@ -46,8 +46,8 @@ bool MemoryChunkStore::Get(const std::string &name,
   return WriteFile(sink_file_name, (*it).second.second);
 }
 
-bool MemoryChunkStore::Store(const std::string &name,
-                             const std::string &content) {
+bool MemoryChunkStore::Store(const ChunkId& name,
+                             const std::string& content) {
   if (name.empty()) {
     LOG(kError) << "Store - Empty name passed.";
     return false;
@@ -85,8 +85,8 @@ bool MemoryChunkStore::Store(const std::string &name,
   return true;
 }
 
-bool MemoryChunkStore::Store(const std::string &name,
-                             const fs::path &source_file_name,
+bool MemoryChunkStore::Store(const ChunkId& name,
+                             const fs::path& source_file_name,
                              bool delete_source_file) {
   if (name.empty()) {
     LOG(kError) << "Store - Empty name passed.";
@@ -150,7 +150,7 @@ bool MemoryChunkStore::Store(const std::string &name,
   return true;
 }
 
-bool MemoryChunkStore::Delete(const std::string &name) {
+bool MemoryChunkStore::Delete(const ChunkId& name) {
   if (name.empty()) {
     LOG(kError) << "Delete - Empty name passed.";
     return false;
@@ -175,8 +175,8 @@ bool MemoryChunkStore::Delete(const std::string &name) {
   return true;
 }
 
-bool MemoryChunkStore::Modify(const std::string &name,
-                              const std::string &content) {
+bool MemoryChunkStore::Modify(const ChunkId& name,
+                              const std::string& content) {
   if (name.empty()) {
     LOG(kError) << "Modify - Empty name passed.";
     return false;
@@ -205,8 +205,8 @@ bool MemoryChunkStore::Modify(const std::string &name,
   return true;
 }
 
-bool MemoryChunkStore::Modify(const std::string &name,
-                              const fs::path &source_file_name,
+bool MemoryChunkStore::Modify(const ChunkId& name,
+                              const fs::path& source_file_name,
                               bool delete_source_file) {
   if (source_file_name.empty()) {
     LOG(kError) << "source_file_name empty: " << Base32Substr(name);
@@ -231,15 +231,15 @@ bool MemoryChunkStore::Modify(const std::string &name,
   return true;
 }
 
-bool MemoryChunkStore::Has(const std::string &name) const {
+bool MemoryChunkStore::Has(const ChunkId& name) const {
   bool found(chunks_.find(name) != chunks_.end());
 //   LOG(kInfo) << (found ? "Have chunk " : "Do not have chunk ")
 //              << Base32Substr(name);
   return found;
 }
 
-bool MemoryChunkStore::MoveTo(const std::string &name,
-                              ChunkStore *sink_chunk_store) {
+bool MemoryChunkStore::MoveTo(const ChunkId& name,
+                              ChunkStore* sink_chunk_store) {
   if (!sink_chunk_store) {
     LOG(kError) << "MoveTo - NULL sink passed for chunk " << Base32Substr(name);
     return false;
@@ -269,7 +269,7 @@ bool MemoryChunkStore::MoveTo(const std::string &name,
   return true;
 }
 
-uintmax_t MemoryChunkStore::Size(const std::string &name) const {
+uintmax_t MemoryChunkStore::Size(const ChunkId& name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Chunk not found: " << Base32Substr(name);
@@ -279,7 +279,7 @@ uintmax_t MemoryChunkStore::Size(const std::string &name) const {
   return (*it).second.second.size();
 }
 
-uintmax_t MemoryChunkStore::Count(const std::string &name) const {
+uintmax_t MemoryChunkStore::Count(const ChunkId& name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Chunk not found: " << Base32Substr(name);

@@ -31,9 +31,9 @@ namespace chunk_store {
 
 LocalChunkManager::LocalChunkManager(
     std::shared_ptr<ChunkStore> normal_local_chunk_store,
-    const fs::path &simulation_directory,
-    const fs::path &lock_directory,
-    const boost::posix_time::time_duration &millisecs)
+    const fs::path& simulation_directory,
+    const fs::path& lock_directory,
+    const boost::posix_time::time_duration& millisecs)
     : ChunkManager(normal_local_chunk_store),
       simulation_chunk_store_(),
       simulation_chunk_action_authority_(),
@@ -70,9 +70,9 @@ LocalChunkManager::LocalChunkManager(
 
 LocalChunkManager::~LocalChunkManager() {}
 
-void LocalChunkManager::GetChunk(const std::string &name,
+void LocalChunkManager::GetChunk(const ChunkId& name,
                                  const std::string & local_version,
-                                 const asymm::Keys &keys,
+                                 const asymm::Keys& keys,
                                  bool lock) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(get_wait_);
@@ -132,8 +132,8 @@ void LocalChunkManager::GetChunk(const std::string &name,
   (*sig_chunk_got_)(name, kSuccess);
 }
 
-void LocalChunkManager::StoreChunk(const std::string &name,
-                                   const asymm::Keys &keys) {
+void LocalChunkManager::StoreChunk(const ChunkId& name,
+                                   const asymm::Keys& keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -159,8 +159,8 @@ void LocalChunkManager::StoreChunk(const std::string &name,
   (*sig_chunk_stored_)(name, kSuccess);
 }
 
-void LocalChunkManager::DeleteChunk(const std::string &name,
-                                    const asymm::Keys &keys) {
+void LocalChunkManager::DeleteChunk(const ChunkId& name,
+                                    const asymm::Keys& keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -189,9 +189,9 @@ void LocalChunkManager::DeleteChunk(const std::string &name,
   (*sig_chunk_deleted_)(name, kSuccess);
 }
 
-void LocalChunkManager::ModifyChunk(const std::string &name,
-                                    const std::string &content,
-                                    const asymm::Keys &keys) {
+void LocalChunkManager::ModifyChunk(const ChunkId& name,
+                                    const std::string& content,
+                                    const asymm::Keys& keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }

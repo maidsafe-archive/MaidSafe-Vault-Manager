@@ -25,10 +25,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_id.h"
+#include "maidsafe/private/chunk_actions/chunk_type.h"
+
 
 namespace fs = boost::filesystem;
-
 
 namespace maidsafe {
 
@@ -38,29 +39,33 @@ namespace chunk_store { class ChunkStore; }
 
 namespace chunk_actions {
 
-template <typename T>
-bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type);
+namespace detail {
 
-int GetContentAndTigerHash(const std::string &name,
+template <typename T>
+bool ParseProtobuf(const std::string& serialised_data, T* protobuf_type);
+
+int GetContentAndTigerHash(const ChunkId& name,
                            std::shared_ptr<chunk_store::ChunkStore> chunk_store,
-                           std::string *chunk_content,
-                           std::string *hash);
+                           std::string* chunk_content,
+                           std::string* hash);
 
 
 template <typename T>
-bool ParseProtobuf(const std::string &serialised_data, T *protobuf_type) {
+bool ParseProtobuf(const std::string& serialised_data, T* protobuf_type) {
   try {
     if (!protobuf_type->ParseFromString(serialised_data)) {
       LOG(kError) << "ParseProtobuf - Failed to parse.";
       return false;
     }
   }
-  catch(const std::exception &e) {
+  catch(const std::exception& e) {
     LOG(kError) << "ParseProtobuf - Failed to parse: " << e.what();
     return false;
   }
   return true;
 }
+
+}  // namespace detail
 
 }  // namespace chunk_actions
 

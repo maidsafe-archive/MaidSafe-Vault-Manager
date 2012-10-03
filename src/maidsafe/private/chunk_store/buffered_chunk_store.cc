@@ -29,7 +29,7 @@ namespace chunk_store {
 const int kWaitTransfersForCacheVacantCheck(10);
 const boost::posix_time::seconds kXferWaitTimeout(3);
 
-BufferedChunkStore::BufferedChunkStore(boost::asio::io_service &asio_service)  // NOLINT (Fraser)
+BufferedChunkStore::BufferedChunkStore(boost::asio::io_service& asio_service)  // NOLINT (Fraser)
     : ChunkStore(),
       cache_mutex_(),
       xfer_mutex_(),
@@ -53,7 +53,7 @@ BufferedChunkStore::~BufferedChunkStore() {
   }
 }
 
-bool BufferedChunkStore::Init(const fs::path &storage_location,
+bool BufferedChunkStore::Init(const fs::path& storage_location,
                               std::list<std::string> removable_chunks,
                               unsigned int dir_depth) {
   if (!reinterpret_cast<FileChunkStore*>(
@@ -68,7 +68,7 @@ bool BufferedChunkStore::Init(const fs::path &storage_location,
   return true;
 }
 
-std::string BufferedChunkStore::Get(const std::string &name) const {
+std::string BufferedChunkStore::Get(const ChunkId& name) const {
   if (name.empty()) {
     LOG(kError) << "Get - Empty name passed.";
     return "";
@@ -92,8 +92,8 @@ std::string BufferedChunkStore::Get(const std::string &name) const {
   return content;
 }
 
-bool BufferedChunkStore::Get(const std::string &name,
-                             const fs::path &sink_file_name) const {
+bool BufferedChunkStore::Get(const ChunkId& name,
+                             const fs::path& sink_file_name) const {
   if (name.empty()) {
     LOG(kError) << "Get - Empty name passed.";
     return false;
@@ -117,8 +117,8 @@ bool BufferedChunkStore::Get(const std::string &name,
   return !content.empty() && WriteFile(sink_file_name, content);
 }
 
-bool BufferedChunkStore::Store(const std::string &name,
-                               const std::string &content) {
+bool BufferedChunkStore::Store(const ChunkId& name,
+                               const std::string& content) {
   if (name.empty()) {
     LOG(kError) << "Store - Empty name passed.";
     return false;
@@ -140,8 +140,8 @@ bool BufferedChunkStore::Store(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::Store(const std::string &name,
-                               const fs::path &source_file_name,
+bool BufferedChunkStore::Store(const ChunkId& name,
+                               const fs::path& source_file_name,
                                bool delete_source_file) {
   if (name.empty()) {
     LOG(kError) << "Store - Empty name passed.";
@@ -174,8 +174,8 @@ bool BufferedChunkStore::Store(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::CacheStore(const std::string &name,
-                                    const std::string &content) {
+bool BufferedChunkStore::CacheStore(const ChunkId& name,
+                                    const std::string& content) {
   if (name.empty()) {
     LOG(kError) << "CacheStore - Empty name passed.";
     return false;
@@ -190,8 +190,8 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::CacheStore(const std::string &name,
-                                    const fs::path &source_file_name,
+bool BufferedChunkStore::CacheStore(const ChunkId& name,
+                                    const fs::path& source_file_name,
                                     bool delete_source_file) {
   if (name.empty()) {
     LOG(kError) << "CacheStore - Empty name passed.";
@@ -213,7 +213,7 @@ bool BufferedChunkStore::CacheStore(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::PermanentStore(const std::string &name) {
+bool BufferedChunkStore::PermanentStore(const ChunkId& name) {
   if (name.empty()) {
     LOG(kError) << "PermanentStore - Empty name passed.";
     return false;
@@ -248,7 +248,7 @@ bool BufferedChunkStore::PermanentStore(const std::string &name) {
   return true;
 }
 
-bool BufferedChunkStore::Delete(const std::string &name) {
+bool BufferedChunkStore::Delete(const ChunkId& name) {
   if (name.empty()) {
     LOG(kError) << "Delete - Empty name passed.";
     return false;
@@ -280,8 +280,8 @@ bool BufferedChunkStore::Delete(const std::string &name) {
   return file_delete_result;
 }
 
-bool BufferedChunkStore::Modify(const std::string &name,
-                                const std::string &content) {
+bool BufferedChunkStore::Modify(const ChunkId& name,
+                                const std::string& content) {
   if (name.empty()) {
     LOG(kError) << "Modify - Empty name passed.";
     return false;
@@ -383,8 +383,8 @@ bool BufferedChunkStore::Modify(const std::string &name,
   }
 }
 
-bool BufferedChunkStore::Modify(const std::string &name,
-                                const fs::path &source_file_name,
+bool BufferedChunkStore::Modify(const ChunkId& name,
+                                const fs::path& source_file_name,
                                 bool delete_source_file) {
   if (source_file_name.empty()) {
     LOG(kError) << "Modify - No source file passed for " << Base32Substr(name);
@@ -411,12 +411,12 @@ bool BufferedChunkStore::Modify(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::Has(const std::string &name) const {
+bool BufferedChunkStore::Has(const ChunkId& name) const {
   return CacheHas(name) || PermanentHas(name);
 }
 
-bool BufferedChunkStore::MoveTo(const std::string &name,
-                                ChunkStore *sink_chunk_store) {
+bool BufferedChunkStore::MoveTo(const ChunkId& name,
+                                ChunkStore* sink_chunk_store) {
   if (name.empty()) {
     LOG(kError) << "MoveTo - Empty name passed.";
     return false;
@@ -450,7 +450,7 @@ bool BufferedChunkStore::MoveTo(const std::string &name,
   return true;
 }
 
-bool BufferedChunkStore::CacheHas(const std::string &name) const {
+bool BufferedChunkStore::CacheHas(const ChunkId& name) const {
   if (name.empty()) {
     LOG(kError) << "CacheHas - Empty name passed.";
     return false;
@@ -460,7 +460,7 @@ bool BufferedChunkStore::CacheHas(const std::string &name) const {
   return cache_chunk_store_->Has(name);
 }
 
-bool BufferedChunkStore::PermanentHas(const std::string &name) const {
+bool BufferedChunkStore::PermanentHas(const ChunkId& name) const {
   if (name.empty()) {
     LOG(kError) << "PermanentHas - Empty name passed.";
     return false;
@@ -481,7 +481,7 @@ bool BufferedChunkStore::PermanentHas(const std::string &name) const {
   return perm_chunk_store_->Count(name) > rem_count;
 }
 
-uintmax_t BufferedChunkStore::Size(const std::string &name) const {
+uintmax_t BufferedChunkStore::Size(const ChunkId& name) const {
   if (name.empty()) {
     LOG(kError) << "Size - Empty name passed.";
     return 0;
@@ -515,7 +515,7 @@ uintmax_t BufferedChunkStore::CacheCapacity() const {
   return cache_chunk_store_->Capacity();
 }
 
-void BufferedChunkStore::SetCapacity(const uintmax_t &capacity) {
+void BufferedChunkStore::SetCapacity(const uintmax_t& capacity) {
   boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
   if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
@@ -526,23 +526,23 @@ void BufferedChunkStore::SetCapacity(const uintmax_t &capacity) {
   perm_chunk_store_->SetCapacity(capacity);
 }
 
-void BufferedChunkStore::SetCacheCapacity(const uintmax_t &capacity) {
+void BufferedChunkStore::SetCacheCapacity(const uintmax_t& capacity) {
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
   cache_chunk_store_->SetCapacity(capacity);
 }
 
-bool BufferedChunkStore::Vacant(const uintmax_t &required_size) const {
+bool BufferedChunkStore::Vacant(const uintmax_t& required_size) const {
   boost::lock_guard<boost::mutex> lock(xfer_mutex_);
   return perm_size_ + required_size <= perm_chunk_store_->Capacity();
 }
 
 bool BufferedChunkStore::CacheVacant(
-    const uintmax_t &required_size) const {
+    const uintmax_t& required_size) const {
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Vacant(required_size);
 }
 
-uintmax_t BufferedChunkStore::Count(const std::string &name) const {
+uintmax_t BufferedChunkStore::Count(const ChunkId& name) const {
   if (name.empty()) {
     LOG(kError) << "Count - Empty name passed.";
     return 0;
@@ -613,7 +613,7 @@ void BufferedChunkStore::CacheClear() {
   cache_chunk_store_->Clear();
 }
 
-void BufferedChunkStore::MarkForDeletion(const std::string &name) {
+void BufferedChunkStore::MarkForDeletion(const ChunkId& name) {
   if (name.empty())
     return;
   boost::lock_guard<boost::mutex> lock(xfer_mutex_);
@@ -621,7 +621,7 @@ void BufferedChunkStore::MarkForDeletion(const std::string &name) {
 }
 
 /// @note Ensure cache mutex is not locked.
-void BufferedChunkStore::AddCachedChunksEntry(const std::string &name) const {
+void BufferedChunkStore::AddCachedChunksEntry(const ChunkId& name) const {
   if (name.empty())
     return;
   boost::lock_guard<boost::mutex> lock(cache_mutex_);
@@ -631,8 +631,8 @@ void BufferedChunkStore::AddCachedChunksEntry(const std::string &name) const {
   cached_chunks_.push_front(name);
 }
 
-bool BufferedChunkStore::DoCacheStore(const std::string &name,
-                                      const std::string &content) const {
+bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
+                                      const std::string& content) const {
   boost::mutex::scoped_lock lock(cache_mutex_);
   if (cache_chunk_store_->Has(name))
     return true;
@@ -675,9 +675,9 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
   return cache_chunk_store_->Store(name, content);
 }
 
-bool BufferedChunkStore::DoCacheStore(const std::string &name,
-                                      const uintmax_t &size,
-                                      const fs::path &source_file_name,
+bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
+                                      const uintmax_t& size,
+                                      const fs::path& source_file_name,
                                       bool delete_source_file) const {
   boost::mutex::scoped_lock lock(cache_mutex_);
   if (cache_chunk_store_->Has(name))
@@ -721,8 +721,8 @@ bool BufferedChunkStore::DoCacheStore(const std::string &name,
   return cache_chunk_store_->Store(name, source_file_name, delete_source_file);
 }
 
-bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
-                                            const uintmax_t &size) {
+bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
+                                            const uintmax_t& size) {
   boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
   if (!initialised_) {
     LOG(kError) << "MakeChunkPermanent - Can't make " << Base32Substr(name)
@@ -779,7 +779,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const std::string& name,
   return true;
 }
 
-void BufferedChunkStore::DoMakeChunkPermanent(const std::string &name) {
+void BufferedChunkStore::DoMakeChunkPermanent(const ChunkId& name) {
   std::string content;
   {
     boost::lock_guard<boost::mutex> lock(cache_mutex_);
@@ -802,8 +802,8 @@ void BufferedChunkStore::DoMakeChunkPermanent(const std::string &name) {
   xfer_cond_var_.notify_all();
 }
 
-void BufferedChunkStore::RemoveDeletionMarks(const std::string &name) {
-  removable_chunks_.remove_if([&name](const std::string &i) {
+void BufferedChunkStore::RemoveDeletionMarks(const ChunkId& name) {
+  removable_chunks_.remove_if([&name](const std::string& i) {
       return name == i;
   });
 }

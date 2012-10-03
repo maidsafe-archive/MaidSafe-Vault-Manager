@@ -33,14 +33,14 @@ enum ChunkStoreResult {
   kSuccess = 0
 };
 
-std::string SerialisedSignedData(const asymm::Keys &keys);
+std::string SerialisedSignedData(const asymm::Keys& keys);
 
 int CreateMaidsafeIdentity(asymm::Keys& keys);
 
-void ChunkStoreOperationCallback(const bool &response,
-                                 std::mutex *mutex,
-                                 std::condition_variable *cond_var,
-                                 int *result);
+void ChunkStoreOperationCallback(const bool& response,
+                                 std::mutex* mutex,
+                                 std::condition_variable* cond_var,
+                                 int* result);
 
 int WaitForResults(std::mutex& mutex,
                    std::condition_variable& cond_var,

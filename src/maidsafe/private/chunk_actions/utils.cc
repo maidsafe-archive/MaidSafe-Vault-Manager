@@ -25,20 +25,19 @@
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
+
 namespace maidsafe {
 
 namespace priv {
 
 namespace chunk_actions {
 
-void PrintToLog(const std::string &message) {
-  LOG(kError) << message;
-}
+namespace detail {
 
-int GetContentAndTigerHash(const std::string &name,
+int GetContentAndTigerHash(const ChunkId& name,
                            std::shared_ptr<chunk_store::ChunkStore> chunk_store,
-                           std::string *chunk_content,
-                           std::string *hash) {
+                           std::string* chunk_content,
+                           std::string* hash) {
   std::string content(chunk_store->Get(name));
   if (content.empty()) {
     LOG(kError) << "GetContentAndTigerHash - Failed to retrieve "
@@ -50,20 +49,16 @@ int GetContentAndTigerHash(const std::string &name,
     return kFailedToFindChunk;
   }
 
-  if (hash) {
-    *hash = crypto::Hash<crypto::Tiger>(content);
-    if (hash->empty()) {
-      LOG(kError) << "GetContentAndTigerHash - Failed to hash "
-                  << Base32Substr(name);
-      return kHashFailure;
-    }
-  }
-
   if (chunk_content)
     *chunk_content = content;
 
+  if (hash)
+    *hash = crypto::Hash<crypto::Tiger>(content).string();
+
   return kSuccess;
 }
+
+}  // namespace detail
 
 }  // namespace chunk_actions
 

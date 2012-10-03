@@ -27,60 +27,60 @@ ThreadsafeChunkStore::ThreadsafeChunkStore(
 
 ThreadsafeChunkStore::~ThreadsafeChunkStore() {}
 
-std::string ThreadsafeChunkStore::Get(const std::string &name) const {
+std::string ThreadsafeChunkStore::Get(const ChunkId& name) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Get(name);
 }
 
-bool ThreadsafeChunkStore::Get(const std::string &name,
-                               const fs::path &sink_file_name) const {
+bool ThreadsafeChunkStore::Get(const ChunkId& name,
+                               const fs::path& sink_file_name) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Get(name, sink_file_name);
 }
 
-bool ThreadsafeChunkStore::Store(const std::string &name,
-                                 const std::string &content) {
+bool ThreadsafeChunkStore::Store(const ChunkId& name,
+                                 const std::string& content) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Store(name, content);
 }
 
-bool ThreadsafeChunkStore::Store(const std::string &name,
-                                 const fs::path &source_file_name,
+bool ThreadsafeChunkStore::Store(const ChunkId& name,
+                                 const fs::path& source_file_name,
                                  bool delete_source_file) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Store(name, source_file_name, delete_source_file);
 }
 
-bool ThreadsafeChunkStore::Delete(const std::string &name) {
+bool ThreadsafeChunkStore::Delete(const ChunkId& name) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Delete(name);
 }
 
-bool ThreadsafeChunkStore::Modify(const std::string &name,
-                                  const std::string &content) {
+bool ThreadsafeChunkStore::Modify(const ChunkId& name,
+                                  const std::string& content) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Modify(name, content);
 }
 
-bool ThreadsafeChunkStore::Modify(const std::string &name,
-                                  const fs::path &source_file_name,
+bool ThreadsafeChunkStore::Modify(const ChunkId& name,
+                                  const fs::path& source_file_name,
                                   bool delete_source_file) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Modify(name, source_file_name, delete_source_file);
 }
 
-bool ThreadsafeChunkStore::Has(const std::string &name) const {
+bool ThreadsafeChunkStore::Has(const ChunkId& name) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Has(name);
 }
 
-bool ThreadsafeChunkStore::MoveTo(const std::string &name,
-                                  ChunkStore *sink_chunk_store) {
+bool ThreadsafeChunkStore::MoveTo(const ChunkId& name,
+                                  ChunkStore* sink_chunk_store) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->MoveTo(name, sink_chunk_store);
 }
 
-uintmax_t ThreadsafeChunkStore::Size(const std::string &name) const {
+uintmax_t ThreadsafeChunkStore::Size(const ChunkId& name) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Size(name);
 }
@@ -95,17 +95,17 @@ uintmax_t ThreadsafeChunkStore::Capacity() const {
   return chunk_store_->Capacity();
 }
 
-void ThreadsafeChunkStore::SetCapacity(const uintmax_t &capacity) {
+void ThreadsafeChunkStore::SetCapacity(const uintmax_t& capacity) {
   boost::lock_guard<boost::mutex> lock(mutex_);
   chunk_store_->SetCapacity(capacity);
 }
 
-bool ThreadsafeChunkStore::Vacant(const uintmax_t &required_size) const {
+bool ThreadsafeChunkStore::Vacant(const uintmax_t& required_size) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Vacant(required_size);
 }
 
-uintmax_t ThreadsafeChunkStore::Count(const std::string &name) const {
+uintmax_t ThreadsafeChunkStore::Count(const ChunkId& name) const {
   boost::lock_guard<boost::mutex> lock(mutex_);
   return chunk_store_->Count(name);
 }

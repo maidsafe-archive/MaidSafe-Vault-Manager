@@ -22,7 +22,7 @@
 
 #include "maidsafe/private/return_codes.h"
 
-#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_type.h"
 #include "maidsafe/private/chunk_actions/default_rules.h"
 #include "maidsafe/private/chunk_actions/appendable_by_all_rules.h"
 #include "maidsafe/private/chunk_actions/modifiable_by_owner_rules.h"
@@ -38,51 +38,14 @@ namespace priv {
 
 namespace chunk_actions {
 
-std::string ApplyTypeToName(const std::string &name, unsigned char chunk_type) {
-  if (name.size() != static_cast<size_t>(crypto::SHA512::DIGESTSIZE)) {
-    LOG(kError) << "Name " << Base32Substr(name) << " is " << name.size()
-                << " chars. Must be " << crypto::SHA512::DIGESTSIZE << " chars";
-    return "";
-  }
-
-  return chunk_type == kDefaultType ?
-             name : name + static_cast<char>(chunk_type);
-}
-
-std::string RemoveTypeFromName(const std::string &name) {
-  return name.substr(0, crypto::SHA512::DIGESTSIZE);
-}
-
-unsigned char GetDataType(const std::string &name) {
-  if (name.size() == static_cast<size_t>(crypto::SHA512::DIGESTSIZE))
-    return kDefaultType;
-
-  if (name.size() != crypto::SHA512::DIGESTSIZE + 1) {
-    LOG(kWarning) << "Unknown data type (invalid name size of " << name.size()
-                  << ")";
-    return kUnknownType;
-  }
-
-  switch (*name.rbegin()) {
-    case kAppendableByAll: return kAppendableByAll;
-    case kModifiableByOwner: return kModifiableByOwner;
-    case kSignaturePacket: return kSignaturePacket;
-    default: LOG(kWarning) << "Unknown data type "
-                           << static_cast<int>(*name.rbegin());
-             return kUnknownType;
-  }
-}
-
-ChunkActionAuthority::ChunkActionAuthority(
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store)
+ChunkActionAuthority::ChunkActionAuthority(std::shared_ptr<chunk_store::ChunkStore> chunk_store)
     : chunk_store_(chunk_store) {}
 
 ChunkActionAuthority::~ChunkActionAuthority() {}
 
-std::string ChunkActionAuthority::Get(
-      const std::string &name,
-      const std::string &version,
-      const asymm::PublicKey &public_key) const {
+std::string ChunkActionAuthority::Get(const ChunkId& name,
+                                      const std::string& version,
+                                      const asymm::PublicKey& public_key) const {
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
   if (result != kSuccess) {
@@ -93,10 +56,10 @@ std::string ChunkActionAuthority::Get(
   return existing_content;
 }
 
-bool ChunkActionAuthority::Get(const std::string &name,
-                               const fs::path &sink_file_name,
-                               const std::string &version,
-                               const asymm::PublicKey &public_key) const {
+bool ChunkActionAuthority::Get(const ChunkId& name,
+                               const fs::path& sink_file_name,
+                               const std::string& version,
+                               const asymm::PublicKey& public_key) const {
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
   if (result != kSuccess) {
@@ -113,13 +76,12 @@ bool ChunkActionAuthority::Get(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Store(const std::string &name,
-                                 const std::string &content,
-                                 const asymm::PublicKey &public_key) {
+bool ChunkActionAuthority::Store(const ChunkId& name,
+                                 const std::string& content,
+                                 const asymm::PublicKey& public_key) {
   int result(ValidStore(name, content, public_key));
   if (result != kSuccess) {
-    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": "
-                << result;
+    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": " << result;
     return false;
   }
 
@@ -131,10 +93,10 @@ bool ChunkActionAuthority::Store(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Store(const std::string &name,
-                                 const fs::path &source_file_name,
+bool ChunkActionAuthority::Store(const ChunkId& name,
+                                 const fs::path& source_file_name,
                                  bool delete_source_file,
-                                 const asymm::PublicKey &public_key) {
+                                 const asymm::PublicKey& public_key) {
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
     LOG(kError) << "Failed to read " << source_file_name;
@@ -143,8 +105,7 @@ bool ChunkActionAuthority::Store(const std::string &name,
 
   int result(ValidStore(name, content, public_key));
   if (result != kSuccess) {
-    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": "
-                << result;
+    LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": " << result;
     return false;
   }
 
@@ -169,13 +130,12 @@ bool ChunkActionAuthority::Store(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Delete(const std::string &name,
-                                  const std::string &ownership_proof,
-                                  const asymm::PublicKey &public_key) {
+bool ChunkActionAuthority::Delete(const ChunkId& name,
+                                  const std::string& ownership_proof,
+                                  const asymm::PublicKey& public_key) {
   int result(ValidDelete(name, ownership_proof, public_key));
   if (result != kSuccess) {
-    LOG(kError) << "Invalid request to delete " << Base32Substr(name) << ": "
-                << result;
+    LOG(kError) << "Invalid request to delete " << Base32Substr(name) << ": " << result;
     return false;
   }
 
@@ -187,16 +147,14 @@ bool ChunkActionAuthority::Delete(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Modify(const std::string &name,
-                                  const std::string &content,
-                                  const asymm::PublicKey &public_key,
-                                  int64_t *size_difference) {
+bool ChunkActionAuthority::Modify(const ChunkId& name,
+                                  const std::string& content,
+                                  const asymm::PublicKey& public_key,
+                                  int64_t* size_difference) {
   std::string new_content;
-  int result(ValidModify(name, content, public_key, size_difference,
-                         &new_content));
+  int result(ValidModify(name, content, public_key, size_difference, &new_content));
   if (result != kSuccess) {
-    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": "
-                << result;
+    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": " << result;
     return false;
   }
 
@@ -208,11 +166,11 @@ bool ChunkActionAuthority::Modify(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Modify(const std::string &name,
-                                  const fs::path &source_file_name,
+bool ChunkActionAuthority::Modify(const ChunkId& name,
+                                  const fs::path& source_file_name,
                                   bool delete_source_file,
-                                  const asymm::PublicKey &public_key,
-                                  int64_t *size_difference) {
+                                  const asymm::PublicKey& public_key,
+                                  int64_t* size_difference) {
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
     LOG(kError) << "Failed to read " << source_file_name;
@@ -220,11 +178,9 @@ bool ChunkActionAuthority::Modify(const std::string &name,
   }
 
   std::string new_content;
-  int result(ValidModify(name, content, public_key, size_difference,
-                         &new_content));
+  int result(ValidModify(name, content, public_key, size_difference, &new_content));
   if (result != kSuccess) {
-    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": "
-                << result;
+    LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": " << result;
     return false;
   }
 
@@ -249,9 +205,9 @@ bool ChunkActionAuthority::Modify(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::Has(const std::string &name,
-                               const std::string &version,
-                               const asymm::PublicKey &public_key) const {
+bool ChunkActionAuthority::Has(const ChunkId& name,
+                               const std::string& version,
+                               const asymm::PublicKey& public_key) const {
   int result(ValidHas(name, version, public_key));
   if (result != kSuccess) {
     LOG(kWarning) << "Invalid request or doesn't have " << Base32Substr(name)
@@ -262,195 +218,177 @@ bool ChunkActionAuthority::Has(const std::string &name,
   return true;
 }
 
-bool ChunkActionAuthority::ValidName(const std::string &name) const {
-  return (GetDataType(name) != kUnknownType);
+bool ChunkActionAuthority::ValidName(const ChunkId& name) const {
+  return (GetChunkType(name) != ChunkType::kUnknown);
 }
 
-bool ChunkActionAuthority::Cacheable(const std::string &name) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return IsCacheable<kDefaultType>();
-    case kAppendableByAll: return IsCacheable<kAppendableByAll>();
-    case kModifiableByOwner: return IsCacheable<kModifiableByOwner>();
-    case kSignaturePacket: return IsCacheable<kSignaturePacket>();
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return false;
+bool ChunkActionAuthority::Cacheable(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::IsCacheable<ChunkType::kDefault>();
+    case ChunkType::kAppendableByAll:
+      return detail::IsCacheable<ChunkType::kAppendableByAll>();
+    case ChunkType::kModifiableByOwner:
+      return detail::IsCacheable<ChunkType::kModifiableByOwner>();
+    case ChunkType::kSignaturePacket:
+      return detail::IsCacheable<ChunkType::kSignaturePacket>();
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return false;
   }
 }
 
-bool ChunkActionAuthority::Modifiable(const std::string &name) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return IsModifiable<kDefaultType>();
-    case kAppendableByAll: return IsModifiable<kAppendableByAll>();
-    case kModifiableByOwner: return IsModifiable<kModifiableByOwner>();
-    case kSignaturePacket: return IsModifiable<kSignaturePacket>();
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return false;
+bool ChunkActionAuthority::Modifiable(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::IsModifiable<ChunkType::kDefault>();
+    case ChunkType::kAppendableByAll:
+      return detail::IsModifiable<ChunkType::kAppendableByAll>();
+    case ChunkType::kModifiableByOwner:
+      return detail::IsModifiable<ChunkType::kModifiableByOwner>();
+    case ChunkType::kSignaturePacket:
+      return detail::IsModifiable<ChunkType::kSignaturePacket>();
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return false;
   }
 }
 
-bool ChunkActionAuthority::ModifyReplaces(const std::string &name) const {
-  // TODO(Team): Review why removing the chunk_actions namespace breaks this.
-  switch (GetDataType(name)) {
-    case kDefaultType:
-      return DoesModifyReplace<kDefaultType>();
-    case kAppendableByAll:
-      return DoesModifyReplace<kAppendableByAll>();
-    case kModifiableByOwner:
-      return DoesModifyReplace<kModifiableByOwner>();
-    case kSignaturePacket:
-      return DoesModifyReplace<kSignaturePacket>();
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return false;
+bool ChunkActionAuthority::ModifyReplaces(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::DoesModifyReplace<ChunkType::kDefault>();
+    case ChunkType::kAppendableByAll:
+      return detail::DoesModifyReplace<ChunkType::kAppendableByAll>();
+    case ChunkType::kModifiableByOwner:
+      return detail::DoesModifyReplace<ChunkType::kModifiableByOwner>();
+    case ChunkType::kSignaturePacket:
+      return detail::DoesModifyReplace<ChunkType::kSignaturePacket>();
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return false;
   }
 }
 
-bool ChunkActionAuthority::Payable(const std::string &name) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return IsPayable<kDefaultType>();
-    case kAppendableByAll: return IsPayable<kAppendableByAll>();
-    case kModifiableByOwner: return IsPayable<kModifiableByOwner>();
-    case kSignaturePacket: return IsPayable<kSignaturePacket>();
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type " << static_cast<int>(GetDataType(name));
-             return false;
+bool ChunkActionAuthority::Payable(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::IsPayable<ChunkType::kDefault>();
+    case ChunkType::kAppendableByAll:
+      return detail::IsPayable<ChunkType::kAppendableByAll>();
+    case ChunkType::kModifiableByOwner:
+      return detail::IsPayable<ChunkType::kModifiableByOwner>();
+    case ChunkType::kSignaturePacket:
+      return detail::IsPayable<ChunkType::kSignaturePacket>();
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return false;
   }
 }
 
-bool ChunkActionAuthority::ValidChunk(const std::string &name) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return IsValidChunk<kDefaultType>(name, chunk_store_);
-    case kAppendableByAll: return IsValidChunk<kAppendableByAll>(name,
-                                                                 chunk_store_);
-    case kModifiableByOwner:
-        return IsValidChunk<kModifiableByOwner>(name, chunk_store_);
-    case kSignaturePacket: return IsValidChunk<kSignaturePacket>(name,
-                                                                 chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return false;
+bool ChunkActionAuthority::ValidChunk(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::IsValidChunk<ChunkType::kDefault>(name, chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::IsValidChunk<ChunkType::kAppendableByAll>(name, chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::IsValidChunk<ChunkType::kModifiableByOwner>(name, chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::IsValidChunk<ChunkType::kSignaturePacket>(name, chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return false;
   }
 }
 
-std::string ChunkActionAuthority::Version(const std::string &name) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return GetVersion<kDefaultType>(name, chunk_store_);
-    case kAppendableByAll: return GetVersion<kAppendableByAll>(name,
-                                                               chunk_store_);
-    case kModifiableByOwner:
-        return GetVersion<kModifiableByOwner>(name, chunk_store_);
-    case kSignaturePacket: return GetVersion<kSignaturePacket>(name,
-                                                               chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return "";
+std::string ChunkActionAuthority::Version(const ChunkId& name) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::GetVersion<ChunkType::kDefault>(name, chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::GetVersion<ChunkType::kAppendableByAll>(name, chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::GetVersion<ChunkType::kModifiableByOwner>(name, chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::GetVersion<ChunkType::kSignaturePacket>(name, chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return "";
   }
 }
 
-int ChunkActionAuthority::ValidGet(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &public_key,
-                                   std::string *existing_content) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return ProcessGet<kDefaultType>(name,
-                                                       version,
-                                                       public_key,
-                                                       existing_content,
-                                                       chunk_store_);
-    case kAppendableByAll: return ProcessGet<kAppendableByAll>(name,
-                                                               version,
-                                                               public_key,
-                                                               existing_content,
-                                                               chunk_store_);
-    case kModifiableByOwner:
-        return ProcessGet<kModifiableByOwner>(name,
-                                              version,
-                                              public_key,
-                                              existing_content,
-                                              chunk_store_);
-    case kSignaturePacket: return ProcessGet<kSignaturePacket>(name,
-                                                               version,
-                                                               public_key,
-                                                               existing_content,
-                                                               chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return kInvalidChunkType;
-  }
-}
-
-int ChunkActionAuthority::ValidStore(const std::string &name,
-                                     const std::string &content,
-                                     const asymm::PublicKey &public_key) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return ProcessStore<kDefaultType>(name,
-                                                         content,
-                                                         public_key,
-                                                         chunk_store_);
-    case kAppendableByAll: return ProcessStore<kAppendableByAll>(name,
-                                                                 content,
-                                                                 public_key,
-                                                                 chunk_store_);
-    case kModifiableByOwner:
-        return ProcessStore<kModifiableByOwner>(name,
-                                                content,
-                                                public_key,
-                                                chunk_store_);
-    case kSignaturePacket: return ProcessStore<kSignaturePacket>(name,
-                                                                 content,
-                                                                 public_key,
-                                                                 chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return kInvalidChunkType;
-  }
-}
-
-int ChunkActionAuthority::ValidDelete(
-    const std::string &name,
-    const std::string &ownership_proof,
-    const asymm::PublicKey &public_key) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return ProcessDelete<kDefaultType>(name,
-                                                          ownership_proof,
-                                                          public_key,
-                                                          chunk_store_);
-    case kAppendableByAll:
-        return ProcessDelete<kAppendableByAll>(name,
-                                               ownership_proof,
-                                               public_key,
-                                               chunk_store_);
-    case kModifiableByOwner:
-        return ProcessDelete<kModifiableByOwner>(name,
-                                                 ownership_proof,
-                                                 public_key,
-                                                 chunk_store_);
-    case kSignaturePacket:
-        return ProcessDelete<kSignaturePacket>(name,
-                                               ownership_proof,
-                                               public_key,
-                                               chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
+int ChunkActionAuthority::ValidGet(const ChunkId& name,
+                                   const std::string& version,
+                                   const asymm::PublicKey& public_key,
+                                   std::string* existing_content) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::ProcessGet<ChunkType::kDefault>(name, version, public_key, existing_content,
+                                                     chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::ProcessGet<ChunkType::kAppendableByAll>(name, version, public_key,
+                                                             existing_content, chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::ProcessGet<ChunkType::kModifiableByOwner>(name, version, public_key,
+                                                               existing_content, chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::ProcessGet<ChunkType::kSignaturePacket>(name, version, public_key,
+                                                             existing_content, chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
       return kInvalidChunkType;
   }
 }
 
-int ChunkActionAuthority::ValidModify(const std::string &name,
-                                      const std::string &content,
-                                      const asymm::PublicKey &public_key,
-                                      int64_t *size_difference,
-                                      std::string *new_content) const {
+int ChunkActionAuthority::ValidStore(const ChunkId& name,
+                                     const std::string& content,
+                                     const asymm::PublicKey& public_key) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::ProcessStore<ChunkType::kDefault>(name, content, public_key, chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::ProcessStore<ChunkType::kAppendableByAll>(name, content, public_key,
+                                                               chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::ProcessStore<ChunkType::kModifiableByOwner>(name, content, public_key,
+                                                                 chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::ProcessStore<ChunkType::kSignaturePacket>(name, content, public_key,
+                                                               chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return kInvalidChunkType;
+  }
+}
+
+int ChunkActionAuthority::ValidDelete(const ChunkId& name,
+                                      const std::string& ownership_proof,
+                                      const asymm::PublicKey& public_key) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::ProcessDelete<ChunkType::kDefault>(name, ownership_proof, public_key,
+                                                        chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::ProcessDelete<ChunkType::kAppendableByAll>(name, ownership_proof, public_key,
+                                                        chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::ProcessDelete<ChunkType::kModifiableByOwner>(name, ownership_proof, public_key,
+                                                          chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::ProcessDelete<ChunkType::kSignaturePacket>(name, ownership_proof, public_key,
+                                                        chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return kInvalidChunkType;
+  }
+}
+
+int ChunkActionAuthority::ValidModify(const ChunkId& name,
+                                      const std::string& content,
+                                      const asymm::PublicKey& public_key,
+                                      int64_t* size_difference,
+                                      std::string* new_content) const {
   if (!size_difference) {
     LOG(kError) << "nullptr parameter passed.";
     return kNullParameter;
@@ -461,67 +399,45 @@ int ChunkActionAuthority::ValidModify(const std::string &name,
   if (!new_content)
     new_content = &temp_new_content;
 
-  switch (GetDataType(name)) {
-    case kDefaultType:
-        return ProcessModify<kDefaultType>(name,
-                                           content,
-                                           public_key,
-                                           size_difference,
-                                           new_content,
-                                           chunk_store_);
-    case kAppendableByAll:
-        return ProcessModify<kAppendableByAll>(name,
-                                               content,
-                                               public_key,
-                                               size_difference,
-                                               new_content,
-                                               chunk_store_);
-    case kModifiableByOwner:
-        return ProcessModify<kModifiableByOwner>(name,
-                                                 content,
-                                                 public_key,
-                                                 size_difference,
-                                                 new_content,
-                                                 chunk_store_);
-    case kSignaturePacket:
-        return ProcessModify<kSignaturePacket>(name,
-                                               content,
-                                               public_key,
-                                               size_difference,
-                                               new_content,
-                                               chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
-             return kInvalidChunkType;
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::ProcessModify<ChunkType::kDefault>(name, content, public_key, size_difference,
+                                                        new_content, chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::ProcessModify<ChunkType::kAppendableByAll>(name, content, public_key,
+                                                                size_difference, new_content,
+                                                                chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::ProcessModify<ChunkType::kModifiableByOwner>(name, content, public_key,
+                                                                  size_difference, new_content,
+                                                                  chunk_store_);
+    case ChunkType::kSignaturePacket:
+      return detail::ProcessModify<ChunkType::kSignaturePacket>(name, content, public_key,
+                                                                size_difference, new_content,
+                                                                chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
+      return kInvalidChunkType;
   }
 }
 
-int ChunkActionAuthority::ValidHas(const std::string &name,
-                                   const std::string &version,
-                                   const asymm::PublicKey &public_key) const {
-  switch (GetDataType(name)) {
-    case kDefaultType: return ProcessHas<kDefaultType>(name,
-                                                       version,
-                                                       public_key,
-                                                       chunk_store_);
-    case kAppendableByAll: return ProcessHas<kAppendableByAll>(name,
-                                                               version,
-                                                               public_key,
+int ChunkActionAuthority::ValidHas(const ChunkId& name,
+                                   const std::string& version,
+                                   const asymm::PublicKey& public_key) const {
+  switch (GetChunkType(name)) {
+    case ChunkType::kDefault:
+      return detail::ProcessHas<ChunkType::kDefault>(name, version, public_key, chunk_store_);
+    case ChunkType::kAppendableByAll:
+      return detail::ProcessHas<ChunkType::kAppendableByAll>(name, version, public_key,
+                                                             chunk_store_);
+    case ChunkType::kModifiableByOwner:
+      return detail::ProcessHas<ChunkType::kModifiableByOwner>(name, version, public_key,
                                                                chunk_store_);
-    case kModifiableByOwner:
-        return ProcessHas<kModifiableByOwner>(name,
-                                              version,
-                                              public_key,
-                                              chunk_store_);
-    case kSignaturePacket:
-        return ProcessHas<kSignaturePacket>(name,
-                                            version,
-                                            public_key,
-                                            chunk_store_);
-    case kUnknownType:
-    default: LOG(kError) << "Unknown type "
-                         << static_cast<int>(GetDataType(name));
+    case ChunkType::kSignaturePacket:
+      return detail::ProcessHas<ChunkType::kSignaturePacket>(name, version, public_key,
+                                                             chunk_store_);
+    case ChunkType::kUnknown:
+    default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
       return kInvalidChunkType;
   }
 }

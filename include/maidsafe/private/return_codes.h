@@ -33,7 +33,8 @@ enum ReturnCode {
   kModifyFailure = -150013,
   kInvalidSignedData = -150014,
   kInvalidModify = -150015,
-  kSignatureVerificationFailure = -150016,
+  kFailedSignatureCheck = -150016,
+  kSignatureCheckError = -150016,
   kNotHashable = -150017,
   kNotOwner = -150018,
   kInvalidChunkType = -150019,
@@ -44,6 +45,7 @@ enum ReturnCode {
   kDifferentVersion = -150024,
   kChunkNotModified = -150025,
   kDataNotPublicKey = -150026,
+  kSerialisationError = -150027,
 
   // Download Manager
   kManifestFailure = -250001,

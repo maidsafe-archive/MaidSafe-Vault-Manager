@@ -30,7 +30,7 @@ struct ChunkData {
     : chunk_name(),
       chunk_size() {}
 
-  ChunkData(const std::string &name, uintmax_t size)
+  ChunkData(const std::string& name, uintmax_t size)
     : chunk_name(name),
       chunk_size(size) {}
 
@@ -50,46 +50,46 @@ class ChunkStore {
   virtual ~ChunkStore() {}
 
   // Retrieves a chunk's content as a string.
-  virtual std::string Get(const std::string &name) const = 0;
+  virtual std::string Get(const ChunkId& name) const = 0;
 
   // Retrieves a chunk's content as a file, potentially overwriting an existing
   // file of the same name.  Returns true if chunk exists and could be written
   // to file.
-  virtual bool Get(const std::string &name,
-                   const fs::path &sink_file_name) const = 0;
+  virtual bool Get(const ChunkId& name,
+                   const fs::path& sink_file_name) const = 0;
 
   // Stores chunk content under the given name.
-  virtual bool Store(const std::string &name,
-                     const std::string &content) = 0;
+  virtual bool Store(const ChunkId& name,
+                     const std::string& content) = 0;
 
   // Stores chunk content under the given name.
-  virtual bool Store(const std::string &name,
-                     const fs::path &source_file_name,
+  virtual bool Store(const ChunkId& name,
+                     const fs::path& source_file_name,
                      bool delete_source_file) = 0;
 
   // Deletes a stored chunk.  Returns true if chunk deleted or non-existant.
-  virtual bool Delete(const std::string &name) = 0;
+  virtual bool Delete(const ChunkId& name) = 0;
 
   // Modifies chunk content under the given name.
-  virtual bool Modify(const std::string &name,
-                      const std::string &content) = 0;
+  virtual bool Modify(const ChunkId& name,
+                      const std::string& content) = 0;
 
   // Modifies a chunk's content as a file, potentially overwriting an existing
   // file of the same name.
-  virtual bool Modify(const std::string &name,
-                      const fs::path &source_file_name,
+  virtual bool Modify(const ChunkId& name,
+                      const fs::path& source_file_name,
                       bool delete_source_file) = 0;
 
   // Checks if a chunk exists.
-  virtual bool Has(const std::string &name) const = 0;
+  virtual bool Has(const ChunkId& name) const = 0;
 
   // Efficiently adds a locally existing chunk to another ChunkStore and
   // removes it from this one.
-  virtual bool MoveTo(const std::string &name,
-                      ChunkStore *sink_chunk_store) = 0;
+  virtual bool MoveTo(const ChunkId& name,
+                      ChunkStore* sink_chunk_store) = 0;
 
   // Retrieves the size of a chunk (bytes).
-  virtual uintmax_t Size(const std::string &name) const = 0;
+  virtual uintmax_t Size(const ChunkId& name) const = 0;
 
   // Retrieves the total size of the stored chunks (bytes).
   virtual uintmax_t Size() const { return size_; }
@@ -101,7 +101,7 @@ class ChunkStore {
   // Sets the maximum storage capacity (bytes) available to this ChunkStore.
   // A capacity of zero (0) equals infinite storage space. The capacity must
   // always be at least as high as the total size of already stored chunks.
-  virtual void SetCapacity(const uintmax_t &capacity) {
+  virtual void SetCapacity(const uintmax_t& capacity) {
     capacity_ = capacity;
     if (capacity_ > 0 && capacity_ < size_)
       capacity_ = size_;
@@ -109,12 +109,12 @@ class ChunkStore {
 
   // Checks whether the ChunkStore has enough capacity to store a chunk of the
   // given size.
-  virtual bool Vacant(const uintmax_t &required_size) const {
+  virtual bool Vacant(const uintmax_t& required_size) const {
     return capacity_ == 0 || size_ + required_size <= capacity_;
   }
 
   // Retrieves the number of (virtual) copies of a chunk in the ChunkStore.
-  virtual uintmax_t Count(const std::string &name) const = 0;
+  virtual uintmax_t Count(const ChunkId& name) const = 0;
 
   // Retrieves the number of chunks held by this ChunkStore.
   virtual uintmax_t Count() const = 0;
@@ -131,7 +131,7 @@ class ChunkStore {
  protected:
   // Increases the total size of the stored chunks.  To be called by derived
   // class when storing non-existant chunk.
-  void IncreaseSize(const uintmax_t &delta) {
+  void IncreaseSize(const uintmax_t& delta) {
     size_ += delta;
     if (capacity_ > 0 && capacity_ < size_)
       capacity_ = size_;
@@ -139,7 +139,7 @@ class ChunkStore {
 
   // Decreases the total size of the stored chunks.  To be called by derived
   // class when deleting existant chunk.
-  void DecreaseSize(const uintmax_t &delta) {
+  void DecreaseSize(const uintmax_t& delta) {
     if (delta <= size_)
       size_ -= delta;
     else

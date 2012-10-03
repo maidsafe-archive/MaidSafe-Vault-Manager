@@ -73,7 +73,7 @@ class RemoteChunkStore {
           local_version(),
           content(),
           callback() {}
-    explicit OperationData(const OperationType &op_type)
+    explicit OperationData(const OperationType& op_type)
         : op_type(op_type),
           active(false),
           ready(false),
@@ -81,9 +81,9 @@ class RemoteChunkStore {
           local_version(),
           content(),
           callback() {}
-    OperationData(const OperationType &op_type,
-                  const OpFunctor &callback,
-                  const asymm::Keys &keys,
+    OperationData(const OperationType& op_type,
+                  const OpFunctor& callback,
+                  const asymm::Keys& keys,
                   bool ready)
         : op_type(op_type),
           active(false),
@@ -121,26 +121,26 @@ class RemoteChunkStore {
 
   ~RemoteChunkStore();
 
-  std::string Get(const std::string &name,
-                  const asymm::Keys &keys = asymm::Keys());
+  std::string Get(const ChunkId& name,
+                  const asymm::Keys& keys = asymm::Keys());
 
-  int GetAndLock(const std::string &name,
-                 const std::string &local_version,
-                 const asymm::Keys &keys,
-                 std::string *content);
+  int GetAndLock(const ChunkId& name,
+                 const std::string& local_version,
+                 const asymm::Keys& keys,
+                 std::string* content);
 
-  bool Store(const std::string &name,
-             const std::string &content,
-             const OpFunctor &callback = nullptr,
+  bool Store(const ChunkId& name,
+             const std::string& content,
+             const OpFunctor& callback = nullptr,
              const asymm::Keys keys = asymm::Keys());
 
-  bool Delete(const std::string &name,
-              const OpFunctor &callback,
+  bool Delete(const ChunkId& name,
+              const OpFunctor& callback,
               const asymm::Keys keys = asymm::Keys());
 
-  bool Modify(const std::string &name,
-              const std::string &content,
-              const OpFunctor &callback,
+  bool Modify(const ChunkId& name,
+              const std::string& content,
+              const OpFunctor& callback,
               const asymm::Keys keys);
 
   uintmax_t Size() const {
@@ -168,7 +168,7 @@ class RemoteChunkStore {
   void LogStats();
 
   /// Sets the maximum number of operations to be processed in parallel.
-  void SetMaxActiveOps(const int &max_active_ops) {
+  void SetMaxActiveOps(const int& max_active_ops) {
     boost::mutex::scoped_lock lock(mutex_);
     max_active_ops_ = max_active_ops;
     if (max_active_ops_ < 1)
@@ -176,20 +176,20 @@ class RemoteChunkStore {
   }
 
   /// Sets the time to wait in WaitForCompletion before failing.
-  void SetCompletionWaitTimeout(const boost::posix_time::time_duration &value) {
+  void SetCompletionWaitTimeout(const boost::posix_time::time_duration& value) {
     completion_wait_timeout_ = value;
   }
   /// Sets the time to wait in WaitForConflictingOps before failing.
-  void SetOperationWaitTimeout(const boost::posix_time::time_duration &value) {
+  void SetOperationWaitTimeout(const boost::posix_time::time_duration& value) {
     operation_wait_timeout_ = value;
   }
 
   NumPendingOpsSigPtr sig_num_pending_ops() { return sig_num_pending_ops_; }
 
 //   void StoreOpBackups(std::shared_ptr<boost::asio::deadline_timer> timer,
-//                       const std::string &pmid);
+//                       const std::string& pmid);
 //   void DoOpBackups(boost::system::error_code error_code,
-//                    const std::string &pmid,
+//                    const std::string& pmid,
 //                    std::shared_ptr<boost::asio::deadline_timer> timer);
 //   void RetriveOpBackups();
 //   void StopOpBackups();
@@ -201,20 +201,20 @@ class RemoteChunkStore {
   RemoteChunkStore(const RemoteChunkStore&);
   RemoteChunkStore& operator=(const RemoteChunkStore&);
 
-  void OnOpResult(const OperationType &op_type,
-                  const std::string &name,
-                  const int &result);
-  int WaitForConflictingOps(const std::string &name,
-                            const OperationType &op_type,
-                            const uint32_t &transaction_id,
-                            boost::mutex::scoped_lock *lock);
-  bool WaitForGetOps(const std::string &name,
-                     const uint32_t &transaction_id,
-                     boost::mutex::scoped_lock *lock);
-  uint32_t EnqueueOp(const std::string &name,
-                     const OperationData &op_data,
-                     boost::mutex::scoped_lock *lock);
-  void ProcessPendingOps(boost::mutex::scoped_lock *lock);
+  void OnOpResult(const OperationType& op_type,
+                  const ChunkId& name,
+                  const int& result);
+  int WaitForConflictingOps(const ChunkId& name,
+                            const OperationType& op_type,
+                            const uint32_t& transaction_id,
+                            boost::mutex::scoped_lock* lock);
+  bool WaitForGetOps(const ChunkId& name,
+                     const uint32_t& transaction_id,
+                     boost::mutex::scoped_lock* lock);
+  uint32_t EnqueueOp(const ChunkId& name,
+                     const OperationData& op_data,
+                     boost::mutex::scoped_lock* lock);
+  void ProcessPendingOps(boost::mutex::scoped_lock* lock);
 
   std::shared_ptr<BufferedChunkStore> chunk_store_;
   std::shared_ptr<ChunkManager> chunk_manager_;
@@ -240,11 +240,11 @@ class RemoteChunkStore {
 };
 
 std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
-    const fs::path &buffered_chunk_store_path,
-    const fs::path &local_chunk_manager_path,
-    const fs::path &chunk_lock_path,
-    boost::asio::io_service &asio_service,  // NOLINT (Dan)
-    const bptime::time_duration &millisecs = bptime::milliseconds(0));
+    const fs::path& buffered_chunk_store_path,
+    const fs::path& local_chunk_manager_path,
+    const fs::path& chunk_lock_path,
+    boost::asio::io_service& asio_service,  // NOLINT (Dan)
+    const bptime::time_duration& millisecs = bptime::milliseconds(0));
 
 }  // namespace chunk_store
 

@@ -39,7 +39,7 @@ FileChunkStore::~FileChunkStore() {
   info_file_.close();
 }
 
-bool FileChunkStore::Init(const fs::path &storage_location,
+bool FileChunkStore::Init(const fs::path& storage_location,
                           unsigned int dir_depth) {
   try {
     if (storage_location.empty()) {
@@ -82,14 +82,14 @@ bool FileChunkStore::Init(const fs::path &storage_location,
     SaveChunkStoreState();
     initialised_ = info_file_.good();
   }
-  catch(const std::exception &e) {
+  catch(const std::exception& e) {
     LOG(kError) << "Init - " << e.what();
     return false;
   }
   return true;
 }
 
-std::string FileChunkStore::Get(const std::string &name) const {
+std::string FileChunkStore::Get(const ChunkId& name) const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return "";
@@ -119,8 +119,8 @@ std::string FileChunkStore::Get(const std::string &name) const {
   }
 }
 
-bool FileChunkStore::Get(const std::string &name,
-                         const fs::path &sink_file_name) const {
+bool FileChunkStore::Get(const ChunkId& name,
+                         const fs::path& sink_file_name) const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -148,8 +148,8 @@ bool FileChunkStore::Get(const std::string &name,
   return !ec;
 }
 
-bool FileChunkStore::Store(const std::string &name,
-                           const std::string &content) {
+bool FileChunkStore::Store(const ChunkId& name,
+                           const std::string& content) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -201,8 +201,8 @@ bool FileChunkStore::Store(const std::string &name,
   }
 }
 
-bool FileChunkStore::Store(const std::string &name,
-                           const fs::path &source_file_name,
+bool FileChunkStore::Store(const ChunkId& name,
+                           const fs::path& source_file_name,
                            bool delete_source_file) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -248,7 +248,7 @@ bool FileChunkStore::Store(const std::string &name,
       ChunkAdded(file_size);
       return true;
     }
-    catch(const std::exception &e) {
+    catch(const std::exception& e) {
       LOG(kError) << "name: " << Base32Substr(name) << ", path: "
                   << source_file_name << ", exception: " << e.what();
       return false;
@@ -282,7 +282,7 @@ bool FileChunkStore::Store(const std::string &name,
   return false;
 }
 
-bool FileChunkStore::Delete(const std::string &name) {
+bool FileChunkStore::Delete(const ChunkId& name) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -332,8 +332,8 @@ bool FileChunkStore::Delete(const std::string &name) {
   return false;
 }
 
-bool FileChunkStore::Modify(const std::string &name,
-                            const std::string &content) {
+bool FileChunkStore::Modify(const ChunkId& name,
+                            const std::string& content) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -372,8 +372,8 @@ bool FileChunkStore::Modify(const std::string &name,
   return true;
 }
 
-bool FileChunkStore::Modify(const std::string &name,
-                            const fs::path &source_file_name,
+bool FileChunkStore::Modify(const ChunkId& name,
+                            const fs::path& source_file_name,
                             bool delete_source_file) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -424,7 +424,7 @@ bool FileChunkStore::Modify(const std::string &name,
   return true;
 }
 
-bool FileChunkStore::Has(const std::string &name) const {
+bool FileChunkStore::Has(const ChunkId& name) const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -438,8 +438,8 @@ bool FileChunkStore::Has(const std::string &name) const {
   return GetChunkReferenceCount(ChunkNameToFilePath(name)) != 0;
 }
 
-bool FileChunkStore::MoveTo(const std::string &name,
-                            ChunkStore *sink_chunk_store) {
+bool FileChunkStore::MoveTo(const ChunkId& name,
+                            ChunkStore* sink_chunk_store) {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
@@ -491,7 +491,7 @@ bool FileChunkStore::MoveTo(const std::string &name,
   return false;
 }
 
-uintmax_t FileChunkStore::Size(const std::string &name) const {
+uintmax_t FileChunkStore::Size(const ChunkId& name) const {
   if (!IsChunkStoreInitialised()) {
     LOG(kError) << "Chunk Store not initialised";
     return 0;
@@ -519,7 +519,7 @@ uintmax_t FileChunkStore::Capacity() const {
 
 void FileChunkStore::SetCapacity(const uintmax_t & /*capacity*/) {}
 
-bool FileChunkStore::Vacant(const uintmax_t &required_size) const {
+bool FileChunkStore::Vacant(const uintmax_t& required_size) const {
   return required_size <= SpaceAvailable();
 }
 
@@ -532,7 +532,7 @@ uintmax_t FileChunkStore::Count() const {
   return chunk_count_;
 }
 
-uintmax_t FileChunkStore::Count(const std::string &name) const {
+uintmax_t FileChunkStore::Count(const ChunkId& name) const {
   if (!IsChunkStoreInitialised() || name.empty()) {
     LOG(kError) << "Name of data empty or chunk store not initialised: "
                 << Base32Substr(name);
@@ -559,7 +559,7 @@ void FileChunkStore::Clear() {
   Init(storage_location_, dir_depth_);
 }
 
-fs::path FileChunkStore::ChunkNameToFilePath(const std::string &chunk_name,
+fs::path FileChunkStore::ChunkNameToFilePath(const std::string& chunk_name,
                                              bool generate_dirs) const {
   std::string encoded_file_name(EncodeToBase32(chunk_name));
 
@@ -582,7 +582,7 @@ fs::path FileChunkStore::ChunkNameToFilePath(const std::string &chunk_name,
 }
 
 FileChunkStore::RestoredChunkStoreInfo FileChunkStore::RetrieveChunkInfo(
-    const fs::path &location) const {
+    const fs::path& location) const {
   RestoredChunkStoreInfo chunk_store_info;
   chunk_store_info.first = 0;
   chunk_store_info.second = 0;
@@ -602,13 +602,13 @@ void FileChunkStore::SaveChunkStoreState() {
   info_file_.flush();
 }
 
-void FileChunkStore::ChunkAdded(const uintmax_t &delta) {
+void FileChunkStore::ChunkAdded(const uintmax_t& delta) {
   IncreaseSize(delta);
   IncreaseChunkCount();
   SaveChunkStoreState();
 }
 
-void FileChunkStore::ChunkRemoved(const uintmax_t &delta) {
+void FileChunkStore::ChunkRemoved(const uintmax_t& delta) {
   DecreaseSize(delta);
   DecreaseChunkCount();
   SaveChunkStoreState();
@@ -620,7 +620,7 @@ void FileChunkStore::ChunkRemoved(const uintmax_t &delta) {
 //
 // @todo Add ability to merge reference counts of multiple copies of same chunk
 uintmax_t FileChunkStore::GetChunkReferenceCount(
-    const fs::path &chunk_path) const {
+    const fs::path& chunk_path) const {
   boost::system::error_code ec;
   if (!fs::exists(chunk_path.parent_path(), ec)) {
     LOG(kWarning) << "Path given doesn't exist: " << chunk_path;
@@ -643,17 +643,17 @@ uintmax_t FileChunkStore::GetChunkReferenceCount(
         return GetNumFromString(it->path().extension().string().substr(1));
     }
   }
-  catch(const std::exception &e) {
+  catch(const std::exception& e) {
     LOG(kError) << "GetChunkReferenceCount - " << e.what();
   }
 
   return 0;
 }
 
-uintmax_t FileChunkStore::GetNumFromString(const std::string &str) const {
+uintmax_t FileChunkStore::GetNumFromString(const std::string& str) const {
   try {
     return boost::lexical_cast<uintmax_t>(str);
-  } catch(const boost::bad_lexical_cast &e) {
+  } catch(const boost::bad_lexical_cast& e) {
     LOG(kError) << e.what();
     return 0;
   }

@@ -47,26 +47,26 @@ class FileChunkStore : public ChunkStore {
   // Initialises the chunk storage directory.  If the given directory path does
   // not exist, it will be created.  Returns true if directory exists or could
   // be created.
-  bool Init(const fs::path &storage_location, unsigned int dir_depth = 5U);
-  std::string Get(const std::string &name) const;
-  bool Get(const std::string &name, const fs::path &sink_file_name) const;
-  bool Store(const std::string &name, const std::string &content);
-  bool Store(const std::string &name,
-             const fs::path &source_file_name,
+  bool Init(const fs::path& storage_location, unsigned int dir_depth = 5U);
+  std::string Get(const ChunkId& name) const;
+  bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
+  bool Store(const ChunkId& name, const std::string& content);
+  bool Store(const ChunkId& name,
+             const fs::path& source_file_name,
              bool delete_source_file);
-  bool Delete(const std::string &name);
-  bool Modify(const std::string &name, const std::string &content);
-  bool Modify(const std::string &name,
-              const fs::path &source_file_name,
+  bool Delete(const ChunkId& name);
+  bool Modify(const ChunkId& name, const std::string& content);
+  bool Modify(const ChunkId& name,
+              const fs::path& source_file_name,
               bool delete_source_file);
-  bool Has(const std::string &name) const;
-  bool MoveTo(const std::string &name, ChunkStore *sink_chunk_store);
-  uintmax_t Size(const std::string &name) const;
+  bool Has(const ChunkId& name) const;
+  bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
+  uintmax_t Size(const ChunkId& name) const;
   uintmax_t Size() const { return ChunkStore::Size(); }
   uintmax_t Capacity() const;
-  void SetCapacity(const uintmax_t &capacity);
-  bool Vacant(const uintmax_t &required_size) const;
-  uintmax_t Count(const std::string &name) const;
+  void SetCapacity(const uintmax_t& capacity);
+  bool Vacant(const uintmax_t& required_size) const;
+  uintmax_t Count(const ChunkId& name) const;
   uintmax_t Count() const;
   bool Empty() const;
   void Clear();
@@ -81,18 +81,18 @@ class FileChunkStore : public ChunkStore {
 
   // Generates sub-dirs based on chunk-name and dir_depth_ specified.  Returns
   // the absolute file path after encoding the chunk name to base 32.
-  fs::path ChunkNameToFilePath(const std::string &chunk_name,
+  fs::path ChunkNameToFilePath(const std::string& chunk_name,
                                bool generate_dirs = false) const;
   void IncreaseChunkCount() { ++chunk_count_; }
   void DecreaseChunkCount() { --chunk_count_; }
-  void ChunkAdded(const uintmax_t &delta);
-  void ChunkRemoved(const uintmax_t &delta);
+  void ChunkAdded(const uintmax_t& delta);
+  void ChunkRemoved(const uintmax_t& delta);
   void ResetChunkCount(uintmax_t chunk_count = 0) {
     chunk_count_ = chunk_count;
   }
   // Tries to read the ChunkStore info file in dir specified and gets total
   // number of chunks and their collective size
-  RestoredChunkStoreInfo RetrieveChunkInfo(const fs::path &location) const;
+  RestoredChunkStoreInfo RetrieveChunkInfo(const fs::path& location) const;
   // Saves the current state of the ChunkStore (in terms of total number of
   // chunks and their collective size) to the info file
   void SaveChunkStoreState();

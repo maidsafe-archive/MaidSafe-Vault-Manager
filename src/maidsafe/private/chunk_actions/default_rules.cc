@@ -27,37 +27,38 @@
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
+
 namespace maidsafe {
 
 namespace priv {
 
 namespace chunk_actions {
 
-template <>
-bool IsCacheable<kDefaultType>() { return true; }
+namespace detail {
 
 template <>
-bool IsModifiable<kDefaultType>() { return false; }
+bool IsCacheable<ChunkType::kDefault>() { return true; }
 
 template <>
-bool DoesModifyReplace<kDefaultType>() { return false; }
+bool IsModifiable<ChunkType::kDefault>() { return false; }
 
 template <>
-bool IsPayable<kDefaultType>() { return true; }
+bool DoesModifyReplace<ChunkType::kDefault>() { return false; }
 
 template <>
-bool IsValidChunk<kDefaultType>(
-    const std::string &name,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+bool IsPayable<ChunkType::kDefault>() { return true; }
+
+template <>
+bool IsValidChunk<ChunkType::kDefault>(const ChunkId& name,
+                                       std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string content(chunk_store->Get(name));
   if (content.empty()) {
     LOG(kError) << "Failed to get " << Base32Substr(name) << " for validation";
     return false;
   }
 
-  if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
-    LOG(kError) << "Failed to validate " << Base32Substr(name)
-                << ": chunk isn't hashable";
+  if (crypto::Hash<crypto::SHA512>(content).string() != RemoveTypeFromName(name).string()) {
+    LOG(kError) << "Failed to validate " << Base32Substr(name) << ": chunk isn't hashable";
     return false;
   }
 
@@ -65,19 +66,18 @@ bool IsValidChunk<kDefaultType>(
 }
 
 template <>
-std::string GetVersion<kDefaultType>(
-    const std::string &name,
+std::string GetVersion<ChunkType::kDefault>(
+    const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
-  return name.substr(0, crypto::Tiger::DIGESTSIZE);
+  return name.string().substr(0, crypto::Tiger::DIGESTSIZE);
 }
 
 template <>
-int ProcessGet<kDefaultType>(
-    const std::string &name,
-    const std::string &/*version*/,
-    const asymm::PublicKey &/*public_key*/,
-    std::string *existing_content,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessGet<ChunkType::kDefault>(const ChunkId& name,
+                                    const std::string& /*version*/,
+                                    const asymm::PublicKey& /*public_key*/,
+                                    std::string* existing_content,
+                                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   *existing_content = chunk_store->Get(name);
   if (existing_content->empty()) {
     LOG(kWarning) << "Failed to get " << Base32Substr(name);
@@ -88,15 +88,14 @@ int ProcessGet<kDefaultType>(
 }
 
 template <>
-int ProcessStore<kDefaultType>(
-    const std::string &name,
-    const std::string &content,
-    const asymm::PublicKey &/*public_key*/,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
+                                      const std::string& content,
+                                      const asymm::PublicKey& /*public_key*/,
+                                      std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content(chunk_store->Get(name));
   if (existing_content.empty()) {
     // New chunk on network - check data hashes to name
-    if (crypto::Hash<crypto::SHA512>(content) != RemoveTypeFromName(name)) {
+    if (crypto::Hash<crypto::SHA512>(content).string() != RemoveTypeFromName(name).string()) {
       LOG(kError) << "Failed to store " << Base32Substr(name)
                   << ": default chunk type should be hashable";
       return kNotHashable;
@@ -114,33 +113,30 @@ int ProcessStore<kDefaultType>(
 }
 
 template <>
-int ProcessDelete<kDefaultType>(
-    const std::string &/*name*/,
-    const std::string &/*ownership_proof*/,
-    const asymm::PublicKey &/*public_key*/,
-    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
+int ProcessDelete<ChunkType::kDefault>(const ChunkId& /*name*/,
+                                       const std::string& /*ownership_proof*/,
+                                       const asymm::PublicKey& /*public_key*/,
+                                       std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   return kSuccess;
 }
 
 template <>
-int ProcessModify<kDefaultType>(
-    const std::string &name,
-    const std::string &/*content*/,
-    const asymm::PublicKey &/*public_key*/,
-    int64_t * /*size_difference*/,
-    std::string * /*new_content*/,
-    std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
+int ProcessModify<ChunkType::kDefault>(const ChunkId& name,
+                                       const std::string& /*content*/,
+                                       const asymm::PublicKey& /*public_key*/,
+                                       int64_t * /*size_difference*/,
+                                       std::string * /*new_content*/,
+                                       std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   LOG(kError) << "Failed to modify " << Base32Substr(name)
               << ": no modify of default chunk type allowed";
   return kInvalidModify;
 }
 
 template <>
-int ProcessHas<kDefaultType>(
-    const std::string &name,
-    const std::string &/*version*/,
-    const asymm::PublicKey &/*public_key*/,
-    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+int ProcessHas<ChunkType::kDefault>(const ChunkId& name,
+                                    const std::string& /*version*/,
+                                    const asymm::PublicKey& /*public_key*/,
+                                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {
     LOG(kWarning) << "Failed to find " << Base32Substr(name);
     return kFailedToFindChunk;
@@ -148,6 +144,8 @@ int ProcessHas<kDefaultType>(
 
   return kSuccess;
 }
+
+}  // namespace detail
 
 }  // namespace chunk_actions
 

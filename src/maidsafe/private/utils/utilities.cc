@@ -29,37 +29,28 @@ namespace priv {
 
 namespace utilities {
 
-std::string SerialisedSignedData(const asymm::Keys &keys) {
-  std::string public_key;
-  asymm::EncodePublicKey(keys.public_key, &public_key);
+std::string SerialisedSignedData(const asymm::Keys& keys) {
+  asymm::EncodedPublicKey encoded_public_key(asymm::EncodeKey(keys.public_key));
   pca::SignedData signed_data;
-  signed_data.set_data(public_key);
+  signed_data.set_data(encoded_public_key.string());
   signed_data.set_signature(keys.validation_token);
   return signed_data.SerializeAsString();
 }
 
-int CreateMaidsafeIdentity(asymm::Keys& keys) {
-  asymm::GenerateKeyPair(&keys);
-
-  std::string encoded_public_key;
-  asymm::EncodePublicKey(keys.public_key, &encoded_public_key);
-  if (encoded_public_key.empty())
-    return -111;
-
-  asymm::Sign(encoded_public_key, keys.private_key, &keys.validation_token);
-  if (keys.validation_token.empty())
-    return -112;
-
-  keys.identity = crypto::Hash<maidsafe::crypto::SHA512>(encoded_public_key +
-                                                         keys.validation_token);
-
-  return 0;
+asymm::Keys CreateMaidsafeIdentity() {
+  asymm::Keys keys(asymm::GenerateKeyPair());
+  std::string encoded_public_key(asymm::EncodeKey(keys.public_key).string());
+  keys.validation_token =
+      asymm::Sign(asymm::PlainText(encoded_public_key), keys.private_key).string();
+  keys.identity =
+      asymm::Identity(crypto::Hash<crypto::SHA512>(encoded_public_key + keys.validation_token));
+  return keys;
 }
 
-void ChunkStoreOperationCallback(const bool &response,
-                                 std::mutex *mutex,
-                                 std::condition_variable *cond_var,
-                                 int *result) {
+void ChunkStoreOperationCallback(const bool& response,
+                                 std::mutex* mutex,
+                                 std::condition_variable* cond_var,
+                                 int* result) {
   if (!mutex || !cond_var || !result)
     return;
   std::unique_lock<std::mutex> lock(*mutex);
@@ -95,7 +86,7 @@ int WaitForResults(std::mutex& mutex,
       return kOperationTimeOut;
     }
   }
-  catch(const std::exception &e) {
+  catch(const std::exception& e) {
     LOG(kError) << "Exception Failure during waiting response : " << e.what();
     return kOperationTimeOut;
   }
