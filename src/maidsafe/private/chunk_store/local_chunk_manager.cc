@@ -17,11 +17,10 @@
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
-#include "maidsafe/private/chunk_actions/chunk_types.h"
+#include "maidsafe/private/chunk_actions/chunk_type.h"
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 #include "maidsafe/private/chunk_store/threadsafe_chunk_store.h"
 
-namespace pca = maidsafe::priv::chunk_actions;
 
 namespace maidsafe {
 
@@ -29,11 +28,10 @@ namespace priv {
 
 namespace chunk_store {
 
-LocalChunkManager::LocalChunkManager(
-    std::shared_ptr<ChunkStore> normal_local_chunk_store,
-    const fs::path& simulation_directory,
-    const fs::path& lock_directory,
-    const boost::posix_time::time_duration& millisecs)
+LocalChunkManager::LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_chunk_store,
+                                     const fs::path& simulation_directory,
+                                     const fs::path& lock_directory,
+                                     const boost::posix_time::time_duration& millisecs)
     : ChunkManager(normal_local_chunk_store),
       simulation_chunk_store_(),
       simulation_chunk_action_authority_(),
@@ -65,7 +63,7 @@ LocalChunkManager::LocalChunkManager(
 
   simulation_chunk_store_.reset(new ThreadsafeChunkStore(file_chunk_store));
   simulation_chunk_action_authority_.reset(
-      new pca::ChunkActionAuthority(simulation_chunk_store_));
+      new chunk_actions::ChunkActionAuthority(simulation_chunk_store_));
 }
 
 LocalChunkManager::~LocalChunkManager() {}
@@ -84,7 +82,8 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
   }
   if (lock && !local_version.empty() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-      LOG(kWarning) << "GetChunk - " << (!keys.identity.empty() ? HexSubstr(keys.identity) : "Anonymous")
+    LOG(kWarning) << "GetChunk - "
+                  << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
                   << " - Won't retrieve " << Base32Substr(name)
                   << " because local and remote versions "
                   << HexSubstr(local_version) << " match.";
@@ -101,7 +100,7 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
       std::string lock_timestamp_string(existing_lock.substr(0, existing_lock.find_first_of(' ')));
       uint32_t lock_timestamp(boost::lexical_cast<uint32_t>(lock_timestamp_string));
       uint32_t current_timestamp(GetTimeStamp());
-      if (current_timestamp > lock_timestamp + lock_timeout_.seconds())
+      if (current_timestamp > lock_timestamp + lock_timeout_.count())
         break;
       else
         Sleep(boost::posix_time::seconds(1));
@@ -132,8 +131,7 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
   (*sig_chunk_got_)(name, kSuccess);
 }
 
-void LocalChunkManager::StoreChunk(const ChunkId& name,
-                                   const asymm::Keys& keys) {
+void LocalChunkManager::StoreChunk(const ChunkId& name, const asymm::Keys& keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -159,8 +157,7 @@ void LocalChunkManager::StoreChunk(const ChunkId& name,
   (*sig_chunk_stored_)(name, kSuccess);
 }
 
-void LocalChunkManager::DeleteChunk(const ChunkId& name,
-                                    const asymm::Keys& keys) {
+void LocalChunkManager::DeleteChunk(const ChunkId& name, const asymm::Keys& keys) {
   if (get_wait_.total_milliseconds() != 0) {
     Sleep(action_wait_);
   }
@@ -173,14 +170,12 @@ void LocalChunkManager::DeleteChunk(const ChunkId& name,
   asymm::PublicKey public_key;
   if (!is_cacheable) {
     ownership_proof.set_data(RandomString(16));
-    asymm::Sign(ownership_proof.data(), keys.private_key,
-              ownership_proof.mutable_signature());
+    std::string* signature(ownership_proof.mutable_signature());
+    *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()), keys.private_key).string();
     ownership_proof.SerializeToString(&ownership_proof_string);
     public_key = keys.public_key;
   }
-  if (!simulation_chunk_action_authority_->Delete(name,
-                                                  ownership_proof_string,
-                                                  public_key)) {
+  if (!simulation_chunk_action_authority_->Delete(name, ownership_proof_string, public_key)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     (*sig_chunk_deleted_)(name, kDeleteFailure);
     return;
@@ -199,8 +194,7 @@ void LocalChunkManager::ModifyChunk(const ChunkId& name,
   boost::system::error_code error_code;
   if (fs::exists(lock_file, error_code)) {
     std::string existing_lock;
-    LOG(kInfo) << "GetChunk - Modify, lock file exists for "
-               << Base32Substr(name);
+    LOG(kInfo) << "GetChunk - Modify, lock file exists for " << Base32Substr(name);
     std::string expected_transaction_id(current_transactions_[name]);
     ReadFile(lock_file, &existing_lock);
     std::string lock_transaction_id(

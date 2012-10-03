@@ -296,8 +296,6 @@ TEST_F(FileChunkStoreTest, BEH_Count) {
 TEST_F(FileChunkStoreTest, BEH_Methods) {
   std::shared_ptr<FileChunkStore> fcs(
       new FileChunkStore());
-  EXPECT_EQ(12345, fcs->GetNumFromString("12345"));
-  EXPECT_EQ(0, fcs->GetNumFromString("not_a_num123"));
 
   EXPECT_TRUE(fcs->Init(chunk_dir_, 10));
 

@@ -17,6 +17,9 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/private/chunk_actions/chunk_id.h"
+
+
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -26,14 +29,8 @@ namespace priv {
 namespace chunk_store {
 
 struct ChunkData {
-  ChunkData()
-    : chunk_name(),
-      chunk_size() {}
-
-  ChunkData(const std::string& name, uintmax_t size)
-    : chunk_name(name),
-      chunk_size(size) {}
-
+  ChunkData() : chunk_name(), chunk_size() {}
+  ChunkData(const std::string& name, uintmax_t size) : chunk_name(name), chunk_size(size) {}
   std::string chunk_name;
   uintmax_t chunk_size;
 };
@@ -55,12 +52,10 @@ class ChunkStore {
   // Retrieves a chunk's content as a file, potentially overwriting an existing
   // file of the same name.  Returns true if chunk exists and could be written
   // to file.
-  virtual bool Get(const ChunkId& name,
-                   const fs::path& sink_file_name) const = 0;
+  virtual bool Get(const ChunkId& name, const fs::path& sink_file_name) const = 0;
 
   // Stores chunk content under the given name.
-  virtual bool Store(const ChunkId& name,
-                     const std::string& content) = 0;
+  virtual bool Store(const ChunkId& name, const std::string& content) = 0;
 
   // Stores chunk content under the given name.
   virtual bool Store(const ChunkId& name,
@@ -71,8 +66,7 @@ class ChunkStore {
   virtual bool Delete(const ChunkId& name) = 0;
 
   // Modifies chunk content under the given name.
-  virtual bool Modify(const ChunkId& name,
-                      const std::string& content) = 0;
+  virtual bool Modify(const ChunkId& name, const std::string& content) = 0;
 
   // Modifies a chunk's content as a file, potentially overwriting an existing
   // file of the same name.
@@ -85,8 +79,7 @@ class ChunkStore {
 
   // Efficiently adds a locally existing chunk to another ChunkStore and
   // removes it from this one.
-  virtual bool MoveTo(const ChunkId& name,
-                      ChunkStore* sink_chunk_store) = 0;
+  virtual bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) = 0;
 
   // Retrieves the size of a chunk (bytes).
   virtual uintmax_t Size(const ChunkId& name) const = 0;
@@ -164,8 +157,7 @@ class ChunkStore {
   }
 
   // Updates Chunk Store Size After a Modify Operation
-  void AdjustChunkStoreStats(const uintmax_t& content_size_difference,
-                             const bool& increase_size) {
+  void AdjustChunkStoreStats(const uintmax_t& content_size_difference, const bool& increase_size) {
     if (content_size_difference == 0)
       return;
     if (increase_size)

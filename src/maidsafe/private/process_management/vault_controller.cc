@@ -17,8 +17,8 @@
 #include "boost/algorithm/string.hpp"
 
 #include "maidsafe/common/config.h"
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/common/return_codes.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/process_management/controller_messages_pb.h"

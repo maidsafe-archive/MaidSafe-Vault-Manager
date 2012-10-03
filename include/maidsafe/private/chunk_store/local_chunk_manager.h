@@ -21,6 +21,7 @@
 
 #include "maidsafe/private/chunk_store/chunk_manager.h"
 
+
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -28,7 +29,6 @@ namespace maidsafe {
 namespace priv {
 
 namespace chunk_actions { class ChunkActionAuthority; }
-namespace ca = chunk_actions;
 
 namespace chunk_store {
 
@@ -45,14 +45,11 @@ class LocalChunkManager : public ChunkManager {
 
   void GetChunk(const ChunkId& name,
                 const std::string& local_version,
-                const asymm::Keys& keys, bool lock);
-  void StoreChunk(const ChunkId& name,
-                  const asymm::Keys& keys);
-  void DeleteChunk(const ChunkId& name,
-                   const asymm::Keys& keys);
-  void ModifyChunk(const ChunkId& name,
-                   const std::string& content,
-                   const asymm::Keys& keys);
+                const asymm::Keys& keys,
+                bool lock);
+  void StoreChunk(const ChunkId& name, const asymm::Keys& keys);
+  void DeleteChunk(const ChunkId& name, const asymm::Keys& keys);
+  void ModifyChunk(const ChunkId& name, const std::string& content, const asymm::Keys& keys);
 
   int64_t StorageSize();
   int64_t StorageCapacity();
@@ -62,10 +59,10 @@ class LocalChunkManager : public ChunkManager {
   LocalChunkManager& operator=(const LocalChunkManager&);
 
   std::shared_ptr<ChunkStore> simulation_chunk_store_;
-  std::shared_ptr<ca::ChunkActionAuthority> simulation_chunk_action_authority_;
+  std::shared_ptr<chunk_actions::ChunkActionAuthority> simulation_chunk_action_authority_;
   boost::posix_time::time_duration get_wait_, action_wait_;
   fs::path lock_directory_;
-  std::map<std::string, std::string> current_transactions_;
+  std::map<ChunkId, std::string> current_transactions_;
 };
 
 }  // namespace chunk_store

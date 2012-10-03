@@ -11,6 +11,8 @@
 
 #include "maidsafe/private/chunk_store/buffered_chunk_store.h"
 
+#include <chrono>
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -27,7 +29,7 @@ namespace chunk_store {
 // If the cache is full and there are no more chunks left to delete, this is the
 // number of chunk transfers to wait for (in Store) before the next check.
 const int kWaitTransfersForCacheVacantCheck(10);
-const boost::posix_time::seconds kXferWaitTimeout(3);
+const std::chrono::seconds kXferWaitTimeout(3);
 
 BufferedChunkStore::BufferedChunkStore(boost::asio::io_service& asio_service)  // NOLINT (Fraser)
     : ChunkStore(),
@@ -45,8 +47,8 @@ BufferedChunkStore::BufferedChunkStore(boost::asio::io_service& asio_service)  /
       initialised_(false) {}
 
 BufferedChunkStore::~BufferedChunkStore() {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty() || asio_service_.stopped();
       })) {
     LOG(kError) << "~BufferedChunkStore - Timed out.";
@@ -54,10 +56,9 @@ BufferedChunkStore::~BufferedChunkStore() {
 }
 
 bool BufferedChunkStore::Init(const fs::path& storage_location,
-                              std::list<std::string> removable_chunks,
+                              std::list<ChunkId> removable_chunks,
                               unsigned int dir_depth) {
-  if (!reinterpret_cast<FileChunkStore*>(
-        internal_perm_chunk_store_.get())->Init(storage_location, dir_depth)) {
+  if (internal_perm_chunk_store_->Init(storage_location, dir_depth)) {
     LOG(kError) << "Failed to initialise internal permanent chunk store.";
     return false;
   }
@@ -69,13 +70,8 @@ bool BufferedChunkStore::Init(const fs::path& storage_location,
 }
 
 std::string BufferedChunkStore::Get(const ChunkId& name) const {
-  if (name.empty()) {
-    LOG(kError) << "Get - Empty name passed.";
-    return "";
-  }
-
   {
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     if (cache_chunk_store_->Has(name)) {
       auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
       if (it != cached_chunks_.end()) {
@@ -92,15 +88,9 @@ std::string BufferedChunkStore::Get(const ChunkId& name) const {
   return content;
 }
 
-bool BufferedChunkStore::Get(const ChunkId& name,
-                             const fs::path& sink_file_name) const {
-  if (name.empty()) {
-    LOG(kError) << "Get - Empty name passed.";
-    return false;
-  }
-
+bool BufferedChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) const {
   {
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     if (cache_chunk_store_->Has(name)) {
       auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
       if (it != cached_chunks_.end()) {
@@ -117,13 +107,7 @@ bool BufferedChunkStore::Get(const ChunkId& name,
   return !content.empty() && WriteFile(sink_file_name, content);
 }
 
-bool BufferedChunkStore::Store(const ChunkId& name,
-                               const std::string& content) {
-  if (name.empty()) {
-    LOG(kError) << "Store - Empty name passed.";
-    return false;
-  }
-
+bool BufferedChunkStore::Store(const ChunkId& name, const std::string& content) {
   if (!DoCacheStore(name, content)) {
     LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
@@ -131,7 +115,7 @@ bool BufferedChunkStore::Store(const ChunkId& name,
 
   if (!MakeChunkPermanent(name, content.size())) {
     // AddCachedChunksEntry(name);
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
     LOG(kError) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
@@ -143,11 +127,6 @@ bool BufferedChunkStore::Store(const ChunkId& name,
 bool BufferedChunkStore::Store(const ChunkId& name,
                                const fs::path& source_file_name,
                                bool delete_source_file) {
-  if (name.empty()) {
-    LOG(kError) << "Store - Empty name passed.";
-    return false;
-  }
-
   boost::system::error_code ec;
   uintmax_t size(source_file_name.empty() ? 0 : fs::file_size(source_file_name, ec));
   if (ec) {
@@ -162,7 +141,7 @@ bool BufferedChunkStore::Store(const ChunkId& name,
 
   if (!MakeChunkPermanent(name, size)) {
     // AddCachedChunksEntry(name);
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
     LOG(kError) << "Failed to make chunk permanent: " << Base32Substr(name);
     return false;
@@ -174,13 +153,7 @@ bool BufferedChunkStore::Store(const ChunkId& name,
   return true;
 }
 
-bool BufferedChunkStore::CacheStore(const ChunkId& name,
-                                    const std::string& content) {
-  if (name.empty()) {
-    LOG(kError) << "CacheStore - Empty name passed.";
-    return false;
-  }
-
+bool BufferedChunkStore::CacheStore(const ChunkId& name, const std::string& content) {
   if (!DoCacheStore(name, content)) {
     LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
@@ -193,11 +166,6 @@ bool BufferedChunkStore::CacheStore(const ChunkId& name,
 bool BufferedChunkStore::CacheStore(const ChunkId& name,
                                     const fs::path& source_file_name,
                                     bool delete_source_file) {
-  if (name.empty()) {
-    LOG(kError) << "CacheStore - Empty name passed.";
-    return false;
-  }
-
   boost::system::error_code ec;
   uintmax_t size(fs::file_size(source_file_name, ec));
 
@@ -214,21 +182,16 @@ bool BufferedChunkStore::CacheStore(const ChunkId& name,
 }
 
 bool BufferedChunkStore::PermanentStore(const ChunkId& name) {
-  if (name.empty()) {
-    LOG(kError) << "PermanentStore - Empty name passed.";
-    return false;
-  }
-
   std::string content;
   {
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     content = cache_chunk_store_->Get(name);
   }
 
   {
-    boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+    std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
     RemoveDeletionMarks(name);
-    if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+    if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
       LOG(kError) << "PermanentStore - Timed out storing " << Base32Substr(name)
@@ -238,8 +201,7 @@ bool BufferedChunkStore::PermanentStore(const ChunkId& name) {
     if (perm_chunk_store_->Has(name))
       return true;
     if (content.empty() || !perm_chunk_store_->Store(name, content)) {
-      LOG(kError) << "PermanentStore - Could not transfer "
-                  << Base32Substr(name);
+      LOG(kError) << "PermanentStore - Could not transfer " << Base32Substr(name);
       return false;
     }
     perm_size_ = perm_chunk_store_->Size();
@@ -249,15 +211,10 @@ bool BufferedChunkStore::PermanentStore(const ChunkId& name) {
 }
 
 bool BufferedChunkStore::Delete(const ChunkId& name) {
-  if (name.empty()) {
-    LOG(kError) << "Delete - Empty name passed.";
-    return false;
-  }
-
   bool file_delete_result(false);
   {
-    boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-    if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+    std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+    if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
       LOG(kError) << "Delete - Timed out deleting " << Base32Substr(name)
@@ -271,7 +228,7 @@ bool BufferedChunkStore::Delete(const ChunkId& name) {
   if (!file_delete_result)
     LOG(kError) << "Delete - Could not delete " << Base32Substr(name);
 
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
   if (it != cached_chunks_.end())
     cached_chunks_.erase(it);
@@ -280,17 +237,11 @@ bool BufferedChunkStore::Delete(const ChunkId& name) {
   return file_delete_result;
 }
 
-bool BufferedChunkStore::Modify(const ChunkId& name,
-                                const std::string& content) {
-  if (name.empty()) {
-    LOG(kError) << "Modify - Empty name passed.";
-    return false;
-  }
-
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content) {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
   RemoveDeletionMarks(name);
 
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
     LOG(kError) << "Modify - Timed out modifying " << Base32Substr(name)
@@ -309,8 +260,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
         // Wait For Space in Perm Store
         while (perm_size_ + content_size_difference > perm_chunk_store_->Capacity()) {
           if (removable_chunks_.empty()) {
-            LOG(kError) << "Modify - Can't make space for changes to "
-                        << Base32Substr(name);
+            LOG(kError) << "Modify - Can't make space for changes to " << Base32Substr(name);
             return false;
           }
           if (perm_chunk_store_->Delete(removable_chunks_.front()))
@@ -328,7 +278,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
       else
         perm_size_ -= content_size_difference;
       {
-        boost::lock_guard<boost::mutex> lock(cache_mutex_);
+        std::lock_guard<std::mutex> lock(cache_mutex_);
         auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
         if (it != cached_chunks_.end()) {
           cached_chunks_.erase(it);
@@ -343,7 +293,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
   } else {
     std::string current_cache_content;
     {
-      boost::mutex::scoped_lock lock(cache_mutex_);
+      std::unique_lock<std::mutex> lock(cache_mutex_);
       if (!cache_chunk_store_->Has(name)) {
         LOG(kError) << "Modify - Don't have chunk " << Base32Substr(name);
         return false;
@@ -364,11 +314,10 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
             }
 
             int limit(kWaitTransfersForCacheVacantCheck);
-            if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+            if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
                   return pending_xfers_.empty() || (--limit) == 0;
                 })) {
-              LOG(kError) << "Modify - Timed out modifying "
-                          << Base32Substr(name)
+              LOG(kError) << "Modify - Timed out modifying " << Base32Substr(name)
                           << " while waiting for pending transfers.";
               return false;
             }
@@ -395,8 +344,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
 
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    LOG(kError) << "Modify - Couldn't read source file for "
-                << Base32Substr(name);
+    LOG(kError) << "Modify - Couldn't read source file for " << Base32Substr(name);
     return false;
   }
 
@@ -415,17 +363,11 @@ bool BufferedChunkStore::Has(const ChunkId& name) const {
   return CacheHas(name) || PermanentHas(name);
 }
 
-bool BufferedChunkStore::MoveTo(const ChunkId& name,
-                                ChunkStore* sink_chunk_store) {
-  if (name.empty()) {
-    LOG(kError) << "MoveTo - Empty name passed.";
-    return false;
-  }
-
+bool BufferedChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
   bool chunk_moved(false);
   {
-    boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-    if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+    std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+    if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
           return pending_xfers_.find(name) == pending_xfers_.end();
         })) {
       LOG(kError) << "MoveTo - Timed out moving " << Base32Substr(name)
@@ -441,7 +383,7 @@ bool BufferedChunkStore::MoveTo(const ChunkId& name,
     return false;
   }
 
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
   if (it != cached_chunks_.end())
     cached_chunks_.erase(it);
@@ -451,23 +393,13 @@ bool BufferedChunkStore::MoveTo(const ChunkId& name,
 }
 
 bool BufferedChunkStore::CacheHas(const ChunkId& name) const {
-  if (name.empty()) {
-    LOG(kError) << "CacheHas - Empty name passed.";
-    return false;
-  }
-
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Has(name);
 }
 
 bool BufferedChunkStore::PermanentHas(const ChunkId& name) const {
-  if (name.empty()) {
-    LOG(kError) << "PermanentHas - Empty name passed.";
-    return false;
-  }
-
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
     LOG(kError) << "PermanentHas - Timed out for " << Base32Substr(name)
@@ -475,49 +407,43 @@ bool BufferedChunkStore::PermanentHas(const ChunkId& name) const {
     return false;
   }
   uintmax_t rem_count(0);
-  for (auto it = removable_chunks_.begin(); it != removable_chunks_.end(); ++it)
+  for (auto it = removable_chunks_.begin(); it != removable_chunks_.end(); ++it) {
     if (*it == name)
       ++rem_count;
+  }
   return perm_chunk_store_->Count(name) > rem_count;
 }
 
 uintmax_t BufferedChunkStore::Size(const ChunkId& name) const {
-  if (name.empty()) {
-    LOG(kError) << "Size - Empty name passed.";
-    return 0;
-  }
-
-  {
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
-    if (cache_chunk_store_->Has(name))
-      return cache_chunk_store_->Size(name);
-  }
+  std::lock_guard<std::mutex> lock(cache_mutex_);
+  if (cache_chunk_store_->Has(name))
+    return cache_chunk_store_->Size(name);
   return perm_chunk_store_->Size(name);
 }
 
 uintmax_t BufferedChunkStore::Size() const {
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   return perm_size_;
 }
 
 uintmax_t BufferedChunkStore::CacheSize() const {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Size();
 }
 
 uintmax_t BufferedChunkStore::Capacity() const {
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   return perm_chunk_store_->Capacity();
 }
 
 uintmax_t BufferedChunkStore::CacheCapacity() const {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Capacity();
 }
 
 void BufferedChunkStore::SetCapacity(const uintmax_t& capacity) {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
     LOG(kError) << "SetCapacity - Timed out waiting for pending transfers.";
@@ -527,29 +453,23 @@ void BufferedChunkStore::SetCapacity(const uintmax_t& capacity) {
 }
 
 void BufferedChunkStore::SetCacheCapacity(const uintmax_t& capacity) {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   cache_chunk_store_->SetCapacity(capacity);
 }
 
 bool BufferedChunkStore::Vacant(const uintmax_t& required_size) const {
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   return perm_size_ + required_size <= perm_chunk_store_->Capacity();
 }
 
-bool BufferedChunkStore::CacheVacant(
-    const uintmax_t& required_size) const {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+bool BufferedChunkStore::CacheVacant(const uintmax_t& required_size) const {
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Vacant(required_size);
 }
 
 uintmax_t BufferedChunkStore::Count(const ChunkId& name) const {
-  if (name.empty()) {
-    LOG(kError) << "Count - Empty name passed.";
-    return 0;
-  }
-
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.find(name) == pending_xfers_.end();
       })) {
     LOG(kError) << "Count - Timed out for " << Base32Substr(name)
@@ -560,8 +480,8 @@ uintmax_t BufferedChunkStore::Count(const ChunkId& name) const {
 }
 
 uintmax_t BufferedChunkStore::Count() const {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
     LOG(kError) << "Count - Timed out waiting for pending transfers.";
@@ -571,7 +491,7 @@ uintmax_t BufferedChunkStore::Count() const {
 }
 
 uintmax_t BufferedChunkStore::CacheCount() const {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Count();
 }
 
@@ -580,19 +500,19 @@ bool BufferedChunkStore::Empty() const {
 }
 
 bool BufferedChunkStore::CacheEmpty() const {
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   return cache_chunk_store_->Empty();
 }
 
 void BufferedChunkStore::Clear() {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
     LOG(kError) << "Clear - Timed out waiting for pending transfers.";
     return;
   }
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   cached_chunks_.clear();
   removable_chunks_.clear();
   cache_chunk_store_->Clear();
@@ -601,39 +521,34 @@ void BufferedChunkStore::Clear() {
 }
 
 void BufferedChunkStore::CacheClear() {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
-  if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
+  if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
         return pending_xfers_.empty();
       })) {
     LOG(kError) << "CacheClear - Timed out waiting for pending transfers.";
     return;
   }
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   cached_chunks_.clear();
   cache_chunk_store_->Clear();
 }
 
 void BufferedChunkStore::MarkForDeletion(const ChunkId& name) {
-  if (name.empty())
-    return;
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   removable_chunks_.push_back(name);
 }
 
-/// @note Ensure cache mutex is not locked.
+// Ensure cache mutex is not locked.
 void BufferedChunkStore::AddCachedChunksEntry(const ChunkId& name) const {
-  if (name.empty())
-    return;
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   auto it = std::find(cached_chunks_.begin(), cached_chunks_.end(), name);
   if (it != cached_chunks_.end())
     cached_chunks_.erase(it);
   cached_chunks_.push_front(name);
 }
 
-bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
-                                      const std::string& content) const {
-  boost::mutex::scoped_lock lock(cache_mutex_);
+bool BufferedChunkStore::DoCacheStore(const ChunkId& name, const std::string& content) const {
+  std::unique_lock<std::mutex> lock(cache_mutex_);
   if (cache_chunk_store_->Has(name))
     return true;
 
@@ -651,14 +566,14 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
     while (cached_chunks_.empty()) {
       lock.unlock();
       {
-        boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+        std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
         if (pending_xfers_.empty()) {
           LOG(kError) << "DoCacheStore - Can't make space for "
                       << Base32Substr(name);
           return false;
         }
         int limit(kWaitTransfersForCacheVacantCheck);
-        if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+        if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
               return pending_xfers_.empty() || (--limit) == 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
@@ -679,7 +594,7 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
                                       const uintmax_t& size,
                                       const fs::path& source_file_name,
                                       bool delete_source_file) const {
-  boost::mutex::scoped_lock lock(cache_mutex_);
+  std::unique_lock<std::mutex> lock(cache_mutex_);
   if (cache_chunk_store_->Has(name))
     return true;
 
@@ -697,14 +612,13 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
     while (cached_chunks_.empty()) {
       lock.unlock();
       {
-        boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+        std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
         if (pending_xfers_.empty()) {
-          LOG(kError) << "DoCacheStore - Can't make space for "
-                      << Base32Substr(name);
+          LOG(kError) << "DoCacheStore - Can't make space for " << Base32Substr(name);
           return false;
         }
         int limit(kWaitTransfersForCacheVacantCheck);
-        if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+        if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
               return pending_xfers_.empty() || (--limit) == 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
@@ -721,9 +635,8 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
   return cache_chunk_store_->Store(name, source_file_name, delete_source_file);
 }
 
-bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
-                                            const uintmax_t& size) {
-  boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name, const uintmax_t& size) {
+  std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
   if (!initialised_) {
     LOG(kError) << "MakeChunkPermanent - Can't make " << Base32Substr(name)
                 << " permanent, not initialised.";
@@ -743,7 +656,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
 
     bool is_new(true);
     if (perm_size_ + size > perm_chunk_store_->Capacity()) {
-      if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
+      if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
             return pending_xfers_.empty();
           })) {
         LOG(kError) << "MakeChunkPermanent - Timed out for "
@@ -756,8 +669,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
         // Make space in permanent store
         while (perm_size_ + size > perm_chunk_store_->Capacity()) {
           if (removable_chunks_.empty()) {
-            LOG(kError) << "MakeChunkPermanent - Can't make space for "
-                        << Base32Substr(name);
+            LOG(kError) << "MakeChunkPermanent - Can't make space for " << Base32Substr(name);
             return false;
           }
           if (perm_chunk_store_->Delete(removable_chunks_.front()))
@@ -772,9 +684,7 @@ bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
   }
 
   pending_xfers_.insert(name);
-  asio_service_.post([=] {
-    DoMakeChunkPermanent(name);
-  });
+  asio_service_.post([=] { DoMakeChunkPermanent(name); });  // NOLINT (Fraser)
 
   return true;
 }
@@ -782,45 +692,41 @@ bool BufferedChunkStore::MakeChunkPermanent(const ChunkId& name,
 void BufferedChunkStore::DoMakeChunkPermanent(const ChunkId& name) {
   std::string content;
   {
-    boost::lock_guard<boost::mutex> lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     content = cache_chunk_store_->Get(name);
   }
 
   if (content.empty()) {
-    LOG(kError) << "DoMakeChunkPermanent - Could not get " << Base32Substr(name)
-                << " from cache.";
+    LOG(kError) << "DoMakeChunkPermanent - Could not get " << Base32Substr(name) << " from cache.";
   } else if (perm_chunk_store_->Store(name, content)) {
     AddCachedChunksEntry(name);
   } else {
-    LOG(kError) << "DoMakeChunkPermanent - Could not store "
-                << Base32Substr(name);
+    LOG(kError) << "DoMakeChunkPermanent - Could not store " << Base32Substr(name);
   }
 
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   perm_size_ = perm_chunk_store_->Size();
   pending_xfers_.erase(pending_xfers_.find(name));
   xfer_cond_var_.notify_all();
 }
 
 void BufferedChunkStore::RemoveDeletionMarks(const ChunkId& name) {
-  removable_chunks_.remove_if([&name](const std::string& i) {
-      return name == i;
-  });
+  removable_chunks_.remove_if([&name](const ChunkId& id) { return name == id; });
 }
 
 bool BufferedChunkStore::DeleteAllMarked() {
   bool delete_result(true);
-  std::list<std::string> rem_chunks;
+  std::list<ChunkId> rem_chunks;
   {
-    boost::mutex::scoped_lock xfer_lock(xfer_mutex_);
+    std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
     rem_chunks = removable_chunks_;
     removable_chunks_.clear();
-    if (!xfer_cond_var_.timed_wait(xfer_lock, kXferWaitTimeout, [&] {
-        return pending_xfers_.empty();
-      })) {
-    LOG(kError) << "DeleteAllMarked - Timed out waiting for pending transfers.";
-    return false;
-  }
+    if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
+          return pending_xfers_.empty();
+        })) {
+      LOG(kError) << "DeleteAllMarked - Timed out waiting for pending transfers.";
+      return false;
+    }
     for (auto it = rem_chunks.begin(); it != rem_chunks.end(); ++it) {
       if (!perm_chunk_store_->Delete(*it)) {
         delete_result = false;
@@ -831,7 +737,7 @@ bool BufferedChunkStore::DeleteAllMarked() {
     perm_size_ = perm_chunk_store_->Size();
   }
 
-  boost::lock_guard<boost::mutex> lock(cache_mutex_);
+  std::lock_guard<std::mutex> lock(cache_mutex_);
   for (auto it = rem_chunks.begin(); it != rem_chunks.end(); ++it) {
     auto it2 = std::find(cached_chunks_.begin(), cached_chunks_.end(), *it);
     if (it2 != cached_chunks_.end())
@@ -842,13 +748,13 @@ bool BufferedChunkStore::DeleteAllMarked() {
   return delete_result;
 }
 
-std::list<std::string> BufferedChunkStore::GetRemovableChunks() const {
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+std::list<ChunkId> BufferedChunkStore::GetRemovableChunks() const {
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   return removable_chunks_;
 }
 
 std::vector<ChunkData> BufferedChunkStore::GetChunks() const {
-  boost::lock_guard<boost::mutex> lock(xfer_mutex_);
+  std::lock_guard<std::mutex> lock(xfer_mutex_);
   return internal_perm_chunk_store_->GetChunks();
 }
 
