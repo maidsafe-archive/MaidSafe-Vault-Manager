@@ -14,8 +14,8 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_
-#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_
+#ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPE_H_
+#define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPE_H_
 
 
 namespace maidsafe {
@@ -34,4 +34,4 @@ enum class ChunkType : char {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPES_H_
+#endif  // MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_TYPE_H_

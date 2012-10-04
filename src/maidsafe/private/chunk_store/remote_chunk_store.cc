@@ -13,6 +13,8 @@
 
 #include <algorithm>
 
+#include "boost/lexical_cast.hpp"
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -35,11 +37,11 @@ namespace {
 // Default maximum number of operations to be processed in parallel.
 const int kMaxActiveOps(4);
 // Time to wait in WaitForCompletion before failing.
-const bptime::time_duration kCompletionWaitTimeout(bptime::minutes(3));
+const std::chrono::duration<int> kCompletionWaitTimeout(std::chrono::minutes(3));
 // Time to wait in WaitForConflictingOps before failing.
-const bptime::time_duration kOperationWaitTimeout(bptime::seconds(150));  // 2.5 mins
+const std::chrono::duration<int> kOperationWaitTimeout(std::chrono::seconds(150));  // 2.5 mins
 // Time period in which not to retry a previously failed get operation.
-const bptime::time_duration kGetRetryTimeout(bptime::seconds(3));
+const std::chrono::duration<int> kGetRetryTimeout(std::chrono::seconds(3));
 
 template <typename Elem, typename Traits>
 std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& ostream,
@@ -81,10 +83,10 @@ RemoteChunkStore::RemoteChunkStore(
           chunk_store_(chunk_store),
           chunk_manager_(chunk_manager),
           chunk_action_authority_(chunk_action_authority),
-          cm_get_conn_(),
-          cm_store_conn_(),
-          cm_modify_conn_(),
-          cm_delete_conn_(),
+          chunk_manager_get_connection_(),
+          chunk_manager_store_connection_(),
+          chunk_manager_modify_connection_(),
+          chunk_manager_delete_connection_(),
           mutex_(),
           cond_var_(),
           max_active_ops_(kMaxActiveOps),
@@ -100,22 +102,21 @@ RemoteChunkStore::RemoteChunkStore(
           op_success_count_(),
           op_skip_count_(),
           op_size_() {
-  cm_get_conn_ = chunk_manager_->sig_chunk_got()->connect(boost::bind(
+  chunk_manager_get_connection_ = chunk_manager_->sig_chunk_got()->connect(boost::bind(
       &RemoteChunkStore::OnOpResult, this, OpType::kGet, _1, _2));
-  cm_store_conn_ = chunk_manager_->sig_chunk_stored()->connect(boost::bind(
+  chunk_manager_store_connection_ = chunk_manager_->sig_chunk_stored()->connect(boost::bind(
       &RemoteChunkStore::OnOpResult, this, OpType::kStore, _1, _2));
-  cm_modify_conn_ = chunk_manager_->sig_chunk_modified()->connect(boost::bind(
+  chunk_manager_modify_connection_ = chunk_manager_->sig_chunk_modified()->connect(boost::bind(
       &RemoteChunkStore::OnOpResult, this, OpType::kModify, _1, _2));
-  cm_delete_conn_ = chunk_manager_->sig_chunk_deleted()->connect(boost::bind(
+  chunk_manager_delete_connection_ = chunk_manager_->sig_chunk_deleted()->connect(boost::bind(
       &RemoteChunkStore::OnOpResult, this, OpType::kDelete, _1, _2));
 }
 
 RemoteChunkStore::~RemoteChunkStore() {
-  cm_get_conn_.disconnect();
-  cm_store_conn_.disconnect();
-  cm_modify_conn_.disconnect();
-  cm_delete_conn_.disconnect();
-
+  chunk_manager_get_connection_.disconnect();
+  chunk_manager_store_connection_.disconnect();
+  chunk_manager_modify_connection_.disconnect();
+  chunk_manager_delete_connection_.disconnect();
   std::lock_guard<std::mutex> lock(mutex_);
   active_ops_count_ = 0;
   pending_ops_.clear();
@@ -130,7 +131,7 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) 
     return "";
   }
 
-  if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name) == 0) {
+  if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name.string()) == 0) {
     std::string content(chunk_store_->Get(name));
     if (!content.empty()) {
       LOG(kInfo) << "Get - Found local content for " << Base32Substr(name);
@@ -154,7 +155,7 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) 
   // check if there is a get op for this chunk following
   auto it = pending_ops_.begin();
   while (it != pending_ops_.end()) {
-    if (it->left == name) {
+    if (it->left == name.string()) {
       if (it->info.op_type == OpType::kGet) {
 //         pending_ops_.erase(it);  // trigger next one
 //         cond_var_.notify_all();
@@ -200,8 +201,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
     return kGeneralError;
   }
 
-  if (chunk_action_authority_->Cacheable(name) &&
-      pending_ops_.left.count(name) == 0) {
+  if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name.string()) == 0) {
     std::string local_content(chunk_store_->Get(name));
     if (!local_content.empty()) {
       LOG(kInfo) << "GetAndLock - Found local content for "
@@ -321,15 +321,14 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
   LOG(kInfo) << "Modify - " << Base32Substr(name);
 
   if (!chunk_action_authority_->Modifiable(name)) {
-    LOG(kError) << "Modify - Type of chunk " << Base32Substr(name)
-                << " not supported.";
+    LOG(kError) << "Modify - Type of chunk " << Base32Substr(name) << " not supported.";
     return false;
   }
 
-  std::lock_guard<std::mutex> lock(mutex_);
-  OperationData op_data(kOpModify, callback, keys, true);
+  std::unique_lock<std::mutex> lock(mutex_);
+  OperationData op_data(OpType::kModify, callback, keys, true);
   op_data.content = content;
-  EnqueueOp(name, op_data, &lock);
+  EnqueueOp(name, op_data, lock);
 //   uint32_t id(EnqueueOp(name, op_data, &lock));
 //   int result(WaitForConflictingOps(name, kOpModify, id, &lock));
 //   if (result != kWaitSuccess) {
@@ -337,21 +336,19 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
 //     return result == kWaitCancelled;
 //   }
 
-  ProcessPendingOps(&lock);
+  ProcessPendingOps(lock);
   return true;
 }
 
 bool RemoteChunkStore::WaitForCompletion() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   while (!pending_ops_.empty()) {
-    LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size()
-               << " pending operations, " << active_ops_count_
-               << " of them active...";
+    LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size() << " pending operations, "
+               << active_ops_count_ << " of them active...";
     (*sig_num_pending_ops_)(pending_ops_.size());
-    if (!cond_var_.timed_wait(lock, completion_wait_timeout_)) {
-      LOG(kError) << "WaitForCompletion - Timed out with "
-                  << pending_ops_.size() << " pending operations, "
-                  << active_ops_count_ << " of them active.";
+    if (!cond_var_.wait_for(lock, completion_wait_timeout_)) {
+      LOG(kError) << "WaitForCompletion - Timed out with " << pending_ops_.size()
+                  << " pending operations, " << active_ops_count_ << " of them active.";
       return false;
     }
   }
@@ -361,28 +358,30 @@ bool RemoteChunkStore::WaitForCompletion() {
 
 void RemoteChunkStore::LogStats() {
   std::lock_guard<std::mutex> lock(mutex_);
-  for (int op = kOpGet; op <= kOpDelete; ++op)
-    LOG(kInfo) << "LogStats() - Could " << kOpName[op] << " "
-               << op_success_count_[op] << " and skip " << op_skip_count_[op]
-               << " of " << op_count_[op] << " chunks ("
-               << BytesToBinarySiUnits(op_size_[op]) << ").";
+  OpType op = OpType::kGet;
+  while (op <= OpType::kDelete) {
+    int i(static_cast<int>(op));
+    LOG(kInfo) << "LogStats() - Could " << op << " " << op_success_count_[i] << " and skip "
+               << op_skip_count_[i] << " of " << op_count_[i] << " chunks ("
+               << BytesToBinarySiUnits(op_size_[i]) << ").";
+    op = static_cast<OpType>(i + 1);
+  }
 
-  std::string output;
-  for (auto it = pending_ops_.begin(); it != pending_ops_.end(); ++it)
-    output += "\n\t" + Base32Substr(it->left) + " (" + kOpName[it->info.op_type]
-            + (it->info.active ? ", active" : "") + ")";
-  if (!output.empty())
-    LOG(kWarning) << "LogStats() - " << pending_ops_.size()
-                  << " pending operations, " << active_ops_count_ << " active :"
-                  << output;
+  std::ostringstream oss;
+  for (auto it = pending_ops_.begin(); it != pending_ops_.end(); ++it) {
+    oss << "\n\t" << Base32Substr(it->left) << " (" << it->info.op_type
+        << (it->info.active ? ", active" : "") << ")";
+  }
+  if (!pending_ops_.empty()) {
+    LOG(kWarning) << "LogStats() - " << pending_ops_.size() << " pending operations, "
+                  << active_ops_count_ << " active :" << oss.str();
+  }
 
-  output.clear();
+  oss.str("");
   for (auto it = failed_ops_.begin(); it != failed_ops_.end(); ++it)
-    output += "\n\t" + Base32Substr(it->first) + " (" + kOpName[it->second]
-            + ")";
-  if (!output.empty())
-    LOG(kWarning) << "LogStats() - " << failed_ops_.size()
-                  << " failed operations:" << output;
+    oss << "\n\t" << Base32Substr(it->first) << " (" << it->second << ")";
+  if (!failed_ops_.empty())
+    LOG(kWarning) << "LogStats() - " << failed_ops_.size() << " failed operations:" << oss.str();
 }
 
 bool RemoteChunkStore::Empty() const {
@@ -393,23 +392,21 @@ void RemoteChunkStore::Clear() {
   chunk_store_->Clear();
 }
 
-void RemoteChunkStore::OnOpResult(const OperationType& op_type,
-                                  const ChunkId& name,
-                                  const int& result) {
-  std::lock_guard<std::mutex> lock(mutex_);
+void RemoteChunkStore::OnOpResult(const OpType& op_type, const ChunkId& name, const int& result) {
+  std::unique_lock<std::mutex> lock(mutex_);
 
   // find first matching and active op
   auto it = pending_ops_.begin();
   for (; it != pending_ops_.end(); ++it) {
-    if (it->left == name && (it->info.op_type == op_type
-                       || (it->info.op_type == kOpGetLock && op_type == kOpGet))
-                       && it->info.active)
+    if (it->left == name.string() &&
+        (it->info.op_type == op_type ||
+            (it->info.op_type == OpType::kGetLock && op_type == OpType::kGet)) && it->info.active) {
       break;
+    }
   }
   if (it == pending_ops_.end()) {
-    LOG(kWarning) << "OnOpResult - Unrecognised result for op '"
-                  << kOpName[op_type] << "' and chunk " << Base32Substr(name)
-                  << " received. (" << result << ")";
+    LOG(kWarning) << "OnOpResult - Unrecognised result for op '" << op_type << "' and chunk "
+                  << Base32Substr(name) << " received. (" << result << ")";
 //    if (it == pending_ops_.end())
 //      LOG(kWarning) << "it == pending_ops_.end()";
 //    if (it->info.op_type != op_type)
@@ -419,40 +416,39 @@ void RemoteChunkStore::OnOpResult(const OperationType& op_type,
     return;
   }
 
-//   LOG(kInfo) << "OnOpResult - Got result for op '" << kOpName[op_type]
-//              << "' and chunk " << Base32Substr(name) << " - ID "
-//              << it->right;
+//  LOG(kInfo) << "OnOpResult - Got result for op '" << op_type << "' and chunk "
+//             << Base32Substr(name) << " - ID " << it->right;
 
   // statistics
   if (result == kSuccess) {
-    ++op_success_count_[op_type];
+    ++op_success_count_[static_cast<int>(op_type)];
     switch (op_type) {
-      case kOpGet:
-      case kOpStore:
-        op_size_[op_type] += chunk_store_->Size(name);
+      case OpType::kGet:
+      case OpType::kStore:
+        op_size_[static_cast<int>(op_type)] += chunk_store_->Size(name);
         break;
-      case kOpModify:
-        op_size_[op_type] += it->info.content.size();
+      case OpType::kModify:
+        op_size_[static_cast<int>(op_type)] += it->info.content.size();
         break;
       default:
         break;
     }
     failed_gets_.erase(name);  // [sic] any successful op, not just get
-    if (op_type == kOpGet)
+    if (op_type == OpType::kGet)
       waiting_gets_.insert(name);
   } else if (result == kChunkNotModified) {
-    LOG(kInfo) << "OnOpResult -GetAndLock done, local version of "
-                << Base32Substr(name) << "is up to date";
+    LOG(kInfo) << "OnOpResult -GetAndLock done, local version of " << Base32Substr(name)
+               << "is up to date";
     not_modified_gets_.insert(name);
   } else {
-    LOG(kError) << "OnOpResult - Failed to " << kOpName[op_type] << " "
-                << Base32Substr(name) << " (" << result << ")";
-    if (op_type == kOpGet)
-      failed_gets_[name] = bptime::microsec_clock::universal_time();
+    LOG(kError) << "OnOpResult - Failed to " << op_type << " " << Base32Substr(name) << " ("
+                << result << ")";
+    if (op_type == OpType::kGet)
+      failed_gets_[name] = std::chrono::system_clock::now();
     failed_ops_.insert(std::make_pair(name, op_type));
   }
 
-  if (op_type == kOpStore) {
+  if (op_type == OpType::kStore) {
     // don't keep non-cacheable chunks locally
     LOG(kInfo) << "OnOpResult - Store done, deleting " << Base32Substr(name);
     if (chunk_action_authority_->Cacheable(name))
@@ -476,8 +472,8 @@ void RemoteChunkStore::OnOpResult(const OperationType& op_type,
     lock.lock();
   }
 
-  if (op_type != kOpGet)
-    ProcessPendingOps(&lock);
+  if (op_type != OpType::kGet)
+    ProcessPendingOps(lock);
 }
 
 RemoteChunkStore::WaitResult RemoteChunkStore::WaitForConflictingOps(
@@ -486,35 +482,32 @@ RemoteChunkStore::WaitResult RemoteChunkStore::WaitForConflictingOps(
     const uint32_t& transaction_id,
     std::unique_lock<std::mutex>& lock) {
   if (transaction_id == 0)  // our op is redundant
-    return kWaitCancelled;
+    return WaitResult::kCancelled;
 
   // wait until our operation is the next one, or has been cancelled
 
   for (;;) {
     // does our op still exist?
     if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
-      LOG(kWarning) << "WaitForConflictingOps - Operation to "
-                    << kOpName[op_type] << " " << Base32Substr(name)
-                    << " with transaction ID " << transaction_id
+      LOG(kWarning) << "WaitForConflictingOps - Operation to " << op_type << " "
+                    << Base32Substr(name) << " with transaction ID " << transaction_id
                     << " was cancelled.";
-      return kWaitCancelled;
+      return WaitResult::kCancelled;
     }
 
     // is our op the next one with this name?
-    auto it = pending_ops_.left.find(name);
-    if (it != pending_ops_.left.end() &&
-        pending_ops_.project_right(it)->first == transaction_id)
-      return kWaitSuccess;
+    auto it = pending_ops_.left.find(name.string());
+    if (it != pending_ops_.left.end() && pending_ops_.project_right(it)->first == transaction_id)
+      return WaitResult::kSuccess;
 
-    if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
-      LOG(kError) << "WaitForConflictingOps - Timed out trying to "
-                  << kOpName[op_type] << " " << Base32Substr(name) << " with "
-                  << pending_ops_.left.count(name)
+    if (!cond_var_.wait_for(lock, operation_wait_timeout_)) {
+      LOG(kError) << "WaitForConflictingOps - Timed out trying to " << op_type << " "
+                  << Base32Substr(name) << " with " << pending_ops_.left.count(name.string())
                   << " pending operations. - ID " << transaction_id;
       pending_ops_.right.erase(transaction_id);
       cond_var_.notify_all();
       failed_ops_.insert(std::make_pair(name, op_type));
-      return kWaitTimeout;
+      return WaitResult::kTimeout;
     }
   }
 }
@@ -523,10 +516,10 @@ bool RemoteChunkStore::WaitForGetOps(const ChunkId& name,
                                      const uint32_t& transaction_id,
                                      std::unique_lock<std::mutex>& lock) {
   while (pending_ops_.right.find(transaction_id) != pending_ops_.right.end()) {
-    if (!cond_var_.timed_wait(*lock, operation_wait_timeout_)) {
-      LOG(kError) << "WaitForGetOps - Timed out for " << Base32Substr(name)
-                  << " with " << pending_ops_.left.count(name)
-                  << " pending operations. - ID " << transaction_id;
+    if (!cond_var_.wait_for(lock, operation_wait_timeout_)) {
+      LOG(kError) << "WaitForGetOps - Timed out for " << Base32Substr(name) << " with "
+                  << pending_ops_.left.count(name.string()) << " pending operations.  ID "
+                  << transaction_id;
       pending_ops_.right.erase(transaction_id);
       cond_var_.notify_all();
       // failed_ops_.insert(std::make_pair(name, kOpGet));
@@ -539,49 +532,46 @@ bool RemoteChunkStore::WaitForGetOps(const ChunkId& name,
 uint32_t RemoteChunkStore::EnqueueOp(const ChunkId& name,
                                      const OperationData& op_data,
                                      std::unique_lock<std::mutex>& lock) {
-  ++op_count_[op_data.op_type];
+  ++op_count_[static_cast<int>(op_data.op_type)];
 
   // Are we able to cancel a previous op for this chunk?
-  auto it = pending_ops_.left.upper_bound(name);
-  if (pending_ops_.left.lower_bound(name) != it) {
+  auto it = pending_ops_.left.upper_bound(name.string());
+  if (pending_ops_.left.lower_bound(name.string()) != it) {
     --it;
-//     LOG(kInfo) << "EnqueueOp - Op '" << kOpName[op_data.op_type]
-//                << "', found prev '" << kOpName[it->info.op_type]
+//     LOG(kInfo) << "EnqueueOp - Op '" << op_data.op_type << "', found prev '" << it->info.op_type
 //                << "', chunk " << Base32Substr(name) << ", "
 //                << (it->info.active ? "active" : "inactive");
     if (!it->info.active) {
       bool cancel_prev(false), cancel_curr(false);
-      if (op_data.op_type == kOpModify &&
-          it->info.op_type == kOpModify &&
+      if (op_data.op_type == OpType::kModify &&
+          it->info.op_type == OpType::kModify &&
           chunk_action_authority_->ModifyReplaces(name)) {
         cancel_prev = true;
-      } else if (op_data.op_type == kOpDelete &&
-                 (it->info.op_type == kOpModify ||
-                  it->info.op_type == kOpStore)) {
+      } else if (op_data.op_type == OpType::kDelete &&
+                 (it->info.op_type == OpType::kModify ||
+                  it->info.op_type == OpType::kStore)) {
         // NOTE has potential side effects (multiple stores, unauth. delete)
         cancel_prev = true;
         cancel_curr= true;
       }
 
       if (cancel_prev) {
-        LOG(kInfo) << "EnqueueOp - Cancel previous '"
-                   << kOpName[it->info.op_type] << "' due to '"
-                   << kOpName[op_data.op_type] << "' for "
-                   << Base32Substr(name);
+        LOG(kInfo) << "EnqueueOp - Cancel previous '" << it->info.op_type << "' due to '"
+                   << op_data.op_type << "' for " << Base32Substr(name);
         OpFunctor callback(it->info.callback);
-        OperationType prev_op_type(it->info.op_type);
-        ++op_skip_count_[prev_op_type];
+        OpType prev_op_type(it->info.op_type);
+        ++op_skip_count_[static_cast<int>(prev_op_type)];
         pending_ops_.left.erase(it);
         cond_var_.notify_all();
-        if (prev_op_type == kOpModify && callback) {
+        if (prev_op_type == OpType::kModify && callback) {
           // run callback, because Modify doesn't block
-          lock->unlock();
+          lock.unlock();
           callback(true);
-          lock->lock();
+          lock.lock();
         }
       }
       if (cancel_curr) {
-        ++op_skip_count_[op_data.op_type];
+        ++op_skip_count_[static_cast<int>(op_data.op_type)];
         return 0;
       }
     }
@@ -591,7 +581,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const ChunkId& name,
   do {
     id = RandomUint32();
   } while (id == 0 || pending_ops_.right.find(id) != pending_ops_.right.end());
-  pending_ops_.push_back(OperationBimap::value_type(name, id, op_data));
+  pending_ops_.push_back(OperationBimap::value_type(name.string(), id, op_data));
 //   LOG(kInfo) << "EnqueueOp - Enqueueing op '" << kOpName[op_data.op_type]
 //              << "' for " << Base32Substr(name) << " with ID " << id;
   return id;
@@ -602,7 +592,7 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
 //              << max_active_ops_ << " ops active.";
   {
     // remove previously failed gets that can now be retried again
-    bptime::ptime now(bptime::microsec_clock::universal_time());
+    auto now = std::chrono::system_clock::now();
     auto it = failed_gets_.begin();
     while (it != failed_gets_.end()) {
       if (it->second + kGetRetryTimeout < now)
@@ -612,82 +602,76 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
     }
   }
 
-  std::set<std::string> processed_gets_;
+  std::set<ChunkId> processed_gets;
   while (active_ops_count_ < max_active_ops_) {
-    std::string name;
     OperationData op_data;
-    {
-      std::set<std::string> active_ops_;
-      auto it = pending_ops_.begin();  // always (re-)start from beginning!
-      while (it != pending_ops_.end()) {
-        if (it->info.active || !it->info.ready) {
-          active_ops_.insert(it->left);
-        } else if (active_ops_.find(it->left) == active_ops_.end() &&
-                   ((it->info.op_type != kOpGet && it->info.op_type != kOpGetLock) ||
-                    processed_gets_.find(it->left) == processed_gets_.end())) {
-          break;
-        }
-        ++it;
+    std::set<ChunkId> active_ops;
+    auto it = pending_ops_.begin();  // always (re-)start from beginning!
+    while (it != pending_ops_.end()) {
+      if (it->info.active || !it->info.ready) {
+        active_ops.insert(ChunkId(it->left));
+      } else if (active_ops.find(ChunkId(it->left)) == active_ops.end() &&
+                  ((it->info.op_type != OpType::kGet && it->info.op_type != OpType::kGetLock) ||
+                  processed_gets.find(ChunkId(it->left)) == processed_gets.end())) {
+        break;
       }
+      ++it;
+    }
 
-      if (it == pending_ops_.end()) {
+    if (it == pending_ops_.end()) {
 //         if (!pending_ops_.empty())
 //           LOG(kInfo) << "ProcessPendingOps - " << pending_ops_.size()
 //                      << " ops active or waiting for dependencies...";
-        return;  // no op found that an currently be processed
-      }
-
-      name = it->left;
-      op_data = it->info;
-
-      if (op_data.op_type == kOpGet || op_data.op_type == kOpGetLock) {
-        if (chunk_store_->Has(name)) {
-          LOG(kInfo) << "ProcessPendingOps - Already have chunk "
-                     << Base32Substr(name) << " - ID " << it->right;
-          waiting_gets_.insert(name);
-          pending_ops_.erase(it);
-          cond_var_.notify_all();
-          return;
-        } else if (failed_gets_.find(name) != failed_gets_.end()) {
-          LOG(kWarning) << "ProcessPendingOps - Retrieving "
-                        << Base32Substr(name)
-                        << " failed previously, not trying again. - ID "
-                        << it->right;
-          pending_ops_.erase(it);
-          cond_var_.notify_all();
-          return;
-        } else {
-          processed_gets_.insert(name);
-        }
-      }
-
-//       LOG(kInfo) << "ProcessPendingOps - About to "
-//                  << kOpName[op_data.op_type]
-//                  << " chunk " << Base32Substr(name) << " - ID " << it->right;
-
-      it->info.active = true;
+      return;  // no op found that an currently be processed
     }
 
+    ChunkId name(it->left);
+    op_data = it->info;
+
+    if (op_data.op_type == OpType::kGet || op_data.op_type == OpType::kGetLock) {
+      if (chunk_store_->Has(name)) {
+        LOG(kInfo) << "ProcessPendingOps - Already have chunk " << Base32Substr(name) << " - ID "
+                   << it->right;
+        waiting_gets_.insert(name);
+        pending_ops_.erase(it);
+        cond_var_.notify_all();
+        return;
+      } else if (failed_gets_.find(name) != failed_gets_.end()) {
+        LOG(kWarning) << "ProcessPendingOps - Retrieving " << Base32Substr(name)
+                      << " failed previously, not trying again. - ID " << it->right;
+        pending_ops_.erase(it);
+        cond_var_.notify_all();
+        return;
+      } else {
+        processed_gets.insert(name);
+      }
+    }
+
+//       LOG(kInfo) << "ProcessPendingOps - About to " << op_data.op_type
+//                  << " chunk " << Base32Substr(name) << " - ID " << it->right;
+
+    it->info.active = true;
+
     ++active_ops_count_;
-    lock->unlock();
+    lock.unlock();
     switch (op_data.op_type) {
-      case kOpGet:
+      case OpType::kGet:
         chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, false);
         break;
-      case kOpGetLock:
+      case OpType::kGetLock:
         chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, true);
         break;
-      case kOpStore:
+      case OpType::kStore:
         chunk_manager_->StoreChunk(name, op_data.keys);
         break;
-      case kOpModify:
+      case OpType::kModify:
         chunk_manager_->ModifyChunk(name, op_data.content, op_data.keys);
         break;
-      case kOpDelete:
+      case OpType::kDelete:
         chunk_manager_->DeleteChunk(name, op_data.keys);
         break;
     }
-    lock->lock();
+    lock.lock();
   }
 }
 
@@ -766,12 +750,11 @@ int Deserialize(std::stringstream* input_stream,
 
 */
 
-  std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
-    const fs::path& buffered_chunk_store_path,
-    const fs::path& local_chunk_manager_path,
-    const fs::path& chunk_lock_path,
-    boost::asio::io_service& asio_service,  // NOLINT (Dan)
-    const bptime::time_duration& millisecs) {
+std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(const fs::path& buffered_chunk_store_path,
+                                                        const fs::path& local_chunk_manager_path,
+                                                        const fs::path& chunk_lock_path,
+                                                        boost::asio::io_service& asio_service,  // NOLINT (Dan)
+                                                        const bptime::time_duration& delay) {
   std::shared_ptr<BufferedChunkStore> buffered_chunk_store(
       new BufferedChunkStore(asio_service));
   if (!buffered_chunk_store->Init(buffered_chunk_store_path)) {
@@ -787,7 +770,7 @@ int Deserialize(std::stringstream* input_stream,
       new LocalChunkManager(buffered_chunk_store,
                             local_chunk_manager_path,
                             chunk_lock_path,
-                            millisecs));
+                            delay));
 
   return std::shared_ptr<RemoteChunkStore>(
       new RemoteChunkStore(buffered_chunk_store,

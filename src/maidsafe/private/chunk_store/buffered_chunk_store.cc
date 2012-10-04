@@ -711,7 +711,7 @@ void BufferedChunkStore::DoMakeChunkPermanent(const ChunkId& name) {
 }
 
 void BufferedChunkStore::RemoveDeletionMarks(const ChunkId& name) {
-  removable_chunks_.remove_if([&name](const ChunkId& id) { return name == id; });
+  removable_chunks_.remove_if([&name](const ChunkId& id) { return name == id; });  // NOLINT (Fraser)
 }
 
 bool BufferedChunkStore::DeleteAllMarked() {

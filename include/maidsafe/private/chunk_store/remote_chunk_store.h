@@ -12,6 +12,7 @@
 #ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_REMOTE_CHUNK_STORE_H_
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_REMOTE_CHUNK_STORE_H_
 
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <list>
@@ -30,6 +31,8 @@
 #include "boost/signals2/signal.hpp"
 
 #include "maidsafe/common/rsa.h"
+
+#include "maidsafe/private/chunk_actions/chunk_id.h"
 
 
 namespace bptime = boost::posix_time;
@@ -100,7 +103,7 @@ class RemoteChunkStore {
    * the relation index reflects the sequence of adding operations, and the info
    * is additional data of the operation.
    */
-  typedef boost::bimaps::bimap<boost::bimaps::multiset_of<ChunkId>,
+  typedef boost::bimaps::bimap<boost::bimaps::multiset_of<std::string>,
                                boost::bimaps::set_of<uint32_t>,
                                boost::bimaps::list_of_relation,
                                boost::bimaps::with_info<OperationData>> OperationBimap;
@@ -163,11 +166,11 @@ class RemoteChunkStore {
   }
 
   /// Sets the time to wait in WaitForCompletion before failing.
-  void SetCompletionWaitTimeout(const boost::posix_time::time_duration& value) {
+  void SetCompletionWaitTimeout(const std::chrono::duration<int>& value) {
     completion_wait_timeout_ = value;
   }
   /// Sets the time to wait in WaitForConflictingOps before failing.
-  void SetOperationWaitTimeout(const boost::posix_time::time_duration& value) {
+  void SetOperationWaitTimeout(const std::chrono::duration<int>& value) {
     operation_wait_timeout_ = value;
   }
 
@@ -206,17 +209,17 @@ class RemoteChunkStore {
   std::shared_ptr<BufferedChunkStore> chunk_store_;
   std::shared_ptr<ChunkManager> chunk_manager_;
   std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority_;
-  bs2::connection cm_get_conn_, cm_store_conn_, cm_modify_conn_, cm_delete_conn_;
+  bs2::connection chunk_manager_get_connection_, chunk_manager_store_connection_;
+  bs2::connection chunk_manager_modify_connection_, chunk_manager_delete_connection_;
   std::mutex mutex_;
   std::condition_variable cond_var_;
   int max_active_ops_, active_ops_count_;
-  boost::posix_time::time_duration completion_wait_timeout_;
-  boost::posix_time::time_duration operation_wait_timeout_;
+  std::chrono::duration<int> completion_wait_timeout_, operation_wait_timeout_;
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
   std::multiset<ChunkId> waiting_gets_;
   std::set<ChunkId> not_modified_gets_;
-  std::map<ChunkId, bptime::ptime> failed_gets_;
+  std::map<ChunkId, std::chrono::time_point<std::chrono::system_clock>> failed_gets_;
   uintmax_t op_count_[5], op_success_count_[5], op_skip_count_[5], op_size_[5];
 };
 
@@ -225,7 +228,7 @@ std::shared_ptr<RemoteChunkStore> CreateLocalChunkStore(
     const fs::path& local_chunk_manager_path,
     const fs::path& chunk_lock_path,
     boost::asio::io_service& asio_service,  // NOLINT (Dan)
-    const bptime::time_duration& millisecs = bptime::milliseconds(0));
+    const bptime::time_duration& delay = bptime::milliseconds(0));
 
 }  // namespace chunk_store
 

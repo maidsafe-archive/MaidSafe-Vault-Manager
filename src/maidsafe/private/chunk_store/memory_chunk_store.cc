@@ -35,8 +35,7 @@ std::string MemoryChunkStore::Get(const ChunkId& name) const {
   return (*it).second.second;
 }
 
-bool MemoryChunkStore::Get(const ChunkId& name,
-                           const fs::path& sink_file_name) const {
+bool MemoryChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) const {
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
@@ -46,13 +45,7 @@ bool MemoryChunkStore::Get(const ChunkId& name,
   return WriteFile(sink_file_name, (*it).second.second);
 }
 
-bool MemoryChunkStore::Store(const ChunkId& name,
-                             const std::string& content) {
-  if (name.empty()) {
-    LOG(kError) << "Store - Empty name passed.";
-    return false;
-  }
-
+bool MemoryChunkStore::Store(const ChunkId& name, const std::string& content) {
   auto it(chunks_.lower_bound(name));
   if (it != chunks_.end() && (*it).first == name) {
     ++(*it).second.first;
@@ -68,8 +61,8 @@ bool MemoryChunkStore::Store(const ChunkId& name,
   }
 
   if (!Vacant(chunk_size)) {
-    LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size "
-                << chunk_size << " > vacant space";
+    LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size " << chunk_size
+                << " > vacant space";
     return false;
   }
 
@@ -88,18 +81,13 @@ bool MemoryChunkStore::Store(const ChunkId& name,
 bool MemoryChunkStore::Store(const ChunkId& name,
                              const fs::path& source_file_name,
                              bool delete_source_file) {
-  if (name.empty()) {
-    LOG(kError) << "Store - Empty name passed.";
-    return false;
-  }
-
   boost::system::error_code ec;
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     uintmax_t chunk_size(fs::file_size(source_file_name, ec));
     if (ec) {
-      LOG(kError) << "Store - Failed to calculate size for chunk "
-                  << Base32Substr(name) << ": " << ec.message();
+      LOG(kError) << "Store - Failed to calculate size for chunk " << Base32Substr(name) << ": "
+                  << ec.message();
       return false;
     }
 
@@ -109,22 +97,20 @@ bool MemoryChunkStore::Store(const ChunkId& name,
     }
 
     if (!Vacant(chunk_size)) {
-      LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size "
-                  << chunk_size << " > vacant space.";
+      LOG(kError) << "Store - Chunk " << Base32Substr(name) << " has size " << chunk_size
+                  << " > vacant space.";
       return false;
     }
 
     std::string content;
     if (!ReadFile(source_file_name, &content)) {
-      LOG(kError) << "Store - Failed to read file for chunk "
-                  << Base32Substr(name);
+      LOG(kError) << "Store - Failed to read file for chunk " << Base32Substr(name);
       return false;
     }
 
     if (content.size() != chunk_size) {
-      LOG(kError) << "Store - File content size " << content.size()
-                  << " != chunk_size " << chunk_size << " for chunk "
-                  << Base32Substr(name);
+      LOG(kError) << "Store - File content size " << content.size() << " != chunk_size "
+                  << chunk_size << " for chunk " << Base32Substr(name);
       return false;
     }
 
@@ -151,11 +137,6 @@ bool MemoryChunkStore::Store(const ChunkId& name,
 }
 
 bool MemoryChunkStore::Delete(const ChunkId& name) {
-  if (name.empty()) {
-    LOG(kError) << "Delete - Empty name passed.";
-    return false;
-  }
-
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
 //     LOG(kInfo) << "Delete - Chunk " << Base32Substr(name)
@@ -175,13 +156,7 @@ bool MemoryChunkStore::Delete(const ChunkId& name) {
   return true;
 }
 
-bool MemoryChunkStore::Modify(const ChunkId& name,
-                              const std::string& content) {
-  if (name.empty()) {
-    LOG(kError) << "Modify - Empty name passed.";
-    return false;
-  }
-
+bool MemoryChunkStore::Modify(const ChunkId& name, const std::string& content) {
   auto it = chunks_.find(name);
   if (it == chunks_.end())
     return false;
@@ -190,12 +165,10 @@ bool MemoryChunkStore::Modify(const ChunkId& name,
 
   uintmax_t content_size_difference;
   bool increase_size(false);
-  if (!AssessSpaceRequirement(current_content.size(),
-                              content.size(),
-                              &increase_size,
+  if (!AssessSpaceRequirement(current_content.size(), content.size(), &increase_size,
                               &content_size_difference)) {
-    LOG(kError) << "Size differential unacceptable - increase_size: "
-                << increase_size << ", name: " << Base32Substr(name);
+    LOG(kError) << "Size differential unacceptable - increase_size: " << increase_size << ", name: "
+                << Base32Substr(name);
     return false;
   }
 
@@ -215,8 +188,7 @@ bool MemoryChunkStore::Modify(const ChunkId& name,
 
   std::string content;
   if (!ReadFile(source_file_name, &content)) {
-    LOG(kError) << "Error reading file: " << Base32Substr(name)
-                << ", path: " << source_file_name;
+    LOG(kError) << "Error reading file: " << Base32Substr(name) << ", path: " << source_file_name;
     return false;
   }
 
@@ -238,8 +210,7 @@ bool MemoryChunkStore::Has(const ChunkId& name) const {
   return found;
 }
 
-bool MemoryChunkStore::MoveTo(const ChunkId& name,
-                              ChunkStore* sink_chunk_store) {
+bool MemoryChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
   if (!sink_chunk_store) {
     LOG(kError) << "MoveTo - NULL sink passed for chunk " << Base32Substr(name);
     return false;
@@ -252,8 +223,7 @@ bool MemoryChunkStore::MoveTo(const ChunkId& name,
   }
 
   if (!sink_chunk_store->Store(name, (*it).second.second)) {
-    LOG(kError) << "MoveTo - Failed to store chunk " << Base32Substr(name)
-                << " in sink";
+    LOG(kError) << "MoveTo - Failed to store chunk " << Base32Substr(name) << " in sink";
     return false;
   }
 
@@ -262,8 +232,8 @@ bool MemoryChunkStore::MoveTo(const ChunkId& name,
     chunks_.erase(it);
     LOG(kInfo) << "MoveTo - Moved chunk " << Base32Substr(name);
   } else {
-    LOG(kInfo) << "MoveTo - Decreased count of chunk " << Base32Substr(name)
-               << " to " << (*it).second.first << " via move";
+    LOG(kInfo) << "MoveTo - Decreased count of chunk " << Base32Substr(name) << " to "
+               << (*it).second.first << " via move";
   }
 
   return true;

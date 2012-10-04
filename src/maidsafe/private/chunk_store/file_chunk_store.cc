@@ -585,7 +585,7 @@ std::vector<ChunkData> FileChunkStore::GetChunks() const {
         }
         ChunkId name(DecodeFromBase32(chunk_name));
         uintmax_t chunk_size = Size(name);
-        ChunkData chunk_data(name.string(), chunk_size);
+        ChunkData chunk_data(name, chunk_size);
         chunk_list.push_back(chunk_data);
       }
     }

@@ -31,6 +31,7 @@
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
+
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -46,14 +47,10 @@ class MemoryChunkStore : public ChunkStore {
   std::string Get(const ChunkId& name) const;
   bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
   bool Store(const ChunkId& name, const std::string& content);
-  bool Store(const ChunkId& name,
-             const fs::path& source_file_name,
-             bool delete_source_file);
+  bool Store(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Delete(const ChunkId& name);
   bool Modify(const ChunkId& name, const std::string& content);
-  bool Modify(const ChunkId& name,
-              const fs::path& source_file_name,
-              bool delete_source_file);
+  bool Modify(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Has(const ChunkId& name) const;
   bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
   uintmax_t Size(const ChunkId& name) const;
@@ -68,7 +65,7 @@ class MemoryChunkStore : public ChunkStore {
   typedef std::pair<uintmax_t, std::string> ChunkEntry;
   MemoryChunkStore(const MemoryChunkStore&);
   MemoryChunkStore& operator=(const MemoryChunkStore&);
-  std::map<std::string, ChunkEntry> chunks_;
+  std::map<ChunkId, ChunkEntry> chunks_;
 };
 
 }  //  namespace chunk_store

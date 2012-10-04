@@ -17,6 +17,8 @@
 #ifndef MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_ID_H_
 #define MAIDSAFE_PRIVATE_CHUNK_ACTIONS_CHUNK_ID_H_
 
+#include <string>
+
 #include "maidsafe/common/bounded_string.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/node_id.h"

@@ -13,13 +13,14 @@
 #define MAIDSAFE_PRIVATE_CHUNK_STORE_THREADSAFE_CHUNK_STORE_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/thread/mutex.hpp"
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
+
 
 namespace fs = boost::filesystem;
 
@@ -38,14 +39,10 @@ class ThreadsafeChunkStore : public ChunkStore {
   std::string Get(const ChunkId& name) const;
   bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
   bool Store(const ChunkId& name, const std::string& content);
-  bool Store(const ChunkId& name,
-             const fs::path& source_file_name,
-             bool delete_source_file);
+  bool Store(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Delete(const ChunkId& name);
   bool Modify(const ChunkId& name, const std::string& content);
-  bool Modify(const ChunkId& name,
-              const fs::path& source_file_name,
-              bool delete_source_file);
+  bool Modify(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Has(const ChunkId& name) const;
   bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
   uintmax_t Size(const ChunkId& name) const;
@@ -64,7 +61,7 @@ class ThreadsafeChunkStore : public ChunkStore {
   ThreadsafeChunkStore& operator=(const ThreadsafeChunkStore&);
 
   std::shared_ptr<ChunkStore> chunk_store_;
-  mutable boost::mutex mutex_;
+  mutable std::mutex mutex_;
 };
 
 }  // namespace chunk_store

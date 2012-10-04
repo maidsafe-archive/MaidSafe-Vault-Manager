@@ -109,18 +109,19 @@ int ProcessStore<ChunkType::kSignaturePacket>(
 
   SignedData chunk;
   if (!ParseProtobuf<SignedData>(content, &chunk)) {
-    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data doesn't parse as a SignedData";
+    LOG(kError) << "Failed to store " << Base32Substr(name)
+                << ": data doesn't parse as a SignedData";
     return kInvalidSignedData;
   }
 
   try {
     asymm::PublicKey decoded_public_key(asymm::DecodeKey(asymm::EncodedPublicKey(chunk.data())));
     asymm::PublicKey validating_key;
-                                                                                                  static_cast<void>(public_key);
-                                                                                                  //if (asymm::ValidateKey(public_key))
-                                                                                                  //  validating_key = public_key;
-                                                                                                  //else
-                                                                                                  //  validating_key = decoded_public_key;
+
+    if (asymm::MatchingKeys(asymm::PublicKey(), public_key))
+      validating_key = public_key;
+    else
+      validating_key = decoded_public_key;
     if (!asymm::CheckSignature(asymm::PlainText(chunk.data()),
                                asymm::Signature(chunk.signature()),
                                validating_key)) {
