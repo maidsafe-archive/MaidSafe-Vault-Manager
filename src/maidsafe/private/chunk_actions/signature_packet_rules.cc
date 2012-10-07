@@ -75,15 +75,15 @@ bool IsValidChunk<ChunkType::kSignaturePacket>(
 }
 
 template <>
-std::string GetVersion<ChunkType::kSignaturePacket>(
+ChunkVersion GetVersion<ChunkType::kSignaturePacket>(
     const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
-  return name.string().substr(0, crypto::Tiger::DIGESTSIZE);
+  return ChunkVersion(name.string().substr(0, crypto::Tiger::DIGESTSIZE));
 }
 
 template <>
 int ProcessGet<ChunkType::kSignaturePacket>(const ChunkId& name,
-                                            const std::string& /*version*/,
+                                            const ChunkVersion& /*version*/,
                                             const asymm::PublicKey& /*public_key*/,
                                             std::string* existing_content,
                                             std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
@@ -219,7 +219,7 @@ int ProcessModify<ChunkType::kSignaturePacket>(
 
 template <>
 int ProcessHas<ChunkType::kSignaturePacket>(const ChunkId& name,
-                                            const std::string& /*version*/,
+                                            const ChunkVersion& /*version*/,
                                             const asymm::PublicKey& /*public_key*/,
                                             std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (!chunk_store->Has(name)) {

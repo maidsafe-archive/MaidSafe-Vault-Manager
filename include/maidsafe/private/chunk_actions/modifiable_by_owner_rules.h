@@ -62,7 +62,7 @@ bool IsValidChunk<ChunkType::kModifiableByOwner>(
 
 // Returns Tiger hash of chunk content.
 template <>
-std::string GetVersion<ChunkType::kModifiableByOwner>(
+ChunkVersion GetVersion<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -73,7 +73,7 @@ std::string GetVersion<ChunkType::kModifiableByOwner>(
 //     identical to this
 template <>
 int ProcessGet<ChunkType::kModifiableByOwner>(const ChunkId& name,
-                                              const std::string& version,
+                                              const ChunkVersion& version,
                                               const asymm::PublicKey& public_key,
                                               std::string* existing_content,
                                               std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -133,7 +133,7 @@ int ProcessModify<ChunkType::kModifiableByOwner>(
 //     identical to this
 template <>
 int ProcessHas<ChunkType::kModifiableByOwner>(const ChunkId& name,
-                                              const std::string& version,
+                                              const ChunkVersion& version,
                                               const asymm::PublicKey& public_key,
                                               std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 

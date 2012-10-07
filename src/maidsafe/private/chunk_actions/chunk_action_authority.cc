@@ -44,7 +44,7 @@ ChunkActionAuthority::ChunkActionAuthority(std::shared_ptr<chunk_store::ChunkSto
 ChunkActionAuthority::~ChunkActionAuthority() {}
 
 std::string ChunkActionAuthority::Get(const ChunkId& name,
-                                      const std::string& version,
+                                      const ChunkVersion& version,
                                       const asymm::PublicKey& public_key) const {
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
@@ -58,7 +58,7 @@ std::string ChunkActionAuthority::Get(const ChunkId& name,
 
 bool ChunkActionAuthority::Get(const ChunkId& name,
                                const fs::path& sink_file_name,
-                               const std::string& version,
+                               const ChunkVersion& version,
                                const asymm::PublicKey& public_key) const {
   std::string existing_content;
   int result(ValidGet(name, version, public_key, &existing_content));
@@ -206,7 +206,7 @@ bool ChunkActionAuthority::Modify(const ChunkId& name,
 }
 
 bool ChunkActionAuthority::Has(const ChunkId& name,
-                               const std::string& version,
+                               const ChunkVersion& version,
                                const asymm::PublicKey& public_key) const {
   int result(ValidHas(name, version, public_key));
   if (result != kSuccess) {
@@ -302,7 +302,7 @@ bool ChunkActionAuthority::ValidChunk(const ChunkId& name) const {
   }
 }
 
-std::string ChunkActionAuthority::Version(const ChunkId& name) const {
+ChunkVersion ChunkActionAuthority::Version(const ChunkId& name) const {
   switch (GetChunkType(name)) {
     case ChunkType::kDefault:
       return detail::GetVersion<ChunkType::kDefault>(name, chunk_store_);
@@ -314,12 +314,12 @@ std::string ChunkActionAuthority::Version(const ChunkId& name) const {
       return detail::GetVersion<ChunkType::kSignaturePacket>(name, chunk_store_);
     case ChunkType::kUnknown:
     default: LOG(kError) << "Unknown type " << static_cast<int>(GetChunkType(name));
-      return "";
+      return ChunkVersion();
   }
 }
 
 int ChunkActionAuthority::ValidGet(const ChunkId& name,
-                                   const std::string& version,
+                                   const ChunkVersion& version,
                                    const asymm::PublicKey& public_key,
                                    std::string* existing_content) const {
   switch (GetChunkType(name)) {
@@ -422,7 +422,7 @@ int ChunkActionAuthority::ValidModify(const ChunkId& name,
 }
 
 int ChunkActionAuthority::ValidHas(const ChunkId& name,
-                                   const std::string& version,
+                                   const ChunkVersion& version,
                                    const asymm::PublicKey& public_key) const {
   switch (GetChunkType(name)) {
     case ChunkType::kDefault:

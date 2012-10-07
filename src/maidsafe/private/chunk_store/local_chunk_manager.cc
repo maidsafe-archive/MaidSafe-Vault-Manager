@@ -69,7 +69,7 @@ LocalChunkManager::LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_ch
 LocalChunkManager::~LocalChunkManager() {}
 
 void LocalChunkManager::GetChunk(const ChunkId& name,
-                                 const std::string & local_version,
+                                 const ChunkVersion& local_version,
                                  const asymm::Keys& keys,
                                  bool lock) {
   if (get_wait_.total_milliseconds() != 0) {
@@ -80,7 +80,7 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
     (*sig_chunk_got_)(name, kSuccess);
     return;
   }
-  if (lock && !local_version.empty() &&
+  if (lock && local_version.IsInitialised() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
     LOG(kWarning) << "GetChunk - "
                   << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
@@ -114,7 +114,7 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
     LOG(kInfo) << "Wrote lock file for " << Base32Substr(name);
   }
   content = simulation_chunk_action_authority_->Get(name,
-                                                    "",
+                                                    ChunkVersion(),
                                                     keys.public_key);
   if (content.empty()) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);

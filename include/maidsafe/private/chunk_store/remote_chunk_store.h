@@ -30,6 +30,7 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/signals2/signal.hpp"
 
+#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
@@ -42,6 +43,8 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace priv {
+
+typedef crypto::TigerHash ChunkVersion;
 
 namespace chunk_actions { class ChunkActionAuthority; }
 
@@ -91,7 +94,8 @@ class RemoteChunkStore {
     OpType op_type;
     bool active, ready;
     asymm::Keys keys;
-    std::string local_version, content;
+    ChunkVersion local_version;
+    std::string content;
     OpFunctor callback;
   };
 
@@ -117,7 +121,7 @@ class RemoteChunkStore {
   std::string Get(const ChunkId& name, const asymm::Keys& keys = asymm::Keys());
 
   int GetAndLock(const ChunkId& name,
-                 const std::string& local_version,
+                 const ChunkVersion& local_version,
                  const asymm::Keys& keys,
                  std::string* content);
 

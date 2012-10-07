@@ -22,6 +22,7 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/rsa.h"
 
@@ -44,10 +45,10 @@ namespace detail {
 template <typename T>
 bool ParseProtobuf(const std::string& serialised_data, T* protobuf_type);
 
-int GetContentAndTigerHash(const ChunkId& name,
-                           std::shared_ptr<chunk_store::ChunkStore> chunk_store,
-                           std::string* chunk_content,
-                           std::string* hash);
+void GetContentAndTigerHash(const ChunkId& name,
+                            std::shared_ptr<chunk_store::ChunkStore> chunk_store,
+                            std::string& chunk_content,
+                            crypto::TigerHash& hash);
 
 
 template <typename T>

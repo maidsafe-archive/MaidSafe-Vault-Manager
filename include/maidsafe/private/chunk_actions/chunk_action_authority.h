@@ -21,9 +21,11 @@
 #include <memory>
 #include <string>
 
-#include "boost/filesystem.hpp"
+#include "boost/filesystem/path.hpp"
 #include "boost/signals2/signal.hpp"
 
+#include "maidsafe/common/bounded_string.h"
+#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
@@ -35,6 +37,8 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace priv {
+
+typedef crypto::TigerHash ChunkVersion;
 
 namespace chunk_store { class ChunkStore; }
 
@@ -55,13 +59,13 @@ class ChunkActionAuthority {
   virtual ~ChunkActionAuthority();
 
   std::string Get(const ChunkId& name,
-                  const std::string& version,
+                  const ChunkVersion& version,
                   const asymm::PublicKey& public_key) const;
   // Retrieves a chunk's content as a file, potentially overwriting an existing file of the same
   // name.
   bool Get(const ChunkId& name,
            const fs::path& sink_file_name,
-           const std::string& version,
+           const ChunkVersion& version,
            const asymm::PublicKey& public_key) const;
   bool Store(const ChunkId& name, const std::string& content, const asymm::PublicKey& public_key);
   bool Store(const ChunkId& name,
@@ -82,7 +86,7 @@ class ChunkActionAuthority {
               const asymm::PublicKey& public_key,
               int64_t* size_difference);
   bool Has(const ChunkId& name,
-           const std::string& version,
+           const ChunkVersion& version,
            const asymm::PublicKey& public_key) const;
 
   bool ValidName(const ChunkId& name) const;
@@ -91,7 +95,7 @@ class ChunkActionAuthority {
   bool ModifyReplaces(const ChunkId& name) const;
   bool Payable(const ChunkId& name) const;
   bool ValidChunk(const ChunkId& name) const;
-  std::string Version(const ChunkId& name) const;
+  ChunkVersion Version(const ChunkId& name) const;
 
   friend class test::ChunkActionAuthorityTest;
   friend class test::ChunkActionAuthorityTest_BEH_ValidStore_Test;
@@ -104,7 +108,7 @@ class ChunkActionAuthority {
   ChunkActionAuthority(const ChunkActionAuthority&);
 
   int ValidGet(const ChunkId& name,
-               const std::string& version,
+               const ChunkVersion& version,
                const asymm::PublicKey& public_key,
                std::string* existing_content = nullptr) const;
   int ValidStore(const ChunkId& name,
@@ -119,7 +123,7 @@ class ChunkActionAuthority {
                   int64_t* size_difference,
                   std::string* new_content = nullptr) const;
   virtual int ValidHas(const ChunkId& name,
-                       const std::string& version,
+                       const ChunkVersion& version,
                        const asymm::PublicKey& public_key) const;
 
   std::shared_ptr<chunk_store::ChunkStore> chunk_store_;

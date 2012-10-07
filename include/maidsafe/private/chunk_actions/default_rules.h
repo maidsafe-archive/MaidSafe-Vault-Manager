@@ -22,6 +22,8 @@
 #include <memory>
 #include <string>
 
+#include "maidsafe/common/bounded_string.h"
+#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
@@ -31,6 +33,8 @@
 namespace maidsafe {
 
 namespace priv {
+
+typedef crypto::TigerHash ChunkVersion;
 
 namespace chunk_store { class ChunkStore; }
 
@@ -54,11 +58,11 @@ template <ChunkType chunk_type>
 bool IsValidChunk(const ChunkId& name, std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <ChunkType chunk_type>
-std::string GetVersion(const ChunkId& name, std::shared_ptr<chunk_store::ChunkStore> chunk_store);
+ChunkVersion GetVersion(const ChunkId& name, std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <ChunkType chunk_type>
 int ProcessGet(const ChunkId& name,
-               const std::string& version,
+               const ChunkVersion& version,
                const asymm::PublicKey& public_key,
                std::string* existing_content,
                std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -85,7 +89,7 @@ int ProcessModify(const ChunkId& name,
 
 template <ChunkType chunk_type>
 int ProcessHas(const ChunkId& name,
-               const std::string& version,
+               const ChunkVersion& version,
                const asymm::PublicKey& public_key,
                std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -112,8 +116,8 @@ bool IsValidChunk<ChunkType::kDefault>(const ChunkId& name,
 
 // Returns first 24 bytes of name.
 template <>
-std::string GetVersion<ChunkType::kDefault>(const ChunkId& name,
-                                            std::shared_ptr<chunk_store::ChunkStore> chunk_store);
+ChunkVersion GetVersion<ChunkType::kDefault>(const ChunkId& name,
+                                             std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Any user can Get.
 // For overall success, the following must be true:
@@ -121,7 +125,7 @@ std::string GetVersion<ChunkType::kDefault>(const ChunkId& name,
 // NB - version is not used in this function.
 template <>
 int ProcessGet<ChunkType::kDefault>(const ChunkId& name,
-                                    const std::string& version,
+                                    const ChunkVersion& version,
                                     const asymm::PublicKey& public_key,
                                     std::string* existing_content,
                                     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -164,7 +168,7 @@ int ProcessModify<ChunkType::kDefault>(const ChunkId& name,
 // NB - version is not used in this function.
 template <>
 int ProcessHas<ChunkType::kDefault>(const ChunkId& name,
-                                    const std::string& version,
+                                    const ChunkVersion& version,
                                     const asymm::PublicKey& public_key,
                                     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 

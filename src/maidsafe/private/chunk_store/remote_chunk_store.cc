@@ -187,8 +187,8 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) 
 }
 
 int RemoteChunkStore::GetAndLock(const ChunkId& name,
-                                 const std::string & local_version,
-                                 const asymm::Keys & keys,
+                                 const ChunkVersion& local_version,
+                                 const asymm::Keys& keys,
                                  std::string* content) {
   LOG(kInfo) << "GetAndLock - " << Base32Substr(name);
   if (!content) {

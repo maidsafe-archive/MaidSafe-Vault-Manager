@@ -20,6 +20,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/signals2/signal.hpp"
 
+#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
@@ -30,6 +31,8 @@ namespace bs2 = boost::signals2;
 namespace maidsafe {
 
 namespace priv {
+
+typedef crypto::TigerHash ChunkVersion;
 
 namespace chunk_store {
 
@@ -49,7 +52,7 @@ class ChunkManager {
   virtual ~ChunkManager() {}
 
   virtual void GetChunk(const ChunkId& name,
-                        const std::string& local_version,
+                        const ChunkVersion& local_version,
                         const asymm::Keys& keys,
                         bool lock) = 0;
   virtual void StoreChunk(const ChunkId& name, const asymm::Keys& keys) = 0;

@@ -62,7 +62,7 @@ bool IsValidChunk<ChunkType::kAppendableByAll>(
 
 // Returns Tiger hash of chunk content.
 template <>
-std::string GetVersion<ChunkType::kAppendableByAll>(
+ChunkVersion GetVersion<ChunkType::kAppendableByAll>(
     const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -75,7 +75,7 @@ std::string GetVersion<ChunkType::kAppendableByAll>(
 // NB - version is currently ignored for this function.
 template <>
 int ProcessGet<ChunkType::kAppendableByAll>(const ChunkId& name,
-                                            const std::string& version,
+                                            const ChunkVersion& version,
                                             const asymm::PublicKey& public_key,
                                             std::string* existing_content,
                                             std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -146,7 +146,7 @@ int ProcessModify<ChunkType::kAppendableByAll>(
 // NB - version is currently ignored for this function.
 template <>
 int ProcessHas<ChunkType::kAppendableByAll>(const ChunkId& name,
-                                            const std::string& version,
+                                            const ChunkVersion& version,
                                             const asymm::PublicKey& public_key,
                                             std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 

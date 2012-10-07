@@ -44,7 +44,7 @@ class LocalChunkManager : public ChunkManager {
   ~LocalChunkManager();
 
   void GetChunk(const ChunkId& name,
-                const std::string& local_version,
+                const ChunkVersion& local_version,
                 const asymm::Keys& keys,
                 bool lock);
   void StoreChunk(const ChunkId& name, const asymm::Keys& keys);

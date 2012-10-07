@@ -21,7 +21,6 @@
 
 #include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
-#include "maidsafe/private/chunk_actions/default_rules.h"
 
 #include "maidsafe/private/chunk_store/chunk_store.h"
 
@@ -34,28 +33,17 @@ namespace chunk_actions {
 
 namespace detail {
 
-int GetContentAndTigerHash(const ChunkId& name,
-                           std::shared_ptr<chunk_store::ChunkStore> chunk_store,
-                           std::string* chunk_content,
-                           std::string* hash) {
-  std::string content(chunk_store->Get(name));
-  if (content.empty()) {
-    LOG(kError) << "GetContentAndTigerHash - Failed to retrieve "
-                << Base32Substr(name);
-    if (chunk_content)
-      chunk_content->clear();
-    if (hash)
-      hash->clear();
-    return kFailedToFindChunk;
+void GetContentAndTigerHash(const ChunkId& name,
+                            std::shared_ptr<chunk_store::ChunkStore> chunk_store,
+                            std::string& chunk_content,
+                            crypto::TigerHash& hash) {
+  chunk_content = chunk_store->Get(name);
+  if (chunk_content.empty()) {
+    LOG(kError) << "GetContentAndTigerHash - Failed to retrieve " << Base32Substr(name);
+    hash = crypto::TigerHash();
+  } else {
+    hash = crypto::Hash<crypto::Tiger>(chunk_content);
   }
-
-  if (chunk_content)
-    *chunk_content = content;
-
-  if (hash)
-    *hash = crypto::Hash<crypto::Tiger>(content).string();
-
-  return kSuccess;
 }
 
 }  // namespace detail

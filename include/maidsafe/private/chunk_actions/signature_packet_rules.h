@@ -65,7 +65,7 @@ bool IsValidChunk<ChunkType::kSignaturePacket>(
 
 // Returns first 24 bytes of name.
 template <>
-std::string GetVersion<ChunkType::kSignaturePacket>(
+ChunkVersion GetVersion<ChunkType::kSignaturePacket>(
     const ChunkId& name,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -76,7 +76,7 @@ std::string GetVersion<ChunkType::kSignaturePacket>(
 template <>
 int ProcessGet<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& version,
+    const ChunkVersion& version,
     const asymm::PublicKey& public_key,
     std::string* existing_content,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
@@ -129,7 +129,7 @@ int ProcessModify<ChunkType::kSignaturePacket>(
 template <>
 int ProcessHas<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& version,
+    const ChunkVersion& version,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
