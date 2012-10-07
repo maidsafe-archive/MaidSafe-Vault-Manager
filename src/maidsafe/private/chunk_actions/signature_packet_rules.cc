@@ -114,14 +114,21 @@ int ProcessStore<ChunkType::kSignaturePacket>(
     return kInvalidSignedData;
   }
 
+  asymm::PublicKey decoded_public_key;
   try {
-    asymm::PublicKey decoded_public_key(asymm::DecodeKey(asymm::EncodedPublicKey(chunk.data())));
-    asymm::PublicKey validating_key;
+    decoded_public_key = asymm::DecodeKey(asymm::EncodedPublicKey(chunk.data()));
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << "Failed to store " << Base32Substr(name) << ": data not encoded public key: "
+                << e.what();
+    return kDataNotPublicKey;
+  }
 
-    if (asymm::MatchingKeys(asymm::PublicKey(), public_key))
-      validating_key = public_key;
-    else
-      validating_key = decoded_public_key;
+  assert(asymm::ValidateKey(decoded_public_key));
+  asymm::PublicKey validating_key(asymm::MatchingKeys(asymm::PublicKey(), public_key) ?
+                                  decoded_public_key : public_key);
+
+  try {
     if (!asymm::CheckSignature(asymm::PlainText(chunk.data()),
                                asymm::Signature(chunk.signature()),
                                validating_key)) {

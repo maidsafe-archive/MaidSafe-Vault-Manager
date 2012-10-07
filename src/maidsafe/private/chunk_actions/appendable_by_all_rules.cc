@@ -93,19 +93,21 @@ int ProcessGet<ChunkType::kAppendableByAll>(
     return kParseFailure;
   }
 
-  bool valid(false);
-  try {
-    valid = asymm::CheckSignature(
-                asymm::PlainText(existing_chunk.allow_others_to_append().data()),
-                asymm::Signature(existing_chunk.allow_others_to_append().signature()),
-                public_key);
-  }
-  catch(const std::exception& e) {
-    LOG(kError) << e.what();
-    return kSignatureCheckError;
+  bool owner(false);
+  if (!asymm::MatchingKeys(asymm::PublicKey(), public_key)) {
+    try {
+      owner = asymm::CheckSignature(
+                  asymm::PlainText(existing_chunk.allow_others_to_append().data()),
+                  asymm::Signature(existing_chunk.allow_others_to_append().signature()),
+                  public_key);
+    }
+    catch(const std::exception& e) {
+      LOG(kError) << e.what();
+      return kSignatureCheckError;
+    }
   }
 
-  if (valid) {
+  if (owner) {
     // Owner - return all data
     *existing_content = all_existing_content;
     // and the content in the chunk shall be cleaned up later on via base class

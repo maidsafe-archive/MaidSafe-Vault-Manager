@@ -43,7 +43,7 @@ asymm::Keys CreateMaidsafeIdentity() {
   keys.validation_token =
       asymm::Sign(asymm::PlainText(encoded_public_key), keys.private_key).string();
   keys.identity =
-      asymm::Identity(crypto::Hash<crypto::SHA512>(encoded_public_key + keys.validation_token));
+      Identity(crypto::Hash<crypto::SHA512>(encoded_public_key + keys.validation_token));
   return keys;
 }
 
