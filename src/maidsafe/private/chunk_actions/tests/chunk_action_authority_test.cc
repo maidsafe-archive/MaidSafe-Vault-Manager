@@ -495,7 +495,7 @@ TEST_F(ChunkActionAuthorityTest, BEH_ValidModify) {
   detail::ParseProtobuf<AppendableByAll>(response_content, &appendability_response_chunk);
   std::string response_appendability(1, static_cast<char>(ChunkType::kModifiableByOwner));
   EXPECT_EQ(response_appendability, appendability_response_chunk.allow_others_to_append().data());
-  std::string identity_only(ComposeModifyAppendableByAllPacket( false, key_,
+  std::string identity_only(ComposeModifyAppendableByAllPacket(false, key_,
       static_cast<char>(ChunkType::kModifiableByOwner), true, key_, identity));
   EXPECT_EQ(kSuccess,
             chunk_action_authority_->ValidModify(appendable_by_all_name_,

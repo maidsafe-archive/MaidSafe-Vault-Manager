@@ -19,10 +19,8 @@ namespace chunk_store {
 
 namespace test {
 
-MockChunkManager::MockChunkManager(
-    std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store)
-    : ChunkManager(chunk_store),
-      thread_group_() {}
+MockChunkManager::MockChunkManager(std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store)
+    : ChunkManager(chunk_store), thread_group_() {}
 
 MockChunkManager::~MockChunkManager() {
   thread_group_.join_all();

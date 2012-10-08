@@ -52,7 +52,7 @@ LocalChunkManager::LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_ch
   } else {
     local_version_directory = simulation_directory;
   }
-  lock_directory_ =  lock_directory;
+  lock_directory_ = lock_directory;
   boost::system::error_code error_code;
   if (!fs::exists(lock_directory_, error_code))
     fs::create_directory(lock_directory_, error_code);
@@ -82,11 +82,11 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
   }
   if (lock && local_version.IsInitialised() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-    LOG(kWarning) << "GetChunk - "
-                  << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
-                  << " - Won't retrieve " << Base32Substr(name)
-                  << " because local and remote versions "
-                  << HexSubstr(local_version) << " match.";
+    //LOG(kWarning) << "GetChunk - "
+    //              << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
+    //              << " - Won't retrieve " << Base32Substr(name)
+    //              << " because local and remote versions "
+    //              << HexSubstr(local_version) << " match.";
     (*sig_chunk_got_)(name, kChunkNotModified);
     return;
   }
@@ -201,7 +201,7 @@ void LocalChunkManager::ModifyChunk(const ChunkId& name,
         existing_lock.substr(existing_lock.find_first_of(' ') + 1));
     if (lock_transaction_id == expected_transaction_id) {
       fs::remove(lock_file, error_code);
-    LOG(kInfo) << "Removed lock file for " << Base32Substr(name);
+      LOG(kInfo) << "Removed lock file for " << Base32Substr(name);
     }
   }
 

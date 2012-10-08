@@ -23,10 +23,9 @@ namespace chunk_store {
 namespace test {
 
 template <>
-void ChunkStoreTest<MemoryChunkStore>::InitChunkStore(
-    std::shared_ptr<ChunkStore> *chunk_store,
-    const fs::path&,
-    boost::asio::io_service&) {
+void ChunkStoreTest<MemoryChunkStore>::InitChunkStore(std::shared_ptr<ChunkStore>* chunk_store,
+                                                      const fs::path&,
+                                                      boost::asio::io_service&) {
   chunk_store->reset(new MemoryChunkStore());
 }
 

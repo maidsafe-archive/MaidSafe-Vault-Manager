@@ -58,7 +58,7 @@ BufferedChunkStore::~BufferedChunkStore() {
 bool BufferedChunkStore::Init(const fs::path& storage_location,
                               std::list<ChunkId> removable_chunks,
                               unsigned int dir_depth) {
-  if (internal_perm_chunk_store_->Init(storage_location, dir_depth)) {
+  if (!internal_perm_chunk_store_->Init(storage_location, dir_depth)) {
     LOG(kError) << "Failed to initialise internal permanent chunk store.";
     return false;
   }
@@ -127,6 +127,7 @@ bool BufferedChunkStore::Store(const ChunkId& name, const std::string& content) 
 bool BufferedChunkStore::Store(const ChunkId& name,
                                const fs::path& source_file_name,
                                bool delete_source_file) {
+  name.string();  // to ensure name is initialised (will throw otherwise)
   boost::system::error_code ec;
   uintmax_t size(source_file_name.empty() ? 0 : fs::file_size(source_file_name, ec));
   if (ec) {
@@ -315,7 +316,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content)
 
             int limit(kWaitTransfersForCacheVacantCheck);
             if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-                  return pending_xfers_.empty() || (--limit) == 0;
+                  return pending_xfers_.empty() || (--limit) <= 0;
                 })) {
               LOG(kError) << "Modify - Timed out modifying " << Base32Substr(name)
                           << " while waiting for pending transfers.";
@@ -568,13 +569,12 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name, const std::string& co
       {
         std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
         if (pending_xfers_.empty()) {
-          LOG(kError) << "DoCacheStore - Can't make space for "
-                      << Base32Substr(name);
+          LOG(kError) << "DoCacheStore - Can't make space for " << Base32Substr(name);
           return false;
         }
         int limit(kWaitTransfersForCacheVacantCheck);
         if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-              return pending_xfers_.empty() || (--limit) == 0;
+              return pending_xfers_.empty() || (--limit) <= 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";
@@ -619,7 +619,7 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
         }
         int limit(kWaitTransfersForCacheVacantCheck);
         if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-              return pending_xfers_.empty() || (--limit) == 0;
+              return pending_xfers_.empty() || (--limit) <= 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";

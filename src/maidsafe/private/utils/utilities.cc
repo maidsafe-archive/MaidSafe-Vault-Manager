@@ -33,17 +33,17 @@ std::string SerialisedSignedData(const asymm::Keys& keys) {
   asymm::EncodedPublicKey encoded_public_key(asymm::EncodeKey(keys.public_key));
   pca::SignedData signed_data;
   signed_data.set_data(encoded_public_key.string());
-  signed_data.set_signature(keys.validation_token);
+  //signed_data.set_signature(keys.validation_token);
   return signed_data.SerializeAsString();
 }
 
 asymm::Keys CreateMaidsafeIdentity() {
   asymm::Keys keys(asymm::GenerateKeyPair());
   std::string encoded_public_key(asymm::EncodeKey(keys.public_key).string());
-  keys.validation_token =
-      asymm::Sign(asymm::PlainText(encoded_public_key), keys.private_key).string();
-  keys.identity =
-      Identity(crypto::Hash<crypto::SHA512>(encoded_public_key + keys.validation_token));
+  //keys.validation_token =
+  //    asymm::Sign(asymm::PlainText(encoded_public_key), keys.private_key).string();
+  //keys.identity =
+  //    Identity(crypto::Hash<crypto::SHA512>(encoded_public_key + keys.validation_token));
   return keys;
 }
 

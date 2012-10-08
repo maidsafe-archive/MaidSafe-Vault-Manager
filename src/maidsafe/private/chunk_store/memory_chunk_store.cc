@@ -11,8 +11,9 @@
 
 #include "maidsafe/private/chunk_store/memory_chunk_store.h"
 
-#include "maidsafe/common/utils.h"
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/utils.h"
 
 
 namespace maidsafe {
@@ -21,11 +22,22 @@ namespace priv {
 
 namespace chunk_store {
 
+namespace {
+
+// This throws if the ChunkId is uninitialised.
+void ValidateChunkId(const ChunkId& name) {
+  if (!name.IsInitialised())
+    ThrowError(CommonErrors::uninitialised);
+}
+
+}  // unnamed namespace
+
 MemoryChunkStore::MemoryChunkStore() : ChunkStore(), chunks_() {}
 
 MemoryChunkStore::~MemoryChunkStore() {}
 
 std::string MemoryChunkStore::Get(const ChunkId& name) const {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
@@ -36,6 +48,7 @@ std::string MemoryChunkStore::Get(const ChunkId& name) const {
 }
 
 bool MemoryChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) const {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Get - Can't get chunk " << Base32Substr(name);
@@ -46,6 +59,7 @@ bool MemoryChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) 
 }
 
 bool MemoryChunkStore::Store(const ChunkId& name, const std::string& content) {
+  ValidateChunkId(name);
   auto it(chunks_.lower_bound(name));
   if (it != chunks_.end() && (*it).first == name) {
     ++(*it).second.first;
@@ -81,6 +95,7 @@ bool MemoryChunkStore::Store(const ChunkId& name, const std::string& content) {
 bool MemoryChunkStore::Store(const ChunkId& name,
                              const fs::path& source_file_name,
                              bool delete_source_file) {
+  ValidateChunkId(name);
   boost::system::error_code ec;
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
@@ -137,6 +152,7 @@ bool MemoryChunkStore::Store(const ChunkId& name,
 }
 
 bool MemoryChunkStore::Delete(const ChunkId& name) {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
 //     LOG(kInfo) << "Delete - Chunk " << Base32Substr(name)
@@ -157,6 +173,7 @@ bool MemoryChunkStore::Delete(const ChunkId& name) {
 }
 
 bool MemoryChunkStore::Modify(const ChunkId& name, const std::string& content) {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end())
     return false;
@@ -181,6 +198,7 @@ bool MemoryChunkStore::Modify(const ChunkId& name, const std::string& content) {
 bool MemoryChunkStore::Modify(const ChunkId& name,
                               const fs::path& source_file_name,
                               bool delete_source_file) {
+  ValidateChunkId(name);
   if (source_file_name.empty()) {
     LOG(kError) << "source_file_name empty: " << Base32Substr(name);
     return false;
@@ -204,6 +222,7 @@ bool MemoryChunkStore::Modify(const ChunkId& name,
 }
 
 bool MemoryChunkStore::Has(const ChunkId& name) const {
+  ValidateChunkId(name);
   bool found(chunks_.find(name) != chunks_.end());
 //   LOG(kInfo) << (found ? "Have chunk " : "Do not have chunk ")
 //              << Base32Substr(name);
@@ -211,6 +230,7 @@ bool MemoryChunkStore::Has(const ChunkId& name) const {
 }
 
 bool MemoryChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
+  ValidateChunkId(name);
   if (!sink_chunk_store) {
     LOG(kError) << "MoveTo - NULL sink passed for chunk " << Base32Substr(name);
     return false;
@@ -240,6 +260,7 @@ bool MemoryChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store)
 }
 
 uintmax_t MemoryChunkStore::Size(const ChunkId& name) const {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Chunk not found: " << Base32Substr(name);
@@ -250,6 +271,7 @@ uintmax_t MemoryChunkStore::Size(const ChunkId& name) const {
 }
 
 uintmax_t MemoryChunkStore::Count(const ChunkId& name) const {
+  ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end()) {
     LOG(kError) << "Chunk not found: " << Base32Substr(name);
