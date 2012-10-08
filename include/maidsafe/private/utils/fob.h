@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_
-#define MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_
+#ifndef MAIDSAFE_PRIVATE_UTILS_FOB_H_
+#define MAIDSAFE_PRIVATE_UTILS_FOB_H_
 
 #include <vector>
 
@@ -19,31 +19,28 @@
 
 namespace maidsafe {
 
-namespace priv {
-
-namespace utilities {
-
-struct MaidsafeIdentityRing {
-  MaidsafeIdentityRing();
+struct Fob {
+  Fob();
   Identity identity;
   asymm::Keys keys;
   NonEmptyString validation_token;
 };
 
+namespace priv {
+
+namespace utilities {
+
 // Generates the identity according to the maidsafe patent
-MaidsafeIdentityRing GenerateIdentityRing(asymm::PrivateKey* private_key = nullptr);
+Fob GenerateFob(asymm::PrivateKey* private_key);
 
 // Generates chained identities according to the maidsafe patent
-std::vector<MaidsafeIdentityRing> GenerateChainedIdentityRing(
-    size_t amount,
-    asymm::PrivateKey* private_key = nullptr);
+std::vector<Fob> GenerateChainedFob(size_t amount, asymm::PrivateKey* private_key);
 
-// Serialise the identity ring using protocol buffers
+// Serialise the fob using protocol buffers
+NonEmptyString SerialiseFob(const Fob& fob);
 
-NonEmptyString SerialiseMaidsafeIdentityRing(const MaidsafeIdentityRing& identity_ring);
-
-// Parse a serialised protocol buffer to an identity ring
-MaidsafeIdentityRing ParseMaidsafeIdentityRing(const NonEmptyString& serialised_identity_ring);
+// Parse a serialised protocol buffer to a fob
+Fob ParseFob(const NonEmptyString& serialised_fob);
 
 }  // namespace utilities
 
@@ -51,4 +48,4 @@ MaidsafeIdentityRing ParseMaidsafeIdentityRing(const NonEmptyString& serialised_
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_
+#endif  // MAIDSAFE_PRIVATE_UTILS_FOB_H_

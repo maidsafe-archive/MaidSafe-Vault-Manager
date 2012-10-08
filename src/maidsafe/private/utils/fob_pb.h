@@ -26,16 +26,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_IDENTITY_RING_PB_H_
-#define MAIDSAFE_PRIVATE_UTILS_IDENTITY_RING_PB_H_
+#ifndef MAIDSAFE_PRIVATE_UTILS_FOB_PB_H_
+#define MAIDSAFE_PRIVATE_UTILS_FOB_PB_H_
 
 #ifdef __MSVC__
 #  pragma warning(push)
 #  pragma warning(disable: 4127 4244 4267)
 #endif
-#include "maidsafe/private/utils/identity_ring.pb.h"
+#include "maidsafe/private/utils/fob.pb.h"
 #ifdef __MSVC__
 #  pragma warning(pop)
 #endif
 
-#endif  // MAIDSAFE_PRIVATE_UTILS_IDENTITY_RING_PB_H_
+#endif  // MAIDSAFE_PRIVATE_UTILS_FOB_PB_H_

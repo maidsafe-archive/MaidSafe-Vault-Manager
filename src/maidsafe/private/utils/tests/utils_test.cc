@@ -16,7 +16,7 @@
 #include "maidsafe/common/types.h"
 
 #include "maidsafe/private/utils/utilities.h"
-#include "maidsafe/private/utils/maidsafe_identity_ring.h"
+#include "maidsafe/private/utils/fob.h"
 
 
 namespace maidsafe {
@@ -27,7 +27,7 @@ namespace utilities {
 
 namespace test {
 
-class MaidsafeIdentityRingTest : public testing::Test {
+class FobTest : public testing::Test {
  protected:
   void RunInParallel(std::function<void()> f, int num_threads = 6) {
     std::vector<std::future<void> > vec;
@@ -40,14 +40,14 @@ class MaidsafeIdentityRingTest : public testing::Test {
 };
 
 
-TEST_F(MaidsafeIdentityRingTest, BEH_MaidsafeIdentityRingSerialisationAndParsing) {
+TEST_F(FobTest, BEH_FobSerialisationAndParsing) {
   auto f([=] {
-           MaidsafeIdentityRing ring(GenerateIdentityRing());
-           NonEmptyString serialised_ring1(SerialiseMaidsafeIdentityRing(ring));
-           NonEmptyString serialised_ring2(SerialiseMaidsafeIdentityRing(ring));
+           Fob ring(GenerateFob(nullptr));
+           NonEmptyString serialised_ring1(SerialiseFob(ring));
+           NonEmptyString serialised_ring2(SerialiseFob(ring));
            ASSERT_EQ(serialised_ring1.string(), serialised_ring2.string());
-           MaidsafeIdentityRing re_ring1(ParseMaidsafeIdentityRing(serialised_ring2));
-           MaidsafeIdentityRing re_ring2(ParseMaidsafeIdentityRing(serialised_ring1));
+           Fob re_ring1(ParseFob(serialised_ring2));
+           Fob re_ring2(ParseFob(serialised_ring1));
            ASSERT_EQ(re_ring1.identity.string(), re_ring2.identity.string());
            ASSERT_EQ(re_ring1.validation_token.string(), re_ring2.validation_token.string());
            ASSERT_TRUE(asymm::MatchingKeys(re_ring1.keys.public_key, re_ring2.keys.public_key));

@@ -1,6 +1,6 @@
-package maidsafe.priv.utilities.protobuf;
+package maidsafe.protobuf;
 
-message MaidsafeIdentityRing {
+message Fob {
   required bytes identity = 1;
   required bytes encoded_public_key = 2;
   required bytes encoded_private_key = 3;
