@@ -124,21 +124,27 @@ set(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_T
 source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
+file(GLOB SOURCE_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.cc")
+file(GLOB HEADER_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.h")
+set(ALL_FILES_PRIVATE_UTILS_TESTS_DIR ${SOURCE_FILES_UTILS_TESTS_DIR} ${HEADER_FILES_UTILS_TESTS_DIR})
+source_group("Utils Tests Source Files" FILES ${SOURCE_FILES_UTILS_TESTS_DIR})
+source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
+
+
 
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR}
-                              ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR}
-                              ${ALL_FILES_PRIVATE_UTILS_DIR})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
+ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
 ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
+ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 ms_add_executable(TESTinvigilator "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/utils_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/invigilator_test.cc")
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
@@ -147,9 +153,11 @@ ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/
 ms_add_executable(DEMOinvigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
 target_link_libraries(maidsafe_private maidsafe_common)
+target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(maidsafe_process_management maidsafe_common)
 target_link_libraries(maidsafe_process_management_test maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
+target_link_libraries(TESTutilities maidsafe_utilities)
 target_link_libraries(DUMMYprocess maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(DUMMYclient maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(TESTinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})

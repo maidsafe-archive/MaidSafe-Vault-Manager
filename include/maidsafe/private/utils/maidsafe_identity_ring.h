@@ -9,16 +9,13 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
-#define MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
+#ifndef MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
+#define MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
 
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <string>
 #include <vector>
 
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/types.h"
 
 namespace maidsafe {
 
@@ -26,24 +23,27 @@ namespace priv {
 
 namespace utilities {
 
-enum ChunkStoreResult {
-  kOperationTimeOut = -3,
-  kPendingResult = -2,
-  kRemoteChunkStoreFailure = -1,
-  kSuccess = 0
+struct MaidsafeIdentityRing {
+  MaidsafeIdentityRing();
+  Identity identity;
+  asymm::Keys keys;
+  NonEmptyString validation_token;
 };
 
-std::string SerialisedSignedData(const asymm::Keys& keys);
+// Generates the identity according to the maidsafe patent
+MaidsafeIdentityRing GenerateIdentityRing(asymm::PrivateKey* private_key = nullptr);
 
-void ChunkStoreOperationCallback(const bool& response,
-                                 std::mutex* mutex,
-                                 std::condition_variable* cond_var,
-                                 int* result);
+// Generates chained identities according to the maidsafe patent
+std::vector<MaidsafeIdentityRing> GenerateChainedIdentityRing(
+    size_t amount,
+    asymm::PrivateKey* private_key = nullptr);
 
-int WaitForResults(std::mutex& mutex,
-                   std::condition_variable& cond_var,
-                   std::vector<int>& results,
-                   std::chrono::seconds interval = std::chrono::seconds(1));
+// Serialise the identity ring using protocol buffers
+
+NonEmptyString SerialiseMaidsafeIdentityRing(const MaidsafeIdentityRing& identity_ring);
+
+// Parse a serialised protocol buffer to an identity ring
+MaidsafeIdentityRing ParseMaidsafeIdentityRing(const NonEmptyString& serialised_identity_ring);
 
 }  // namespace utilities
 
@@ -51,4 +51,4 @@ int WaitForResults(std::mutex& mutex,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_UTILS_UTILITIES_H_
+#endif // MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
