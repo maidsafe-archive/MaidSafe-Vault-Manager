@@ -9,15 +9,14 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/utils/utilities.h"
-#include "maidsafe/private/utils/maidsafe_identity_ring.h"
-
-#include "maidsafe/common/types.h"
-
 #include <future>
 #include <thread>
 
 #include "maidsafe/common/test.h"
+#include "maidsafe/common/types.h"
+
+#include "maidsafe/private/utils/utilities.h"
+#include "maidsafe/private/utils/maidsafe_identity_ring.h"
 
 
 namespace maidsafe {

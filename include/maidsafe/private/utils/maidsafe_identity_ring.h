@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
-#define MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
+#ifndef MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_
+#define MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_
 
 #include <vector>
 
@@ -51,4 +51,4 @@ MaidsafeIdentityRing ParseMaidsafeIdentityRing(const NonEmptyString& serialised_
 
 }  // namespace maidsafe
 
-#endif // MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H
+#endif  // MAIDSAFE_PRIVATE_UTILS_MAIDSAFE_IDENTITY_RING_H_

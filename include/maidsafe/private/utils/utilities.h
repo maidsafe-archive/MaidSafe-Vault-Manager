@@ -33,8 +33,6 @@ enum ChunkStoreResult {
   kSuccess = 0
 };
 
-std::string SerialisedSignedData(const asymm::Keys& keys);
-
 void ChunkStoreOperationCallback(const bool& response,
                                  std::mutex* mutex,
                                  std::condition_variable* cond_var,

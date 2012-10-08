@@ -82,11 +82,11 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
   }
   if (lock && local_version.IsInitialised() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
-    //LOG(kWarning) << "GetChunk - "
-    //              << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
-    //              << " - Won't retrieve " << Base32Substr(name)
-    //              << " because local and remote versions "
-    //              << HexSubstr(local_version) << " match.";
+//    LOG(kWarning) << "GetChunk - "
+//                  << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
+//                  << " - Won't retrieve " << Base32Substr(name)
+//                  << " because local and remote versions "
+//                  << HexSubstr(local_version) << " match.";
     (*sig_chunk_got_)(name, kChunkNotModified);
     return;
   }

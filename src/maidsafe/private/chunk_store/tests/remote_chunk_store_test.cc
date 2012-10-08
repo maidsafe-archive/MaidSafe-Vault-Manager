@@ -580,8 +580,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   this->chunk_store_->LogStats();
 }
 
-                                          // TODO(Fraser#5#): 2012-10-08 - Confirm that this test is flawed and re-enable
-                                          TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_ConcurrentGetAndLocks) {
+// TODO(Fraser#5#): 2012-10-08 - This test is flawed and should only be re-enabled (and refactored)
+//                  if the test is run against a VaultChunkManager rather than a LocalChunkManager.
+TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_ConcurrentGetAndLocks) {
   size_t kNumChunks(5);
   int kNumConcurrentGets(5);
   std::map<ChunkId, std::pair<std::string, std::string>> chunks;
@@ -639,8 +640,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   this->chunk_store_->LogStats();
 }
 
-                                          // TODO(Fraser#5#): 2012-10-08 - Confirm that this test is flawed and re-enable
-                                          TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_MixedConcurrentGets) {
+// TODO(Fraser#5#): 2012-10-08 - This test is flawed and should only be re-enabled (and refactored)
+//                  if the test is run against a VaultChunkManager rather than a LocalChunkManager.
+TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_MixedConcurrentGets) {
   size_t kNumChunks(5);
   int kNumConcurrentGets(2);
   std::map<ChunkId, std::pair<std::string, std::string>> chunks;

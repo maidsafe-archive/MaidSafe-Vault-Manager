@@ -29,14 +29,6 @@ namespace priv {
 
 namespace utilities {
 
-std::string SerialisedSignedData(const asymm::Keys& keys) {
-  asymm::EncodedPublicKey encoded_public_key(asymm::EncodeKey(keys.public_key));
-  pca::SignedData signed_data;
-  signed_data.set_data(encoded_public_key.string());
-  //signed_data.set_signature(keys.validation_token);
-  return signed_data.SerializeAsString();
-}
-
 void ChunkStoreOperationCallback(const bool& response,
                                  std::mutex* mutex,
                                  std::condition_variable* cond_var,
