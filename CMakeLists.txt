@@ -110,6 +110,9 @@ source_group("Utilities Source Files" FILES ${SOURCE_FILES_PRIVATE_UTILS_DIR})
 source_group("Utilities Header Files" FILES ${HEADER_FILES_PRIVATE_UTILS_DIR})
 source_group("Utilities API Files" FILES ${API_FILES_PRIVATE_UTILS_DIR})
 
+set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/private/return_codes.h")
+source_group("Private API Files" FILES ${RETURN_CODES_H})
+
 
 ####    TESTS    ####
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
@@ -135,10 +138,10 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
-ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR} ${RETURN_CODES_H})
 ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
@@ -194,5 +197,6 @@ endif()
 add_style_test(${STYLE_CHECK_FILES})
 add_gtests(TESTprivate)
 add_gtests(TESTinvigilator)
+add_gtests(TESTutilities)
 add_project_experimental()
 test_summary_output()

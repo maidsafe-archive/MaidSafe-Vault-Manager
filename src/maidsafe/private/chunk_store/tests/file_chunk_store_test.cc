@@ -27,11 +27,10 @@ namespace chunk_store {
 namespace test {
 
 template <>
-void ChunkStoreTest<FileChunkStore>::InitChunkStore(
-    std::shared_ptr<ChunkStore> *chunk_store,
-    const fs::path &chunk_dir,
-    boost::asio::io_service&) {
-  chunk_store->reset(new FileChunkStore());
+void ChunkStoreTest<FileChunkStore>::InitChunkStore(std::shared_ptr<ChunkStore>* chunk_store,
+                                                    const fs::path& chunk_dir,
+                                                    boost::asio::io_service&) {
+  chunk_store->reset(new FileChunkStore);
   if (!chunk_dir.empty())
     reinterpret_cast<FileChunkStore*>(chunk_store->get())->Init(chunk_dir);
 }
@@ -41,8 +40,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(Files, ChunkStoreTest, FileChunkStore);
 class FileChunkStoreTest: public testing::Test {
  public:
   FileChunkStoreTest()
-      : test_dir_(maidsafe::test::CreateTestPath(
-                      "MaidSafe_TestFileChunkStore")),
+      : test_dir_(maidsafe::test::CreateTestPath("MaidSafe_TestFileChunkStore")),
         chunk_dir_(*test_dir_ / "chunks"),
         ref_chunk_dir_(*test_dir_ / "ref_chunks") {}
   ~FileChunkStoreTest() {}
@@ -58,80 +56,67 @@ class FileChunkStoreTest: public testing::Test {
 
 TEST_F(FileChunkStoreTest, BEH_Init) {
   //  File chunk store without reference counting
-  std::shared_ptr<FileChunkStore> fcs_first(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs_first(new FileChunkStore);
 
   fs::path chunk_dir_first(*test_dir_ / "chunks_first");
   EXPECT_EQ(true, fcs_first->Init(chunk_dir_first, 10));
   EXPECT_EQ(0, fcs_first->Count());
   EXPECT_TRUE(fcs_first->Empty());
-  EXPECT_FALSE(fcs_first->Has(""));
-  EXPECT_FALSE(fcs_first->Has("something"));
+  EXPECT_THROW(fcs_first->Has(ChunkId()), std::exception);
 
   //  Reuse existing chunk directory
-  std::shared_ptr<FileChunkStore> fcs_second(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs_second(new FileChunkStore);
   EXPECT_TRUE(fcs_second->Init(chunk_dir_first, 10));
   EXPECT_EQ(0, fcs_second->Count());
   EXPECT_TRUE(fcs_second->Empty());
-  EXPECT_FALSE(fcs_second->Has(""));
-  EXPECT_FALSE(fcs_second->Has("something"));
+  EXPECT_THROW(fcs_second->Has(ChunkId()), std::exception);
 
   //  Test by passing nothing for Dir name
-  std::shared_ptr<FileChunkStore> fcs_third(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs_third(new FileChunkStore);
   EXPECT_FALSE(fcs_third->Init("", 10));
   EXPECT_EQ(0, fcs_third->Count());
   EXPECT_TRUE(fcs_third->Empty());
-  EXPECT_FALSE(fcs_third->Has(""));
-  EXPECT_FALSE(fcs_third->Has("something"));
+  EXPECT_THROW(fcs_third->Has(ChunkId()), std::exception);
 
   //  Test initialiation of reference counted file chunk store
-  std::shared_ptr<FileChunkStore> ref_fcs_first(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> ref_fcs_first(new FileChunkStore);
   fs::path ref_chunk_dir_first(*test_dir_ / "ref_chunks_first");
   EXPECT_TRUE(ref_fcs_first->Init(ref_chunk_dir_first, 10));
   EXPECT_EQ(0, ref_fcs_first->Count());
   EXPECT_TRUE(ref_fcs_first->Empty());
-  EXPECT_FALSE(ref_fcs_first->Has(""));
-  EXPECT_FALSE(ref_fcs_first->Has("something"));
+  EXPECT_THROW(ref_fcs_first->Has(ChunkId()), std::exception);
 
   //  Reuse existing chunk directory
-  std::shared_ptr<FileChunkStore> ref_fcs_second(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> ref_fcs_second(new FileChunkStore);
   EXPECT_TRUE(ref_fcs_second->Init(ref_chunk_dir_first, 10));
   EXPECT_EQ(0, ref_fcs_second->Count());
   EXPECT_TRUE(ref_fcs_second->Empty());
-  EXPECT_FALSE(ref_fcs_second->Has(""));
-  EXPECT_FALSE(ref_fcs_second->Has("something"));
+  EXPECT_THROW(ref_fcs_second->Has(ChunkId()), std::exception);
 
   //  Test by passing nothing for Dir name
-  std::shared_ptr<FileChunkStore> ref_fcs_third(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> ref_fcs_third(new FileChunkStore);
   EXPECT_FALSE(ref_fcs_third->Init("", 10));
   EXPECT_EQ(0, ref_fcs_third->Count());
   EXPECT_TRUE(ref_fcs_third->Empty());
-  EXPECT_FALSE(ref_fcs_third->Has(""));
-  EXPECT_FALSE(ref_fcs_third->Has("something"));
+  EXPECT_THROW(ref_fcs_third->Has(ChunkId()), std::exception);
 }
 
 TEST_F(FileChunkStoreTest, BEH_Get) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
 
   std::string content(RandomString(100));
-  std::string name(crypto::Hash<crypto::SHA512>(content));
+  ChunkId name(crypto::Hash<crypto::SHA512>(content));
   fs::path path(*test_dir_ / "chunk.dat");
 
   //  try to get a chunk without initialising chunk store
-  EXPECT_TRUE(fcs->Get("anything").empty());
-  EXPECT_FALSE(fcs->Get("some_chunk", path));
+  EXPECT_TRUE(fcs->Get(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))).empty());
+  EXPECT_FALSE(fcs->Get(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE)), path));
 
   //  initialise
   EXPECT_TRUE(fcs->Init(chunk_dir_, 2));
 
   //  try getting something non existing
-  EXPECT_TRUE(fcs->Get("whatever").empty());
+  EXPECT_TRUE(fcs->Get(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))).empty());
 
   //  store data
   ASSERT_TRUE(fcs->Store(name, content));
@@ -140,26 +125,24 @@ TEST_F(FileChunkStoreTest, BEH_Get) {
   EXPECT_EQ(content, fcs->Get(name));
   EXPECT_TRUE(fcs->Get(name, path));
 
-  //  create a ref counted chunk store
-  std::shared_ptr<FileChunkStore> fcs_ref(
-      new FileChunkStore());
+  // create a ref counted chunk store
+  std::shared_ptr<FileChunkStore> fcs_ref(new FileChunkStore);
   EXPECT_EQ(true, fcs_ref->Init(ref_chunk_dir_, 10));
   ASSERT_TRUE(fcs_ref->Store(name, content));
   ASSERT_TRUE(fcs_ref->Store(name, content));
   ASSERT_TRUE(fcs_ref->Store(name, content));
 
-  //  get the chunk
+  // get the chunk
   fs::path sink_path(*test_dir_ / "my_chunk.dat");
   EXPECT_FALSE(fs::exists(sink_path));
   EXPECT_TRUE(fcs_ref->Get(name, sink_path));
 }
 
 TEST_F(FileChunkStoreTest, BEH_Store) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
 
   std::string content(RandomString(100));
-  std::string name(crypto::Hash<crypto::SHA512>(content));
+  ChunkId name(crypto::Hash<crypto::SHA512>(content));
 
   //  try storing without initialising
   EXPECT_FALSE(fcs->Store(name, content));
@@ -167,7 +150,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   EXPECT_TRUE(fcs->Init(chunk_dir_, 4));
 
   //  try storing an empty chunk
-  EXPECT_FALSE(fcs->Store("", content));
+  EXPECT_THROW(fcs->Store(ChunkId(), content), std::exception);
   EXPECT_FALSE(fcs->Store(name, ""));
 
   //  try storing a chunk
@@ -179,8 +162,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   EXPECT_TRUE(fcs->Get(name, path));
 
   //  reference counted chunk store
-  std::shared_ptr<FileChunkStore> ref_fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> ref_fcs(new FileChunkStore);
   EXPECT_FALSE(ref_fcs->Store(name, content));
 
   EXPECT_TRUE(ref_fcs->Init(ref_chunk_dir_, 3));
@@ -200,7 +182,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
     EXPECT_TRUE(ref_fcs->Store(name, path, true));
 
     std::string content1(RandomString(500));
-    std::string name1(crypto::Hash<crypto::SHA512>(content1));
+    ChunkId name1(crypto::Hash<crypto::SHA512>(content1));
     std::string file_name1(EncodeToHex(RandomString(10)));
     fs::path path1(*test_dir_ / file_name1);
 
@@ -210,12 +192,10 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   }
 
   //  reuse ref_fcs chunk store
-  std::shared_ptr<FileChunkStore> reused_fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> reused_fcs(new FileChunkStore);
   EXPECT_TRUE(reused_fcs->Init(ref_chunk_dir_, 3));
 
-  std::shared_ptr<FileChunkStore> chunk_store(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> chunk_store(new FileChunkStore);
   EXPECT_TRUE(chunk_store->Init(ref_chunk_dir_, 3));
 
   content = RandomString(500);
@@ -225,22 +205,20 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
 
 TEST_F(FileChunkStoreTest, DISABLED_BEH_Capacity) {
   //  create a chunk store with limited capacity
-  std::shared_ptr<FileChunkStore> fcs_cap(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs_cap(new FileChunkStore);
   EXPECT_TRUE(fcs_cap->Init(ref_chunk_dir_, 4));
   fcs_cap->SetCapacity(100);
   EXPECT_TRUE(fcs_cap->Empty());
 
   std::string content(RandomString(100));
-  std::string name(crypto::Hash<crypto::SHA512>(content));
+  ChunkId name(crypto::Hash<crypto::SHA512>(content));
   std::string file_name("file.dat");
   fs::path path(*test_dir_ / file_name);
 
   EXPECT_TRUE(fcs_cap->Store(name, content));
 
   std::string extra_content(RandomString(1));
-  std::string extra_content_chunk_name(
-                crypto::Hash<crypto::SHA512>(extra_content));
+  ChunkId extra_content_chunk_name(crypto::Hash<crypto::SHA512>(extra_content));
   EXPECT_FALSE(fcs_cap->Store(extra_content_chunk_name, extra_content));
 
   EXPECT_TRUE(fcs_cap->Get(name, path));
@@ -248,59 +226,58 @@ TEST_F(FileChunkStoreTest, DISABLED_BEH_Capacity) {
 }
 
 TEST_F(FileChunkStoreTest, BEH_Delete) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
-  EXPECT_FALSE(fcs->Delete("somechunk"));
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
+  EXPECT_THROW(fcs->Delete(ChunkId()), std::exception);
+  EXPECT_FALSE(fcs->Delete(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))));
 
-  std::shared_ptr<FileChunkStore> ref_fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> ref_fcs(new FileChunkStore);
   EXPECT_TRUE(ref_fcs->Init(ref_chunk_dir_, 4));
 
   std::string content("mycontent");
-  std::string name(crypto::Hash<crypto::SHA512>(content));
+  ChunkId name(crypto::Hash<crypto::SHA512>(content));
   EXPECT_TRUE(ref_fcs->Store(name, content));
 
   //  try deleting non existant chunk
-  EXPECT_TRUE(ref_fcs->Delete("unknownchunk"));
+  EXPECT_THROW(ref_fcs->Delete(ChunkId()), std::exception);
+  EXPECT_TRUE(ref_fcs->Delete(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))));
 }
 
 TEST_F(FileChunkStoreTest, BEH_MoveTo) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
-  std::shared_ptr<FileChunkStore> sink_fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
+  std::shared_ptr<FileChunkStore> sink_fcs(new FileChunkStore);
 
-  EXPECT_FALSE(fcs->MoveTo("somechunk", sink_fcs.get()));
+  EXPECT_THROW(fcs->MoveTo(ChunkId(), sink_fcs.get()), std::exception);
+  EXPECT_FALSE(fcs->MoveTo(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE)), sink_fcs.get()));
 }
 
 TEST_F(FileChunkStoreTest, BEH_Size) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
-  EXPECT_EQ(0, fcs->Size("somechunk"));
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
+  EXPECT_THROW(fcs->Size(ChunkId()), std::exception);
+  EXPECT_EQ(0, fcs->Size(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))));
 
   EXPECT_TRUE(fcs->Init(chunk_dir_, 5));
 
-  EXPECT_EQ(0, fcs->Size("somechunk"));
+  EXPECT_THROW(fcs->Size(ChunkId()), std::exception);
+  EXPECT_EQ(0, fcs->Size(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))));
 
   //  init
   EXPECT_TRUE(fcs->Init(chunk_dir_));
-  EXPECT_EQ(0, fcs->Size(""));
+  EXPECT_EQ(0, fcs->Size());
 }
 
 TEST_F(FileChunkStoreTest, BEH_Count) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
-  EXPECT_EQ(0, fcs->Count("somechunk"));
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
+  EXPECT_THROW(fcs->Count(ChunkId()), std::exception);
+  EXPECT_EQ(0, fcs->Count(ChunkId(RandomString(crypto::SHA512::DIGESTSIZE))));
 }
 
 TEST_F(FileChunkStoreTest, BEH_Methods) {
-  std::shared_ptr<FileChunkStore> fcs(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
 
   EXPECT_TRUE(fcs->Init(chunk_dir_, 10));
 
   std::string content(RandomString(100));
-  std::string chunk_name(crypto::Hash<crypto::SHA512>(content));
+  ChunkId chunk_name(crypto::Hash<crypto::SHA512>(content));
 
   fs::path chunk_path = fcs->ChunkNameToFilePath(chunk_name);
   EXPECT_FALSE(fs::exists(chunk_path));
@@ -318,7 +295,7 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
   EXPECT_TRUE(fs::exists(chunk_path));
 
   std::string small_cc(RandomString(1));
-  std::string small_cn(crypto::Hash<crypto::SHA512>(small_cc));
+  ChunkId small_cn(crypto::Hash<crypto::SHA512>(small_cc));
   fs::path small_cp = fcs->ChunkNameToFilePath(small_cn);
   EXPECT_FALSE(fs::exists(small_cp));
   small_cp.replace_extension(".1");
@@ -348,8 +325,7 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
   }
 
   //  cause exception in RetrieveChunkInfo
-  std::shared_ptr<FileChunkStore> excep_chunk_store(
-      new FileChunkStore());
+  std::shared_ptr<FileChunkStore> excep_chunk_store(new FileChunkStore);
   fs::path ch_folder(*test_dir_ / "no_chunks");
   EXPECT_TRUE(excep_chunk_store->Init(ch_folder));
   FileChunkStore::RestoredChunkStoreInfo chunk_info =
@@ -366,12 +342,12 @@ TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
   std::vector<ChunkData> chunk_data_pre;
   std::vector<ChunkData> chunk_data_post;
   {
-    std::shared_ptr<FileChunkStore> fcs_1(new FileChunkStore());
+    std::shared_ptr<FileChunkStore> fcs_1(new FileChunkStore);
 
-    std::vector<std::pair<std::string, std::string>> chunks;
+    std::vector<std::pair<ChunkId, std::string>> chunks;
     for (int i = 0; i < 100; ++i) {
       std::string content(RandomString(100 + (i % 20)));
-      std::string name(crypto::Hash<crypto::SHA512>(content));
+      ChunkId name(crypto::Hash<crypto::SHA512>(content));
       chunks.push_back(std::make_pair(name, content));
     }
 
@@ -388,7 +364,7 @@ TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
     EXPECT_EQ(100, chunk_data_pre.size());
   }
   {
-    std::shared_ptr<FileChunkStore> fcs_2(new FileChunkStore());
+    std::shared_ptr<FileChunkStore> fcs_2(new FileChunkStore);
     EXPECT_EQ(0, chunk_data_post.size());
     EXPECT_TRUE(fcs_2->Init(chunk_dir_, 5));
     EXPECT_EQ(100, fcs_2->Count());

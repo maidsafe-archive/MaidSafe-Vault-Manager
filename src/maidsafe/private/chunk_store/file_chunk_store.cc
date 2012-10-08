@@ -89,12 +89,12 @@ bool FileChunkStore::Init(const fs::path& storage_location, unsigned int dir_dep
 }
 
 std::string FileChunkStore::Get(const ChunkId& name) const {
-  if (!IsChunkStoreInitialised()) {
+  fs::path file_path(ChunkNameToFilePath(name));
+  if (file_path.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return "";
   }
 
-  fs::path file_path(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(file_path));
   if (ref_count == 0) {
     LOG(kWarning) << "Data has reference count == 0: " << Base32Substr(name);
@@ -113,7 +113,8 @@ std::string FileChunkStore::Get(const ChunkId& name) const {
 }
 
 bool FileChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) const {
-  if (!IsChunkStoreInitialised()) {
+  fs::path source_file_path(ChunkNameToFilePath(name));
+  if (source_file_path.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
@@ -123,7 +124,6 @@ bool FileChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) co
     return false;
   }
 
-  fs::path source_file_path(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(source_file_path));
   if (ref_count == 0) {
     LOG(kError) << "Data has reference count == 0: " << Base32Substr(name);
@@ -138,12 +138,12 @@ bool FileChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) co
 }
 
 bool FileChunkStore::Store(const ChunkId& name, const std::string& content) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name, true));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
-  fs::path chunk_file(ChunkNameToFilePath(name, true));
   uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   if (ref_count == 0) {
     // new chunk!
@@ -184,13 +184,13 @@ bool FileChunkStore::Store(const ChunkId& name, const std::string& content) {
 bool FileChunkStore::Store(const ChunkId& name,
                            const fs::path& source_file_name,
                            bool delete_source_file) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name, true));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   boost::system::error_code ec;
-  fs::path chunk_file(ChunkNameToFilePath(name, true));
   uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   if (ref_count == 0) {
     // new chunk!
@@ -253,13 +253,13 @@ bool FileChunkStore::Store(const ChunkId& name,
 }
 
 bool FileChunkStore::Delete(const ChunkId& name) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
   boost::system::error_code ec;
-  fs::path chunk_file(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   // if file does not exist
   if (ref_count == 0)
@@ -293,18 +293,19 @@ bool FileChunkStore::Delete(const ChunkId& name) {
 }
 
 bool FileChunkStore::Modify(const ChunkId& name, const std::string& content) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
-  if (!Has(name)) {
+  uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
+
+  if (ref_count == 0U) {
     LOG(kError) << "Chunk doesn't exist: " << Base32Substr(name);
     return false;
   }
 
-  fs::path chunk_file(ChunkNameToFilePath(name));
-  uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   chunk_file.replace_extension("." + boost::lexical_cast<std::string>(ref_count));
   std::string current_content;
   ReadFile(chunk_file, &current_content);
@@ -330,18 +331,19 @@ bool FileChunkStore::Modify(const ChunkId& name, const std::string& content) {
 bool FileChunkStore::Modify(const ChunkId& name,
                             const fs::path& source_file_name,
                             bool delete_source_file) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
 
-  if (!Has(name)) {
+  uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
+
+  if (ref_count == 0U) {
     LOG(kError) << "Chunk doesn't exist: " << Base32Substr(name);
     return false;
   }
 
-  fs::path chunk_file(ChunkNameToFilePath(name));
-  uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   chunk_file.replace_extension("." + boost::lexical_cast<std::string>(ref_count));
   boost::system::error_code ec1, ec2;
   uintmax_t content_size_difference;
@@ -372,15 +374,17 @@ bool FileChunkStore::Modify(const ChunkId& name,
 }
 
 bool FileChunkStore::Has(const ChunkId& name) const {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
-  return GetChunkReferenceCount(ChunkNameToFilePath(name)) != 0;
+  return GetChunkReferenceCount(chunk_file) != 0;
 }
 
 bool FileChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return false;
   }
@@ -390,7 +394,6 @@ bool FileChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
     return false;
   }
 
-  fs::path chunk_file(ChunkNameToFilePath(name));
   uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
 
   // this store does not have the file
@@ -429,12 +432,12 @@ bool FileChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store) {
 }
 
 uintmax_t FileChunkStore::Size(const ChunkId& name) const {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return 0;
   }
 
-  fs::path chunk_file(ChunkNameToFilePath(name));
   chunk_file.replace_extension("." + boost::lexical_cast<std::string>(
       GetChunkReferenceCount(chunk_file)));
 
@@ -465,11 +468,12 @@ uintmax_t FileChunkStore::Count() const {
 }
 
 uintmax_t FileChunkStore::Count(const ChunkId& name) const {
-  if (!IsChunkStoreInitialised()) {
+  fs::path chunk_file(ChunkNameToFilePath(name));
+  if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
     return 0;
   }
-  return GetChunkReferenceCount(ChunkNameToFilePath(name, false));
+  return GetChunkReferenceCount(chunk_file);
 }
 
 bool FileChunkStore::Empty() const {
@@ -490,6 +494,8 @@ void FileChunkStore::Clear() {
 
 fs::path FileChunkStore::ChunkNameToFilePath(const ChunkId& name, bool generate_dirs) const {
   std::string encoded_file_name(EncodeToBase32(name));
+  if (!IsChunkStoreInitialised())
+    return fs::path();
 
   unsigned int dir_depth_for_chunk = dir_depth_;
   if (encoded_file_name.length() < dir_depth_for_chunk)

@@ -204,15 +204,14 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
   if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name.string()) == 0) {
     std::string local_content(chunk_store_->Get(name));
     if (!local_content.empty()) {
-      LOG(kInfo) << "GetAndLock - Found local content for "
-                 << Base32Substr(name);
+      LOG(kInfo) << "GetAndLock - Found local content for " << Base32Substr(name);
       *content = local_content;
       return kSuccess;
     }
   }
   OperationData op_data(OpType::kGetLock, nullptr, keys, true);
   op_data.local_version = local_version;
-    uint32_t id(EnqueueOp(name, op_data, lock));
+  uint32_t id(EnqueueOp(name, op_data, lock));
   ProcessPendingOps(lock);
   if (!WaitForGetOps(name, id, lock)) {
     LOG(kError) << "GetAndLock - Timed out for " << Base32Substr(name) << " - ID " << id;
@@ -236,8 +235,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
     waiting_gets_.erase(waiting_it);
 
   if (waiting_gets_.find(name) == waiting_gets_.end()) {
-    LOG(kInfo) << "GetAndLock - Done, deleting " << Base32Substr(name)
-               << " - ID " << id;
+    LOG(kInfo) << "GetAndLock - Done, deleting " << Base32Substr(name) << " - ID " << id;
     if (chunk_action_authority_->Cacheable(name))
       chunk_store_->MarkForDeletion(name);
     else
@@ -342,16 +340,20 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
 
 bool RemoteChunkStore::WaitForCompletion() {
   std::unique_lock<std::mutex> lock(mutex_);
-  while (!pending_ops_.empty()) {
-    LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size() << " pending operations, "
-               << active_ops_count_ << " of them active...";
-    (*sig_num_pending_ops_)(pending_ops_.size());
-    if (!cond_var_.wait_for(lock, completion_wait_timeout_)) {
-      LOG(kError) << "WaitForCompletion - Timed out with " << pending_ops_.size()
-                  << " pending operations, " << active_ops_count_ << " of them active.";
-      return false;
-    }
+  if (!cond_var_.wait_for(
+        lock,
+        completion_wait_timeout_,
+        [&]()->bool {
+          LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size() << " pending operations, "
+                     << active_ops_count_ << " of them active...";
+          (*sig_num_pending_ops_)(pending_ops_.size());
+          return pending_ops_.empty();
+        })) {
+    LOG(kError) << "WaitForCompletion - Timed out with " << pending_ops_.size()
+                << " pending operations, " << active_ops_count_ << " of them active.";
+    return false;
   }
+
   LOG(kInfo) << "WaitForCompletion - Done.";
   return true;
 }
@@ -485,46 +487,52 @@ RemoteChunkStore::WaitResult RemoteChunkStore::WaitForConflictingOps(
     return WaitResult::kCancelled;
 
   // wait until our operation is the next one, or has been cancelled
-
-  for (;;) {
+  RemoteChunkStore::WaitResult result(WaitResult::kSuccess);
+  auto wait_predicate = [&]()->bool {
     // does our op still exist?
     if (pending_ops_.right.find(transaction_id) == pending_ops_.right.end()) {
-      LOG(kWarning) << "WaitForConflictingOps - Operation to " << op_type << " "
-                    << Base32Substr(name) << " with transaction ID " << transaction_id
-                    << " was cancelled.";
-      return WaitResult::kCancelled;
+      result = WaitResult::kCancelled;
+      return true;
     }
-
     // is our op the next one with this name?
     auto it = pending_ops_.left.find(name.string());
-    if (it != pending_ops_.left.end() && pending_ops_.project_right(it)->first == transaction_id)
-      return WaitResult::kSuccess;
+    return (it != pending_ops_.left.end() &&
+            pending_ops_.project_right(it)->first == transaction_id);
+  };
 
-    if (!cond_var_.wait_for(lock, operation_wait_timeout_)) {
-      LOG(kError) << "WaitForConflictingOps - Timed out trying to " << op_type << " "
-                  << Base32Substr(name) << " with " << pending_ops_.left.count(name.string())
-                  << " pending operations. - ID " << transaction_id;
-      pending_ops_.right.erase(transaction_id);
-      cond_var_.notify_all();
-      failed_ops_.insert(std::make_pair(name, op_type));
-      return WaitResult::kTimeout;
-    }
+  if (!cond_var_.wait_for(lock, operation_wait_timeout_, wait_predicate)) {
+    LOG(kError) << "WaitForConflictingOps - Timed out trying to " << op_type << " "
+                << Base32Substr(name) << " with " << pending_ops_.left.count(name.string())
+                << " pending operations. - ID " << transaction_id;
+    pending_ops_.right.erase(transaction_id);
+    cond_var_.notify_all();
+    failed_ops_.insert(std::make_pair(name, op_type));
+    result = WaitResult::kTimeout;
   }
+
+  if (result == WaitResult::kCancelled) {
+    LOG(kWarning) << "WaitForConflictingOps - Operation to " << op_type << " "
+                  << Base32Substr(name) << " with transaction ID " << transaction_id
+                  << " was cancelled.";
+  }
+
+  return result;
 }
 
 bool RemoteChunkStore::WaitForGetOps(const ChunkId& name,
                                      const uint32_t& transaction_id,
                                      std::unique_lock<std::mutex>& lock) {
-  while (pending_ops_.right.find(transaction_id) != pending_ops_.right.end()) {
-    if (!cond_var_.wait_for(lock, operation_wait_timeout_)) {
-      LOG(kError) << "WaitForGetOps - Timed out for " << Base32Substr(name) << " with "
-                  << pending_ops_.left.count(name.string()) << " pending operations.  ID "
-                  << transaction_id;
-      pending_ops_.right.erase(transaction_id);
-      cond_var_.notify_all();
-      // failed_ops_.insert(std::make_pair(name, kOpGet));
-      return false;
-    }
+  if (!cond_var_.wait_for(
+          lock,
+          operation_wait_timeout_,
+          [&] { return pending_ops_.right.find(transaction_id) == pending_ops_.right.end(); })) {  // NOLINT (Fraser)
+    LOG(kError) << "WaitForGetOps - Timed out for " << Base32Substr(name) << " with "
+                << pending_ops_.left.count(name.string()) << " pending operations.  ID "
+                << transaction_id;
+    pending_ops_.right.erase(transaction_id);
+    cond_var_.notify_all();
+    // failed_ops_.insert(std::make_pair(name, kOpGet));
+    return false;
   }
   return true;
 }
