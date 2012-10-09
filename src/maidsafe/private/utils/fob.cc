@@ -36,7 +36,7 @@ Fob GenerateFob(asymm::PrivateKey* private_key) {
 
   asymm::EncodedPublicKey encoded_public_key(asymm::EncodeKey(fob.keys.public_key));
   fob.validation_token = asymm::Sign(asymm::PlainText(encoded_public_key.string()),
-                                     fob.keys.private_key);
+                                     signing_private_key);
   fob.identity = crypto::Hash<crypto::SHA512>(encoded_public_key.string() +
                                               fob.validation_token.string());
   return fob;
