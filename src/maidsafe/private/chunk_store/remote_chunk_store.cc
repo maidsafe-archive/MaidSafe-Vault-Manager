@@ -19,6 +19,7 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/chunk_actions/chunk_action_authority.h"
+#include "maidsafe/private/chunk_actions/chunk_id.h"
 #include "maidsafe/private/chunk_actions/chunk_pb.h"
 #include "maidsafe/private/chunk_store/buffered_chunk_store.h"
 #include "maidsafe/private/chunk_store/chunk_manager.h"
@@ -253,7 +254,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
 bool RemoteChunkStore::Store(const ChunkId& name,
                              const std::string& content,
                              const OpFunctor& callback,
-                             const asymm::Keys keys) {
+                             const asymm::Keys& keys) {
   LOG(kInfo) << "Store - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
@@ -281,7 +282,7 @@ bool RemoteChunkStore::Store(const ChunkId& name,
 
 bool RemoteChunkStore::Delete(const ChunkId& name,
                               const OpFunctor& callback,
-                              const asymm::Keys keys) {
+                              const asymm::Keys& keys) {
   LOG(kInfo) << "Delete - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
@@ -291,12 +292,17 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
     LOG(kWarning) << "Delete - Terminated early for " << Base32Substr(name);
     return result == WaitResult::kCancelled;
   }
-  asymm::PlainText data(RandomString(16));
-  asymm::Signature signature(asymm::Sign(data, keys.private_key));
-  chunk_actions::SignedData proof;
-  proof.set_data(data.string());
-  proof.set_signature(signature.string());
-  if (!chunk_action_authority_->Delete(name, proof.SerializeAsString(), keys.public_key)) {
+  std::string proof;
+  // Default chunks don't need proof of ownership to be deleted.
+  if (GetChunkType(name) != ChunkType::kDefault) {
+    asymm::PlainText data(RandomString(16));
+    asymm::Signature signature(asymm::Sign(data, keys.private_key));
+    chunk_actions::SignedData proto_proof;
+    proto_proof.set_data(data.string());
+    proto_proof.set_signature(signature.string());
+    proof = proto_proof.SerializeAsString();
+  }
+  if (!chunk_action_authority_->Delete(name, proof, keys.public_key)) {
     LOG(kError) << "Delete - Could not delete " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -315,7 +321,7 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
 bool RemoteChunkStore::Modify(const ChunkId& name,
                               const std::string& content,
                               const OpFunctor& callback,
-                              const asymm::Keys keys) {
+                              const asymm::Keys& keys) {
   LOG(kInfo) << "Modify - " << Base32Substr(name);
 
   if (!chunk_action_authority_->Modifiable(name)) {

@@ -118,7 +118,7 @@ class RemoteChunkStore {
 
   ~RemoteChunkStore();
 
-  std::string Get(const ChunkId& name, const asymm::Keys& keys = asymm::Keys());
+  std::string Get(const ChunkId& name, const asymm::Keys& keys);
 
   int GetAndLock(const ChunkId& name,
                  const ChunkVersion& local_version,
@@ -127,17 +127,17 @@ class RemoteChunkStore {
 
   bool Store(const ChunkId& name,
              const std::string& content,
-             const OpFunctor& callback = nullptr,
-             const asymm::Keys keys = asymm::Keys());
+             const OpFunctor& callback,
+             const asymm::Keys& keys);
 
   bool Delete(const ChunkId& name,
               const OpFunctor& callback,
-              const asymm::Keys keys = asymm::Keys());
+              const asymm::Keys& keys);
 
   bool Modify(const ChunkId& name,
               const std::string& content,
               const OpFunctor& callback,
-              const asymm::Keys keys);
+              const asymm::Keys& keys);
 
   uintmax_t Size() const {
     // TODO(Steve) get from account
