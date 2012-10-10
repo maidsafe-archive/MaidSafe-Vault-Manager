@@ -26,6 +26,8 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/utils/fob.h"
+
 
 namespace maidsafe {
 
@@ -41,7 +43,7 @@ class VaultController {
   ~VaultController();
 
   bool Start(const std::string& invigilator_identifier, std::function<void()> stop_callback);
-  bool GetIdentity(asymm::Keys& keys,
+  bool GetIdentity(Fob& fob,
                    std::string& account_name,
                    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
@@ -55,8 +57,7 @@ class VaultController {
   bool StartListeningPort();
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   bool RequestVaultIdentity(uint16_t listening_port);
-  bool HandleVaultIdentityResponse(const std::string& message,
-                                   std::mutex& mutex);
+  bool HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToInvigilatorResponse(const std::string& message,
@@ -68,7 +69,7 @@ class VaultController {
   uint16_t invigilator_port_, local_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
-  asymm::Keys keys_;
+  Fob fob_;
   std::string account_name_;
   std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints_;
   std::function<void()> stop_callback_;

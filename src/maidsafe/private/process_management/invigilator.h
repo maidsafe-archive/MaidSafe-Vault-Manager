@@ -32,6 +32,8 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/utils/fob.h"
+
 #include "maidsafe/private/process_management/download_manager.h"
 #include "maidsafe/private/process_management/process_manager.h"
 #include "maidsafe/private/process_management/utils.h"
@@ -97,7 +99,7 @@ class Invigilator {
     void FromProtobuf(const protobuf::VaultInfo& pb_vault_info);
     ProcessIndex process_index;
     std::string account_name;
-    asymm::Keys keys;
+    Fob fob;
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
@@ -110,8 +112,7 @@ class Invigilator {
   Invigilator operator=(const Invigilator&);
 
   void Initialise();
-  void RestartInvigilator(const std::string& latest_file,
-                          const std::string& executable_name) const;
+  void RestartInvigilator(const std::string& latest_file, const std::string& executable_name) const;
 
   // Config file handling
   bool CreateConfigFile();
@@ -137,11 +138,11 @@ class Invigilator {
   boost::posix_time::time_duration GetUpdateInterval() const;
 
   // Requests to vault
-  void SendVaultShutdownRequest(const std::string& identity);
+  void SendVaultShutdownRequest(const Identity& identity);
 
   // Requests to client
   // NOTE: vault_info_mutex_ must be locked when calling this function.
-  void SendVaultJoinConfirmation(const std::string& identity, bool join_result);
+  void SendVaultJoinConfirmation(const Identity& identity, bool join_result);
   void SendNewVersionAvailable(uint16_t client_port);
 
   // Response handling from client
@@ -157,13 +158,13 @@ class Invigilator {
 
   // General
   bool InTestMode() const;
-  std::vector<VaultInfoPtr>::iterator FindFromIdentity(const std::string& identity);
+  std::vector<VaultInfoPtr>::iterator FindFromIdentity(const Identity& identity);
   std::vector<Invigilator::VaultInfoPtr>::iterator FindFromProcessIndex(ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
-  void RestartVault(const std::string& identity);
-  bool StopVault(const std::string& identity,
-                 const std::string& data,
-                 const std::string& signature,
+  void RestartVault(const Identity& identity);
+  bool StopVault(const Identity& identity,
+                 const asymm::PlainText& data,
+                 const asymm::Signature& signature,
                  bool permanent);
   void StopAllVaults();
 //  void EraseVault(const std::string& identity);

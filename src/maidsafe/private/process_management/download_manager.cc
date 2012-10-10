@@ -71,16 +71,16 @@ DownloadManager::DownloadManager(const std::string& protocol,
     local_path_ = temp_path;
   }
 #ifdef USE_TEST_KEYS
-  LOG(kError) << "Using the test keys.";
+  LOG(kError) << "Using the test fob.";
   std::string serialised_public_key(DownloadFileToMemory("public_key.dat"));
   if (serialised_public_key.empty())
     LOG(kError) << "Failure to retrieve key from server.";
-  asymm::DecodePublicKey(serialised_public_key, &maidsafe_public_key_);
+  maidsafe_public_key_ = asymm::DecodeKey(asymm::EncodedPublicKey(serialised_public_key));
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "Failure to decode retrieved serialised key.";
 #else
-  LOG(kError) << "Using the production keys.";
-  asymm::DecodePublicKey(detail::kMaidSafePublicKey, &maidsafe_public_key_);
+  LOG(kError) << "Using the production fob.";
+  maidsafe_public_key_ = detail::kMaidSafePublicKey;
 #endif
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";

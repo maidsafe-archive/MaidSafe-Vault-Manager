@@ -108,13 +108,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for existing config file with minimum content (generated in previous test case)
   // One vault is started. This should then be shut down and saved to the config file when the
   // Invigilator is destroyed.
-  asymm::Keys first_keys;
+  Fob first_fob;
   {
     Invigilator invigilator;
     ClientController client_controller([](std::string){});  // NOLINT (Fraser)
-    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&first_keys));
-    first_keys.identity = "FirstVault";
-    EXPECT_TRUE(client_controller.StartVault(first_keys, "F", ""));
+    first_fob.keys = asymm::GenerateKeyPair();
+    first_fob.identity = Identity("FirstVault");
+    EXPECT_TRUE(client_controller.StartVault(first_fob, "F", ""));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_EQ(1, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
@@ -140,13 +140,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and
   // both saved to the config file when the Invigilator is destroyed.
-  asymm::Keys second_keys;
+  Fob second_fob;
   {
     Invigilator invigilator;
     ClientController client_controller([](std::string){});  // NOLINT (Fraser)
-    ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&second_keys));
-    second_keys.identity = "SecondVault";
-    EXPECT_TRUE(client_controller.StartVault(second_keys, "G", ""));
+    second_fob.keys = asymm::GenerateKeyPair();
+    second_fob.identity = Identity("SecondVault");
+    EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
@@ -176,10 +176,9 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     ClientController client_controller([](std::string){});  // NOLINT (Fraser)
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
-    asymm::Signature signature1, signature2;
-    asymm::Sign(data, first_keys.private_key, &signature1);
-    asymm::Sign(data, second_keys.private_key, &signature2);
-    EXPECT_TRUE(client_controller.StopVault(data, signature1, "FirstVault"));
+    asymm::Signature signature1(asymm::Sign(data, first_fob.keys.private_key));
+    asymm::Signature signature2(asymm::Sign(data, second_fob.keys.private_key));
+    EXPECT_TRUE(client_controller.StopVault(data, signature1, first_fob.identity));
     EXPECT_EQ(1, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
@@ -198,21 +197,21 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // deactivated). One vault is started by config. Two clients are then used to start 30 new vaults.
   {
     EXPECT_EQ(0, GetNumRunningProcesses());
-    config_contents = "";
+    config_contents.clear();
     maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
     invigilator_config.ParseFromString(config_contents);
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
     ClientController client_controller1([](std::string){}), client_controller2([](std::string){});  // NOLINT (Fraser)
-    asymm::Keys keys;
+    Fob fob;
     for (int i(0); i < 50; ++i) {
-      ASSERT_EQ(kSuccess, asymm::GenerateKeyPair(&keys));
-      keys.identity = RandomAlphaNumericString(64);
+      fob.keys = asymm::GenerateKeyPair();
+      fob.identity = Identity(RandomAlphaNumericString(64));
       if (i % 2 == 0)
-        EXPECT_TRUE(client_controller1.StartVault(keys, RandomAlphaNumericString(16), ""));
+        EXPECT_TRUE(client_controller1.StartVault(fob, RandomAlphaNumericString(16), ""));
       else
-        EXPECT_TRUE(client_controller2.StartVault(keys, RandomAlphaNumericString(16), ""));
+        EXPECT_TRUE(client_controller2.StartVault(fob, RandomAlphaNumericString(16), ""));
     }
     EXPECT_EQ(51, GetNumRunningProcesses());
   }

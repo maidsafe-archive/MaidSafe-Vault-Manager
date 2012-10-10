@@ -69,7 +69,8 @@ const char kSeparator('_');
 }  // unnamed namespace
 
 const std::string kSignatureExtension(".sig");
-const std::string kMaidSafePublicKey(key, 268);
+const asymm::PublicKey kMaidSafePublicKey(
+    asymm::DecodeKey(asymm::EncodedPublicKey(std::string(key, 268))));
 
 
 Platform::Platform(const Platform::Type& type) : type_(type), name_() {

@@ -15,6 +15,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/utils/fob.h"
 #include "maidsafe/private/process_management/client_controller.h"
 
 
@@ -22,26 +23,24 @@ int main(int /*ac*/, char* /*av*/[]) {
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kVerbose);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
   maidsafe::priv::process_management::ClientController client([](std::string){});  // NOLINT (Fraser)
-  maidsafe::asymm::Keys keys;
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
-  maidsafe::asymm::GenerateKeyPair(&keys);
-  keys.identity = maidsafe::RandomAlphaNumericString(64);
-  keys.validation_token = maidsafe::RandomAlphaNumericString(64);
+  maidsafe::Fob fob;
+  fob.keys = maidsafe::asymm::GenerateKeyPair();
+  fob.identity = maidsafe::Identity(maidsafe::RandomAlphaNumericString(64));
+  fob.validation_token = maidsafe::NonEmptyString(maidsafe::RandomAlphaNumericString(64));
   try {
-  if (!client.StartVault(keys, account_name, "")) {
-    LOG(kError) << "DUMMYclient: Failed to start vault " << (keys.identity);
-  }
+    if (!client.StartVault(fob, account_name, "")) {
+      LOG(kError) << "DUMMYclient: Failed to start vault " << fob.identity.string();
+    }
   } catch(...) {
-    LOG(kError) << "DUMMYclient: Problem starting vault " << (keys.identity);
+    LOG(kError) << "DUMMYclient: Problem starting vault " << fob.identity.string();
   }
-  LOG(kInfo) << "Identity: " << (keys.identity);
-  LOG(kInfo) << "Validation Token: " << (keys.validation_token);
-  std::string public_key_string;
-  maidsafe::asymm::EncodePublicKey(keys.public_key, &public_key_string);
-  std::string private_key_string;
-  maidsafe::asymm::EncodePrivateKey(keys.private_key, &private_key_string);
-  LOG(kInfo) << "Public Key: " << maidsafe::Base64Substr(public_key_string);
-  LOG(kInfo) << "Private Key: " << maidsafe::Base64Substr(private_key_string);
+  LOG(kInfo) << "Identity: " << fob.identity.string();
+  LOG(kInfo) << "Validation Token: " << fob.validation_token.string();
+  LOG(kInfo) << "Public Key: "
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.public_key));
+  LOG(kInfo) << "Private Key: "
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.private_key));
   LOG(kInfo) << "Account name: " << account_name;
   return 0;
 }

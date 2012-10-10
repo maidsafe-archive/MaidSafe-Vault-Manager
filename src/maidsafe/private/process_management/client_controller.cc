@@ -19,6 +19,7 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/return_codes.h"
+#include "maidsafe/private/utils/fob.h"
 #include "maidsafe/private/process_management/controller_messages_pb.h"
 #include "maidsafe/private/process_management/local_tcp_transport.h"
 #include "maidsafe/private/process_management/utils.h"
@@ -228,7 +229,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   condition_variable.notify_one();
 }
 
-bool ClientController::StartVault(const asymm::Keys& keys,
+bool ClientController::StartVault(const Fob& fob,
                                   const std::string& account_name,
                                   const fs::path& chunkstore) {
   if (state_ != kVerified) {
@@ -241,17 +242,10 @@ bool ClientController::StartVault(const asymm::Keys& keys,
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name);
-  std::string serialised_keys;
-  if (!asymm::SerialiseKeys(keys, serialised_keys)) {
-    LOG(kError) << "Failed to serialise keys.";
-    return false;
-  }
-  start_vault_request.set_keys(serialised_keys);
-  std::string token(maidsafe::RandomString(16));
-  std::string signature;
-  asymm::Sign(token, keys.private_key, &signature);
-  start_vault_request.set_token(token);
-  start_vault_request.set_token_signature(signature);
+  start_vault_request.set_fob(utilities::SerialiseFob(fob).string());
+  asymm::PlainText token(maidsafe::RandomString(16));
+  start_vault_request.set_token(token.string());
+  start_vault_request.set_token_signature(asymm::Sign(token, fob.keys.private_key).string());
   start_vault_request.set_credential_change(false);
   start_vault_request.set_client_port(local_port_);
   if (!chunkstore.empty())
@@ -297,21 +291,21 @@ bool ClientController::StartVault(const asymm::Keys& keys,
   }
 
   std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
-  joining_vaults_[keys.identity] = false;
+  joining_vaults_[fob.identity] = false;
   if (!joining_vaults_conditional_.wait_for(lock,
                                             std::chrono::minutes(1),
-                                            [&] { return joining_vaults_[keys.identity]; })) {
+                                            [&] { return joining_vaults_[fob.identity]; })) {
     LOG(kError) << "Timed out waiting for vault join confirmation.";
     return false;
   }
-  joining_vaults_.erase(keys.identity);
+  joining_vaults_.erase(fob.identity);
 
   return true;
 }
 
 bool ClientController::StopVault(const asymm::PlainText& data,
                                  const asymm::Signature& signature,
-                                 const asymm::Identity& identity) {
+                                 const Identity& identity) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to Invigilator.";
     return false;
@@ -321,9 +315,9 @@ bool ClientController::StopVault(const asymm::PlainText& data,
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   protobuf::StopVaultRequest stop_vault_request;
-  stop_vault_request.set_data(data);
-  stop_vault_request.set_signature(signature);
-  stop_vault_request.set_identity(identity);
+  stop_vault_request.set_data(data.string());
+  stop_vault_request.set_signature(signature.string());
+  stop_vault_request.set_identity(identity.string());
 
   std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
@@ -624,7 +618,7 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
     LOG(kError) << "Failed to parse VaultJoinConfirmation.";
     vault_join_confirmation_ack.set_ack(false);
   } else {
-    asymm::Identity identity(vault_join_confirmation.identity());
+    Identity identity(vault_join_confirmation.identity());
     std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
     if (joining_vaults_.find(identity) == joining_vaults_.end()) {
       LOG(kError) << "Identity is not in list of joining vaults.";

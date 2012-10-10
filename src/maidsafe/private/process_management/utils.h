@@ -17,6 +17,8 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/rsa.h"
+
 
 namespace maidsafe {
 
@@ -29,7 +31,7 @@ enum class MessageType;
 namespace detail {
 
 extern const std::string kSignatureExtension;
-extern const std::string kMaidSafePublicKey;
+extern const asymm::PublicKey kMaidSafePublicKey;
 const std::string kVersionFilename("version");
 const std::string kManifestFilename("manifest");
 const std::string kGlobalConfigFilename("global-config.dat");

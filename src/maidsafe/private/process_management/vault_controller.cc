@@ -21,6 +21,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/process_management/controller_messages_pb.h"
 #include "maidsafe/private/process_management/local_tcp_transport.h"
 #include "maidsafe/private/process_management/utils.h"
@@ -44,7 +45,7 @@ VaultController::VaultController()
       local_port_(0),
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
-      keys_(),
+      fob_(),
       account_name_(),
       bootstrap_endpoints_(),
       stop_callback_(),
@@ -146,18 +147,15 @@ bool VaultController::Start(const std::string& invigilator_identifier,
   return RequestVaultIdentity(local_port_);
 }
 
-bool VaultController::GetIdentity(asymm::Keys& keys,
-                                  std::string& account_name,
-                                  std::vector<std::pair<std::string, uint16_t>> &
-                                      bootstrap_endpoints) {
+bool VaultController::GetIdentity(
+    Fob& fob,
+    std::string& account_name,
+    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
   if (invigilator_port_ == 0) {
     LOG(kError) << "Invalid Invigilator port.";
     return false;
   }
-  keys.private_key = keys_.private_key;
-  keys.public_key = keys_.public_key;
-  keys.identity = keys_.identity;
-  keys.validation_token = keys_.validation_token;
+  fob = fob_;
   account_name = account_name_;
   bootstrap_endpoints = bootstrap_endpoints_;
   return true;
@@ -424,10 +422,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
 
-  if (!asymm::ParseKeys(vault_identity_response.keys(), keys_)) {
-    LOG(kError) << "Failed to parse keys.";
-    return false;
-  }
+  fob_ = utilities::ParseFob(NonEmptyString(vault_identity_response.fob()));
 
   account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {

@@ -33,6 +33,8 @@
 
 namespace maidsafe {
 
+struct Fob;
+
 namespace priv {
 
 namespace process_management {
@@ -50,7 +52,7 @@ class ClientController {
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const asymm::Keys& keys,
+  bool StartVault(const Fob& fob,
                   const std::string& account_name,
                   const boost::filesystem::path& chunkstore);
 
@@ -58,7 +60,7 @@ class ClientController {
   // signed wth the vault's private key.
   bool StopVault(const asymm::PlainText& data,
                  const asymm::Signature& signature,
-                 const asymm::Identity& identity);
+                 const Identity& identity);
 
   // Blocking call which attempts to set the Invigilator's update interval.  The limits are
   // defined in Invigilator::kMinUpdateInterval() and Invigilator::kMaxUpdateInterval().
@@ -107,7 +109,7 @@ class ClientController {
   OnNewVersionAvailable on_new_version_available_;
   State state_;
   std::vector<EndPoint> bootstrap_nodes_;
-  std::map<asymm::Identity, bool> joining_vaults_;
+  std::map<Identity, bool> joining_vaults_;
   std::mutex joining_vaults_mutex_;
   std::condition_variable joining_vaults_conditional_;
 };
