@@ -50,7 +50,7 @@ Invigilator::VaultInfo::VaultInfo()
 
 void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
-  pb_vault_info->set_fob(utilities::SerialiseFob(fob).string());
+  pb_vault_info->set_fob(utils::SerialiseFob(fob).string());
   pb_vault_info->set_chunkstore_path(chunkstore_path);
   pb_vault_info->set_requested_to_run(requested_to_run);
   pb_vault_info->set_version(vault_version);
@@ -58,7 +58,7 @@ void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) cons
 
 void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
   account_name = pb_vault_info.account_name();
-  fob = utilities::ParseFob(NonEmptyString(pb_vault_info.fob()));
+  fob = utils::ParseFob(NonEmptyString(pb_vault_info.fob()));
   chunkstore_path = pb_vault_info.chunkstore_path();
   requested_to_run = pb_vault_info.requested_to_run();
   vault_version = pb_vault_info.version();
@@ -388,7 +388,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
           process_manager_.StartProcess((*itr)->process_index);
         }
       } else {
-        Fob temp_keys(utilities::ParseFob(NonEmptyString(start_vault_request.fob())));
+        Fob temp_keys(utils::ParseFob(NonEmptyString(start_vault_request.fob())));
         if ((*itr)->joined_network) {
           // TODO(Team): Stop and restart with new credentials
         } else {
@@ -401,7 +401,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
       }
     } else {
       // The vault is not already registered.
-      vault_info->fob = utilities::ParseFob(NonEmptyString(start_vault_request.fob()));
+      vault_info->fob = utils::ParseFob(NonEmptyString(start_vault_request.fob()));
       vault_info->account_name = start_vault_request.account_name();
       if (start_vault_request.has_chunkstore_path()) {
         vault_info->chunkstore_path = start_vault_request.chunkstore_path();
@@ -446,7 +446,7 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
     successful_response = false;
     // TODO(Team): Should this be dropped silently?
   } else {
-    serialised_fob = utilities::SerialiseFob((*itr)->fob);
+    serialised_fob = utils::SerialiseFob((*itr)->fob);
     if (endpoints_.empty()) {
       protobuf::InvigilatorConfig config;
       if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
@@ -1141,11 +1141,11 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
 
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
-      Fob fob(utilities::ParseFob(NonEmptyString(config.vault_info(n).fob())));
+      Fob fob(utils::ParseFob(NonEmptyString(config.vault_info(n).fob())));
       if (vault_info->fob.identity == fob.identity) {
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
         p_info->set_account_name(vault_info->account_name);
-        p_info->set_fob(utilities::SerialiseFob(vault_info->fob).string());
+        p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
         p_info->set_version(vault_info->vault_version);
@@ -1155,7 +1155,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
   } else {
     protobuf::VaultInfo* p_info = config.add_vault_info();
     p_info->set_account_name(vault_info->account_name);
-    p_info->set_fob(utilities::SerialiseFob(vault_info->fob).string());
+    p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
     p_info->set_version(kInvalidVersion);

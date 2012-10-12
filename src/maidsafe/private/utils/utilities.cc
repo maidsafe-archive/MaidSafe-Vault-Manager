@@ -27,7 +27,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace utilities {
+namespace utils {
 
 void ChunkStoreOperationCallback(const bool& response,
                                  std::mutex* mutex,
@@ -75,7 +75,7 @@ int WaitForResults(std::mutex& mutex,
   return kSuccess;
 }
 
-}  // namespace utilities
+}  // namespace utils
 
 }  // namespace priv
 

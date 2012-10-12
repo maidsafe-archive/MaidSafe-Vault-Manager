@@ -23,7 +23,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace utilities {
+namespace utils {
 
 namespace test {
 
@@ -58,7 +58,7 @@ TEST_F(FobTest, BEH_FobSerialisationAndParsing) {
 
 }  // namespace test
 
-}  // namespace utilities
+}  // namespace utils
 
 }  // namespace priv
 

@@ -22,7 +22,7 @@ Fob::Fob() : identity(), keys(), validation_token() {}
 
 namespace priv {
 
-namespace utilities {
+namespace utils {
 
 Fob GenerateFob(asymm::PrivateKey* private_key) {
   Fob fob;
@@ -83,7 +83,7 @@ Fob ParseFob(const NonEmptyString& serialised_fob) {
   return fob;
 }
 
-}  // namespace utilities
+}  // namespace utils
 
 }  // namespace priv
 

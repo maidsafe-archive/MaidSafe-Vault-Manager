@@ -24,7 +24,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace utilities {
+namespace utils {
 
 enum ChunkStoreResult {
   kOperationTimeOut = -3,
@@ -43,7 +43,7 @@ int WaitForResults(std::mutex& mutex,
                    std::vector<int>& results,
                    std::chrono::seconds interval = std::chrono::seconds(1));
 
-}  // namespace utilities
+}  // namespace utils
 
 }  // namespace priv
 

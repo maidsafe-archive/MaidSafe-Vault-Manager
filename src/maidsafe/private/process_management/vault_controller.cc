@@ -422,7 +422,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
 
-  fob_ = utilities::ParseFob(NonEmptyString(vault_identity_response.fob()));
+  fob_ = utils::ParseFob(NonEmptyString(vault_identity_response.fob()));
 
   account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {

@@ -28,7 +28,7 @@ struct Fob {
 
 namespace priv {
 
-namespace utilities {
+namespace utils {
 
 // Generates the identity according to the maidsafe patent
 Fob GenerateFob(asymm::PrivateKey* private_key);
@@ -42,7 +42,7 @@ NonEmptyString SerialiseFob(const Fob& fob);
 // Parse a serialised protocol buffer to a fob
 Fob ParseFob(const NonEmptyString& serialised_fob);
 
-}  // namespace utilities
+}  // namespace utils
 
 }  // namespace priv
 

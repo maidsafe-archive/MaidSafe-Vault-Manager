@@ -242,7 +242,7 @@ bool ClientController::StartVault(const Fob& fob,
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name);
-  start_vault_request.set_fob(utilities::SerialiseFob(fob).string());
+  start_vault_request.set_fob(utils::SerialiseFob(fob).string());
   asymm::PlainText token(maidsafe::RandomString(16));
   start_vault_request.set_token(token.string());
   start_vault_request.set_token_signature(asymm::Sign(token, fob.keys.private_key).string());
