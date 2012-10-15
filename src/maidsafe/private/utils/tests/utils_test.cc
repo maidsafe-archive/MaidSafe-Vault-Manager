@@ -39,6 +39,16 @@ class FobTest : public testing::Test {
   }
 };
 
+TEST_F(FobTest, BEH_FobGenerationAndValidation) {
+  auto f([=] {
+          std::vector<Fob> fobs(GenerateChainedFob(7, nullptr));
+          ASSERT_EQ(7U, fobs.size());
+          ASSERT_TRUE(ValidateFob(fobs.at(0), nullptr));
+          for (size_t n(1); n < 7; ++n)
+            ASSERT_TRUE(ValidateFob(fobs.at(n), &fobs.at(n - 1).keys.private_key));
+         });
+  RunInParallel(f);
+}
 
 TEST_F(FobTest, BEH_FobSerialisationAndParsing) {
   auto f([=] {

@@ -53,6 +53,13 @@ std::vector<Fob> GenerateChainedFob(size_t amount, asymm::PrivateKey* private_ke
   return fob_chain;
 }
 
+bool ValidateFob(const Fob& fob, asymm::PrivateKey* private_key) {
+  asymm::EncodedPublicKey encoded_public_key(asymm::EncodeKey(fob.keys.public_key));
+  return asymm::CheckSignature(asymm::PlainText(encoded_public_key),
+                               fob.validation_token,
+                               private_key ? *private_key : fob.keys.private_key);
+}
+
 NonEmptyString SerialiseFob(const Fob& fob) {
   protobuf::Fob proto_fob;
   proto_fob.set_identity(fob.identity.string());

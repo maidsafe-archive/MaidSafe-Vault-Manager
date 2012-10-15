@@ -36,6 +36,9 @@ Fob GenerateFob(asymm::PrivateKey* private_key);
 // Generates chained identities according to the maidsafe patent
 std::vector<Fob> GenerateChainedFob(size_t amount, asymm::PrivateKey* private_key);
 
+// Validates identity according to the maidsafe patent
+bool ValidateFob(const Fob& fob, asymm::PrivateKey* private_key);
+
 // Serialise the fob using protocol buffers
 NonEmptyString SerialiseFob(const Fob& fob);
 
