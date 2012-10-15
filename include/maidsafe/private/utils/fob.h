@@ -20,10 +20,11 @@
 namespace maidsafe {
 
 struct Fob {
+  typedef asymm::Signature ValidationToken;
   Fob();
   Identity identity;
   asymm::Keys keys;
-  NonEmptyString validation_token;
+  ValidationToken validation_token;
 };
 
 namespace priv {
