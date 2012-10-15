@@ -87,7 +87,7 @@ int ProcessGet<ChunkType::kAppendableByAll>(
   }
 
   AppendableByAll existing_chunk;
-  if (!ParseProtobuf<AppendableByAll>(all_existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<AppendableByAll>(NonEmptyString(all_existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to get " << Base32Substr(name)
                 << ": existing data doesn't parse as AppendableByAll";
     return kParseFailure;
@@ -117,7 +117,10 @@ int ProcessGet<ChunkType::kAppendableByAll>(
       LOG(kError) << "Failed to serialise: " << Base32Substr(name);
       return kSerialisationError;
     }
-    if (!chunk_store->Modify(name, with_empty_appendices)) {
+
+    // Just read the data, should not be empty even without appendices
+    NonEmptyString owners_portion(with_empty_appendices);
+    if (!chunk_store->Modify(name, owners_portion)) {
       LOG(kError) << "Failed to modify chunk: " << Base32Substr(name);
       return kModifyFailure;
     }
@@ -135,7 +138,7 @@ int ProcessGet<ChunkType::kAppendableByAll>(
 template <>
 int ProcessStore<ChunkType::kAppendableByAll>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
@@ -172,7 +175,7 @@ int ProcessStore<ChunkType::kAppendableByAll>(
 template <>
 int ProcessDelete<ChunkType::kAppendableByAll>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
@@ -182,7 +185,7 @@ int ProcessDelete<ChunkType::kAppendableByAll>(
   }
 
   AppendableByAll existing_chunk;
-  if (!ParseProtobuf<AppendableByAll>(existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<AppendableByAll>(NonEmptyString(existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kParseFailure;
@@ -234,7 +237,7 @@ int ProcessDelete<ChunkType::kAppendableByAll>(
 template <>
 int ProcessModify<ChunkType::kAppendableByAll>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     int64_t* size_difference,
     std::string* new_content,
@@ -247,7 +250,7 @@ int ProcessModify<ChunkType::kAppendableByAll>(
   }
 
   AppendableByAll existing_chunk;
-  if (!ParseProtobuf<AppendableByAll>(existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<AppendableByAll>(NonEmptyString(existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to modify " << Base32Substr(name)
                 << ": existing data doesn't parse as AppendableByAll";
     return kParseFailure;

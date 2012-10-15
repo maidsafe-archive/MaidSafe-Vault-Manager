@@ -24,7 +24,7 @@
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
-
+#include "maidsafe/private/utils/fob.h"
 
 namespace bs2 = boost::signals2;
 
@@ -40,12 +40,10 @@ class ChunkStore;
 
 class ChunkManager {
  public:
-  typedef bs2::signal<void(const ChunkId&, const int&)>
-      ChunkStoredSig, ChunkModifiedSig, ChunkGotSig, ChunkDeletedSig;
-  typedef std::shared_ptr<ChunkStoredSig> ChunkStoredSigPtr;
-  typedef std::shared_ptr<ChunkModifiedSig> ChunkModifiedSigPtr;
-  typedef std::shared_ptr<ChunkGotSig> ChunkGotSigPtr;
-  typedef std::shared_ptr<ChunkDeletedSig> ChunkDeletedSigPtr;
+  typedef bs2::signal<void(const ChunkId&, const int&)> ChunkStoredSig,
+                                                        ChunkModifiedSig,
+                                                        ChunkGotSig,
+                                                        ChunkDeletedSig;
 
   static std::chrono::duration<int> kLockTimeout() { return std::chrono::minutes(1); }
 
@@ -53,21 +51,19 @@ class ChunkManager {
 
   virtual void GetChunk(const ChunkId& name,
                         const ChunkVersion& local_version,
-                        const asymm::Keys& keys,
+                        const Fob& fob,
                         bool lock) = 0;
-  virtual void StoreChunk(const ChunkId& name, const asymm::Keys& keys) = 0;
-  virtual void ModifyChunk(const ChunkId& name,
-                           const std::string& content,
-                           const asymm::Keys& keys) = 0;
-  virtual void DeleteChunk(const ChunkId& name, const asymm::Keys& keys) = 0;
+  virtual void StoreChunk(const ChunkId& name, const Fob& fob) = 0;
+  virtual void ModifyChunk(const ChunkId& name, const NonEmptyString& content, const Fob& fob) = 0;
+  virtual void DeleteChunk(const ChunkId& name, const Fob& fob) = 0;
 
   virtual int64_t StorageSize() = 0;
   virtual int64_t StorageCapacity() = 0;
 
-  ChunkGotSigPtr sig_chunk_got() { return sig_chunk_got_; }
-  ChunkStoredSigPtr sig_chunk_stored() { return sig_chunk_stored_; }
-  ChunkModifiedSigPtr sig_chunk_modified() { return sig_chunk_modified_; }
-  ChunkDeletedSigPtr sig_chunk_deleted() { return sig_chunk_deleted_; }
+  ChunkGotSig& sig_chunk_got() { return sig_chunk_got_; }
+  ChunkStoredSig& sig_chunk_stored() { return sig_chunk_stored_; }
+  ChunkModifiedSig& sig_chunk_modified() { return sig_chunk_modified_; }
+  ChunkDeletedSig& sig_chunk_deleted() { return sig_chunk_deleted_; }
   std::shared_ptr<ChunkStore> chunk_store() { return chunk_store_; }
 
   std::chrono::duration<int> lock_timeout() { return lock_timeout_; }
@@ -75,16 +71,16 @@ class ChunkManager {
 
  protected:
   explicit ChunkManager(std::shared_ptr<ChunkStore> chunk_store)
-      : sig_chunk_got_(new ChunkGotSig),
-        sig_chunk_stored_(new ChunkStoredSig),
-        sig_chunk_modified_(new ChunkModifiedSig),
-        sig_chunk_deleted_(new ChunkDeletedSig),
+      : sig_chunk_got_(),
+        sig_chunk_stored_(),
+        sig_chunk_modified_(),
+        sig_chunk_deleted_(),
         chunk_store_(chunk_store),
         lock_timeout_(kLockTimeout()) {}
-  ChunkGotSigPtr sig_chunk_got_;
-  ChunkStoredSigPtr sig_chunk_stored_;
-  ChunkModifiedSigPtr sig_chunk_modified_;
-  ChunkDeletedSigPtr sig_chunk_deleted_;
+  ChunkGotSig sig_chunk_got_;
+  ChunkStoredSig sig_chunk_stored_;
+  ChunkModifiedSig sig_chunk_modified_;
+  ChunkDeletedSig sig_chunk_deleted_;
   std::shared_ptr<ChunkStore> chunk_store_;
   std::chrono::duration<int> lock_timeout_;
 

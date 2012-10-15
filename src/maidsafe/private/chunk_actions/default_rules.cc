@@ -89,7 +89,7 @@ int ProcessGet<ChunkType::kDefault>(const ChunkId& name,
 
 template <>
 int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
-                                      const std::string& content,
+                                      const NonEmptyString& content,
                                       const asymm::PublicKey& /*public_key*/,
                                       std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content(chunk_store->Get(name));
@@ -102,7 +102,7 @@ int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
     }
   } else {
     // Pre-existing chunk - ensure data is identical
-    if (existing_content != content) {
+    if (existing_content != content.string()) {
       LOG(kError) << "Failed to store " << Base32Substr(name)
                   << ": existing data doesn't match new data - can't store";
       return kInvalidSignedData;
@@ -114,7 +114,7 @@ int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
 
 template <>
 int ProcessDelete<ChunkType::kDefault>(const ChunkId& /*name*/,
-                                       const std::string& /*ownership_proof*/,
+                                       const NonEmptyString& /*ownership_proof*/,
                                        const asymm::PublicKey& /*public_key*/,
                                        std::shared_ptr<chunk_store::ChunkStore> /*chunk_store*/) {
   return kSuccess;
@@ -122,7 +122,7 @@ int ProcessDelete<ChunkType::kDefault>(const ChunkId& /*name*/,
 
 template <>
 int ProcessModify<ChunkType::kDefault>(const ChunkId& name,
-                                       const std::string& /*content*/,
+                                       const NonEmptyString& /*content*/,
                                        const asymm::PublicKey& /*public_key*/,
                                        int64_t * /*size_difference*/,
                                        std::string * /*new_content*/,

@@ -35,7 +35,7 @@ bool ThreadsafeChunkStore::Get(const ChunkId& name, const fs::path& sink_file_na
   return chunk_store_->Get(name, sink_file_name);
 }
 
-bool ThreadsafeChunkStore::Store(const ChunkId& name, const std::string& content) {
+bool ThreadsafeChunkStore::Store(const ChunkId& name, const NonEmptyString& content) {
   std::lock_guard<std::mutex> lock(mutex_);
   return chunk_store_->Store(name, content);
 }
@@ -52,7 +52,7 @@ bool ThreadsafeChunkStore::Delete(const ChunkId& name) {
   return chunk_store_->Delete(name);
 }
 
-bool ThreadsafeChunkStore::Modify(const ChunkId& name, const std::string& content) {
+bool ThreadsafeChunkStore::Modify(const ChunkId& name, const NonEmptyString& content) {
   std::lock_guard<std::mutex> lock(mutex_);
   return chunk_store_->Modify(name, content);
 }

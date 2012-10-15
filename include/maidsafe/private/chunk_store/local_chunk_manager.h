@@ -43,13 +43,10 @@ class LocalChunkManager : public ChunkManager {
                         boost::posix_time::milliseconds(0));
   ~LocalChunkManager();
 
-  void GetChunk(const ChunkId& name,
-                const ChunkVersion& local_version,
-                const asymm::Keys& keys,
-                bool lock);
-  void StoreChunk(const ChunkId& name, const asymm::Keys& keys);
-  void DeleteChunk(const ChunkId& name, const asymm::Keys& keys);
-  void ModifyChunk(const ChunkId& name, const std::string& content, const asymm::Keys& keys);
+  void GetChunk(const ChunkId& name, const ChunkVersion& local_version, const Fob& fob, bool lock);
+  void StoreChunk(const ChunkId& name, const Fob& fob);
+  void DeleteChunk(const ChunkId& name, const Fob& fob);
+  void ModifyChunk(const ChunkId& name, const NonEmptyString& content, const Fob& fob);
 
   int64_t StorageSize();
   int64_t StorageCapacity();

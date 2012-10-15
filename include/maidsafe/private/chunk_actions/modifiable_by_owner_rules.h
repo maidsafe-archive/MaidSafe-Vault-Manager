@@ -88,7 +88,7 @@ int ProcessGet<ChunkType::kModifiableByOwner>(const ChunkId& name,
 template <>
 int ProcessStore<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -104,7 +104,7 @@ int ProcessStore<ChunkType::kModifiableByOwner>(
 template <>
 int ProcessDelete<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -120,7 +120,7 @@ int ProcessDelete<ChunkType::kModifiableByOwner>(
 template <>
 int ProcessModify<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     int64_t* size_difference,
     std::string* new_content,

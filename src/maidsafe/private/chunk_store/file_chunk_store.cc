@@ -137,7 +137,7 @@ bool FileChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) co
   return !ec;
 }
 
-bool FileChunkStore::Store(const ChunkId& name, const std::string& content) {
+bool FileChunkStore::Store(const ChunkId& name, const NonEmptyString& content) {
   fs::path chunk_file(ChunkNameToFilePath(name, true));
   if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -147,26 +147,21 @@ bool FileChunkStore::Store(const ChunkId& name, const std::string& content) {
   uintmax_t ref_count(GetChunkReferenceCount(chunk_file));
   if (ref_count == 0) {
     // new chunk!
-    if (content.empty()) {
-      LOG(kError) << "Content to be stored empty: " << Base32Substr(name);
-      return false;
-    }
-
-    if (!Vacant(content.size())) {
+    if (!Vacant(content.string().size())) {
       LOG(kError) << "Not enough space to store: " << Base32Substr(name)
-                  << ", size: " << content.size();
+                  << ", size: " << content.string().size();
       return false;
     }
 
     // this is the first entry of this chunk
     chunk_file.replace_extension(".1");
 
-    if (!WriteFile(chunk_file, content)) {
+    if (!WriteFile(chunk_file, content.string())) {
       LOG(kError) << "Failed to write the file: " << Base32Substr(name);
       return false;
     }
 
-    ChunkAdded(content.size());
+    ChunkAdded(content.string().size());
     return true;
   } else {
     fs::path old_path(chunk_file), new_path(chunk_file);
@@ -292,7 +287,7 @@ bool FileChunkStore::Delete(const ChunkId& name) {
   return false;
 }
 
-bool FileChunkStore::Modify(const ChunkId& name, const std::string& content) {
+bool FileChunkStore::Modify(const ChunkId& name, const NonEmptyString& content) {
   fs::path chunk_file(ChunkNameToFilePath(name));
   if (chunk_file.empty()) {
     LOG(kError) << "Chunk Store not initialised";
@@ -311,14 +306,16 @@ bool FileChunkStore::Modify(const ChunkId& name, const std::string& content) {
   ReadFile(chunk_file, &current_content);
   uintmax_t content_size_difference;
   bool increase_size(false);
-  if (!AssessSpaceRequirement(current_content.size(), content.size(), &increase_size,
+  if (!AssessSpaceRequirement(current_content.size(),
+                              content.string().size(),
+                              &increase_size,
                               &content_size_difference)) {
     LOG(kError) << "Size differential unacceptable - increase_size: "
                 << increase_size << ", name: " << Base32Substr(name);
     return false;
   }
 
-  if (!WriteFile(chunk_file, content)) {
+  if (!WriteFile(chunk_file, content.string())) {
     LOG(kError) << "Failed to write the file: " << Base32Substr(name);
     return false;
   }

@@ -54,7 +54,7 @@ class ChunkStore {
   virtual bool Get(const ChunkId& name, const fs::path& sink_file_name) const = 0;
 
   // Stores chunk content under the given name.
-  virtual bool Store(const ChunkId& name, const std::string& content) = 0;
+  virtual bool Store(const ChunkId& name, const NonEmptyString& content) = 0;
 
   // Stores chunk content under the given name.
   virtual bool Store(const ChunkId& name,
@@ -65,7 +65,7 @@ class ChunkStore {
   virtual bool Delete(const ChunkId& name) = 0;
 
   // Modifies chunk content under the given name.
-  virtual bool Modify(const ChunkId& name, const std::string& content) = 0;
+  virtual bool Modify(const ChunkId& name, const NonEmptyString& content) = 0;
 
   // Modifies a chunk's content as a file, potentially overwriting an existing
   // file of the same name.

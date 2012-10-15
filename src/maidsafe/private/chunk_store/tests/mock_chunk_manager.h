@@ -36,22 +36,21 @@ namespace test {
 
 class MockChunkManager : public priv::chunk_store::ChunkManager {
  public:
-  explicit MockChunkManager(
-      std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store);
+  explicit MockChunkManager(std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store);
   virtual ~MockChunkManager();
 
   MOCK_METHOD4(GetChunk, void(const ChunkId& name,
                               const ChunkVersion& local_version,
-                              const asymm::Keys& keys,
+                              const Fob& fob,
                               bool lock));
 
-  MOCK_METHOD2(StoreChunk, void(const ChunkId& chunk_name, const asymm::Keys& keys));
+  MOCK_METHOD2(StoreChunk, void(const ChunkId& chunk_name, const Fob& fob));
 
   MOCK_METHOD3(ModifyChunk, void(const ChunkId& name,
-                                 const std::string& content,
-                                 const asymm::Keys& keys));
+                                 const NonEmptyString& content,
+                                 const Fob& fob));
 
-  MOCK_METHOD2(DeleteChunk, void(const ChunkId& chunk_name, const asymm::Keys& keys));
+  MOCK_METHOD2(DeleteChunk, void(const ChunkId& chunk_name, const Fob& fob));
 
   int64_t StorageSize() { return chunk_store()->Size(); }
 
@@ -61,8 +60,8 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
   void Timeout() {}
 
   void StoreChunkPass(const ChunkId& chunk_name) {
-    chunk_store()->Store(chunk_name, RandomString(128));
-    (*sig_chunk_stored_)(chunk_name, kSuccess);
+    chunk_store()->Store(chunk_name, NonEmptyString(RandomString(128)));
+    sig_chunk_stored_(chunk_name, kSuccess);
   }
 
  private:

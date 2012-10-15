@@ -62,18 +62,18 @@ class BufferedChunkStore : public ChunkStore {
   bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
   // This method returns once the chunk is stored in the cache. It will then be asynchronously
   // written to the file-based permanent store.
-  bool Store(const ChunkId& name, const std::string& content);
+  bool Store(const ChunkId& name, const NonEmptyString& content);
   // This method returns once the chunk is stored in the cache. It will then be asynchronously
   // written to the file-based permanent store.
   bool Store(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   // Stores chunk content under the given name in cache.
-  bool CacheStore(const ChunkId& name, const std::string& content);
+  bool CacheStore(const ChunkId& name, const NonEmptyString& content);
   // Stores chunk content under the given name in cache.
   bool CacheStore(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   // Stores an already cached chunk in the permanent store (blocking).
   bool PermanentStore(const ChunkId& name);
   bool Delete(const ChunkId& name);
-  bool Modify(const ChunkId& name, const std::string& content);
+  bool Modify(const ChunkId& name, const NonEmptyString& content);
   bool Modify(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Has(const ChunkId& name) const;
   bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
@@ -126,7 +126,7 @@ class BufferedChunkStore : public ChunkStore {
   BufferedChunkStore(const BufferedChunkStore&);
   BufferedChunkStore& operator=(const BufferedChunkStore&);
   void AddCachedChunksEntry(const ChunkId& name) const;
-  bool DoCacheStore(const ChunkId& name, const std::string& content) const;
+  bool DoCacheStore(const ChunkId& name, const NonEmptyString& content) const;
   bool DoCacheStore(const ChunkId& name,
                     const uintmax_t& size,
                     const fs::path& source_file_name,

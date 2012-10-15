@@ -44,7 +44,7 @@ std::string MemoryChunkStore::Get(const ChunkId& name) const {
     return "";
   }
 
-  return (*it).second.second;
+  return (*it).second.second.string();
 }
 
 bool MemoryChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) const {
@@ -55,10 +55,10 @@ bool MemoryChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name) 
     return false;
   }
 
-  return WriteFile(sink_file_name, (*it).second.second);
+  return WriteFile(sink_file_name, (*it).second.second.string());
 }
 
-bool MemoryChunkStore::Store(const ChunkId& name, const std::string& content) {
+bool MemoryChunkStore::Store(const ChunkId& name, const NonEmptyString& content) {
   ValidateChunkId(name);
   auto it(chunks_.lower_bound(name));
   if (it != chunks_.end() && (*it).first == name) {
@@ -68,7 +68,7 @@ bool MemoryChunkStore::Store(const ChunkId& name, const std::string& content) {
     return true;
   }
 
-  uintmax_t chunk_size(content.size());
+  uintmax_t chunk_size(content.string().size());
   if (chunk_size == 0) {
     LOG(kError) << "Store - Empty contents passed for " << Base32Substr(name);
     return false;
@@ -129,7 +129,7 @@ bool MemoryChunkStore::Store(const ChunkId& name,
       return false;
     }
 
-    chunks_[name] = ChunkEntry(1, content);
+    chunks_[name] = ChunkEntry(1, NonEmptyString(content));
     IncreaseSize(chunk_size);
 //     LOG(kInfo) << "Store - Stored chunk " << Base32Substr(name);
   } else {
@@ -161,7 +161,7 @@ bool MemoryChunkStore::Delete(const ChunkId& name) {
   }
 
   if (--(*it).second.first == 0) {
-    DecreaseSize((*it).second.second.size());
+    DecreaseSize((*it).second.second.string().size());
     chunks_.erase(it);
 //     LOG(kInfo) << "Delete - Deleted chunk " << Base32Substr(name);
 //   } else {
@@ -172,17 +172,19 @@ bool MemoryChunkStore::Delete(const ChunkId& name) {
   return true;
 }
 
-bool MemoryChunkStore::Modify(const ChunkId& name, const std::string& content) {
+bool MemoryChunkStore::Modify(const ChunkId& name, const NonEmptyString& content) {
   ValidateChunkId(name);
   auto it = chunks_.find(name);
   if (it == chunks_.end())
     return false;
 
-  std::string current_content((*it).second.second);
+  NonEmptyString current_content((*it).second.second);
 
   uintmax_t content_size_difference;
   bool increase_size(false);
-  if (!AssessSpaceRequirement(current_content.size(), content.size(), &increase_size,
+  if (!AssessSpaceRequirement(current_content.string().size(),
+                              content.string().size(),
+                              &increase_size,
                               &content_size_difference)) {
     LOG(kError) << "Size differential unacceptable - increase_size: " << increase_size << ", name: "
                 << Base32Substr(name);
@@ -210,7 +212,7 @@ bool MemoryChunkStore::Modify(const ChunkId& name,
     return false;
   }
 
-  if (!Modify(name, content)) {
+  if (!Modify(name, NonEmptyString(content))) {
     LOG(kError) << "Failed to modify: " << Base32Substr(name);
     return false;
   }
@@ -248,7 +250,7 @@ bool MemoryChunkStore::MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store)
   }
 
   if (--(*it).second.first == 0) {
-    DecreaseSize((*it).second.second.size());
+    DecreaseSize((*it).second.second.string().size());
     chunks_.erase(it);
     LOG(kInfo) << "MoveTo - Moved chunk " << Base32Substr(name);
   } else {
@@ -267,7 +269,7 @@ uintmax_t MemoryChunkStore::Size(const ChunkId& name) const {
     return 0;
   }
 
-  return (*it).second.second.size();
+  return (*it).second.second.string().size();
 }
 
 uintmax_t MemoryChunkStore::Count(const ChunkId& name) const {

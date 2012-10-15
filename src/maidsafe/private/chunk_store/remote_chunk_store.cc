@@ -103,14 +103,18 @@ RemoteChunkStore::RemoteChunkStore(
           op_success_count_(),
           op_skip_count_(),
           op_size_() {
-  chunk_manager_get_connection_ = chunk_manager_->sig_chunk_got()->connect(boost::bind(
-      &RemoteChunkStore::OnOpResult, this, OpType::kGet, _1, _2));
-  chunk_manager_store_connection_ = chunk_manager_->sig_chunk_stored()->connect(boost::bind(
-      &RemoteChunkStore::OnOpResult, this, OpType::kStore, _1, _2));
-  chunk_manager_modify_connection_ = chunk_manager_->sig_chunk_modified()->connect(boost::bind(
-      &RemoteChunkStore::OnOpResult, this, OpType::kModify, _1, _2));
-  chunk_manager_delete_connection_ = chunk_manager_->sig_chunk_deleted()->connect(boost::bind(
-      &RemoteChunkStore::OnOpResult, this, OpType::kDelete, _1, _2));
+  chunk_manager_get_connection_ = chunk_manager_->sig_chunk_got().connect(
+                                      boost::bind(&RemoteChunkStore::OnOpResult, this,
+                                                  OpType::kGet, _1, _2));
+  chunk_manager_store_connection_ = chunk_manager_->sig_chunk_stored().connect(
+                                        boost::bind(&RemoteChunkStore::OnOpResult, this,
+                                                    OpType::kStore, _1, _2));
+  chunk_manager_modify_connection_ = chunk_manager_->sig_chunk_modified().connect(
+                                         boost::bind(&RemoteChunkStore::OnOpResult, this,
+                                                     OpType::kModify, _1, _2));
+  chunk_manager_delete_connection_ = chunk_manager_->sig_chunk_deleted().connect(
+                                         boost::bind(&RemoteChunkStore::OnOpResult, this,
+                                                     OpType::kDelete, _1, _2));
 }
 
 RemoteChunkStore::~RemoteChunkStore() {
@@ -124,7 +128,7 @@ RemoteChunkStore::~RemoteChunkStore() {
   failed_ops_.clear();
 }
 
-std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) {
+std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob) {
   LOG(kInfo) << "Get - " << Base32Substr(name);
   std::unique_lock<std::mutex> lock(mutex_);
   if (!chunk_action_authority_->ValidName(name)) {
@@ -140,7 +144,7 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) 
     }
   }
 
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kGet, nullptr, keys, true), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kGet, nullptr, fob, true), lock));
   ProcessPendingOps(lock);
   if (!WaitForGetOps(name, id, lock)) {
     LOG(kError) << "Get - Timed out for " << Base32Substr(name) << " - ID " << id;
@@ -189,7 +193,7 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const asymm::Keys& keys) 
 
 int RemoteChunkStore::GetAndLock(const ChunkId& name,
                                  const ChunkVersion& local_version,
-                                 const asymm::Keys& keys,
+                                 const Fob& fob,
                                  std::string* content) {
   LOG(kInfo) << "GetAndLock - " << Base32Substr(name);
   if (!content) {
@@ -210,7 +214,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
       return kSuccess;
     }
   }
-  OperationData op_data(OpType::kGetLock, nullptr, keys, true);
+  OperationData op_data(OpType::kGetLock, nullptr, fob, true);
   op_data.local_version = local_version;
   uint32_t id(EnqueueOp(name, op_data, lock));
   ProcessPendingOps(lock);
@@ -252,19 +256,19 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
 }
 
 bool RemoteChunkStore::Store(const ChunkId& name,
-                             const std::string& content,
+                             const NonEmptyString& content,
                              const OpFunctor& callback,
-                             const asymm::Keys& keys) {
+                             const Fob& fob) {
   LOG(kInfo) << "Store - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kStore, callback, keys, false), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kStore, callback, fob, false), lock));
   WaitResult result(WaitForConflictingOps(name, OpType::kStore, id, lock));
   if (result != WaitResult::kSuccess) {
     LOG(kWarning) << "Store - Terminated early for " << Base32Substr(name);
     return result == WaitResult::kCancelled;
   }
-  if (!chunk_action_authority_->Store(name, content, keys.public_key)) {
+  if (!chunk_action_authority_->Store(name, content, fob.keys.public_key)) {
     LOG(kError) << "Store - Could not store " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -282,11 +286,11 @@ bool RemoteChunkStore::Store(const ChunkId& name,
 
 bool RemoteChunkStore::Delete(const ChunkId& name,
                               const OpFunctor& callback,
-                              const asymm::Keys& keys) {
+                              const Fob& fob) {
   LOG(kInfo) << "Delete - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kDelete, callback, keys, false), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kDelete, callback, fob, false), lock));
   WaitResult result(WaitForConflictingOps(name, OpType::kDelete, id, lock));
   if (result != WaitResult::kSuccess) {
     LOG(kWarning) << "Delete - Terminated early for " << Base32Substr(name);
@@ -294,15 +298,16 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
   }
   std::string proof;
   // Default chunks don't need proof of ownership to be deleted.
-  if (GetChunkType(name) != ChunkType::kDefault) {
+//  if (GetChunkType(name) != ChunkType::kDefault) {
     asymm::PlainText data(RandomString(16));
-    asymm::Signature signature(asymm::Sign(data, keys.private_key));
+    asymm::Signature signature(asymm::Sign(data, fob.keys.private_key));
     chunk_actions::SignedData proto_proof;
     proto_proof.set_data(data.string());
     proto_proof.set_signature(signature.string());
     proof = proto_proof.SerializeAsString();
-  }
-  if (!chunk_action_authority_->Delete(name, proof, keys.public_key)) {
+//  }
+
+  if (!chunk_action_authority_->Delete(name, NonEmptyString(proof), fob.keys.public_key)) {
     LOG(kError) << "Delete - Could not delete " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -319,9 +324,9 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
 }
 
 bool RemoteChunkStore::Modify(const ChunkId& name,
-                              const std::string& content,
+                              const NonEmptyString& content,
                               const OpFunctor& callback,
-                              const asymm::Keys& keys) {
+                              const Fob& fob) {
   LOG(kInfo) << "Modify - " << Base32Substr(name);
 
   if (!chunk_action_authority_->Modifiable(name)) {
@@ -330,7 +335,7 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
   }
 
   std::unique_lock<std::mutex> lock(mutex_);
-  OperationData op_data(OpType::kModify, callback, keys, true);
+  OperationData op_data(OpType::kModify, callback, fob, true);
   op_data.content = content;
   EnqueueOp(name, op_data, lock);
 //   uint32_t id(EnqueueOp(name, op_data, &lock));
@@ -436,7 +441,7 @@ void RemoteChunkStore::OnOpResult(const OpType& op_type, const ChunkId& name, co
         op_size_[static_cast<int>(op_type)] += chunk_store_->Size(name);
         break;
       case OpType::kModify:
-        op_size_[static_cast<int>(op_type)] += it->info.content.size();
+        op_size_[static_cast<int>(op_type)] += it->info.content.string().size();
         break;
       default:
         break;
@@ -670,19 +675,19 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
     lock.unlock();
     switch (op_data.op_type) {
       case OpType::kGet:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, false);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, false);
         break;
       case OpType::kGetLock:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.keys, true);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, true);
         break;
       case OpType::kStore:
-        chunk_manager_->StoreChunk(name, op_data.keys);
+        chunk_manager_->StoreChunk(name, op_data.fob);
         break;
       case OpType::kModify:
-        chunk_manager_->ModifyChunk(name, op_data.content, op_data.keys);
+        chunk_manager_->ModifyChunk(name, op_data.content, op_data.fob);
         break;
       case OpType::kDelete:
-        chunk_manager_->DeleteChunk(name, op_data.keys);
+        chunk_manager_->DeleteChunk(name, op_data.fob);
         break;
     }
     lock.lock();

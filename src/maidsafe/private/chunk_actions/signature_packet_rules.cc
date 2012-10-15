@@ -59,7 +59,7 @@ bool IsValidChunk<ChunkType::kSignaturePacket>(
   }
 
   SignedData existing_chunk;
-  if (!ParseProtobuf<SignedData>(existing_data, &existing_chunk)) {
+  if (!ParseProtobuf<SignedData>(NonEmptyString(existing_data), &existing_chunk)) {
     LOG(kError) << "Failed to validate " << Base32Substr(name)
                 << ": existing data doesn't parse as a SignedData";
     return false;
@@ -99,7 +99,7 @@ int ProcessGet<ChunkType::kSignaturePacket>(const ChunkId& name,
 template <>
 int ProcessStore<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
@@ -153,7 +153,7 @@ int ProcessStore<ChunkType::kSignaturePacket>(
 template <>
 int ProcessDelete<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
@@ -163,7 +163,7 @@ int ProcessDelete<ChunkType::kSignaturePacket>(
   }
 
   SignedData existing_chunk;
-  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<SignedData>(NonEmptyString(existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kParseFailure;
@@ -215,7 +215,7 @@ int ProcessDelete<ChunkType::kSignaturePacket>(
 template <>
 int ProcessModify<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& /*content*/,
+    const NonEmptyString& /*content*/,
     const asymm::PublicKey& /*public_key*/,
     int64_t * /*size_difference*/,
     std::string * /*new_content*/,

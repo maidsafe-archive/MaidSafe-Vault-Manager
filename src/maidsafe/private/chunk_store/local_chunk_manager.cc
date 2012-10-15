@@ -39,7 +39,7 @@ LocalChunkManager::LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_ch
       action_wait_(millisecs * 3),
       lock_directory_(),
       current_transactions_() {
-  std::shared_ptr<FileChunkStore> file_chunk_store(new FileChunkStore);
+  std::shared_ptr<FileChunkStore> file_chunk_store(std::make_shared<FileChunkStore>());
   fs::path local_version_directory;
   if (simulation_directory.empty()) {
     boost::system::error_code error_code;
@@ -61,33 +61,37 @@ LocalChunkManager::LocalChunkManager(std::shared_ptr<ChunkStore> normal_local_ch
     return;
   }
 
-  simulation_chunk_store_.reset(new ThreadsafeChunkStore(file_chunk_store));
-  simulation_chunk_action_authority_.reset(
-      new chunk_actions::ChunkActionAuthority(simulation_chunk_store_));
+  simulation_chunk_store_ = std::make_shared<ThreadsafeChunkStore>(file_chunk_store);
+  simulation_chunk_action_authority_ =
+      std::make_shared<chunk_actions::ChunkActionAuthority>(simulation_chunk_store_);
 }
 
 LocalChunkManager::~LocalChunkManager() {}
 
 void LocalChunkManager::GetChunk(const ChunkId& name,
                                  const ChunkVersion& local_version,
-                                 const asymm::Keys& keys,
+                                 const Fob& fob,
                                  bool lock) {
-  if (get_wait_.total_milliseconds() != 0) {
+  if (get_wait_.total_milliseconds() != 0)
     Sleep(get_wait_);
-  }
+
   // TODO(Team): Add check of ID on network
   if (chunk_store_->Has(name)) {
-    (*sig_chunk_got_)(name, kSuccess);
+    sig_chunk_got_(name, kSuccess);
     return;
   }
-  if (lock && local_version.IsInitialised() &&
+
+  // TODO(Team): Should we let this throw instead of the IsInitialised? Maybe different
+  //             type required if it could be empty.
+  if (lock &&
+      local_version.IsInitialised() &&
       simulation_chunk_action_authority_->Version(name) == local_version) {
 //    LOG(kWarning) << "GetChunk - "
 //                  << (!keys.identity.string().empty() ? DebugId(keys.identity) : "Anonymous")
 //                  << " - Won't retrieve " << Base32Substr(name)
 //                  << " because local and remote versions "
 //                  << HexSubstr(local_version) << " match.";
-    (*sig_chunk_got_)(name, kChunkNotModified);
+    sig_chunk_got_(name, kChunkNotModified);
     return;
   }
   std::string content, existing_lock, transaction_id;
@@ -113,54 +117,49 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
     current_transactions_[name] = transaction_id;
     LOG(kInfo) << "Wrote lock file for " << Base32Substr(name);
   }
-  content = simulation_chunk_action_authority_->Get(name,
-                                                    ChunkVersion(),
-                                                    keys.public_key);
+  content = simulation_chunk_action_authority_->Get(name, ChunkVersion(), fob.keys.public_key);
   if (content.empty()) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
-    (*sig_chunk_got_)(name, kGetFailure);
+    sig_chunk_got_(name, kGetFailure);
     return;
   }
 
-  if (!chunk_store_->Store(name, content)) {
+  if (!chunk_store_->Store(name, NonEmptyString(content))) {
     LOG(kError) << "Failed to store locally " << Base32Substr(name);
-    (*sig_chunk_got_)(name, kGetFailure);
+    sig_chunk_got_(name, kGetFailure);
     return;
   }
 
-  (*sig_chunk_got_)(name, kSuccess);
+  sig_chunk_got_(name, kSuccess);
 }
 
-void LocalChunkManager::StoreChunk(const ChunkId& name, const asymm::Keys& keys) {
-  if (get_wait_.total_milliseconds() != 0) {
+void LocalChunkManager::StoreChunk(const ChunkId& name, const Fob& fob) {
+  if (get_wait_.total_milliseconds() != 0)
     Sleep(action_wait_);
-  }
+
   bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
   // TODO(Team): Add check of ID on network
   std::string content(chunk_store_->Get(name));
   if (content.empty()) {
     LOG(kError) << "No chunk in local chunk store " << Base32Substr(name);
-    (*sig_chunk_stored_)(name, kStoreFailure);
+    sig_chunk_stored_(name, kStoreFailure);
     return;
   }
   asymm::PublicKey public_key;
   if (!is_cacheable)
-    public_key = keys.public_key;
-  if (!simulation_chunk_action_authority_->Store(name,
-                                                 content,
-                                                 public_key)) {
+    public_key = fob.keys.public_key;
+  if (!simulation_chunk_action_authority_->Store(name, NonEmptyString(content), public_key)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
-    (*sig_chunk_stored_)(name, kStoreFailure);
+    sig_chunk_stored_(name, kStoreFailure);
     return;
   }
 
-  (*sig_chunk_stored_)(name, kSuccess);
+  sig_chunk_stored_(name, kSuccess);
 }
 
-void LocalChunkManager::DeleteChunk(const ChunkId& name, const asymm::Keys& keys) {
-  if (get_wait_.total_milliseconds() != 0) {
+void LocalChunkManager::DeleteChunk(const ChunkId& name, const Fob& fob) {
+  if (get_wait_.total_milliseconds() != 0)
     Sleep(action_wait_);
-  }
 
   bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
 
@@ -168,28 +167,31 @@ void LocalChunkManager::DeleteChunk(const ChunkId& name, const asymm::Keys& keys
   priv::chunk_actions::SignedData ownership_proof;
   std::string ownership_proof_string;
   asymm::PublicKey public_key;
-  if (!is_cacheable) {
+//  if (!is_cacheable) {
     ownership_proof.set_data(RandomString(16));
     std::string* signature(ownership_proof.mutable_signature());
-    *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()), keys.private_key).string();
+    *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()),
+                             fob.keys.private_key).string();
     ownership_proof.SerializeToString(&ownership_proof_string);
-    public_key = keys.public_key;
-  }
-  if (!simulation_chunk_action_authority_->Delete(name, ownership_proof_string, public_key)) {
+    public_key = fob.keys.public_key;
+//  }
+  if (!simulation_chunk_action_authority_->Delete(name,
+                                                  NonEmptyString(ownership_proof_string),
+                                                  public_key)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
-    (*sig_chunk_deleted_)(name, kDeleteFailure);
+    sig_chunk_deleted_(name, kDeleteFailure);
     return;
   }
 
-  (*sig_chunk_deleted_)(name, kSuccess);
+  sig_chunk_deleted_(name, kSuccess);
 }
 
 void LocalChunkManager::ModifyChunk(const ChunkId& name,
-                                    const std::string& content,
-                                    const asymm::Keys& keys) {
-  if (get_wait_.total_milliseconds() != 0) {
+                                    const NonEmptyString& content,
+                                    const Fob& fob) {
+  if (get_wait_.total_milliseconds() != 0)
     Sleep(action_wait_);
-  }
+
   fs::path lock_file = lock_directory_ / EncodeToBase32(name);
   boost::system::error_code error_code;
   if (fs::exists(lock_file, error_code)) {
@@ -208,23 +210,19 @@ void LocalChunkManager::ModifyChunk(const ChunkId& name,
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
-                                                  keys.public_key,
+                                                  fob.keys.public_key,
                                                   &operation_diff)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
-    (*sig_chunk_modified_)(name, kModifyFailure);
+    sig_chunk_modified_(name, kModifyFailure);
     return;
   }
 
-  (*sig_chunk_modified_)(name, kSuccess);
+  sig_chunk_modified_(name, kSuccess);
 }
 
-int64_t LocalChunkManager::StorageSize() {
-  return simulation_chunk_store_->Size();
-}
+int64_t LocalChunkManager::StorageSize() { return simulation_chunk_store_->Size(); }
 
-int64_t LocalChunkManager::StorageCapacity() {
-  return simulation_chunk_store_->Capacity();
-}
+int64_t LocalChunkManager::StorageCapacity() { return simulation_chunk_store_->Capacity(); }
 
 }  // namespace chunk_store
 

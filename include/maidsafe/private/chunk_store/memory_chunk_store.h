@@ -46,10 +46,10 @@ class MemoryChunkStore : public ChunkStore {
   ~MemoryChunkStore();
   std::string Get(const ChunkId& name) const;
   bool Get(const ChunkId& name, const fs::path& sink_file_name) const;
-  bool Store(const ChunkId& name, const std::string& content);
+  bool Store(const ChunkId& name, const NonEmptyString& content);
   bool Store(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Delete(const ChunkId& name);
-  bool Modify(const ChunkId& name, const std::string& content);
+  bool Modify(const ChunkId& name, const NonEmptyString& content);
   bool Modify(const ChunkId& name, const fs::path& source_file_name, bool delete_source_file);
   bool Has(const ChunkId& name) const;
   bool MoveTo(const ChunkId& name, ChunkStore* sink_chunk_store);
@@ -62,7 +62,7 @@ class MemoryChunkStore : public ChunkStore {
   std::vector<ChunkData> GetChunks() const;
 
  private:
-  typedef std::pair<uintmax_t, std::string> ChunkEntry;
+  typedef std::pair<uintmax_t, NonEmptyString> ChunkEntry;
   MemoryChunkStore(const MemoryChunkStore&);
   MemoryChunkStore& operator=(const MemoryChunkStore&);
   std::map<ChunkId, ChunkEntry> chunks_;

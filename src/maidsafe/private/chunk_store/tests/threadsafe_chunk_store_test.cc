@@ -103,7 +103,7 @@ class ThreadsafeChunkStoreTest : public testing::Test {
 
   void StoreContents(const size_t& num, const bool& check_flag) {
     for (uint16_t i = 1; i < num + 1; ++i) {
-      std::string contents = RandomString(64 * i);
+      NonEmptyString contents(RandomString(64 * i));
       ChunkId chunk_name(crypto::Hash<crypto::SHA512>(contents));
       threadsafe_chunk_store_->Store(chunk_name, contents);
       total_chunk_size_+= (64 * i);
@@ -405,11 +405,11 @@ TEST_F(ThreadsafeChunkStoreTest, BEH_Store) {
 
 TEST_F(ThreadsafeChunkStoreTest, BEH_Misc) {
   std::vector<ChunkId> delete_chunknames, moveto_chunknames;
-  for (uint16_t i = 0; i < 17; ++i) {
-    std::string contents = RandomString(64 * i);
+  for (uint16_t i = 1; i < 18; ++i) {
+    NonEmptyString contents(RandomString(64 * i));
     ChunkId chunk_name(crypto::Hash<crypto::SHA512>(contents));
     threadsafe_chunk_store_->Store(chunk_name, contents);
-    total_chunk_size_+= (64 * i);
+    total_chunk_size_ += (64 * i);
 
     if (i < 10)
       delete_chunknames.push_back(chunk_name);

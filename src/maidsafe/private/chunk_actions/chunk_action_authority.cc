@@ -77,7 +77,7 @@ bool ChunkActionAuthority::Get(const ChunkId& name,
 }
 
 bool ChunkActionAuthority::Store(const ChunkId& name,
-                                 const std::string& content,
+                                 const NonEmptyString& content,
                                  const asymm::PublicKey& public_key) {
   int result(ValidStore(name, content, public_key));
   if (result != kSuccess) {
@@ -103,13 +103,14 @@ bool ChunkActionAuthority::Store(const ChunkId& name,
     return false;
   }
 
-  int result(ValidStore(name, content, public_key));
+  NonEmptyString non_empty_content(content);
+  int result(ValidStore(name, non_empty_content, public_key));
   if (result != kSuccess) {
     LOG(kError) << "Invalid request to store " << Base32Substr(name) << ": " << result;
     return false;
   }
 
-  if (!chunk_store_->Store(name, content)) {
+  if (!chunk_store_->Store(name, non_empty_content)) {
     LOG(kError) << "Failed to store " << Base32Substr(name);
     return false;
   }
@@ -131,7 +132,7 @@ bool ChunkActionAuthority::Store(const ChunkId& name,
 }
 
 bool ChunkActionAuthority::Delete(const ChunkId& name,
-                                  const std::string& ownership_proof,
+                                  const NonEmptyString& ownership_proof,
                                   const asymm::PublicKey& public_key) {
   int result(ValidDelete(name, ownership_proof, public_key));
   if (result != kSuccess) {
@@ -148,7 +149,7 @@ bool ChunkActionAuthority::Delete(const ChunkId& name,
 }
 
 bool ChunkActionAuthority::Modify(const ChunkId& name,
-                                  const std::string& content,
+                                  const NonEmptyString& content,
                                   const asymm::PublicKey& public_key,
                                   int64_t* size_difference) {
   std::string new_content;
@@ -158,7 +159,7 @@ bool ChunkActionAuthority::Modify(const ChunkId& name,
     return false;
   }
 
-  if (!chunk_store_->Modify(name, new_content)) {
+  if (!chunk_store_->Modify(name, NonEmptyString(new_content))) {
     LOG(kError) << "Failed to modify " << Base32Substr(name);
     return false;
   }
@@ -178,13 +179,13 @@ bool ChunkActionAuthority::Modify(const ChunkId& name,
   }
 
   std::string new_content;
-  int result(ValidModify(name, content, public_key, size_difference, &new_content));
+  int result(ValidModify(name, NonEmptyString(content), public_key, size_difference, &new_content));
   if (result != kSuccess) {
     LOG(kError) << "Invalid request to modify " << Base32Substr(name) << ": " << result;
     return false;
   }
 
-  if (!chunk_store_->Modify(name, new_content)) {
+  if (!chunk_store_->Modify(name, NonEmptyString(new_content))) {
     LOG(kError) << "Failed to modify " << Base32Substr(name);
     return false;
   }
@@ -342,7 +343,7 @@ int ChunkActionAuthority::ValidGet(const ChunkId& name,
 }
 
 int ChunkActionAuthority::ValidStore(const ChunkId& name,
-                                     const std::string& content,
+                                     const NonEmptyString& content,
                                      const asymm::PublicKey& public_key) const {
   switch (GetChunkType(name)) {
     case ChunkType::kDefault:
@@ -363,7 +364,7 @@ int ChunkActionAuthority::ValidStore(const ChunkId& name,
 }
 
 int ChunkActionAuthority::ValidDelete(const ChunkId& name,
-                                      const std::string& ownership_proof,
+                                      const NonEmptyString& ownership_proof,
                                       const asymm::PublicKey& public_key) const {
   switch (GetChunkType(name)) {
     case ChunkType::kDefault:
@@ -385,7 +386,7 @@ int ChunkActionAuthority::ValidDelete(const ChunkId& name,
 }
 
 int ChunkActionAuthority::ValidModify(const ChunkId& name,
-                                      const std::string& content,
+                                      const NonEmptyString& content,
                                       const asymm::PublicKey& public_key,
                                       int64_t* size_difference,
                                       std::string* new_content) const {

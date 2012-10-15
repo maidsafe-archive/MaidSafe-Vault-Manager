@@ -34,7 +34,7 @@
 #include "maidsafe/common/rsa.h"
 
 #include "maidsafe/private/chunk_actions/chunk_id.h"
-
+#include "maidsafe/private/utils/fob.h"
 
 namespace bptime = boost::posix_time;
 namespace bs2 = boost::signals2;
@@ -68,7 +68,7 @@ class RemoteChunkStore {
         : op_type(),
           active(false),
           ready(false),
-          keys(),
+          fob(),
           local_version(),
           content(),
           callback() {}
@@ -76,26 +76,26 @@ class RemoteChunkStore {
         : op_type(op_type_in),
           active(false),
           ready(false),
-          keys(),
+          fob(),
           local_version(),
           content(),
           callback() {}
     OperationData(const OpType& op_type_in,
-                  const OpFunctor& callback,
-                  const asymm::Keys& keys,
-                  bool ready)
+                  const OpFunctor& callback_in,
+                  const Fob& fob_in,
+                  bool ready_in)
         : op_type(op_type_in),
           active(false),
-          ready(ready),
-          keys(keys),
+          ready(ready_in),
+          fob(fob_in),
           local_version(),
           content(),
-          callback(callback) {}
+          callback(callback_in) {}
     OpType op_type;
     bool active, ready;
-    asymm::Keys keys;
+    Fob fob;
     ChunkVersion local_version;
-    std::string content;
+    NonEmptyString content;
     OpFunctor callback;
   };
 
@@ -110,7 +110,7 @@ class RemoteChunkStore {
   typedef boost::bimaps::bimap<boost::bimaps::multiset_of<std::string>,
                                boost::bimaps::set_of<uint32_t>,
                                boost::bimaps::list_of_relation,
-                               boost::bimaps::with_info<OperationData>> OperationBimap;
+                               boost::bimaps::with_info<OperationData> > OperationBimap;
 
   RemoteChunkStore(std::shared_ptr<BufferedChunkStore> chunk_store,
                    std::shared_ptr<ChunkManager> chunk_manager,
@@ -118,26 +118,26 @@ class RemoteChunkStore {
 
   ~RemoteChunkStore();
 
-  std::string Get(const ChunkId& name, const asymm::Keys& keys);
+  std::string Get(const ChunkId& name, const Fob& fob);
 
   int GetAndLock(const ChunkId& name,
                  const ChunkVersion& local_version,
-                 const asymm::Keys& keys,
+                 const Fob& fob,
                  std::string* content);
 
   bool Store(const ChunkId& name,
-             const std::string& content,
+             const NonEmptyString& content,
              const OpFunctor& callback,
-             const asymm::Keys& keys);
+             const Fob& fob);
 
   bool Delete(const ChunkId& name,
               const OpFunctor& callback,
-              const asymm::Keys& keys);
+              const Fob& fob);
 
   bool Modify(const ChunkId& name,
-              const std::string& content,
+              const NonEmptyString& content,
               const OpFunctor& callback,
-              const asymm::Keys& keys);
+              const Fob& fob);
 
   uintmax_t Size() const {
     // TODO(Steve) get from account
@@ -223,7 +223,7 @@ class RemoteChunkStore {
   OperationMultiMap failed_ops_;
   std::multiset<ChunkId> waiting_gets_;
   std::set<ChunkId> not_modified_gets_;
-  std::map<ChunkId, std::chrono::time_point<std::chrono::system_clock>> failed_gets_;
+  std::map<ChunkId, std::chrono::time_point<std::chrono::system_clock> > failed_gets_;
   uintmax_t op_count_[5], op_success_count_[5], op_skip_count_[5], op_size_[5];
 };
 

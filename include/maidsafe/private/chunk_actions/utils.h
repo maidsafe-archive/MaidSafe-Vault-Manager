@@ -43,7 +43,7 @@ namespace chunk_actions {
 namespace detail {
 
 template <typename T>
-bool ParseProtobuf(const std::string& serialised_data, T* protobuf_type);
+bool ParseProtobuf(const NonEmptyString& serialised_data, T* protobuf_type);
 
 void GetContentAndTigerHash(const ChunkId& name,
                             std::shared_ptr<chunk_store::ChunkStore> chunk_store,
@@ -52,9 +52,9 @@ void GetContentAndTigerHash(const ChunkId& name,
 
 
 template <typename T>
-bool ParseProtobuf(const std::string& serialised_data, T* protobuf_type) {
+bool ParseProtobuf(const NonEmptyString& serialised_data, T* protobuf_type) {
   try {
-    if (!protobuf_type->ParseFromString(serialised_data)) {
+    if (!protobuf_type->ParseFromString(serialised_data.string())) {
       LOG(kError) << "ParseProtobuf - Failed to parse.";
       return false;
     }

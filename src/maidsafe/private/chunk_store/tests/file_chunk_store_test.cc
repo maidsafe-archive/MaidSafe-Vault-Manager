@@ -104,7 +104,7 @@ TEST_F(FileChunkStoreTest, BEH_Init) {
 TEST_F(FileChunkStoreTest, BEH_Get) {
   std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
 
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
   fs::path path(*test_dir_ / "chunk.dat");
 
@@ -122,7 +122,7 @@ TEST_F(FileChunkStoreTest, BEH_Get) {
   ASSERT_TRUE(fcs->Store(name, content));
 
   // existing chunk
-  EXPECT_EQ(content, fcs->Get(name));
+  EXPECT_EQ(content.string(), fcs->Get(name));
   EXPECT_TRUE(fcs->Get(name, path));
 
   // create a ref counted chunk store
@@ -141,7 +141,7 @@ TEST_F(FileChunkStoreTest, BEH_Get) {
 TEST_F(FileChunkStoreTest, BEH_Store) {
   std::shared_ptr<FileChunkStore> fcs(new FileChunkStore);
 
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
 
   //  try storing without initialising
@@ -151,7 +151,6 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
 
   //  try storing an empty chunk
   EXPECT_THROW(fcs->Store(ChunkId(), content), std::exception);
-  EXPECT_FALSE(fcs->Store(name, ""));
 
   //  try storing a chunk
   EXPECT_TRUE(fcs->Store(name, content));
@@ -172,7 +171,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   //  store chunks iteratively
   int count = 1000;
   for (int iter = 0; iter < count; ++iter) {
-    content = RandomString(500);
+    content = NonEmptyString(RandomString(500));
     name = crypto::Hash<crypto::SHA512>(content);
     std::string file_name(EncodeToHex(RandomString(10)));
     path = fs::path(*test_dir_ / file_name);
@@ -181,7 +180,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
     EXPECT_TRUE(ref_fcs->Get(name, path));
     EXPECT_TRUE(ref_fcs->Store(name, path, true));
 
-    std::string content1(RandomString(500));
+    NonEmptyString content1(RandomString(500));
     ChunkId name1(crypto::Hash<crypto::SHA512>(content1));
     std::string file_name1(EncodeToHex(RandomString(10)));
     fs::path path1(*test_dir_ / file_name1);
@@ -198,7 +197,7 @@ TEST_F(FileChunkStoreTest, BEH_Store) {
   std::shared_ptr<FileChunkStore> chunk_store(new FileChunkStore);
   EXPECT_TRUE(chunk_store->Init(ref_chunk_dir_, 3));
 
-  content = RandomString(500);
+  content = NonEmptyString(RandomString(500));
   name = crypto::Hash<crypto::SHA512>(content);
   EXPECT_TRUE(chunk_store->Store(name, content));
 }
@@ -210,14 +209,14 @@ TEST_F(FileChunkStoreTest, DISABLED_BEH_Capacity) {
   fcs_cap->SetCapacity(100);
   EXPECT_TRUE(fcs_cap->Empty());
 
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
   std::string file_name("file.dat");
   fs::path path(*test_dir_ / file_name);
 
   EXPECT_TRUE(fcs_cap->Store(name, content));
 
-  std::string extra_content(RandomString(1));
+  NonEmptyString extra_content(RandomString(1));
   ChunkId extra_content_chunk_name(crypto::Hash<crypto::SHA512>(extra_content));
   EXPECT_FALSE(fcs_cap->Store(extra_content_chunk_name, extra_content));
 
@@ -233,7 +232,7 @@ TEST_F(FileChunkStoreTest, BEH_Delete) {
   std::shared_ptr<FileChunkStore> ref_fcs(new FileChunkStore);
   EXPECT_TRUE(ref_fcs->Init(ref_chunk_dir_, 4));
 
-  std::string content("mycontent");
+  NonEmptyString content("mycontent");
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
   EXPECT_TRUE(ref_fcs->Store(name, content));
 
@@ -276,7 +275,7 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
 
   EXPECT_TRUE(fcs->Init(chunk_dir_, 10));
 
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId chunk_name(crypto::Hash<crypto::SHA512>(content));
 
   fs::path chunk_path = fcs->ChunkNameToFilePath(chunk_name);
@@ -294,7 +293,7 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
   chunk_path.replace_extension(".2");
   EXPECT_TRUE(fs::exists(chunk_path));
 
-  std::string small_cc(RandomString(1));
+  NonEmptyString small_cc(RandomString(1));
   ChunkId small_cn(crypto::Hash<crypto::SHA512>(small_cc));
   fs::path small_cp = fcs->ChunkNameToFilePath(small_cn);
   EXPECT_FALSE(fs::exists(small_cp));
@@ -308,14 +307,14 @@ TEST_F(FileChunkStoreTest, BEH_Methods) {
 
   fcs->Clear();
 
-  content = RandomString(50);
+  content = NonEmptyString(RandomString(50));
   chunk_name = crypto::Hash<crypto::SHA512>(content);
 
   EXPECT_TRUE(fcs->Init(chunk_dir_, 4));
 
   //  store chunks
   for (int i = 0; i < 6; ++i) {
-    content = RandomString(50);
+    content = NonEmptyString(RandomString(50));
     chunk_name = crypto::Hash<crypto::SHA512>(content);
 
     chunk_path = fcs->ChunkNameToFilePath(chunk_name);
@@ -344,9 +343,9 @@ TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
   {
     std::shared_ptr<FileChunkStore> fcs_1(new FileChunkStore);
 
-    std::vector<std::pair<ChunkId, std::string>> chunks;
+    std::vector<std::pair<ChunkId, NonEmptyString>> chunks;
     for (int i = 0; i < 100; ++i) {
-      std::string content(RandomString(100 + (i % 20)));
+      NonEmptyString content(RandomString(100 + (i % 20)));
       ChunkId name(crypto::Hash<crypto::SHA512>(content));
       chunks.push_back(std::make_pair(name, content));
     }
@@ -355,7 +354,7 @@ TEST_F(FileChunkStoreTest, BEH_GetChunksContinuity) {
 
     for (auto it = chunks.begin(); it != chunks.end(); ++it) {
       EXPECT_TRUE(fcs_1->Store(it->first, it->second));
-      EXPECT_EQ(fcs_1->Size(it->first), it->second.size());
+      EXPECT_EQ(fcs_1->Size(it->first), it->second.string().size());
     }
 
     EXPECT_EQ(100, fcs_1->Count());

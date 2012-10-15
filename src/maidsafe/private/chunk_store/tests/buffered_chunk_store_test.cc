@@ -60,7 +60,7 @@ class BufferedChunkStoreTest: public testing::Test {
 
   ~BufferedChunkStoreTest() {}
 
-  void DoStore(const ChunkId& name, const std::string& content) {
+  void DoStore(const ChunkId& name, const NonEmptyString& content) {
     EXPECT_TRUE(chunk_store_->Store(name, content)) << "Contain?: " << chunk_store_->Has(name)
                                                     << " Size: " << name.string().size();
     boost::mutex::scoped_lock lock(mutex_);
@@ -68,19 +68,19 @@ class BufferedChunkStoreTest: public testing::Test {
     cond_var_.notify_one();
   }
 
-  void DoCacheStore(const ChunkId& name, const std::string& content) {
+  void DoCacheStore(const ChunkId& name, const NonEmptyString& content) {
     EXPECT_TRUE(chunk_store_->CacheStore(name, content));
     boost::mutex::scoped_lock lock(mutex_);
     ++store_counter_;
     cond_var_.notify_one();
   }
 
-  void DoCacheModify(const ChunkId& name, const std::string& content) {
+  void DoCacheModify(const ChunkId& name, const NonEmptyString& content) {
     boost::mutex::scoped_lock lock(mutex_);
     EXPECT_TRUE(chunk_store_->Modify(name, content));
     EXPECT_FALSE(chunk_store_->PermanentHas(name));
     EXPECT_TRUE(chunk_store_->CacheHas(name));
-    EXPECT_EQ(content, chunk_store_->Get(name));
+    EXPECT_EQ(content.string(), chunk_store_->Get(name));
     ++cache_modify_counter_;
     cond_var_.notify_one();
   }
@@ -156,7 +156,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheInit) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_CacheStore) {
-  std::string content(RandomString(123));
+  NonEmptyString content(RandomString(123));
   ChunkId name_mem(crypto::Hash<crypto::SHA512>(content));
   fs::path path(*this->test_dir_ / "chunk.dat");
   this->CreateRandomFile(path, 456);
@@ -164,7 +164,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheStore) {
   ASSERT_NE(name_mem, name_file);
 
   // invalid input
-  EXPECT_FALSE(chunk_store_->CacheStore(name_mem, ""));
+  EXPECT_THROW(chunk_store_->CacheStore(name_mem, NonEmptyString()), std::exception);
   EXPECT_THROW(chunk_store_->CacheStore(ChunkId(), content), std::exception);
   EXPECT_FALSE(chunk_store_->CacheStore(name_file, "", false));
   EXPECT_FALSE(chunk_store_->CacheStore(name_file, *this->test_dir_ / "fail", false));
@@ -201,8 +201,8 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheStore) {
   ChunkId new_name(crypto::HashFile<crypto::SHA512>(new_path));
 
   // overwrite existing, should be ignored
-  EXPECT_TRUE(chunk_store_->CacheStore(name_mem, ""));
-  EXPECT_TRUE(chunk_store_->CacheStore(name_mem, RandomString(222)));
+  EXPECT_TRUE(chunk_store_->CacheStore(name_mem, NonEmptyString()));
+  EXPECT_TRUE(chunk_store_->CacheStore(name_mem, NonEmptyString(RandomString(222))));
   EXPECT_TRUE(chunk_store_->CacheStore(name_file, "", false));
   EXPECT_TRUE(chunk_store_->CacheStore(name_file, new_path, false));
   EXPECT_FALSE(chunk_store_->CacheEmpty());
@@ -233,7 +233,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheStore) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_CacheHitMiss) {
-  std::string content(RandomString(123));
+  NonEmptyString content(RandomString(123));
   ChunkId name_mem(crypto::Hash<crypto::SHA512>(content));
 
   // store from string
@@ -314,11 +314,11 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheHitMiss) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
-  std::string content1(RandomString(100));
+  NonEmptyString content1(RandomString(100));
   ChunkId name1(crypto::Hash<crypto::SHA512>(content1));
-  std::string content2(RandomString(50));
+  NonEmptyString content2(RandomString(50));
   ChunkId name2(crypto::Hash<crypto::SHA512>(content2));
-  std::string content3(RandomString(25));
+  NonEmptyString content3(RandomString(25));
   ChunkId name3(crypto::Hash<crypto::SHA512>(content3));
 
   EXPECT_EQ(0, chunk_store_->CacheCapacity());
@@ -330,20 +330,20 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
   EXPECT_FALSE(chunk_store_->CacheVacant(126));
 
   // store #1, space to 100
-  EXPECT_TRUE(chunk_store_->CacheVacant(content1.size()));
+  EXPECT_TRUE(chunk_store_->CacheVacant(content1.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name1, content1));
   EXPECT_TRUE(chunk_store_->CacheHas(name1));
   EXPECT_EQ(100, chunk_store_->CacheSize());
 
   // store #2, 25 over limit, #1 will be pruned
-  EXPECT_FALSE(chunk_store_->CacheVacant(content2.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content2.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name2, content2));
   EXPECT_FALSE(chunk_store_->CacheHas(name1));
   EXPECT_TRUE(chunk_store_->CacheHas(name2));
   EXPECT_EQ(50, chunk_store_->CacheSize());
 
   // store #3, space to 75
-  EXPECT_TRUE(chunk_store_->CacheVacant(content3.size()));
+  EXPECT_TRUE(chunk_store_->CacheVacant(content3.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name3, content3));
   EXPECT_FALSE(chunk_store_->CacheHas(name1));
   EXPECT_TRUE(chunk_store_->CacheHas(name2));
@@ -351,7 +351,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
   EXPECT_EQ(75, chunk_store_->CacheSize());
 
   // store #1, 50 over limit, prune #2
-  EXPECT_FALSE(chunk_store_->CacheVacant(content1.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content1.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name1, content1));
   EXPECT_TRUE(chunk_store_->CacheHas(name1));
   EXPECT_FALSE(chunk_store_->CacheHas(name2));
@@ -359,7 +359,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
   EXPECT_EQ(125, chunk_store_->CacheSize());
 
   // store #1 again, nothing changes
-  EXPECT_FALSE(chunk_store_->CacheVacant(content1.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content1.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name1, content1));
   EXPECT_TRUE(chunk_store_->CacheHas(name1));
   EXPECT_FALSE(chunk_store_->CacheHas(name2));
@@ -367,7 +367,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
   EXPECT_EQ(125, chunk_store_->CacheSize());
 
   // store #2, 50 over limit, prune #3 and #1 because of FIFO
-  EXPECT_FALSE(chunk_store_->CacheVacant(content2.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content2.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name2, content2));
   EXPECT_FALSE(chunk_store_->CacheHas(name1));
   EXPECT_TRUE(chunk_store_->CacheHas(name2));
@@ -380,13 +380,13 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
   EXPECT_EQ(50, chunk_store_->CacheCapacity());
 
   // try to store #1, fails because of size
-  EXPECT_FALSE(chunk_store_->CacheVacant(content1.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content1.string().size()));
   EXPECT_FALSE(chunk_store_->CacheStore(name1, content1));
   EXPECT_FALSE(chunk_store_->CacheHas(name1));
   EXPECT_EQ(50, chunk_store_->CacheSize());
 
   // store #3, 25 over limit, prune #2
-  EXPECT_FALSE(chunk_store_->CacheVacant(content3.size()));
+  EXPECT_FALSE(chunk_store_->CacheVacant(content3.string().size()));
   EXPECT_TRUE(chunk_store_->CacheStore(name3, content3));
   EXPECT_FALSE(chunk_store_->CacheHas(name1));
   EXPECT_FALSE(chunk_store_->CacheHas(name2));
@@ -422,7 +422,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheCapacity) {
 TEST_F(BufferedChunkStoreTest, BEH_CacheClear) {
   std::vector<ChunkId> chunks;
   for (int i = 0; i < 20; ++i) {
-    std::string content(RandomString(100));
+    NonEmptyString content(RandomString(100));
     ChunkId name(crypto::Hash<crypto::SHA512>(content));
     chunks.push_back(name);
     EXPECT_TRUE(chunk_store_->CacheStore(name, content));
@@ -440,7 +440,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheClear) {
   EXPECT_EQ(0, chunk_store_->CacheCount());
   EXPECT_EQ(0, chunk_store_->CacheSize());
 
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
   EXPECT_TRUE(chunk_store_->Store(name, content));
   chunk_store_->CacheClear();
@@ -449,7 +449,7 @@ TEST_F(BufferedChunkStoreTest, BEH_CacheClear) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_PermanentStore) {
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name1(RandomString(64)), name2(RandomString(64));
 
   EXPECT_THROW(chunk_store_->PermanentStore(ChunkId()), std::exception);
@@ -477,8 +477,8 @@ TEST_F(BufferedChunkStoreTest, BEH_PermanentStore) {
   EXPECT_TRUE(chunk_store_->PermanentHas(name2));
 
   chunk_store_->CacheClear();
-  EXPECT_EQ(content, chunk_store_->Get(name1));
-  EXPECT_EQ(content, chunk_store_->Get(name2));
+  EXPECT_EQ(content.string(), chunk_store_->Get(name1));
+  EXPECT_EQ(content.string(), chunk_store_->Get(name2));
 
   chunk_store_->CacheClear();
   EXPECT_TRUE(chunk_store_->PermanentStore(name1));
@@ -528,7 +528,7 @@ TEST_F(BufferedChunkStoreTest, BEH_PermanentStore) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_WaitForTransfer) {
-  std::string content(RandomString(256 << 10));
+  NonEmptyString content(RandomString(256 << 10));
 
   store_counter_ = 0;
   for (int i = 0; i < 100; ++i)
@@ -546,7 +546,7 @@ TEST_F(BufferedChunkStoreTest, BEH_WaitForTransfer) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_CacheFlooding) {
-  std::string content(RandomString(256 << 10));  // 256 KB chunk
+  NonEmptyString content(RandomString(256 << 10));  // 256 KB chunk
   chunk_store_->SetCacheCapacity(4 << 20);  // 4 MB cache space = 16 chunks
 
   ChunkId first(RandomString(64));
@@ -573,14 +573,12 @@ TEST_F(BufferedChunkStoreTest, BEH_StoreWithRemovableChunks) {
 
   //  Store chunks in Chunk Store
   for (auto it = chunks.begin(); it != chunks.end(); ++it) {
-    EXPECT_TRUE(chunk_store_->Store(*it, RandomString(256)));
+    EXPECT_TRUE(chunk_store_->Store(*it, NonEmptyString(RandomString(256))));
     EXPECT_TRUE(chunk_store_->Has(*it));
     chunk_store_->MarkForDeletion(*it);
   }
   EXPECT_EQ(kChunkCount, chunk_store_->Count());
   EXPECT_EQ(uintmax_t(2560), chunk_store_->Size());
-  std::string name1(RandomString(64));
-  std::string content1(RandomString(2580));
 
   //  Trying to store chunk bigger than Chunk Store Capacity
 //  EXPECT_FALSE(chunk_store_->Store(name1, content1));
@@ -593,7 +591,7 @@ TEST_F(BufferedChunkStoreTest, BEH_StoreWithRemovableChunks) {
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_ModifyCacheChunks) {
-  std::string modifying_chunk_content(RandomString(100));
+  NonEmptyString modifying_chunk_content(RandomString(100));
   ChunkId modifying_chunk_name(RandomString(65));
   store_counter_ = 0;
   cache_modify_counter_ = 0;
@@ -606,17 +604,19 @@ TEST_F(BufferedChunkStoreTest, BEH_ModifyCacheChunks) {
   for (int i = 1; i < 100; ++i) {
     test_asio_service_.service().post(std::bind(&BufferedChunkStoreTest::DoStore, this,
                                                 ChunkId(RandomString(64 + i % 2)),
-                                                RandomString(RandomUint32() % 99 + 1)));
+                                                NonEmptyString(RandomString(RandomUint32() %
+                                                                            99 + 1))));
     test_asio_service_.service().post(std::bind(&BufferedChunkStoreTest::DoCacheModify, this,
                                                 modifying_chunk_name,
-                                                RandomString(RandomUint32() % 120)));
+                                                NonEmptyString(RandomString(RandomUint32() %
+                                                                            120 + 1))));
   }
   WaitForStore(100);
   WaitForCacheModify(99);
 }
 
 TEST_F(BufferedChunkStoreTest, BEH_DeleteAllMarked) {
-  std::string content(RandomString(100));
+  NonEmptyString content(RandomString(100));
   ChunkId name1(RandomString(64)), name2(RandomString(64));
 
   for (int i = 0; i < 4; ++i)

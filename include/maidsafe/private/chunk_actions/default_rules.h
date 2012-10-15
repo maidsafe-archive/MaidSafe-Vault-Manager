@@ -69,19 +69,19 @@ int ProcessGet(const ChunkId& name,
 
 template <ChunkType chunk_type>
 int ProcessStore(const ChunkId& name,
-                 const std::string& content,
+                 const NonEmptyString& content,
                  const asymm::PublicKey& public_key,
                  std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <ChunkType chunk_type>
 int ProcessDelete(const ChunkId& name,
-                  const std::string& ownership_proof,
+                  const NonEmptyString& ownership_proof,
                   const asymm::PublicKey& public_key,
                   std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 template <ChunkType chunk_type>
 int ProcessModify(const ChunkId& name,
-                  const std::string& content,
+                  const NonEmptyString& content,
                   const asymm::PublicKey& public_key,
                   int64_t* size_difference,
                   std::string* new_content,
@@ -138,7 +138,7 @@ int ProcessGet<ChunkType::kDefault>(const ChunkId& name,
 // This assumes that public_key has not been revoked on the network.
 template <>
 int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
-                                      const std::string& content,
+                                      const NonEmptyString& content,
                                       const asymm::PublicKey& public_key,
                                       std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -149,14 +149,14 @@ int ProcessStore<ChunkType::kDefault>(const ChunkId& name,
 // network.
 template <>
 int ProcessDelete<ChunkType::kDefault>(const ChunkId& name,
-                                       const std::string& ownership_proof,
+                                       const NonEmptyString& ownership_proof,
                                        const asymm::PublicKey& public_key,
                                        std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
 // Modify is an invalid operation for all users.
 template <>
 int ProcessModify<ChunkType::kDefault>(const ChunkId& name,
-                                       const std::string& content,
+                                       const NonEmptyString& content,
                                        const asymm::PublicKey& public_key,
                                        int64_t* size_difference,
                                        std::string* new_content,

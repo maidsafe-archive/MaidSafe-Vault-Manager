@@ -20,5 +20,5 @@
 int main(int argc, char **argv) {
   maidsafe::log::FilterMap filter_map;
   filter_map["*"] = maidsafe::log::kFatal;
-  return ExecuteMain(argc, argv, filter_map, true, maidsafe::log::ColourMode::kFullLine);
+  return ExecuteMain(argc, argv, filter_map, false, maidsafe::log::ColourMode::kFullLine);
 }

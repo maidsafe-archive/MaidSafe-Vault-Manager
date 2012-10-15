@@ -99,7 +99,7 @@ int ProcessGet<ChunkType::kModifiableByOwner>(
 template <>
 int ProcessStore<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   if (chunk_store->Has(name)) {
@@ -135,7 +135,7 @@ int ProcessStore<ChunkType::kModifiableByOwner>(
 template <>
 int ProcessDelete<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
   std::string existing_content = chunk_store->Get(name);
@@ -145,7 +145,7 @@ int ProcessDelete<ChunkType::kModifiableByOwner>(
   }
 
   SignedData existing_chunk;
-  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<SignedData>(NonEmptyString(existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to delete " << Base32Substr(name)
                 << ": existing data doesn't parse";
     return kParseFailure;
@@ -196,7 +196,7 @@ int ProcessDelete<ChunkType::kModifiableByOwner>(
 template <>
 int ProcessModify<ChunkType::kModifiableByOwner>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     int64_t* size_difference,
     std::string* new_content,
@@ -209,7 +209,7 @@ int ProcessModify<ChunkType::kModifiableByOwner>(
   }
 
   SignedData existing_chunk;
-  if (!ParseProtobuf<SignedData>(existing_content, &existing_chunk)) {
+  if (!ParseProtobuf<SignedData>(NonEmptyString(existing_content), &existing_chunk)) {
     LOG(kError) << "Failed to modify " << Base32Substr(name)
                 << ": existing data doesn't parse as SignedData";
     return kParseFailure;
@@ -253,8 +253,8 @@ int ProcessModify<ChunkType::kModifiableByOwner>(
     return kFailedSignatureCheck;
   }
 
-  *size_difference = static_cast<int64_t>(existing_content.size()) - content.size();
-  *new_content = content;
+  *size_difference = static_cast<int64_t>(existing_content.size()) - content.string().size();
+  *new_content = content.string();
   return kSuccess;
 }
 

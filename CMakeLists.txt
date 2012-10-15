@@ -106,6 +106,8 @@ file(GLOB HEADER_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/pri
 file(GLOB API_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/utils/*.h")
 set(ALL_FILES_PRIVATE_UTILS_DIR ${SOURCE_FILES_PRIVATE_UTILS_DIR} ${HEADER_FILES_PRIVATE_UTILS_DIR} ${API_FILES_PRIVATE_UTILS_DIR})
 set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_UTILS_DIR})
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/fob.pb.cc")
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/fob.pb.h")
 source_group("Utilities Source Files" FILES ${SOURCE_FILES_PRIVATE_UTILS_DIR})
 source_group("Utilities Header Files" FILES ${HEADER_FILES_PRIVATE_UTILS_DIR})
 source_group("Utilities API Files" FILES ${API_FILES_PRIVATE_UTILS_DIR})
@@ -118,18 +120,21 @@ source_group("Private API Files" FILES ${RETURN_CODES_H})
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
 file(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.h")
 set(ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
 source_group("Chunk Actions Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
 source_group("Chunk Actions Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
 
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.cc")
 file(GLOB HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.h")
 set(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
 file(GLOB SOURCE_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.cc")
 file(GLOB HEADER_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.h")
 set(ALL_FILES_PRIVATE_UTILS_TESTS_DIR ${SOURCE_FILES_UTILS_TESTS_DIR} ${HEADER_FILES_UTILS_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 source_group("Utils Tests Source Files" FILES ${SOURCE_FILES_UTILS_TESTS_DIR})
 source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 
@@ -138,8 +143,8 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 
 ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR} ${RETURN_CODES_H})
 ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
@@ -155,8 +160,8 @@ ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/privat
 ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 ms_add_executable(DEMOinvigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
-target_link_libraries(maidsafe_private maidsafe_common)
 target_link_libraries(maidsafe_utilities maidsafe_common)
+target_link_libraries(maidsafe_private maidsafe_common maidsafe_utilities)
 target_link_libraries(maidsafe_process_management maidsafe_utilities)
 target_link_libraries(maidsafe_process_management_test maidsafe_utilities)
 target_link_libraries(TESTprivate maidsafe_private)

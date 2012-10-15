@@ -83,7 +83,7 @@ std::string BufferedChunkStore::Get(const ChunkId& name) const {
   }
 
   std::string content(perm_chunk_store_->Get(name));
-  if (!content.empty() && DoCacheStore(name, content))
+  if (!content.empty() && DoCacheStore(name, NonEmptyString(content)))
     AddCachedChunksEntry(name);
   return content;
 }
@@ -102,18 +102,18 @@ bool BufferedChunkStore::Get(const ChunkId& name, const fs::path& sink_file_name
   }
 
   std::string content(perm_chunk_store_->Get(name));
-  if (!content.empty() && DoCacheStore(name, content))
+  if (!content.empty() && DoCacheStore(name, NonEmptyString(content)))
     AddCachedChunksEntry(name);
   return !content.empty() && WriteFile(sink_file_name, content);
 }
 
-bool BufferedChunkStore::Store(const ChunkId& name, const std::string& content) {
+bool BufferedChunkStore::Store(const ChunkId& name, const NonEmptyString& content) {
   if (!DoCacheStore(name, content)) {
     LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
   }
 
-  if (!MakeChunkPermanent(name, content.size())) {
+  if (!MakeChunkPermanent(name, content.string().size())) {
     // AddCachedChunksEntry(name);
     std::lock_guard<std::mutex> lock(cache_mutex_);
     cache_chunk_store_->Delete(name);
@@ -154,7 +154,7 @@ bool BufferedChunkStore::Store(const ChunkId& name,
   return true;
 }
 
-bool BufferedChunkStore::CacheStore(const ChunkId& name, const std::string& content) {
+bool BufferedChunkStore::CacheStore(const ChunkId& name, const NonEmptyString& content) {
   if (!DoCacheStore(name, content)) {
     LOG(kError) << "Failed to cache: " << Base32Substr(name);
     return false;
@@ -201,7 +201,7 @@ bool BufferedChunkStore::PermanentStore(const ChunkId& name) {
     }
     if (perm_chunk_store_->Has(name))
       return true;
-    if (content.empty() || !perm_chunk_store_->Store(name, content)) {
+    if (content.empty() || !perm_chunk_store_->Store(name, NonEmptyString(content))) {
       LOG(kError) << "PermanentStore - Could not transfer " << Base32Substr(name);
       return false;
     }
@@ -238,7 +238,7 @@ bool BufferedChunkStore::Delete(const ChunkId& name) {
   return file_delete_result;
 }
 
-bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content) {
+bool BufferedChunkStore::Modify(const ChunkId& name, const NonEmptyString& content) {
   std::unique_lock<std::mutex> xfer_lock(xfer_mutex_);
   RemoveDeletionMarks(name);
 
@@ -254,8 +254,8 @@ bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content)
     std::string current_perm_content(perm_chunk_store_->Get(name));
     uintmax_t content_size_difference(0);
     bool increase_size(false);
-    if (content.size() > current_perm_content.size()) {
-      content_size_difference = content.size() - current_perm_content.size();
+    if (content.string().size() > current_perm_content.size()) {
+      content_size_difference = content.string().size() - current_perm_content.size();
       increase_size = true;
       if (perm_chunk_store_->Capacity() > 0) {  // Check if Perm Chunk Store Size is Infinite
         // Wait For Space in Perm Store
@@ -270,7 +270,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content)
         }
       }
     } else {
-      content_size_difference = current_perm_content.size() - content.size();
+      content_size_difference = current_perm_content.size() - content.string().size();
       increase_size = false;
     }
     if (perm_chunk_store_->Modify(name, content)) {
@@ -302,8 +302,8 @@ bool BufferedChunkStore::Modify(const ChunkId& name, const std::string& content)
 
       current_cache_content = cache_chunk_store_->Get(name);
       uintmax_t content_size_difference(0);
-      if (content.size() > current_cache_content.size()) {
-        content_size_difference = content.size() - current_cache_content.size();
+      if (content.string().size() > current_cache_content.size()) {
+        content_size_difference = content.string().size() - current_cache_content.size();
         // Make space in Cache if Needed
         while (!cache_chunk_store_->Vacant(content_size_difference)) {
           if (cached_chunks_.empty()) {
@@ -349,7 +349,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name,
     return false;
   }
 
-  if (!Modify(name, content)) {
+  if (!Modify(name, NonEmptyString(content))) {
     LOG(kError) << "Modify - Couldn't modify " << Base32Substr(name);
     return false;
   }
@@ -548,22 +548,22 @@ void BufferedChunkStore::AddCachedChunksEntry(const ChunkId& name) const {
   cached_chunks_.push_front(name);
 }
 
-bool BufferedChunkStore::DoCacheStore(const ChunkId& name, const std::string& content) const {
+bool BufferedChunkStore::DoCacheStore(const ChunkId& name, const NonEmptyString& content) const {
   std::unique_lock<std::mutex> lock(cache_mutex_);
   if (cache_chunk_store_->Has(name))
     return true;
 
   // Check whether cache has capacity to store chunk
-  if (content.size() > cache_chunk_store_->Capacity() &&
+  if (content.string().size() > cache_chunk_store_->Capacity() &&
       cache_chunk_store_->Capacity() > 0) {
     LOG(kError) << "DoCacheStore - Chunk " << Base32Substr(name) << " too big ("
-                << BytesToBinarySiUnits(content.size()) << " vs. "
+                << BytesToBinarySiUnits(content.string().size()) << " vs. "
                 << BytesToBinarySiUnits(cache_chunk_store_->Capacity()) << ").";
     return false;
   }
 
   // Make space in cache
-  while (!cache_chunk_store_->Vacant(content.size())) {
+  while (!cache_chunk_store_->Vacant(content.string().size())) {
     while (cached_chunks_.empty()) {
       lock.unlock();
       {
@@ -698,7 +698,7 @@ void BufferedChunkStore::DoMakeChunkPermanent(const ChunkId& name) {
 
   if (content.empty()) {
     LOG(kError) << "DoMakeChunkPermanent - Could not get " << Base32Substr(name) << " from cache.";
-  } else if (perm_chunk_store_->Store(name, content)) {
+  } else if (perm_chunk_store_->Store(name, NonEmptyString(content))) {
     AddCachedChunksEntry(name);
   } else {
     LOG(kError) << "DoMakeChunkPermanent - Could not store " << Base32Substr(name);

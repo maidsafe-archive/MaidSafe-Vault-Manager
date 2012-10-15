@@ -89,7 +89,7 @@ int ProcessGet<ChunkType::kAppendableByAll>(const ChunkId& name,
 // This assumes that public_key has not been revoked on the network.
 template <>
 int ProcessStore<ChunkType::kAppendableByAll>(const ChunkId& name,
-                                              const std::string& content,
+                                              const NonEmptyString& content,
                                               const asymm::PublicKey& public_key,
                                               std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -105,7 +105,7 @@ int ProcessStore<ChunkType::kAppendableByAll>(const ChunkId& name,
 template <>
 int ProcessDelete<ChunkType::kAppendableByAll>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -134,7 +134,7 @@ int ProcessDelete<ChunkType::kAppendableByAll>(
 template <>
 int ProcessModify<ChunkType::kAppendableByAll>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     int64_t* size_difference,
     std::string* new_content,

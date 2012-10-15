@@ -92,7 +92,7 @@ int ProcessGet<ChunkType::kSignaturePacket>(
 template <>
 int ProcessStore<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -108,7 +108,7 @@ int ProcessStore<ChunkType::kSignaturePacket>(
 template <>
 int ProcessDelete<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& ownership_proof,
+    const NonEmptyString& ownership_proof,
     const asymm::PublicKey& public_key,
     std::shared_ptr<chunk_store::ChunkStore> chunk_store);
 
@@ -116,7 +116,7 @@ int ProcessDelete<ChunkType::kSignaturePacket>(
 template <>
 int ProcessModify<ChunkType::kSignaturePacket>(
     const ChunkId& name,
-    const std::string& content,
+    const NonEmptyString& content,
     const asymm::PublicKey& public_key,
     int64_t* size_difference,
     std::string* new_content,

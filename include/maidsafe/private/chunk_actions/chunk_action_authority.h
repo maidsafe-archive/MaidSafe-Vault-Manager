@@ -67,17 +67,19 @@ class ChunkActionAuthority {
            const fs::path& sink_file_name,
            const ChunkVersion& version,
            const asymm::PublicKey& public_key) const;
-  bool Store(const ChunkId& name, const std::string& content, const asymm::PublicKey& public_key);
+  bool Store(const ChunkId& name,
+             const NonEmptyString& content,
+             const asymm::PublicKey& public_key);
   bool Store(const ChunkId& name,
              const fs::path& source_file_name,
              bool delete_source_file,
              const asymm::PublicKey& public_key);
   // Returns true if chunk deleted or non-existant
   bool Delete(const ChunkId& name,
-              const std::string& ownership_proof,
+              const NonEmptyString& ownership_proof,
               const asymm::PublicKey& public_key);
   bool Modify(const ChunkId& name,
-              const std::string& content,
+              const NonEmptyString& content,
               const asymm::PublicKey& public_key,
               int64_t* size_difference);
   bool Modify(const ChunkId& name,
@@ -112,13 +114,13 @@ class ChunkActionAuthority {
                const asymm::PublicKey& public_key,
                std::string* existing_content = nullptr) const;
   int ValidStore(const ChunkId& name,
-                 const std::string& content,
+                 const NonEmptyString& content,
                  const asymm::PublicKey& public_key) const;
   int ValidDelete(const ChunkId& name,
-                  const std::string& ownership_proof,
+                  const NonEmptyString& ownership_proof,
                   const asymm::PublicKey& public_key) const;
   int ValidModify(const ChunkId& name,
-                  const std::string& content,
+                  const NonEmptyString& content,
                   const asymm::PublicKey& public_key,
                   int64_t* size_difference,
                   std::string* new_content = nullptr) const;
