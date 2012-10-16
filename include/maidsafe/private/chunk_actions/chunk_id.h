@@ -33,12 +33,21 @@ namespace priv {
 typedef detail::BoundedString<NodeId::kSize, NodeId::kSize + 1> ChunkId;
 
 inline ChunkId ApplyTypeToName(const NodeId& name, ChunkType chunk_type) {
-  return ChunkId(chunk_type == ChunkType::kDefault ?
-                 name.string() : name.string() + static_cast<char>(chunk_type));
+  return ChunkId(chunk_type == ChunkType::kDefault ? name.string() :
+                                                     name.string() + static_cast<char>(chunk_type));
+}
+
+inline ChunkId ApplyTypeToName(const Identity& name, ChunkType chunk_type) {
+  return ChunkId(chunk_type == ChunkType::kDefault ? name.string() :
+                                                     name.string() + static_cast<char>(chunk_type));
 }
 
 inline NodeId RemoveTypeFromName(const ChunkId& name) {
   return NodeId(name.string().substr(0, NodeId::kSize));
+}
+
+inline Identity RemoveTypeFromIdentity(const ChunkId& name) {
+  return Identity(name.string().substr(0, NodeId::kSize));
 }
 
 inline ChunkType GetChunkType(const ChunkId& name) {
