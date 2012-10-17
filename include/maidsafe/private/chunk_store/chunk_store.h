@@ -29,6 +29,7 @@ namespace priv {
 namespace chunk_store {
 
 struct ChunkData {
+  ChunkData() : chunk_name(), chunk_size(0) {}
   ChunkData(const ChunkId& name, uintmax_t size) : chunk_name(name), chunk_size(size) {}
   ChunkId chunk_name;
   uintmax_t chunk_size;
