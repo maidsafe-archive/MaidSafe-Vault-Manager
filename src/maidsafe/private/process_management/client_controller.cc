@@ -39,7 +39,7 @@ namespace process_management {
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 ClientController::ClientController(
-    std::function<void(const std::string&)> on_new_version_available_slot)
+    std::function<void(const NonEmptyString&)> on_new_version_available_slot)
         : invigilator_port_(Invigilator::kMinPort() - 1),
           local_port_(0),
           asio_service_(3),
@@ -66,7 +66,7 @@ ClientController::ClientController(
   }
   on_new_version_available_.connect(on_new_version_available_slot);
   if (!path_to_new_installer.empty())
-    on_new_version_available_(path_to_new_installer);
+    on_new_version_available_(NonEmptyString(path_to_new_installer));
 }
 
 ClientController::~ClientController() {
@@ -607,7 +607,7 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
   }
   response = detail::WrapMessage(MessageType::kNewVersionAvailableAck,
                                  new_version_available_ack.SerializeAsString());
-  on_new_version_available_(new_version_available.new_version_filepath());
+  on_new_version_available_(NonEmptyString(new_version_available.new_version_filepath()));
 }
 
 void ClientController::HandleVaultJoinConfirmation(const std::string& request,

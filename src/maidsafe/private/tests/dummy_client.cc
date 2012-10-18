@@ -14,6 +14,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/types.h"
 
 #include "maidsafe/private/utils/fob.h"
 #include "maidsafe/private/process_management/client_controller.h"
@@ -22,7 +23,8 @@
 int main(int /*ac*/, char* /*av*/[]) {
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kVerbose);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
-  maidsafe::priv::process_management::ClientController client([](std::string){});  // NOLINT (Fraser)
+  maidsafe::priv::process_management::ClientController client(
+      [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
   maidsafe::Fob fob;
   fob.keys = maidsafe::asymm::GenerateKeyPair();

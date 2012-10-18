@@ -88,7 +88,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error_code);
     ASSERT_FALSE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
     Invigilator invigilator;
-    ClientController client_controller([](std::string){});  // NOLINT (Fraser)
+    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
@@ -111,7 +111,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   Fob first_fob;
   {
     Invigilator invigilator;
-    ClientController client_controller([](std::string){});  // NOLINT (Fraser)
+    ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
     first_fob.keys = asymm::GenerateKeyPair();
     first_fob.identity = Identity("FirstVault");
     EXPECT_TRUE(client_controller.StartVault(first_fob, "F", ""));
@@ -143,7 +143,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   Fob second_fob;
   {
     Invigilator invigilator;
-    ClientController client_controller([](std::string){});  // NOLINT (Fraser)
+    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     second_fob.keys = asymm::GenerateKeyPair();
     second_fob.identity = Identity("SecondVault");
     EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
@@ -173,7 +173,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // down when the Invigilator is destroyed. both should saved to the config file.
   {
     Invigilator invigilator;
-    ClientController client_controller([](std::string){});  // NOLINT (Fraser)
+    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
     asymm::Signature signature1(asymm::Sign(data, first_fob.keys.private_key));
@@ -203,7 +203,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
-    ClientController client_controller1([](std::string){}), client_controller2([](std::string){});  // NOLINT (Fraser)
+    ClientController client_controller1([](const NonEmptyString&){}),
+                     client_controller2([](const NonEmptyString&){});  // NOLINT (Fraser)
     Fob fob;
     for (int i(0); i < 50; ++i) {
       fob.keys = asymm::GenerateKeyPair();
