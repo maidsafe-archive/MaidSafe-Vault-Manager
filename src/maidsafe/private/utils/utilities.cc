@@ -35,11 +35,13 @@ void ChunkStoreOperationCallback(const bool& response,
                                  int* result) {
   if (!mutex || !cond_var || !result)
     return;
-  std::unique_lock<std::mutex> lock(*mutex);
-  if (response)
-    *result = kSuccess;
-  else
-    *result = kRemoteChunkStoreFailure;
+  {
+    std::lock_guard<std::mutex> lock(*mutex);
+    if (response)
+      *result = kSuccess;
+    else
+      *result = kRemoteChunkStoreFailure;
+  }
   cond_var->notify_all();
 }
 
