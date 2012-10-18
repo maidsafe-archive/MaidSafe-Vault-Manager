@@ -31,7 +31,6 @@ enum class MessageType;
 namespace detail {
 
 extern const std::string kSignatureExtension;
-extern const asymm::PublicKey kMaidSafePublicKey;
 const std::string kVersionFilename("version");
 const std::string kManifestFilename("manifest");
 const std::string kGlobalConfigFilename("global-config.dat");
@@ -61,6 +60,8 @@ class Platform {
   Type type_;
   std::string name_;
 };
+
+asymm::PublicKey kMaidSafePublicKey();
 
 Platform kThisPlatform();
 

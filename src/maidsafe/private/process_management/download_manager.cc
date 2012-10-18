@@ -79,8 +79,8 @@ DownloadManager::DownloadManager(const std::string& protocol,
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "Failure to decode retrieved serialised key.";
 #else
-  LOG(kError) << "Using the production fob.";
-  maidsafe_public_key_ = detail::kMaidSafePublicKey;
+  LOG(kInfo) << "Using the production fob.";
+  maidsafe_public_key_ = detail::kMaidSafePublicKey();
 #endif
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
