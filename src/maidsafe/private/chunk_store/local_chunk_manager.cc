@@ -161,20 +161,17 @@ void LocalChunkManager::DeleteChunk(const ChunkId& name, const Fob& fob) {
   if (get_wait_.total_milliseconds() != 0)
     Sleep(action_wait_);
 
-  bool is_cacheable(simulation_chunk_action_authority_->Cacheable(name));
-
   // TODO(Team): Add check of ID on network
   priv::chunk_actions::SignedData ownership_proof;
   std::string ownership_proof_string;
   asymm::PublicKey public_key;
-//  if (!is_cacheable) {
-    ownership_proof.set_data(RandomString(16));
-    std::string* signature(ownership_proof.mutable_signature());
-    *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()),
-                             fob.keys.private_key).string();
-    ownership_proof.SerializeToString(&ownership_proof_string);
-    public_key = fob.keys.public_key;
-//  }
+  ownership_proof.set_data(RandomString(16));
+  std::string* signature(ownership_proof.mutable_signature());
+  *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()),
+                            fob.keys.private_key).string();
+  ownership_proof.SerializeToString(&ownership_proof_string);
+  public_key = fob.keys.public_key;
+
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   NonEmptyString(ownership_proof_string),
                                                   public_key)) {
