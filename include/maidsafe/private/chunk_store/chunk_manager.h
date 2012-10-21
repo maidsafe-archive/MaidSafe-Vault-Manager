@@ -67,7 +67,8 @@ class ChunkManager {
   std::shared_ptr<ChunkStore> chunk_store() { return chunk_store_; }
 
   std::chrono::duration<int> lock_timeout() { return lock_timeout_; }
-  void SetLockTimeout(const std::chrono::duration<int>& value) { lock_timeout_ = value; }
+  // void SetLockTimeout(const std::chrono::duration<int>& value) { lock_timeout_ = value; }
+  void SetLockTimeout(const std::chrono::duration<double>& value) { lock_timeout_ = value; }
 
  protected:
   explicit ChunkManager(std::shared_ptr<ChunkStore> chunk_store)
@@ -82,7 +83,8 @@ class ChunkManager {
   ChunkModifiedSig sig_chunk_modified_;
   ChunkDeletedSig sig_chunk_deleted_;
   std::shared_ptr<ChunkStore> chunk_store_;
-  std::chrono::duration<int> lock_timeout_;
+  // std::chrono::duration<int> lock_timeout_;
+  std::chrono::duration<double> lock_timeout_;
 
  private:
   ChunkManager(const ChunkManager&);
