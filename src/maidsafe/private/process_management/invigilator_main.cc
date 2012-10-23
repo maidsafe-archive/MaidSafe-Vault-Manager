@@ -139,7 +139,6 @@ int main() {
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
 #else
-  signal(SIGINT, ShutDownInvigilator);
   maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
   maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
 
@@ -148,6 +147,7 @@ int main() {
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }
+  signal(SIGINT, ShutDownInvigilator);
 #endif
   return 0;
 }
