@@ -14,6 +14,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/utils/fob_pb.h"
 
@@ -46,9 +47,11 @@ Fob::Fob(const maidsafe::Identity identity,
                         private_key_(private_key),
                         validation_token_(validation_token),
                         signed_by_() {
+  asymm::PlainText plain(RandomString(64));
   if (!asymm::CheckSignature(asymm::PlainText(asymm::EncodeKey(public_key)),
                                validation_token, public_key) ||
-      CreateIdentity() != identity)
+      CreateIdentity() != identity ||
+      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) == plain))
     ThrowError(CommonErrors::uninitialised);
 
 }
@@ -64,9 +67,11 @@ Fob::Fob(const maidsafe::Identity identity,
                    private_key_(private_key),
                    validation_token_(validation_token),
                    signed_by_(signed_by) {
+  asymm::PlainText plain(RandomString(64));
   if (!asymm::CheckSignature(asymm::PlainText(asymm::EncodeKey(public_key)),
                                validation_token, public_key) ||
-      CreateChainedValidation(signed_by_private_key) != validation_token_)
+      CreateChainedValidation(signed_by_private_key) != validation_token_ ||
+      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) == plain))
     ThrowError(CommonErrors::uninitialised);
 
 }
