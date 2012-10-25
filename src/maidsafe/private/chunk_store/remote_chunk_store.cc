@@ -268,7 +268,7 @@ bool RemoteChunkStore::Store(const ChunkId& name,
     LOG(kWarning) << "Store - Terminated early for " << Base32Substr(name);
     return result == WaitResult::kCancelled;
   }
-  if (!chunk_action_authority_->Store(name, content, fob.keys.public_key)) {
+  if (!chunk_action_authority_->Store(name, content, fob.PublicKey())) {
     LOG(kError) << "Store - Could not store " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -298,16 +298,17 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
   }
   std::string proof;
   // Default chunks don't need proof of ownership to be deleted.
-//  if (GetChunkType(name) != ChunkType::kDefault) {
+  // TODO FIXME (dirvine) this test should  not be required 
+ if (GetChunkType(name) != ChunkType::kDefault) {
     asymm::PlainText data(RandomString(16));
-    asymm::Signature signature(asymm::Sign(data, fob.keys.private_key));
+    asymm::Signature signature(asymm::Sign(data, fob.PrivateKey()));
     chunk_actions::SignedData proto_proof;
     proto_proof.set_data(data.string());
     proto_proof.set_signature(signature.string());
     proof = proto_proof.SerializeAsString();
-//  }
+ }
 
-  if (!chunk_action_authority_->Delete(name, NonEmptyString(proof), fob.keys.public_key)) {
+  if (!chunk_action_authority_->Delete(name, NonEmptyString(proof), fob.PublicKey())) {
     LOG(kError) << "Delete - Could not delete " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();

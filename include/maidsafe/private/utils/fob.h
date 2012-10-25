@@ -19,15 +19,40 @@
 
 namespace maidsafe {
 
-struct Fob {
-  typedef asymm::Signature ValidationToken;
+namespace priv {
+
+// This object is immutable by design, it does not allow any alteration after construction.
+class Fob {
+ public:
   Fob();
-  Identity identity;
-  asymm::Keys keys;
-  ValidationToken validation_token;
+  Fob(const Identity signed_by, const asymm::PrivateKey private_key);
+  Fob(const Identity identity,
+      const asymm::PublicKey public_key,
+      const asymm::PrivateKey private_key,
+      const asymm::Signature validation_token);
+  Fob(const Identity identity,
+      const asymm::PublicKey public_key,
+      const asymm::PrivateKey private_key,
+      const asymm::Signature validation_token,
+      const Identity signed_by,
+      const asymm::PrivateKey signed_by_private_key);
+  Identity Identity() const;
+  asymm::PublicKey PublicKey() const;
+  asymm::PrivateKey PrivateKey() const ;
+  asymm::Signature ValidationToken() const;
+  maidsafe::Identity SignedBy() const;
+ private:
+  asymm::Signature CreateValidation();
+  asymm::Signature CreateChainedValidation(const asymm::PrivateKey& private_key);
+  maidsafe::Identity CreateIdentity();
+  void CreateKeys();
+  maidsafe::Identity identity_;
+  asymm::PublicKey public_key_;
+  asymm::PrivateKey private_key_;
+  asymm::Signature validation_token_;
+  maidsafe::Identity signed_by_;
 };
 
-namespace priv {
 
 namespace utils {
 

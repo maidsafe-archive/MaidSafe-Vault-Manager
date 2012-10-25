@@ -58,8 +58,8 @@ class RemoteChunkStoreTest: public testing::Test {
         task_number_(0),
         num_successes_(0),
         rcs_pending_ops_conn_(),
-        fob_(utils::GenerateFob(nullptr)),
-        alternate_fob_(utils::GenerateFob(nullptr)),
+        fob_(),
+        alternate_fob_(),
         signed_data_(),
         store_failed_callback_(),
         store_success_callback_(),
@@ -249,7 +249,7 @@ class RemoteChunkStoreTest: public testing::Test {
     InitMockManagerChunkStore(&mock_manager_chunk_store_, chunk_dir_, asio_service_.service());
     signed_data_.set_data(RandomString(50));
     std::string* signature = signed_data_.mutable_signature();
-    *signature = asymm::Sign(asymm::PlainText(signed_data_.data()), fob_.keys.private_key).string();
+    *signature = asymm::Sign(asymm::PlainText(signed_data_.data()), fob_.PrivateKey()).string();
     store_failed_callback_ = [=] (bool result) { StoreFailedCallback(result); };  // NOLINT (Fraser)
     store_success_callback_ = [=] (bool result) { StoreSuccessfulCallback(result); };  // NOLINT (Fraser)
     modify_failed_callback_ = [=] (bool result) { ModifyFailedCallback(result); };  // NOLINT (Fraser)
@@ -413,14 +413,14 @@ TEST_F(RemoteChunkStoreTest, BEH_GetAndLock) {
   EXPECT_EQ(content.string(), retrieved_content);
 
   // existing MBO chunk
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   EXPECT_EQ(kSuccess,
             this->chunk_store_->GetAndLock(name, ChunkVersion(), fob_, &retrieved_content));
   EXPECT_EQ(content.string(), retrieved_content);
 
   // chunk that exists locally with same version as requested
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   ChunkVersion up_to_date_local_version(crypto::Hash<crypto::Tiger>(content));
   EXPECT_EQ(kChunkNotModified, this->chunk_store_->GetAndLock(name, up_to_date_local_version, fob_,
@@ -464,11 +464,11 @@ TEST_F(RemoteChunkStoreTest, BEH_Delete) {
   // TODO(Philip): Reinstate this test when RemoteChunkStore has been fully
   // updated
   /*GenerateChunk(priv::chunk_actions::ChunkType::kUnknown,
-                   123, fob_.keys.private_key, &name, &content);
+                   123, fob_.PrivateKey(), &name, &content);
   // Deleting chunk of unknown type should fail
   ASSERT_FALSE(this->chunk_store_->Delete(name, delete_failed_callback_,
                                           fob_));*/
-  GenerateChunk(ChunkType::kDefault, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kDefault, 123, fob_.PrivateKey(), &name, &content);
   EXPECT_TRUE(this->chunk_store_->Get(name, fob_).empty());
   EXPECT_TRUE(this->chunk_store_->Empty());
   // EXPECT_FALSE(this->chunk_store_->Has(name));
@@ -493,8 +493,8 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 
   // test that modifying of chunk of default type fails
   {
-    GenerateChunk(ChunkType::kDefault, 123, fob_.keys.private_key, &name, &content);
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy, &new_content);
+    GenerateChunk(ChunkType::kDefault, 123, fob_.PrivateKey(), &name, &content);
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy, &new_content);
 
     ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
     ASSERT_TRUE(chunk_store_->WaitForCompletion());
@@ -507,8 +507,8 @@ TEST_F(RemoteChunkStoreTest, BEH_Modify) {
 
   // test modifying of chunk of modifiable by owner type
   {
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy, &new_content);
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy, &new_content);
 
     ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
     ASSERT_TRUE(chunk_store_->WaitForCompletion());
@@ -536,9 +536,9 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConcurrentGets) {
   while (chunks.size() < kNumChunks) {
     NonEmptyString chunk_content, chunk_new_content;
     ChunkId chunk_name;
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &chunk_name,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &chunk_name,
                   &chunk_content);
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy,
                   &chunk_new_content);
     chunks[chunk_name].first = chunk_content;
     chunks[chunk_name].second = chunk_new_content;
@@ -591,9 +591,9 @@ TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_ConcurrentGetAndLocks) {
   while (chunks.size() < kNumChunks) {
     NonEmptyString chunk_content, chunk_new_content;
     ChunkId chunk_name;
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &chunk_name,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &chunk_name,
                   &chunk_content);
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy,
                   &chunk_new_content);
     chunks[chunk_name].first = chunk_content;
     chunks[chunk_name].second = chunk_new_content;
@@ -650,9 +650,9 @@ TEST_F(RemoteChunkStoreTest, DISABLED_FUNC_MixedConcurrentGets) {
   while (chunks.size() < kNumChunks) {
     NonEmptyString chunk_content, chunk_new_content;
     ChunkId chunk_name;
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &chunk_name,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &chunk_name,
                   &chunk_content);
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy,
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy,
                   &chunk_new_content);
     chunks[chunk_name].first = chunk_content;
     chunks[chunk_name].second = chunk_new_content;
@@ -707,7 +707,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletes) {
   NonEmptyString content, new_content;
   ChunkId name, dummy;
   task_number_ = 0;
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
@@ -732,8 +732,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesAndModifies) {
   ChunkId name, dummy;
   task_number_ = 0;
   int task_number_initialiser(0);
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy, &new_content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy, &new_content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
@@ -765,7 +765,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   int kNumModifies(10);
   NonEmptyString content, new_content;
   ChunkId name, dummy;
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
@@ -773,7 +773,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
 
   std::vector<NonEmptyString> new_content_vector;
   for (int i(0); i < kNumModifies; ++i) {
-    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &dummy, &new_content);
+    GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &dummy, &new_content);
     new_content_vector.push_back(new_content);
   }
   // test sequential modifies
@@ -787,7 +787,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_RedundantModifies) {
   EXPECT_EQ((*(new_content_vector.rbegin())).string(), this->chunk_store_->Get(name, fob_));
 
   // test concurrent modifies
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   ASSERT_TRUE(this->chunk_store_->Store(name, content, store_success_callback_, fob_));
   ASSERT_TRUE(chunk_store_->WaitForCompletion());
   Sleep(boost::posix_time::seconds(1));
@@ -826,7 +826,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_MultiThreads) {
     while (chunks.size() < kNumChunks) {
       NonEmptyString chunk_content;
       ChunkId chunk_name;
-      GenerateChunk(ChunkType::kDefault, 123, fob_.keys.private_key, &chunk_name, &chunk_content);
+      GenerateChunk(ChunkType::kDefault, 123, fob_.PrivateKey(), &chunk_name, &chunk_content);
       chunks[chunk_name] = chunk_content;
     }
     task_number_ = 0;
@@ -871,7 +871,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
     if (chunks.size() < kNumChunks / 2)
       GenerateChunk(ChunkType::kDefault, 123, asymm::PrivateKey(), &chunk_name, &chunk_contents);
     else
-      GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &chunk_name,
+      GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &chunk_name,
                     &chunk_contents);
     chunks[chunk_name] = chunk_contents;
   }
@@ -949,7 +949,7 @@ TEST_F(RemoteChunkStoreTest, FUNC_ConflictingDeletesTimeout) {
   NonEmptyString content;
   ChunkId name;
   num_successes_ = 0;
-  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.keys.private_key, &name, &content);
+  GenerateChunk(ChunkType::kModifiableByOwner, 123, fob_.PrivateKey(), &name, &content);
   EXPECT_CALL(*mock_chunk_manager_, StoreChunk(testing::_, testing::_))
       .WillOnce(testing::WithArgs<0>(testing::Invoke(boost::bind(&MockChunkManager::StoreChunkPass,
                                                                  mock_chunk_manager_.get(),
