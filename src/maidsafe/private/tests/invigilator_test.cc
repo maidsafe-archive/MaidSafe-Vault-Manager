@@ -108,13 +108,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for existing config file with minimum content (generated in previous test case)
   // One vault is started. This should then be shut down and saved to the config file when the
   // Invigilator is destroyed.
-  Fob first_fob;
+  Fob anmaid_fob1;
+  Fob maid_fob1(anmaid_fob1.identity(), anmaid_fob1.private_key());
+  Fob pmid_fob1(maid_fob1.identity(), maid_fob1.private_key());
   {
     Invigilator invigilator;
     ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
-    first_fob.keys = asymm::GenerateKeyPair();
-    first_fob.identity = Identity("FirstVault");
-    EXPECT_TRUE(client_controller.StartVault(first_fob, "F", ""));
+    EXPECT_TRUE(client_controller.StartVault(pmid_fob1, maid_fob1.signed_by().string(), ""));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_EQ(1, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
@@ -140,13 +140,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and
   // both saved to the config file when the Invigilator is destroyed.
-  Fob second_fob;
+  Fob anmaid_fob2;
+  Fob maid_fob2(anmaid_fob2.identity(), anmaid_fob2.private_key());
+  Fob pmid_fob2(maid_fob2.identity(), maid_fob2.private_key());
   {
     Invigilator invigilator;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
-    second_fob.keys = asymm::GenerateKeyPair();
-    second_fob.identity = Identity("SecondVault");
-    EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
+    EXPECT_TRUE(client_controller.StartVault(pmid_fob2, maid_fob2.identity().string(), ""));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
@@ -176,9 +176,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
-    asymm::Signature signature1(asymm::Sign(data, first_fob.keys.private_key));
-    asymm::Signature signature2(asymm::Sign(data, second_fob.keys.private_key));
-    EXPECT_TRUE(client_controller.StopVault(data, signature1, first_fob.identity));
+    asymm::Signature signature(asymm::Sign(data, pmid_fob1.private_key()));
+    EXPECT_TRUE(client_controller.StopVault(data, signature, pmid_fob1.identity()));
     EXPECT_EQ(1, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
@@ -207,8 +206,6 @@ TEST(InvigilatorTest, FUNC_StartStop) {
                      client_controller2([](const NonEmptyString&){});  // NOLINT (Fraser)
     Fob fob;
     for (int i(0); i < 50; ++i) {
-      fob.keys = asymm::GenerateKeyPair();
-      fob.identity = Identity(RandomAlphaNumericString(64));
       if (i % 2 == 0)
         EXPECT_TRUE(client_controller1.StartVault(fob, RandomAlphaNumericString(16), ""));
       else

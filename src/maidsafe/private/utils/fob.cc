@@ -12,8 +12,6 @@
 #include "maidsafe/private/utils/fob.h"
 
 #include "maidsafe/common/error.h"
-#include "maidsafe/common/rsa.h"
-#include "maidsafe/common/types.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/utils/fob_pb.h"
@@ -28,65 +26,63 @@ Fob::Fob() : identity_(), public_key_(), private_key_(), validation_token_(), si
   identity_ = CreateIdentity();
 }
 
-Fob::Fob(const maidsafe::Identity signed_by, const asymm::PrivateKey private_key ) : identity_(),
-                                                public_key_(),
-                                                private_key_(),
-                                                validation_token_(),
-                                                signed_by_(signed_by) {
+Fob::Fob(const Identity signed_by, const asymm::PrivateKey private_key)
+    : identity_(),
+      public_key_(),
+      private_key_(),
+      validation_token_(),
+      signed_by_(signed_by) {
   CreateKeys();
   validation_token_ = CreateChainedValidation(private_key);
   identity_ = CreateIdentity();
 }
 
-Fob::Fob(const maidsafe::Identity identity,
+Fob::Fob(const Identity identity,
          const asymm::PublicKey public_key,
          const asymm::PrivateKey private_key,
-         const asymm::Signature validation_token) :
-                        identity_(identity),
-                        public_key_(public_key),
-                        private_key_(private_key),
-                        validation_token_(validation_token),
-                        signed_by_() {
+         const asymm::Signature validation_token)
+    : identity_(identity),
+      public_key_(public_key),
+      private_key_(private_key),
+      validation_token_(validation_token),
+      signed_by_() {
   asymm::PlainText plain(RandomString(64));
   if (!asymm::CheckSignature(asymm::PlainText(asymm::EncodeKey(public_key)),
-                               validation_token, public_key) ||
+                             validation_token, public_key) ||
       CreateIdentity() != identity ||
-      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) == plain))
+      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) != plain))
     ThrowError(CommonErrors::uninitialised);
-
 }
 
-Fob::Fob(const maidsafe::Identity identity,
+Fob::Fob(const Identity identity,
          const asymm::PublicKey public_key,
          const asymm::PrivateKey private_key,
          const asymm::Signature validation_token,
-         const maidsafe::Identity signed_by,
-         const asymm::PrivateKey signed_by_private_key) :
-                   identity_(identity),
-                   public_key_(public_key),
-                   private_key_(private_key),
-                   validation_token_(validation_token),
-                   signed_by_(signed_by) {
+         const Identity signed_by,
+         const asymm::PrivateKey signed_by_private_key)
+    : identity_(identity),
+      public_key_(public_key),
+      private_key_(private_key),
+      validation_token_(validation_token),
+      signed_by_(signed_by) {
   asymm::PlainText plain(RandomString(64));
   if (!asymm::CheckSignature(asymm::PlainText(asymm::EncodeKey(public_key)),
-                               validation_token, public_key) ||
+                             validation_token, public_key) ||
       CreateChainedValidation(signed_by_private_key) != validation_token_ ||
-      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) == plain))
+      (asymm::Decrypt(asymm::Encrypt(plain, public_key), private_key) != plain))
     ThrowError(CommonErrors::uninitialised);
-
 }
 
-// getters 
 
-Identity Fob::Identity() const { return identity_; }
+Identity Fob::identity() const { return identity_; }
 
-asymm::PublicKey Fob::PublicKey() const { return public_key_; }
+asymm::PublicKey Fob::public_key() const { return public_key_; }
 
-asymm::PrivateKey Fob::PrivateKey() const { return private_key_; }
+asymm::PrivateKey Fob::private_key() const { return private_key_; }
 
-asymm::Signature Fob::ValidationToken() const { return validation_token_; }
+asymm::Signature Fob::validation_token() const { return validation_token_; }
 
-Identity Fob::SignedBy() const { return signed_by_; }
+Identity Fob::signed_by() const { return signed_by_; }
 
 void Fob::CreateKeys() {
   asymm::Keys keys(asymm::GenerateKeyPair());
@@ -103,23 +99,22 @@ asymm::Signature Fob::CreateChainedValidation(const asymm::PrivateKey& private_k
 }
 
 Identity Fob::CreateIdentity() {
-  return crypto::Hash<crypto::SHA512>(asymm::EncodeKey(public_key_).string() +
-                                           validation_token_.string());
+  return crypto::Hash<crypto::SHA512>(asymm::EncodeKey(public_key_) + validation_token_);
 }
+
 
 namespace utils {
 
-
 NonEmptyString SerialiseFob(const Fob& fob) {
   protobuf::Fob proto_fob;
-  proto_fob.set_identity(fob.Identity().string());
-  proto_fob.set_validation_token(fob.ValidationToken().string());
-  asymm::EncodedPublicKey encoded_public(asymm::EncodeKey(fob.PublicKey()));
-  asymm::EncodedPrivateKey encoded_private(asymm::EncodeKey(fob.PrivateKey()));
+  proto_fob.set_identity(fob.identity().string());
+  proto_fob.set_validation_token(fob.validation_token().string());
+  asymm::EncodedPublicKey encoded_public(asymm::EncodeKey(fob.public_key()));
+  asymm::EncodedPrivateKey encoded_private(asymm::EncodeKey(fob.private_key()));
   proto_fob.set_encoded_public_key(encoded_public.string());
   proto_fob.set_encoded_private_key(encoded_private.string());
-  if (fob.SignedBy().IsInitialised())
-   proto_fob.set_signed_by(fob.SignedBy().string());
+  if (fob.signed_by().IsInitialised())
+    proto_fob.set_signed_by(fob.signed_by().string());
   std::string result(proto_fob.SerializeAsString());
   if (result.empty())
     ThrowError(FobErrors::fob_serialisation_error);
@@ -136,9 +131,8 @@ Fob ParseFob(const NonEmptyString& serialised_fob) {
       Fob(Identity(proto_fob.identity()),
                    asymm::DecodeKey(asymm::EncodedPublicKey(proto_fob.encoded_public_key())),
                    asymm::DecodeKey(asymm::EncodedPrivateKey(proto_fob.encoded_private_key())),
-                   NonEmptyString(proto_fob.validation_token()))
-  :
-       Fob(Identity(proto_fob.identity()),
+                   NonEmptyString(proto_fob.validation_token())) :
+      Fob(Identity(proto_fob.identity()),
                    asymm::DecodeKey(asymm::EncodedPublicKey(proto_fob.encoded_public_key())),
                    asymm::DecodeKey(asymm::EncodedPrivateKey(proto_fob.encoded_private_key())),
                    NonEmptyString(proto_fob.validation_token()));

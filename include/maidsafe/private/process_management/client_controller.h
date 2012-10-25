@@ -33,9 +33,9 @@
 
 namespace maidsafe {
 
-struct Fob;
-
 namespace priv {
+
+class Fob;
 
 namespace process_management {
 

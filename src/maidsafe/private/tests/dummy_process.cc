@@ -73,16 +73,16 @@ int main(int argc, char* argv[]) {
         return 1;
       }
 
-      maidsafe::Fob fob;
+      maidsafe::priv::Fob fob;
       std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
       vault_controller.GetIdentity(fob, account_name, bootstrap_endpoints);
-      LOG(kInfo) << "DUMMYprocess: Identity: " << (fob.identity.string());
-      LOG(kInfo) << "Validation Token: " << (fob.validation_token.string());
+      LOG(kInfo) << "DUMMYprocess: Identity: " << maidsafe::Base64Substr(fob.identity());
+      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token());
       LOG(kInfo) << "Public Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.public_key));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
       LOG(kInfo) << "Private Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.private_key));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
       LOG(kInfo) << "Account name: " << account_name;
       vault_controller.ConfirmJoin(true);
 

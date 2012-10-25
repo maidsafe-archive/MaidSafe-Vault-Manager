@@ -207,7 +207,7 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
     vault_info->FromProtobuf(config.vault_info(i));
     if (vault_info->requested_to_run) {
       if (!StartVaultProcess(vault_info))
-        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->fob.identity);
+        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->fob.identity());
     }
   }
 
@@ -370,13 +370,13 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
   VaultInfoPtr vault_info(new VaultInfo);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(FindFromIdentity(vault_info->fob.identity));
+    auto itr(FindFromIdentity(vault_info->fob.identity()));
     bool existing_vault(false);
     if (itr != vault_infos_.end()) {
       existing_vault = true;
       if (!asymm::CheckSignature(asymm::PlainText(start_vault_request.token()),
                                  asymm::Signature(start_vault_request.token_signature()),
-                                 vault_info->fob.keys.public_key)) {
+                                 vault_info->fob.public_key())) {
         LOG(kError) << "Communication from someone that does not validate as owner.";
         return set_response(false);  // TODO(Team): Drop silienty?
       }
@@ -407,19 +407,19 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
         vault_info->chunkstore_path = start_vault_request.chunkstore_path();
       } else {
         std::string short_vault_id(EncodeToBase64(crypto::Hash<crypto::SHA1>(
-                                                      vault_info->fob.identity)));
+                                                      vault_info->fob.identity())));
         vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
       }
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
-                    << Base64Substr(vault_info->fob.identity);
+                    << Base64Substr(vault_info->fob.identity());
         return set_response(false);
       }
     }
     if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr(vault_info->fob.identity);
+                  << Base64Substr(vault_info->fob.identity());
       return set_response(false);
     }
   }
@@ -515,7 +515,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
   }
   vault_joined_network_ack.set_ack(join_result);
   if ((*itr)->client_port != 0)
-  SendVaultJoinConfirmation((*itr)->fob.identity, join_result);
+  SendVaultJoinConfirmation((*itr)->fob.identity(), join_result);
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_joined_network_ack.SerializeAsString());
 }
@@ -537,7 +537,7 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
     stop_vault_response.set_result(false);
-  } else if (!asymm::CheckSignature(data, signature, (*itr)->fob.keys.public_key)) {
+  } else if (!asymm::CheckSignature(data, signature, (*itr)->fob.public_key())) {
     LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(identity);
     stop_vault_response.set_result(false);
   } else {
@@ -545,7 +545,7 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
     stop_vault_response.set_result(StopVault(identity, data, signature, true));
     if (!AmendVaultDetailsInConfigFile(*itr, true)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr((*itr)->fob.identity);
+                  << Base64Substr((*itr)->fob.identity());
       stop_vault_response.set_result(false);
     }
   }
@@ -883,7 +883,7 @@ std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromIdentity(
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
                       [identity] (const VaultInfoPtr& vault_info)->bool {
-                        return vault_info->fob.identity == identity;
+                        return vault_info->fob.identity() == identity;
                       });
 }
 
@@ -950,10 +950,10 @@ void Invigilator::StopAllVaults() {
                     return;
                   }
                   asymm::PlainText random_data(RandomString(64));
-                  asymm::Signature signature(asymm::Sign(random_data, info->fob.keys.private_key));
-                  if (!StopVault(info->fob.identity, random_data, signature, false)) {
+                  asymm::Signature signature(asymm::Sign(random_data, info->fob.private_key()));
+                  if (!StopVault(info->fob.identity(), random_data, signature, false)) {
                     LOG(kError) << "StopAllVaults: failed to stop - "
-                                << Base64Substr(info->fob.identity);
+                                << Base64Substr(info->fob.identity());
                   }
                 });
 }
@@ -1047,7 +1047,7 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 #endif
   if (!process.SetExecutablePath(executable_path /
                                  (process_name + detail::kThisPlatform().executable_extension()))) {
-    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity);
+    LOG(kError) << "Failed to set exe path for: " << Base64Substr(vault_info->fob.identity());
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
@@ -1058,7 +1058,7 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
-    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->fob.identity);
+    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->fob.identity());
     return false;
   }
 
@@ -1135,14 +1135,14 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
   protobuf::InvigilatorConfig config;
   if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
-                << Base64Substr(vault_info->fob.identity);
+                << Base64Substr(vault_info->fob.identity());
     return false;
   }
 
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
       Fob fob(utils::ParseFob(NonEmptyString(config.vault_info(n).fob())));
-      if (vault_info->fob.identity == fob.identity) {
+      if (vault_info->fob.identity() == fob.identity()) {
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
         p_info->set_account_name(vault_info->account_name);
         p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
@@ -1163,7 +1163,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
       std::lock_guard<std::mutex> lock(config_file_mutex_);
       if (!WriteFile(config_file_path_, config.SerializeAsString())) {
         LOG(kError) << "Failed to write config file to amend details of vault ID "
-                    << Base64Substr(vault_info->fob.identity);
+                    << Base64Substr(vault_info->fob.identity());
         return false;
       }
     }

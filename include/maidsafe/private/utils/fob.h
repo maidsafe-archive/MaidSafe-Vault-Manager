@@ -25,45 +25,38 @@ namespace priv {
 class Fob {
  public:
   Fob();
-  Fob(const Identity signed_by, const asymm::PrivateKey private_key);
-  Fob(const Identity identity,
-      const asymm::PublicKey public_key,
-      const asymm::PrivateKey private_key,
-      const asymm::Signature validation_token);
-  Fob(const Identity identity,
-      const asymm::PublicKey public_key,
-      const asymm::PrivateKey private_key,
-      const asymm::Signature validation_token,
-      const Identity signed_by,
-      const asymm::PrivateKey signed_by_private_key);
-  Identity Identity() const;
-  asymm::PublicKey PublicKey() const;
-  asymm::PrivateKey PrivateKey() const ;
-  asymm::Signature ValidationToken() const;
-  maidsafe::Identity SignedBy() const;
+  Fob(Identity signed_by, asymm::PrivateKey private_key);
+  Fob(Identity identity,
+      asymm::PublicKey public_key,
+      asymm::PrivateKey private_key,
+      asymm::Signature validation_token);
+  Fob(Identity identity,
+      asymm::PublicKey public_key,
+      asymm::PrivateKey private_key,
+      asymm::Signature validation_token,
+      Identity signed_by,
+      asymm::PrivateKey signed_by_private_key);
+  Identity identity() const;
+  asymm::PublicKey public_key() const;
+  asymm::PrivateKey private_key() const;
+  asymm::Signature validation_token() const;
+  Identity signed_by() const;
+
  private:
   asymm::Signature CreateValidation();
   asymm::Signature CreateChainedValidation(const asymm::PrivateKey& private_key);
-  maidsafe::Identity CreateIdentity();
+  Identity CreateIdentity();
   void CreateKeys();
-  maidsafe::Identity identity_;
+
+  Identity identity_;
   asymm::PublicKey public_key_;
   asymm::PrivateKey private_key_;
   asymm::Signature validation_token_;
-  maidsafe::Identity signed_by_;
+  Identity signed_by_;
 };
 
 
 namespace utils {
-
-// Generates the identity according to the maidsafe patent
-Fob GenerateFob(asymm::PrivateKey* private_key);
-
-// Generates chained identities according to the maidsafe patent
-std::vector<Fob> GenerateChainedFob(size_t amount, asymm::PrivateKey* private_key);
-
-// Validates identity according to the maidsafe patent
-bool ValidateFob(const Fob& fob, asymm::PrivateKey* private_key);
 
 // Serialise the fob using protocol buffers
 NonEmptyString SerialiseFob(const Fob& fob);
