@@ -89,14 +89,15 @@ DownloadManager::DownloadManager(const std::string& protocol,
 DownloadManager::~DownloadManager() {}
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
-  if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
-                        local_path_ / detail::kBootstrapNodesFilename)) {
-    LOG(kError) << "Failed to download bootstrap file";
-    return "";
-  }
-
+//   if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
+//                         local_path_ / detail::kBootstrapNodesFilename)) {
+//     LOG(kError) << "Failed to download bootstrap file";
+//     return "";
+//   }
+//   std::path bootstrap_file(local_path_ / detail::kBootstrapNodesFilename);
+  fs::path bootstrap_file("bootstrap");
   std::string bootstrap_content;
-  if (!ReadFile(local_path_ / detail::kBootstrapNodesFilename, &bootstrap_content)) {
+  if (!ReadFile(bootstrap_file, &bootstrap_content)) {
     LOG(kError) << "Failed to read downloaded bootstrap file";
     return "";
   }

@@ -51,7 +51,7 @@ VaultController::VaultController()
       stop_callback_(),
       setuid_succeeded_() {
 #ifndef MAIDSAFE_WIN32
-  int result(system("id -u lifestuff > ./uid.txt"));
+  int result(system("id -u maidsafe > ./uid.txt"));
   if (result) {
     setuid_succeeded_ = false;
     LOG(kError) << "Failed to determine uid of lifestuff user";

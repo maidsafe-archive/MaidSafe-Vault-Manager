@@ -1043,7 +1043,8 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 # endif
 #else
   std::string process_name(detail::kVaultName);
-  fs::path executable_path(GetAppInstallDir());
+//   fs::path executable_path(GetAppInstallDir());
+  fs::path executable_path(".");
 #endif
   if (!process.SetExecutablePath(executable_path /
                                  (process_name + detail::kThisPlatform().executable_extension()))) {
