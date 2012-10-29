@@ -205,8 +205,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
-    ClientController client_controller1([](const NonEmptyString&){}),
-                     client_controller2([](const NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller1([](const NonEmptyString&) {}),
+                     client_controller2([](const NonEmptyString&) {});  // NOLINT (Fraser)
     Fob fob;
     for (int i(0); i < 50; ++i) {
       fob.keys = asymm::GenerateKeyPair();
