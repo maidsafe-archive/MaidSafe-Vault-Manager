@@ -158,6 +158,7 @@ ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsa
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
 ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(invigilator_test "Invigilator Test" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 ms_add_executable(DEMOinvigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
 target_link_libraries(maidsafe_utilities maidsafe_common)
@@ -170,12 +171,14 @@ target_link_libraries(DUMMYprocess maidsafe_process_management_test maidsafe_uti
 target_link_libraries(DUMMYclient maidsafe_process_management_test maidsafe_utilities ${BoostProgramOptionsLibs})
 target_link_libraries(TESTinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(invigilator maidsafe_process_management ${BoostProgramOptionsLibs})
+target_link_libraries(invigilator_test maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(DEMOinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 
 add_dependencies(TESTinvigilator DUMMYprocess)
 
 set_target_properties(maidsafe_process_management_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
+set_target_properties(invigilator_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
 
 rename_outdated_built_exes()
 

@@ -67,12 +67,10 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
 
 Invigilator::Invigilator()
     : process_manager_(),
-#ifdef USE_TEST_KEYS
-      download_manager_("http", "dash.maidsafe.net", "~phil/tests/test_vault_manager"),
-#else
+
       // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
       download_manager_("http", "dash.maidsafe.net", "~phil"),
-#endif
+
       asio_service_(3),
       update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
       update_timer_(asio_service_.service()),
@@ -83,11 +81,9 @@ Invigilator::Invigilator()
       vault_infos_mutex_(),
       client_ports_and_versions_(),
       client_ports_mutex_(),
-#ifdef USE_TEST_KEYS
-      config_file_path_(fs::path(".") / detail::kGlobalConfigFilename),
-#else
+
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
-#endif
+
       latest_local_installer_path_(),
       endpoints_(),
       config_file_mutex_(),
@@ -1034,7 +1030,7 @@ void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
 bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef USE_TEST_KEYS
-  std::string process_name(detail::kDummyName);
+  std::string process_name(detail::kVaultName);
   fs::path executable_path(".");
 # ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
@@ -1043,8 +1039,7 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 # endif
 #else
   std::string process_name(detail::kVaultName);
-//   fs::path executable_path(GetAppInstallDir());
-  fs::path executable_path(".");
+  fs::path executable_path(GetAppInstallDir());
 #endif
   if (!process.SetExecutablePath(executable_path /
                                  (process_name + detail::kThisPlatform().executable_extension()))) {
@@ -1052,10 +1047,13 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
-#ifndef USE_TEST_KEYS
+
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
+#ifdef USE_TEST_KEYS
+  process.AddArgument("--usr_id maidsafe");
 #endif
+
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
