@@ -37,6 +37,21 @@ namespace priv {
 
 namespace process_management {
 
+#ifndef MAIDSAFE_WIN32
+namespace {
+
+std::string GetUserId() {
+  char user_name[64] = {0};
+  int result(getlogin_r(user_name, sizeof(user_name) - 1));
+  if(0 != result)
+    return "";
+
+  return std::string(user_name);
+}
+
+}
+#endif
+
 Invigilator::VaultInfo::VaultInfo()
     : process_index(),
       account_name(),
@@ -81,14 +96,20 @@ Invigilator::Invigilator()
       vault_infos_mutex_(),
       client_ports_and_versions_(),
       client_ports_mutex_(),
-
+#ifdef USE_TEST_KEYS
+      config_file_path_(GetUserAppDir() / detail::kGlobalConfigFilename),
+#else
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
-
+#endif
       latest_local_installer_path_(),
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false) {
+#ifdef USE_TEST_KEYS
+  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
+#else
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
+#endif
   asio_service_.Start();
   asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
 }
@@ -1032,11 +1053,11 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
 #ifdef USE_TEST_KEYS
   std::string process_name(detail::kVaultName);
   fs::path executable_path(".");
-# ifdef MAIDSAFE_WIN32
+#ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
     if (GetModuleFileName(NULL, file_name, MAX_PATH))
       executable_path = fs::path(file_name).parent_path();
-# endif
+#endif
 #else
   std::string process_name(detail::kVaultName);
   fs::path executable_path(GetAppInstallDir());
@@ -1051,7 +1072,11 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 #ifdef USE_TEST_KEYS
-  process.AddArgument("--usr_id maidsafe");
+#ifndef MAIDSAFE_WIN32
+  std::string user_id(GetUserId());
+  if (!user_id.empty())
+    process.AddArgument("--usr_id " + user_id);
+#endif
 #endif
 
   LOG(kInfo) << "Process Name: " << process.name();
