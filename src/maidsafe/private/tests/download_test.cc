@@ -27,6 +27,8 @@
 // lifestuff_(platform)(cpu_size)_(major_version).(minor_version).(patch_level)(extension),
 // plus a file called file_list containing these filenames
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace priv {

@@ -200,12 +200,12 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   if (restart) {
     Sleep(boost::posix_time::milliseconds(600));
     // SetInstruction(id, ProcessInstruction::kRun);
-    if (logging) {
-      log::FilterMap filter;
-      filter["*"] = log::kVerbose;
-      log::Logging::instance().SetFilter(filter);
-      log::Logging::instance().SetAsync(true);
-    }
+//    if (logging) {
+//      log::FilterMap filter;
+//      filter["*"] = log::kVerbose;
+//      log::Logging::instance().SetFilter(filter);
+//      log::Logging::instance().SetAsync(true);
+//    }
   }
   boost::system::error_code error_code;
   // TODO(Fraser#5#): 2012-08-29 - Handle logging to a file.  See:

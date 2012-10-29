@@ -315,7 +315,7 @@ bool GenerateFakeBootstrapFile(const int& number_of_entries) {
     eps.add_bootstrap_endpoint_ip("127.0.0.1");
     eps.add_bootstrap_endpoint_port(5483);
   }
-  return WriteFile(fs::path(".") / "fake_bootstrap.dat", eps.SerializeAsString());
+  return WriteFile(boost::filesystem::path(".") / "fake_bootstrap.dat", eps.SerializeAsString());
 }
 
 }  // namespace detail

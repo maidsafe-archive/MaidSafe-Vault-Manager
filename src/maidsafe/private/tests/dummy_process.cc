@@ -42,8 +42,8 @@ void StopHandler() {
 
 
 int main(int argc, char* argv[]) {
+  maidsafe::log::Logging::Instance().Initialise(argc, argv);
   LOG(kInfo) << "Starting DUMMYprocess.";
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   po::options_description options_description("Allowed options");
   options_description.add_options()
       ("help", "produce help message")

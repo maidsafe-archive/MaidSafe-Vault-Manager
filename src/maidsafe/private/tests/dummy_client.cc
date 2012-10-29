@@ -20,9 +20,8 @@
 #include "maidsafe/private/process_management/client_controller.h"
 
 
-int main(int /*ac*/, char* /*av*/[]) {
-  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kVerbose);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
+int main(int argc, char** argv) {
+  maidsafe::log::Logging::Instance().Initialise(argc, argv);
   maidsafe::priv::process_management::ClientController client(
       [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
