@@ -1,0 +1,34 @@
+package maidsafe.priv.chunk_manager;
+option optimize_for = SPEED;
+
+message Signature {  // this is the only Free type
+  required bytes signature = 1;
+  required bytes public_key = 2;
+}
+
+// chunks follow !!!!!!!
+
+message SignedData {                  // name = hash of data + signature !! short term cacheable
+  required bytes encrypted_data = 1;  // instead of delete this can be zero'd and message re-signed
+                                      // (turns into locked appendable data)
+  required Signature signature_data = 2;  
+}
+
+message Default {  // name = hash of data !! long term cachable (data element only)
+  required bytes data = 1;
+  repeated bytes public_key = 2;
+}
+
+message Appendable {
+  required bytes data = 1;
+  required Signature owner_signature = 2;  // only this Signature can alter the data element 
+                                           // (which my be zero'd)
+  repeated bytes allowed_public_keys = 3;  // if this is blank any signed data can be appended
+                                          // otherwise it may only contain owners key (locked)
+  repeated bytes signed_data_key = 4;     // pointer to SignedData elements (owner delete on read)
+                                          // up to sender to delete these chunks
+                                          // pointers are free to append !!
+}
+
+//  Default data holds up to 200 Signatures, each person pays to get in the list (up to 200) and
+//  also gets a rebate when removing themselves from the chunk.
