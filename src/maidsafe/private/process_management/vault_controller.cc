@@ -28,6 +28,8 @@
 #include "maidsafe/private/process_management/invigilator.h"
 
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace priv {

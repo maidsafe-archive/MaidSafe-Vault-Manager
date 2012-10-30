@@ -129,7 +129,8 @@ void ServiceMain() {
 
 
 
-int main() {
+int main(int argc, char** argv) {
+  maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
@@ -139,9 +140,6 @@ int main() {
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
 #else
-  maidsafe::log::Logging::instance().AddFilter("common", maidsafe::log::kInfo);
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
-
   {
     maidsafe::priv::process_management::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);

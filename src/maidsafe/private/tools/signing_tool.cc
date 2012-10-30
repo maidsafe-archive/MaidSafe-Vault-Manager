@@ -32,6 +32,8 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/rsa.h"
 
+namespace fs = boost::filesystem;
+
 static std::string prompt(">> ");
 static maidsafe::asymm::Keys Keys;
 static bool have_private_key(false);

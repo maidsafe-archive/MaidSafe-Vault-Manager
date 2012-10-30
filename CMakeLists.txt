@@ -157,9 +157,9 @@ ms_add_executable(TESTinvigilator "Tests/Private"
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
-ms_add_executable(invigilator_test "Invigilator Test" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
-ms_add_executable(DEMOinvigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(invigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(invigilator_test "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(DEMOinvigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(maidsafe_private maidsafe_common maidsafe_utilities)

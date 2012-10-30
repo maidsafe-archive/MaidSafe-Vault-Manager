@@ -23,7 +23,9 @@
 #include "maidsafe/private/process_management/vault_info_pb.h"
 #include "maidsafe/private/process_management/utils.h"
 
+
 namespace bptime = boost::posix_time;
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
@@ -79,7 +81,7 @@ int GetNumRunningProcesses() {
 }  // namespace
 
 TEST(InvigilatorTest, FUNC_StartStop) {
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
+//  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
 
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
@@ -203,8 +205,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
     EXPECT_EQ(1, GetNumRunningProcesses());
-    ClientController client_controller1([](const NonEmptyString&){}),
-                     client_controller2([](const NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller1([](const NonEmptyString&) {}),
+                     client_controller2([](const NonEmptyString&) {});  // NOLINT (Fraser)
     Fob fob;
     for (int i(0); i < 50; ++i) {
       fob.keys = asymm::GenerateKeyPair();
