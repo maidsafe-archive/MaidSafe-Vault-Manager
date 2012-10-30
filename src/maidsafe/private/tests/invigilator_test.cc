@@ -40,7 +40,7 @@ int GetNumRunningProcesses() {
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
 #else
-  std::string command("ps -ef | grep " + dummy + " | wc -l > process_count.txt");
+  std::string command("ps -ef | grep " + dummy + " | grep -v grep | wc -l > process_count.txt");
 #endif
   int result(system(command.c_str()));
   if (result != 0) {
@@ -66,7 +66,7 @@ int GetNumRunningProcesses() {
     boost::trim(process_string);
     // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
     // overall ps and the piped grep
-    int num_processes(boost::lexical_cast<int>(process_string) - 2);
+    int num_processes(boost::lexical_cast<int>(process_string));
 #endif
     return num_processes;
   }
@@ -88,6 +88,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
       fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error_code);
     ASSERT_FALSE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
     Invigilator invigilator;
+//    Sleep(boost::posix_time::seconds(20));
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
@@ -96,7 +97,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
+    EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
     EXPECT_EQ(0, GetNumRunningProcesses());
   }
   std::string config_contents;
@@ -112,9 +113,8 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   {
     Invigilator invigilator;
     ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
-    first_fob.keys = asymm::GenerateKeyPair();
-    first_fob.identity = Identity("FirstVault");
-    EXPECT_TRUE(client_controller.StartVault(first_fob, "F", ""));
+    first_fob = utils::GenerateFob(nullptr);
+    EXPECT_TRUE(client_controller.StartVault(first_fob, first_fob.identity.string(), ""));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_EQ(1, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));

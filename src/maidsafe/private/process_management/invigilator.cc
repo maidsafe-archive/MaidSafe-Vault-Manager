@@ -82,15 +82,13 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
 
 Invigilator::Invigilator()
     : process_manager_(),
-
       // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
       download_manager_("http", "dash.maidsafe.net", "~phil"),
-
       asio_service_(3),
       update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
-      update_timer_(asio_service_.service()),
+//      update_timer_(asio_service_.service()),
       update_mutex_(),
-      transport_(new LocalTcpTransport(asio_service_.service())),
+      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
@@ -111,7 +109,7 @@ Invigilator::Invigilator()
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
 #endif
   asio_service_.Start();
-  asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
+  /*asio_service_.service().post([&] () { */Initialise();/* });  // NOLINT (Dan)*/
 }
 
 void Invigilator::Initialise() {
@@ -156,10 +154,10 @@ Invigilator::~Invigilator() {
   need_to_stop_ = true;
   process_manager_.LetAllProcessesDie();
   StopAllVaults();
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    update_timer_.cancel();
-  }
+//  {
+//    std::lock_guard<std::mutex> lock(update_mutex_);
+//    update_timer_.cancel();
+//  }
   transport_->StopListeningAndCloseConnections();
   asio_service_.Stop();
 }
@@ -184,9 +182,10 @@ bool Invigilator::CreateConfigFile() {
   protobuf::InvigilatorConfig config;
   config.set_update_interval(update_interval_.total_seconds());
 
-  if (!ObtainBootstrapInformation(config)) {
+  int count(0);
+  while (!ObtainBootstrapInformation(config) && count++ < 10) {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
-    return false;
+//    return false;
   }
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
@@ -649,8 +648,8 @@ bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval
   }
   std::lock_guard<std::mutex> lock(update_mutex_);
   update_interval_ = update_interval;
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+//  update_timer_.expires_from_now(update_interval_);
+//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
   return true;
 }
 
@@ -669,8 +668,8 @@ void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
 
   UpdateExecutor();
 
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+//  update_timer_.expires_from_now(update_interval_);
+//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
@@ -750,7 +749,7 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
                                          done = true;
                                          local_cond_var.notify_one();
                                        };
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   request_transport->Connect(client_port, result);
   if (result != kSuccess) {
@@ -942,7 +941,7 @@ bool Invigilator::StopVault(const Identity& identity,
   vault_shutdown_request.set_data(data.string());
   vault_shutdown_request.set_signature(signature.string());
   std::shared_ptr<LocalTcpTransport> sending_transport(
-      new LocalTcpTransport(asio_service_.service()));
+      std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   sending_transport->Connect((*itr)->vault_port, result);
   if (result != kSuccess) {
@@ -1024,7 +1023,7 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
   std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());
   if (serialised_endpoints.empty()) {
     LOG(kError) << "Retrieved endpoints are empty.";
-    return false;
+//    return false;
   }
   protobuf::Bootstrap end_points;
   if (!end_points.ParseFromString(serialised_endpoints)) {

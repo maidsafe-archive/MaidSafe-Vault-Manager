@@ -43,7 +43,7 @@ ClientController::ClientController(
         : invigilator_port_(Invigilator::kMinPort() - 1),
           local_port_(0),
           asio_service_(3),
-          receiving_transport_(new LocalTcpTransport(asio_service_.service())),
+          receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
           on_new_version_available_(),
           state_(kInitialising),
           bootstrap_nodes_(),
@@ -196,13 +196,14 @@ void ClientController::HandleRegisterResponse(const std::string& message,
     return;
   }
 
-  if (response.bootstrap_endpoint_ip_size() == 0 || response.bootstrap_endpoint_port_size() == 0) {
-    LOG(kError) << "Response has no bootstrap nodes.";
-    std::unique_lock<std::mutex> lock(mutex);
-    state = kFailed;
-    condition_variable.notify_one();
-    return;
-  }
+//  if (response.bootstrap_endpoint_ip_size() == 0 ||
+//      response.bootstrap_endpoint_port_size() == 0) {
+//    LOG(kError) << "Response has no bootstrap nodes.";
+//    std::unique_lock<std::mutex> lock(mutex);
+//    state = kFailed;
+//    condition_variable.notify_one();
+//    return;
+//  }
 
   if (response.has_path_to_new_installer()) {
     boost::system::error_code error_code;
