@@ -112,7 +112,11 @@ Invigilator::Invigilator()
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
 #endif
   asio_service_.Start();
+#ifdef USE_DUMMY
+  Initialise();
+#else
   asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
+#endif
 }
 
 void Invigilator::Initialise() {
