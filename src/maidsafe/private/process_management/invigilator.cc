@@ -41,12 +41,15 @@ namespace process_management {
 namespace {
 
 std::string GetUserId() {
+#ifdef USE_DUMMY
+  return "maidsafe";
+#else
   char user_name[64] = {0};
   int result(getlogin_r(user_name, sizeof(user_name) - 1));
   if(0 != result)
     return "";
-
   return std::string(user_name);
+#endif
 }
 
 }
@@ -503,6 +506,8 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
     vault_identity_response.clear_account_name();
     vault_identity_response.clear_fob();
     vault_identity_response.clear_chunkstore_path();
+    // TODO(Team): further investigation on whether this return is suitable is required
+    return;
   }
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_identity_response.SerializeAsString());
@@ -1050,7 +1055,11 @@ void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
 bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef USE_TEST_KEYS
+#ifdef USE_DUMMY
+  std::string process_name(detail::kDummyName);
+#else
   std::string process_name(detail::kVaultName);
+#endif
   fs::path executable_path(".");
 #ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
@@ -1068,6 +1077,7 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
 
+  process.AddArgument("--log_config ./maidsafe_log.ini");
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 #ifdef USE_TEST_KEYS
