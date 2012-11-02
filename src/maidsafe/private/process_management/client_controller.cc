@@ -281,7 +281,7 @@ bool ClientController::StartVault(const Fob& fob,
                           invigilator_port_);
   {
     std::unique_lock<std::mutex> local_lock(local_mutex);
-    if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&] { return done; })) {
+    if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&done] { return done; })) {
       LOG(kError) << "Timed out waiting for reply.";
       return false;
     }

@@ -142,10 +142,11 @@ int main(int argc, char** argv) {
 #else
   {
     maidsafe::priv::process_management::Invigilator invigilator;
+    signal(SIGINT, ShutDownInvigilator);
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }
-  signal(SIGINT, ShutDownInvigilator);
+
 #endif
   return 0;
 }
