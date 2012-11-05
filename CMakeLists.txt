@@ -148,6 +148,7 @@ ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES
 
 ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR} ${RETURN_CODES_H})
 ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+ms_add_static_library(process_management_dummy ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 ms_add_executable(TESTinvigilator "Tests/Private"
@@ -157,25 +158,30 @@ ms_add_executable(TESTinvigilator "Tests/Private"
 ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
 ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
 ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(invigilator "Invigilator" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(invigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(invigilator_test "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 ms_add_executable(DEMOinvigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
 
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(maidsafe_private maidsafe_common maidsafe_utilities)
 target_link_libraries(maidsafe_process_management maidsafe_utilities)
 target_link_libraries(maidsafe_process_management_test maidsafe_utilities)
+target_link_libraries(maidsafe_process_management_dummy maidsafe_utilities)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(TESTutilities maidsafe_utilities)
-target_link_libraries(DUMMYprocess maidsafe_process_management_test maidsafe_utilities ${BoostProgramOptionsLibs})
+target_link_libraries(DUMMYprocess maidsafe_process_management_dummy maidsafe_utilities ${BoostProgramOptionsLibs})
 target_link_libraries(DUMMYclient maidsafe_process_management_test maidsafe_utilities ${BoostProgramOptionsLibs})
-target_link_libraries(TESTinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
+target_link_libraries(TESTinvigilator maidsafe_process_management_dummy ${BoostProgramOptionsLibs})
 target_link_libraries(invigilator maidsafe_process_management ${BoostProgramOptionsLibs})
+target_link_libraries(invigilator_test maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(DEMOinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
 target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
 
 add_dependencies(TESTinvigilator DUMMYprocess)
 
 set_target_properties(maidsafe_process_management_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
+set_target_properties(maidsafe_process_management_dummy PROPERTIES COMPILE_DEFINITIONS "USE_TEST_KEYS;USE_DUMMY")
+set_target_properties(invigilator_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
 
 rename_outdated_built_exes()
 

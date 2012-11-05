@@ -42,7 +42,7 @@ int GetNumRunningProcesses() {
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
 #else
-  std::string command("ps -ef | grep " + dummy + " | wc -l > process_count.txt");
+  std::string command("ps -ef | grep " + dummy + " | grep -v grep | wc -l > process_count.txt");
 #endif
   int result(system(command.c_str()));
   if (result != 0) {
@@ -68,7 +68,7 @@ int GetNumRunningProcesses() {
     boost::trim(process_string);
     // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
     // overall ps and the piped grep
-    int num_processes(boost::lexical_cast<int>(process_string) - 2);
+    int num_processes(boost::lexical_cast<int>(process_string));
 #endif
     return num_processes;
   }
@@ -86,10 +86,11 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
   {
-    if (fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code))
-      fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error_code);
-    ASSERT_FALSE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
+    if (fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code))
+      fs::remove(GetUserAppDir() / detail::kGlobalConfigFilename, error_code);
+    ASSERT_FALSE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
     Invigilator invigilator;
+//    Sleep(boost::posix_time::seconds(20));
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
@@ -98,11 +99,11 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
+    EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
     EXPECT_EQ(0, GetNumRunningProcesses());
   }
   std::string config_contents;
-  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+  maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   protobuf::InvigilatorConfig invigilator_config;
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(0, invigilator_config.vault_info_size());
@@ -114,17 +115,16 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   {
     Invigilator invigilator;
     ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
-    first_fob.keys = asymm::GenerateKeyPair();
-    first_fob.identity = Identity("FirstVault");
-    EXPECT_TRUE(client_controller.StartVault(first_fob, "F", ""));
+    first_fob = utils::GenerateFob(nullptr);
+    EXPECT_TRUE(client_controller.StartVault(first_fob, first_fob.identity.string(), ""));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_EQ(1, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
+    EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+  maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(1, invigilator_config.vault_info_size());
 
@@ -142,17 +142,15 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and
   // both saved to the config file when the Invigilator is destroyed.
-  Fob second_fob;
+  Fob second_fob(utils::GenerateFob(nullptr));
   {
     Invigilator invigilator;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
-    second_fob.keys = asymm::GenerateKeyPair();
-    second_fob.identity = Identity("SecondVault");
     EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_TRUE(fs::exists(fs::path(".") / detail::kGlobalConfigFilename, error_code));
+    EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
     std::vector<std::pair<std::string, uint16_t> > bootstrap_endpoints;
     client_controller.GetBootstrapNodes(bootstrap_endpoints);
     endpoint_matches = 0;
@@ -166,7 +164,7 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+  maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(2, invigilator_config.vault_info_size());
 
@@ -176,16 +174,18 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   {
     Invigilator invigilator;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
+    Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
     asymm::PlainText data(RandomString(64));
     asymm::Signature signature1(asymm::Sign(data, first_fob.keys.private_key));
     asymm::Signature signature2(asymm::Sign(data, second_fob.keys.private_key));
     EXPECT_TRUE(client_controller.StopVault(data, signature1, first_fob.identity));
+    Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(1, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+  maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   ASSERT_EQ(2, invigilator_config.vault_info_size());
   int run_count(0);
@@ -200,31 +200,31 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   {
     EXPECT_EQ(0, GetNumRunningProcesses());
     config_contents.clear();
-    maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+    maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
     invigilator_config.ParseFromString(config_contents);
     EXPECT_EQ(2, invigilator_config.vault_info_size());
     Invigilator invigilator;
+    Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(1, GetNumRunningProcesses());
     ClientController client_controller1([](const NonEmptyString&) {}),
                      client_controller2([](const NonEmptyString&) {});  // NOLINT (Fraser)
-    Fob fob;
+
     for (int i(0); i < 50; ++i) {
-      fob.keys = asymm::GenerateKeyPair();
-      fob.identity = Identity(RandomAlphaNumericString(64));
+      Fob fob(utils::GenerateFob(nullptr));
       if (i % 2 == 0)
-        EXPECT_TRUE(client_controller1.StartVault(fob, RandomAlphaNumericString(16), ""));
+        EXPECT_TRUE(client_controller1.StartVault(fob, fob.identity.string(), ""));
       else
-        EXPECT_TRUE(client_controller2.StartVault(fob, RandomAlphaNumericString(16), ""));
+        EXPECT_TRUE(client_controller2.StartVault(fob, fob.identity.string(), ""));
     }
     EXPECT_EQ(51, GetNumRunningProcesses());
   }
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
-  maidsafe::ReadFile(fs::path(".") / detail::kGlobalConfigFilename, &config_contents);
+  maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   invigilator_config.ParseFromString(config_contents);
   EXPECT_EQ(52, invigilator_config.vault_info_size());
   boost::system::error_code error;
-  fs::remove(fs::path(".") / detail::kGlobalConfigFilename, error);
+  fs::remove(GetUserAppDir() / detail::kGlobalConfigFilename, error);
 }
 
 }  // namespace test

@@ -178,7 +178,7 @@ class Invigilator {
   DownloadManager download_manager_;
   AsioService asio_service_;
   boost::posix_time::time_duration update_interval_;
-  boost::asio::deadline_timer update_timer_;
+//  boost::asio::deadline_timer update_timer_;
   mutable std::mutex update_mutex_;
   std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
