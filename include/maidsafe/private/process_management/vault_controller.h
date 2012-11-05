@@ -39,7 +39,7 @@ class LocalTcpTransport;
 
 class VaultController {
  public:
-  VaultController(const std::string& usr_id = "lifestuff");
+  explicit VaultController(const std::string& usr_id = "lifestuff");
   ~VaultController();
 
   bool Start(const std::string& invigilator_identifier, std::function<void()> stop_callback);

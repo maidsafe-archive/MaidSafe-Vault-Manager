@@ -123,18 +123,16 @@ void ServiceMain() {
   }
 }
 
-BOOL CtrlHandler(DWORD CtrlType) 
-{ 
-  switch(CtrlType) 
-  {  
-    case CTRL_C_EVENT: 
-    case CTRL_CLOSE_EVENT:  
-    case CTRL_SHUTDOWN_EVENT: 
+BOOL CtrlHandler(DWORD control_type) {
+  switch (control_type) {
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
       ShutDownInvigilator(0);
-      return TRUE; 
-    default: 
-      return FALSE; 
-  } 
+      return TRUE;
+    default:
+      return FALSE;
+  }
 }
 
 #endif
@@ -147,10 +145,10 @@ int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
 #ifdef USE_TEST_KEYS
-  if(SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
+  if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
     maidsafe::priv::process_management::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);
-    g_cond_var.wait(lock, [&] { return g_shutdown_service; });
+    g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT
   } else {
     LOG(kError) << "Failed to set control handler.";
     return 1;

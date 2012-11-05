@@ -46,13 +46,13 @@ std::string GetUserId() {
 #else
   char user_name[64] = {0};
   int result(getlogin_r(user_name, sizeof(user_name) - 1));
-  if(0 != result)
+  if (0 != result)
     return "";
   return std::string(user_name);
 #endif
 }
 
-}
+}  // unnamed namespace
 #endif
 
 Invigilator::VaultInfo::VaultInfo()
