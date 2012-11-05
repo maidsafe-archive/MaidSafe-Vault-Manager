@@ -128,14 +128,10 @@ BOOL CtrlHandler(DWORD CtrlType)
   switch(CtrlType) 
   {  
     case CTRL_C_EVENT: 
-      ShutDownInvigilator(0);
-      return(TRUE);
-    case CTRL_CLOSE_EVENT: 
-      ShutDownInvigilator(0);
-      return( TRUE );  
+    case CTRL_CLOSE_EVENT:  
     case CTRL_SHUTDOWN_EVENT: 
       ShutDownInvigilator(0);
-      return FALSE; 
+      return TRUE; 
     default: 
       return FALSE; 
   } 
