@@ -146,14 +146,7 @@ BOOL CtrlHandler(DWORD CtrlType)
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
-  //SERVICE_TABLE_ENTRY service_table[2];
-  //service_table[0].lpServiceName = g_service_name;
-  //service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
-  //service_table[1].lpServiceName = NULL;
-  //service_table[1].lpServiceProc = NULL;
-  //// Start the control dispatcher thread for our service
-  //StartServiceCtrlDispatcher(service_table);
-
+#ifdef USE_TEST_KEYS
   if(SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
     maidsafe::priv::process_management::Invigilator invigilator;
     boost::mutex::scoped_lock lock(g_mutex);
@@ -162,7 +155,15 @@ int main(int argc, char** argv) {
     LOG(kError) << "Failed to set control handler.";
     return 1;
   }
-
+#else
+  SERVICE_TABLE_ENTRY service_table[2];
+  service_table[0].lpServiceName = g_service_name;
+  service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
+  service_table[1].lpServiceName = NULL;
+  service_table[1].lpServiceProc = NULL;
+  // Start the control dispatcher thread for our service
+  StartServiceCtrlDispatcher(service_table);
+#endif
 #else
   {
     maidsafe::priv::process_management::Invigilator invigilator;
@@ -170,7 +171,6 @@ int main(int argc, char** argv) {
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }
-
 #endif
   return 0;
 }
