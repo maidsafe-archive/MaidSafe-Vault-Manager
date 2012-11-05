@@ -25,6 +25,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/private/data_types/data_manager.h"
 
 namespace fs = boost::filesystem;
 
@@ -32,10 +33,19 @@ namespace maidsafe {
 
 namespace priv {
 
+namespace {
+  DataType* CreateImmutableData(DataTypes::kDefault) {
+    return new ImmutableData;
+  }
+
+}  // anonymous namespace
+
+
 DataFactory::DataTypes*  CreateDataType(DataTypes data_type) {
   CreateDataType::const::iterator i = callbacks_.find(data_type);
   if (i == callbacks_.end())
-   ThrowError(CommonErrors::
+   ThrowError(CommonErrors::invalid_data_type);
+  return (i->second);
 }
 
 bool DataFactory::RegisterDataType(DataTypes data_type, CreateDataTypeCallback create_callback) {

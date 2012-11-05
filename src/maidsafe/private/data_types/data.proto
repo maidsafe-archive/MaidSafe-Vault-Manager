@@ -1,34 +1,32 @@
 package maidsafe.priv.chunk_manager;
-option optimize_for = SPEED;
+option optimize_for = LITE_RUNTIME;
 
-message Signature {  // this is the only Free type
-  required bytes signature = 1;
-  required bytes public_key = 2;
+enum kDataType {
+  ImmutableData = 0;
+  MutableData = 1;
+  AppendAbleData = 2;
+  SignatureData = 3;
 }
 
-// chunks follow !!!!!!!
-
-message SignedData {                  // name = hash of data + signature !! short term cacheable
-  required bytes encrypted_data = 1;  // instead of delete this can be zero'd and message re-signed
-                                      // (turns into locked appendable data)
-  required Signature signature_data = 2;  
+message PublicKey {
+  required bytes public_key = 0;
 }
 
-message Default {  // name = hash of data !! long term cachable (data element only)
-  required bytes data = 1;
-  repeated bytes public_key = 2;
+message Signature {
+  required bytes signature = 0;
+  required bytes id = 1;
 }
 
-message Appendable {
-  required bytes data = 1;
-  required Signature owner_signature = 2;  // only this Signature can alter the data element 
-                                           // (which my be zero'd)
-  repeated bytes allowed_public_keys = 3;  // if this is blank any signed data can be appended
-                                          // otherwise it may only contain owners key (locked)
-  repeated bytes signed_data_key = 4;     // pointer to SignedData elements (owner delete on read)
-                                          // up to sender to delete these chunks
-                                          // pointers are free to append !!
+message Content {
+  optional bytes data = 0;
+  optional PublicKey public_key = 1;
+  optional bytes id = 2;
+  repeated bytes ids = 3;
+  optional Signature = 4;
 }
 
-//  Default data holds up to 200 Signatures, each person pays to get in the list (up to 200) and
-//  also gets a rebate when removing themselves from the chunk.
+message Data {
+  required kDataType = 0;
+  required Content = 1;
+}
+
