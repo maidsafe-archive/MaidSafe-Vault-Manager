@@ -90,6 +90,7 @@ VaultController::VaultController(const std::string &usr_id)
     }
   }
 #else
+  std::string uid = usr_id;
   setuid_succeeded_ = true;
 #endif
 }
