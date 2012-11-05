@@ -39,7 +39,7 @@ void ChunkStoreTest<BufferedChunkStore>::InitChunkStore(std::shared_ptr<ChunkSto
                                                         boost::asio::io_service& asio_service) {
   chunk_store->reset(new BufferedChunkStore(asio_service));
   if (!chunk_dir.empty())
-    reinterpret_cast<BufferedChunkStore*>(chunk_store->get())->Init(chunk_dir);
+    static_cast<BufferedChunkStore*>(chunk_store->get())->Init(chunk_dir);
 }
 
 INSTANTIATE_TYPED_TEST_CASE_P(Buffered, ChunkStoreTest, BufferedChunkStore);
