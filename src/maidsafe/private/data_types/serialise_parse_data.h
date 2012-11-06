@@ -17,8 +17,6 @@
 #ifndef MAIDSAFE_PRIVATE_DATA_MANAGER_SERIALISE_PARSE_DATA_H_
 #define MAIDSAFE_PRIVATE_DATA_MANAGER_SERIALISE_PARSE_DATA_H_
 
-#include "maidsafe/private/"
-
 // this can all go in a cc file
 // Default, hash of content == name
 ImmutableData CreateDataType(const ChunkId name,const NonEmptyString content) {

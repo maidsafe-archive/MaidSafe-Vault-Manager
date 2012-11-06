@@ -19,23 +19,151 @@
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/private/utils/fob.h"
-#include "maidsafe/private/data_types/store_policies.h"
-#include "maidsafe/private/data_types/get_policies.h"
-#include "maidsafe/private/data_types/delete_policies.h"
-#include "maidsafe/private/data_types/edit_policies.h"
-#include "maidsafe/private/data_types/amend_policies.h"
-// #include "maidsafe/private/data_types/store_policies.h"
+
+// Policy classes
+// STORE
+class StoreToNetwork {
+ protected:  // not exposing rich interface (public inheritance)
+template <typename T>
+  static bool Store(T) {
+  // implementation
+  }
+};
+
+class StoreToDisk {
+ protected:
+   template <typename T>
+  static bool Store(const ChunkId& name,
+                    const NonEmptyString& content,
+                    const asymm::PublicKey& public_key,
+                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
+  std::string existing_content(chunk_store->Get(name));
+  if (existing_content.empty()) {
+    // New chunk on network - check data hashes to name
+    if (crypto::Hash<crypto::SHA512>(content).string() != RemoveTypeFromName(name).string()) {
+      LOG(kError) << "Failed to store " << Base32Substr(name)
+                  << ": default chunk type should be hashable";
+      return kNotHashable;
+    }
+  } else {
+    // Pre-existing chunk - ensure data is identical
+    if (existing_content != content.string()) {
+      LOG(kError) << "Failed to store " << Base32Substr(name)
+                  << ": existing data doesn't match new data - can't store";
+      return kInvalidSignedData;
+    }
+  }
+
+  return kSuccess;
+  // implementation
+  }
+};
+
+// DELETE
+class DeleteByRemovingReference {
+ protected:
+template <typename T>
+  static bool Delete(T) {
+    // remove the reference 
+    //if (no more references)
+    DefaultDeletePolicy(T);
+  }
+};
+
+class DeleteIfOwner {
+ protected:
+template <typename T>
+  static bool Delete(T) {
+    // move to cache
+};
+
+class ZeroOutIfOwner {
+ protected:
+template <typename T>
+  static bool Delete(T) {
+    // move to cache
+};
+
+// GET
+class GetDataElementsOnly {
+ protected:
+template <typename T>
+  static T Get() {
+  }
+};
+
+class GetAllElements {
+ protected:
+template <typename T>
+  static T Get() {
+  }
+};
+
+// EDIT
+class EditIfOwner {
+template <typename T>
+};
+
+class NoEdit {
+ protected:
+template <typename T>
+  static bool Edit { return true; }
+};
+
+// APPEND
+class NoAppend {
+ protected:
+template <typename T>
+  static bool Append(T, Authority auth) { return true; }
+};
+
+class AppendIfAllowed {
+ protected:
+template <typename T>
+  static bool Append(T, Authority auth)  {
+  // implementation 
+ }
+};
+
+
+// AUTHORITY
+class CheckSignature {
+template <typename T>
+
+};
+
+// CACHE
+class MemoryCache {
+template <typename T>
+
+};
+
+class DiskTermCache {
+template <typename T>
+
+};
+
+class LongTermCache {
+template <typename T>
+
+};
+
+class NoCache{
+ public:
+template <typename T>
+  NoCache();
+  static bool Cache(T) { return true; }
+};
+
 
 // Host class
 
-template <typename StoragePolicy, // network or local // simply send to net & get result or store locally
-          typename StorePolicy,
-          typename GetPolicy,
-          typename DeletePolicy,
-          typename EditPolicy,
-          typename AppendPolicy>
-class DataHandler : private StoragePolicy,
-                    private StorePolicy,
+template <typename StorePolicy,  // make / check payment
+          typename GetPolicy,  // nodes may cache on receipt or get retrieves only some data etc.
+          typename DeletePolicy,  // get / send refund
+          typename EditPolicy,  // get / send refund
+          typename AppendPolicy>  // allowed
+class DataHandler : private StorePolicy,
                     private GetPolicy,
                     private DeletePolicy,
                     private EditPolicy,
@@ -65,10 +193,10 @@ class DataHandler : private StoragePolicy,
   //             const asymm::PublicKey public_key);
 
   static bool Store(NonEmptyString key, NonEmptyString value, Signature Signature, Identity id) {
-    return StoragePolicy::Process(StorePolicy::Store(NonEmptyString key, NonEmptyString value));
+    return StorePolicy::Store(NonEmptyString key, NonEmptyString value);
   }
   static GetPolicy::value Get(NonEmptyString key) {
-    return StoragePolicy::Process(GetPolicy::Get(key));
+    return GetPolicy::Get(key);
   }
   static bool Delete(NonEmptyString key, Signature Signature, Identity id) {
     return DeletePolicy::Delete(key);
@@ -85,10 +213,9 @@ class DataHandler : private StoragePolicy,
 
 // Data types
 
-typedef DataHandler<Network, StoreAndPay, GetDataElementOnly, DeleteByRemovingReference,
-        NoEdit,
-        NoAppend> ImmutableData;
-typedef DataHandler<Network, StoreAll, GetAllElements, DeleteIfOwner, EditIfOwner, NoAppend>
+typedef DataHandler<StoreAndPay, GetDataElementOnly, DeleteByRemovingReference, NoEdit, NoAppend>
+                                                                            ImmutableData;
+typedef DataHandler<StoreAll, GetAllElements, DeleteIfOwner, EditIfOwner, NoAppend>
                                                                             MutableData;
 
 typedef DataHandler<StoreAll, GetAllElements, DeleteIfOwner, NoEdit, AppendIfAllowed>

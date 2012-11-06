@@ -14,30 +14,21 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
-#define MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
+#ifndef MAIDSAFE_PRIVATE_DATA_MANAGER_AMEND_POLICIES_H_
+#define MAIDSAFE_PRIVATE_DATA_MANAGER_AMEND_POLICIES_H_
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/private/utils/fob.h"
-
-// traits
-//
-template <typename T>
-struct is_editable : std::false_type {};
-
-template <>
-struct is_editable<MutableData> : std::true_type {};
 
 template <typename T>
-struct is_appendable : std::false_type {};
-
-template <>
-struct is_appendable<AppendableData> : std::true_type{};
+class NoAppend {};
 
 template <typename T>
-struct is_cacheable : std::false_type {};
+class AppendIfAllowed {
+ protected:
+  static bool Append(T, Authority auth)  {
+  // implementation 
+ }
+};
 
-template <>
-struct is_cacheable<ImmutableData> : std::true_type {};
+#endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_AMEND_POLICIES_H_
 
-#endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_

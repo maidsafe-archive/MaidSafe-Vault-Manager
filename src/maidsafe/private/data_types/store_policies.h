@@ -14,30 +14,28 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
-#define MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
+#ifndef MAIDSAFE_PRIVATE_DATA_MANAGER_STORE_POLICIES_H_
+#define MAIDSAFE_PRIVATE_DATA_MANAGER_STORE_POLICIES_H_
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/private/utils/fob.h"
 
-// traits
-//
+class StoreToNetwork {
+ protected:  // not exposing rich interface (public inheritance)
 template <typename T>
-struct is_editable : std::false_type {};
+  static bool Store(T) {
+  // implementation
+  }
+};
 
-template <>
-struct is_editable<MutableData> : std::true_type {};
+class StoreToDisk {
+ protected:
+   template <typename T>
+  static bool Store(const T data,
+                    const NonEmptyString& content,
+                    const asymm::PublicKey& public_key,
+                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
 
-template <typename T>
-struct is_appendable : std::false_type {};
+};
 
-template <>
-struct is_appendable<AppendableData> : std::true_type{};
+#endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_STORE_POLICIES_H_
 
-template <typename T>
-struct is_cacheable : std::false_type {};
-
-template <>
-struct is_cacheable<ImmutableData> : std::true_type {};
-
-#endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
