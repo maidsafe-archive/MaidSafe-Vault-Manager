@@ -55,14 +55,13 @@ DownloadManager::DownloadManager(const std::string& protocol,
       resolver_(io_service_),
       query_(site_, protocol_),
       local_path_() {
-  boost::system::error_code error_code;
-
 #ifdef USE_TEST_KEYS
   fs::path temp_path(GetUserAppDir());
 #else
   fs::path temp_path(GetSystemAppSupportDir());
 #endif
 
+  boost::system::error_code error_code;
   LOG(kError) << "temp_path: " << temp_path;
   if (!fs::exists(temp_path, error_code))
     fs::create_directories(temp_path, error_code);
