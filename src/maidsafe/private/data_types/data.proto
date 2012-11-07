@@ -9,24 +9,25 @@ enum kDataType {
 }
 
 message PublicKey {
-  required bytes public_key = 0;
+  required bytes public_key = 1;
 }
 
 message Signature {
-  required bytes signature = 0;
-  required bytes id = 1;
+  required bytes signature = 1;
+  required bytes id = 2;
 }
 
 message Content {
-  optional bytes data = 0;
-  optional PublicKey public_key = 1;
-  optional bytes id = 2;
-  repeated bytes ids = 3;
-  optional Signature = 4;
+  optional bytes data = 1;
+  optional PublicKey public_key = 2;
+  optional bytes id = 3;
+  repeated bytes ids = 4;
+  optional Signature signature = 5;
 }
 
 message Data {
-  required kDataType = 0;
-  required Content = 1;
+  required kDataType type = 1;
+  required bytes name = 2;
+  required Content content = 3;
 }
 
