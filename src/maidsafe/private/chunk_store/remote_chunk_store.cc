@@ -583,7 +583,7 @@ uint32_t RemoteChunkStore::EnqueueOp(const ChunkId& name,
 
 void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
   std::set<ChunkId> processed_gets;
-  for(;;) {
+  for (;;) {
     OperationData op_data;
     std::set<ChunkId> active_ops;
     auto it = pending_ops_.begin();  // always (re-)start from beginning!

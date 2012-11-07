@@ -389,7 +389,7 @@ TEST_F(RemoteChunkStoreTest, BEH_Get) {
   this->chunk_store_->LogStats();
 }
 
-TEST_F(RemoteChunkStoreTest, BEH_GetAndLock) {
+TEST_F(RemoteChunkStoreTest, FUNC_GetAndLock) {
   NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
   std::string retrieved_content;
