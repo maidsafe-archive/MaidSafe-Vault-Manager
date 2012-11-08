@@ -17,11 +17,11 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/process_management/client_controller.h"
-#include "maidsafe/private/process_management/vault_controller.h"
-#include "maidsafe/private/process_management/invigilator.h"
-#include "maidsafe/private/process_management/vault_info_pb.h"
-#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/lifestuff_manager/client_controller.h"
+#include "maidsafe/private/lifestuff_manager/vault_controller.h"
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
 
 namespace bptime = boost::posix_time;
@@ -31,7 +31,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 namespace test {
 
@@ -80,7 +80,7 @@ int GetNumRunningProcesses() {
 
 }  // namespace
 
-TEST(InvigilatorTest, FUNC_StartStop) {
+TEST(LifeStuffManagerTest, FUNC_StartStop) {
 //  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
 
   // test case for startup (non-existent config file)
@@ -89,13 +89,13 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     if (fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code))
       fs::remove(GetUserAppDir() / detail::kGlobalConfigFilename, error_code);
     ASSERT_FALSE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
-    Invigilator invigilator;
+    LifeStuffManager lifestuff_manager;
 //    Sleep(boost::posix_time::seconds(20));
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
-    int max_seconds = Invigilator::kMaxUpdateInterval().total_seconds();
+    int max_seconds = LifeStuffManager::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
-    int min_seconds = Invigilator::kMinUpdateInterval().total_seconds();
+    int min_seconds = LifeStuffManager::kMinUpdateInterval().total_seconds();
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds)));
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
@@ -104,16 +104,16 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   }
   std::string config_contents;
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-  protobuf::InvigilatorConfig invigilator_config;
-  invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(0, invigilator_config.vault_info_size());
+  protobuf::LifeStuffManagerConfig lifestuff_manager_config;
+  lifestuff_manager_config.ParseFromString(config_contents);
+  EXPECT_EQ(0, lifestuff_manager_config.vault_info_size());
 
   // test case for existing config file with minimum content (generated in previous test case)
   // One vault is started. This should then be shut down and saved to the config file when the
-  // Invigilator is destroyed.
+  // LifeStuffManager is destroyed.
   Fob first_fob;
   {
-    Invigilator invigilator;
+    LifeStuffManager lifestuff_manager;
     ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
     first_fob = utils::GenerateFob(nullptr);
     EXPECT_TRUE(client_controller.StartVault(first_fob, first_fob.identity.string(), ""));
@@ -125,10 +125,10 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-  invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(1, invigilator_config.vault_info_size());
+  lifestuff_manager_config.ParseFromString(config_contents);
+  EXPECT_EQ(1, lifestuff_manager_config.vault_info_size());
 
-  protobuf::Bootstrap end_points(invigilator_config.bootstrap_endpoints());
+  protobuf::Bootstrap end_points(lifestuff_manager_config.bootstrap_endpoints());
   int max_index(end_points.bootstrap_contacts_size());
   int endpoint_matches(0);
   for (int n(0); n < max_index; ++n) {
@@ -141,10 +141,10 @@ TEST(InvigilatorTest, FUNC_StartStop) {
 
   // test case for existing config file with one vault (generated in previous test case)
   // Two vaults are started - one by config, one by a client. They should then be shut down and
-  // both saved to the config file when the Invigilator is destroyed.
+  // both saved to the config file when the LifeStuffManager is destroyed.
   Fob second_fob(utils::GenerateFob(nullptr));
   {
-    Invigilator invigilator;
+    LifeStuffManager lifestuff_manager;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
     Sleep(boost::posix_time::seconds(2));
@@ -165,14 +165,14 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-  invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(2, invigilator_config.vault_info_size());
+  lifestuff_manager_config.ParseFromString(config_contents);
+  EXPECT_EQ(2, lifestuff_manager_config.vault_info_size());
 
   // test case for existing config file with two vaults (generated in previous test case)
   // Two vaults are started - both by config. One is then shut down by the client and one is shut
-  // down when the Invigilator is destroyed. both should saved to the config file.
+  // down when the LifeStuffManager is destroyed. both should saved to the config file.
   {
-    Invigilator invigilator;
+    LifeStuffManager lifestuff_manager;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses());
@@ -186,12 +186,12 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-  invigilator_config.ParseFromString(config_contents);
-  ASSERT_EQ(2, invigilator_config.vault_info_size());
+  lifestuff_manager_config.ParseFromString(config_contents);
+  ASSERT_EQ(2, lifestuff_manager_config.vault_info_size());
   int run_count(0);
-  if (invigilator_config.vault_info(0).requested_to_run())
+  if (lifestuff_manager_config.vault_info(0).requested_to_run())
     ++run_count;
-  if (invigilator_config.vault_info(1).requested_to_run())
+  if (lifestuff_manager_config.vault_info(1).requested_to_run())
     ++run_count;
   EXPECT_EQ(1, run_count);
 
@@ -201,9 +201,9 @@ TEST(InvigilatorTest, FUNC_StartStop) {
     EXPECT_EQ(0, GetNumRunningProcesses());
     config_contents.clear();
     maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-    invigilator_config.ParseFromString(config_contents);
-    EXPECT_EQ(2, invigilator_config.vault_info_size());
-    Invigilator invigilator;
+    lifestuff_manager_config.ParseFromString(config_contents);
+    EXPECT_EQ(2, lifestuff_manager_config.vault_info_size());
+    LifeStuffManager lifestuff_manager;
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(1, GetNumRunningProcesses());
     ClientController client_controller1([](const NonEmptyString&) {}),
@@ -221,15 +221,15 @@ TEST(InvigilatorTest, FUNC_StartStop) {
   EXPECT_EQ(0, GetNumRunningProcesses());
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
-  invigilator_config.ParseFromString(config_contents);
-  EXPECT_EQ(52, invigilator_config.vault_info_size());
+  lifestuff_manager_config.ParseFromString(config_contents);
+  EXPECT_EQ(52, lifestuff_manager_config.vault_info_size());
   boost::system::error_code error;
   fs::remove(GetUserAppDir() / detail::kGlobalConfigFilename, error);
 }
 
 }  // namespace test
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

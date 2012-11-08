@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_UTILS_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_UTILS_H_
 
 #include <cstdint>
 #include <string>
@@ -24,7 +24,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 enum class MessageType;
 
@@ -35,9 +35,9 @@ const std::string kVersionFilename("version");
 const std::string kManifestFilename("manifest");
 const std::string kGlobalConfigFilename("global-config.dat");
 const std::string kBootstrapNodesFilename("bootstrap-global.dat");
-const std::string kVaultName("pd-vault");
-const std::string kDummyName("DUMMYprocess");
-const std::string kInvigilatorName("invigilator");
+const std::string kVaultName("lifestuff_vault");
+const std::string kDummyName("dummy_vault");
+const std::string kLifeStuffManagerName("lifestuff_mgr");
 
 class Platform {
  public:
@@ -85,12 +85,12 @@ bool TokeniseFileName(const std::string& file_name,
 
 // Returns a string which can be used as the --vmid argument of the PD vault.
 std::string GenerateVmidParameter(const uint32_t& process_index,
-                                  const uint16_t& invigilator_port);
+                                  const uint16_t& lifestuff_manager_port);
 
 // Parses a --vmid argument of the PD vault into its constituent parts.
-bool ParseVmidParameter(const std::string& invigilator_identifier,
+bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
                         uint32_t& process_index,
-                        uint16_t& invigilator_port);
+                        uint16_t& lifestuff_manager_port);
 
 uint16_t GetRandomPort();
 
@@ -98,10 +98,10 @@ bool GenerateFakeBootstrapFile(const int& number_of_entries);
 
 }  // namespace detail
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_UTILS_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_UTILS_H_

@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
 
 #include <condition_variable>
 #include <cstdint>
@@ -37,7 +37,7 @@ struct Fob;
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 class LocalTcpTransport;
 
@@ -62,15 +62,15 @@ class ClientController {
                  const asymm::Signature& signature,
                  const Identity& identity);
 
-  // Blocking call which attempts to set the Invigilator's update interval.  The limits are
-  // defined in Invigilator::kMinUpdateInterval() and Invigilator::kMaxUpdateInterval().
+  // Blocking call which attempts to set the LifeStuffManager's update interval.  The limits are
+  // defined in LifeStuffManager::kMinUpdateInterval() and LifeStuffManager::kMaxUpdateInterval().
   bool SetUpdateInterval(const boost::posix_time::seconds& update_interval);
 
-  // Blocking call which returns the Invigilator's current interval between update checks.  If the
-  // call fails, boost::posix_time::pos_infin is returned.
+  // Blocking call which returns the LifeStuffManager's current interval between update checks.  If
+  // the call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
-  // Blocking call to retrieve the latest bootstrap nodes from the Invigilator.
+  // Blocking call to retrieve the latest bootstrap nodes from the LifeStuffManager.
   bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
 
  private:
@@ -80,10 +80,10 @@ class ClientController {
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
   bool FindNextAcceptingPort(TransportPtr requesting_transport);
-  bool ConnectToInvigilator(std::string& path_to_new_installer);
+  bool ConnectToLifeStuffManager(std::string& path_to_new_installer);
   bool StartListeningPort();
   void HandleRegisterResponse(const std::string& message,
-                              uint16_t invigilator_port,
+                              uint16_t lifestuff_manager_port,
                               std::mutex& mutex,
                               std::condition_variable& condition_variable,
                               State& state,
@@ -103,7 +103,7 @@ class ClientController {
                                std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
                                std::function<void(bool)> callback);  //NOLINT (Philip)
 
-  uint16_t invigilator_port_, local_port_;
+  uint16_t lifestuff_manager_port_, local_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   OnNewVersionAvailable on_new_version_available_;
@@ -114,10 +114,10 @@ class ClientController {
   std::condition_variable joining_vaults_conditional_;
 };
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CLIENT_CONTROLLER_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_

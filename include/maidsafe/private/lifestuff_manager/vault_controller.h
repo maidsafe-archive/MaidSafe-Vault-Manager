@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULT_CONTROLLER_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULT_CONTROLLER_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_CONTROLLER_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_CONTROLLER_H_
 
 #include <condition_variable>
 #include <cstdint>
@@ -33,7 +33,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 class LocalTcpTransport;
 
@@ -42,12 +42,12 @@ class VaultController {
   explicit VaultController(const std::string& usr_id = "lifestuff");
   ~VaultController();
 
-  bool Start(const std::string& invigilator_identifier, std::function<void()> stop_callback);
+  bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(Fob& fob,
                    std::string& account_name,
                    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
-  bool SendEndpointToInvigilator(const std::pair<std::string, uint16_t>& endpoint);
+  bool SendEndpointToLifeStuffManager(const std::pair<std::string, uint16_t>& endpoint);
   bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
 
  private:
@@ -60,13 +60,13 @@ class VaultController {
   bool HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToInvigilatorResponse(const std::string& message,
+  void HandleSendEndpointToLifeStuffManagerResponse(const std::string& message,
                                                std::function<void(bool)> callback);  //NOLINT (Philip)
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
                                std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
-  uint16_t invigilator_port_, local_port_;
+  uint16_t lifestuff_manager_port_, local_port_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
   Fob fob_;
@@ -76,10 +76,10 @@ class VaultController {
   bool setuid_succeeded_;
 };
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_VAULT_CONTROLLER_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_CONTROLLER_H_

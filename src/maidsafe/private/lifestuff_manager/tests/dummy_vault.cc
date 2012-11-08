@@ -20,7 +20,7 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/utils/fob.h"
-#include "maidsafe/private/process_management/vault_controller.h"
+#include "maidsafe/private/lifestuff_manager/vault_controller.h"
 
 namespace po = boost::program_options;
 
@@ -72,11 +72,11 @@ int main(int argc, char* argv[]) {
     if (variables_map.count("usr_id")) {
       usr_id = variables_map.at("usr_id").as<std::string>();
     }
-    std::string invigilator_id = variables_map["vmid"].as<std::string>();
+    std::string lifestuff_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
-      maidsafe::priv::process_management::VaultController vault_controller(usr_id);
-      if (!vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
+      maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
+      if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
         LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
         return 1;
       }
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
       vault_controller.ConfirmJoin(true);
 
       std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
-      vault_controller.SendEndpointToInvigilator(endpoint);
+      vault_controller.SendEndpointToLifeStuffManager(endpoint);
       std::unique_lock<std::mutex> lock(mutex);
       cond_var.wait(lock, [] { return g_check_finished; });  // NOLINT (Fraser)
     }

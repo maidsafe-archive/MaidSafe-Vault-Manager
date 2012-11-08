@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_management/process_manager.h"
+#include "maidsafe/private/lifestuff_manager/process_manager.h"
 
 #include <algorithm>
 #include <chrono>
@@ -29,9 +29,9 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/process_management/controller_messages_pb.h"
-#include "maidsafe/private/process_management/local_tcp_transport.h"
-#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
 
 namespace bp = boost::process;
@@ -41,7 +41,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 namespace {
 
@@ -354,7 +354,7 @@ void ProcessManager::TerminateAll() {
   processes_.clear();
 }
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

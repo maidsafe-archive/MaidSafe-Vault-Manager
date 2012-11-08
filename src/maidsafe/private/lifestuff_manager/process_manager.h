@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_PROCESS_MANAGER_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_PROCESS_MANAGER_H_
 
 #include <mutex>
 #include <condition_variable>
@@ -28,7 +28,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 typedef uint32_t ProcessIndex;
 
@@ -132,10 +132,10 @@ class ProcessManager {
   std::condition_variable cond_var_;
 };
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_PROCESS_MANAGER_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_PROCESS_MANAGER_H_

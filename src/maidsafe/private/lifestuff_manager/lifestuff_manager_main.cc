@@ -29,7 +29,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/process_management/invigilator.h"
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 
 
 namespace {
@@ -38,8 +38,8 @@ boost::mutex g_mutex;
 boost::condition_variable g_cond_var;
 bool g_shutdown_service(false);
 
-void ShutDownInvigilator(int /*signal*/) {
-  LOG(kInfo) << "Stopping invigilator.";
+void ShutDownLifeStuffManager(int /*signal*/) {
+  LOG(kInfo) << "Stopping lifestuff_manager.";
   boost::mutex::scoped_lock lock(g_mutex);
   g_shutdown_service = true;
   g_cond_var.notify_one();
@@ -48,13 +48,13 @@ void ShutDownInvigilator(int /*signal*/) {
 #ifdef MAIDSAFE_WIN32
 
 enum {
-  kMaidSafeInvigilatorStdException = 0x1,
+  kMaidSafeLifeStuffManagerStdException = 0x1,
   kMaidSafeVaultServiceUnknownException
 };
 
 SERVICE_STATUS g_service_status;
 SERVICE_STATUS_HANDLE g_service_status_handle;
-wchar_t g_service_name[22] = L"MaidSafeInvigilator";
+wchar_t g_service_name[22] = L"LifeStuffManager";
 
 void StopService(DWORD exit_code, DWORD error_code) {
   g_service_status.dwCurrentState = SERVICE_STOPPED;
@@ -66,17 +66,17 @@ void StopService(DWORD exit_code, DWORD error_code) {
 void ControlHandler(DWORD request) {
   switch (request) {
     case SERVICE_CONTROL_STOP:
-      LOG(kInfo) << "MaidSafe Invigilator SERVICE_CONTROL_STOP received - service stopping.";
+      LOG(kInfo) << "MaidSafe LifeStuffManager SERVICE_CONTROL_STOP received - stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownInvigilator(0);
+      ShutDownLifeStuffManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     case SERVICE_CONTROL_SHUTDOWN:
-      LOG(kInfo) << "MaidSafe Invigilator SERVICE_CONTROL_SHUTDOWN received - service stopping.";
+      LOG(kInfo) << "MaidSafe LifeStuffManager SERVICE_CONTROL_SHUTDOWN received - stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownInvigilator(0);
+      ShutDownLifeStuffManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     default:
@@ -103,7 +103,7 @@ void ServiceMain() {
   // maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
 
   try {
-    maidsafe::priv::process_management::Invigilator invigilator;
+    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
     boost::mutex::scoped_lock lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -114,7 +114,7 @@ void ServiceMain() {
   }
   catch(const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
-    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeInvigilatorStdException);
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeLifeStuffManagerStdException);
     return;
   }
   catch(...) {
@@ -128,7 +128,7 @@ BOOL CtrlHandler(DWORD control_type) {
     case CTRL_C_EVENT:
     case CTRL_CLOSE_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-      ShutDownInvigilator(0);
+      ShutDownLifeStuffManager(0);
       return TRUE;
     default:
       return FALSE;
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
 #ifdef MAIDSAFE_WIN32
 #ifdef USE_TEST_KEYS
   if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
-    maidsafe::priv::process_management::Invigilator invigilator;
+    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT
   } else {
@@ -164,8 +164,8 @@ int main(int argc, char** argv) {
 #endif
 #else
   {
-    maidsafe::priv::process_management::Invigilator invigilator;
-    signal(SIGINT, ShutDownInvigilator);
+    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+    signal(SIGINT, ShutDownLifeStuffManager);
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }

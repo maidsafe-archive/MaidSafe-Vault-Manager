@@ -9,16 +9,16 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CONTROLLER_MESSAGES_PB_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CONTROLLER_MESSAGES_PB_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CONTROLLER_MESSAGES_PB_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CONTROLLER_MESSAGES_PB_H_
 
 #ifdef __MSVC__
 # pragma warning(push)
 # pragma warning(disable: 4127 4244 4267)
 #endif
-#include "maidsafe/private/process_management/controller_messages.pb.h"
+#include "maidsafe/private/lifestuff_manager/controller_messages.pb.h"
 #ifdef __MSVC__
 # pragma warning(pop)
 #endif
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_CONTROLLER_MESSAGES_PB_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CONTROLLER_MESSAGES_PB_H_

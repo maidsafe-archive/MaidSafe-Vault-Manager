@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_management/invigilator.h"
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 
 #include <chrono>
 #include <iostream>
@@ -21,11 +21,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/process_management/controller_messages_pb.h"
-#include "maidsafe/private/process_management/local_tcp_transport.h"
-#include "maidsafe/private/process_management/utils.h"
-#include "maidsafe/private/process_management/vault_info_pb.h"
+#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
 
 
 namespace bptime = boost::posix_time;
@@ -35,7 +35,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 #ifndef MAIDSAFE_WIN32
 namespace {
@@ -55,7 +55,7 @@ std::string GetUserId() {
 }  // unnamed namespace
 #endif
 
-Invigilator::VaultInfo::VaultInfo()
+LifeStuffManager::VaultInfo::VaultInfo()
     : process_index(),
       account_name(),
       fob(),
@@ -66,7 +66,7 @@ Invigilator::VaultInfo::VaultInfo()
       joined_network(false),
       vault_version(kInvalidVersion) {}
 
-void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
+void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
   pb_vault_info->set_fob(utils::SerialiseFob(fob).string());
   pb_vault_info->set_chunkstore_path(chunkstore_path);
@@ -74,7 +74,7 @@ void Invigilator::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) cons
   pb_vault_info->set_version(vault_version);
 }
 
-void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
+void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
   account_name = pb_vault_info.account_name();
   fob = utils::ParseFob(NonEmptyString(pb_vault_info.fob()));
   chunkstore_path = pb_vault_info.chunkstore_path();
@@ -83,7 +83,7 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
 }
 
 
-Invigilator::Invigilator()
+LifeStuffManager::LifeStuffManager()
     : process_manager_(),
       // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
       download_manager_("http", "dash.maidsafe.net", "~phil"),
@@ -119,7 +119,7 @@ Invigilator::Invigilator()
 #endif
 }
 
-void Invigilator::Initialise() {
+void LifeStuffManager::Initialise() {
   transport_->on_message_received().connect(
       [this] (const std::string& message, Port peer_port) {
         HandleReceivedMessage(message, peer_port);
@@ -131,7 +131,7 @@ void Invigilator::Initialise() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    LOG(kInfo) << "Invigilator failed to find existing config file in " << config_file_path_;
+    LOG(kInfo) << "LifeStuffManager failed to find existing config file in " << config_file_path_;
     while (!CreateConfigFile()) {
       if (need_to_stop_)
         return;
@@ -143,7 +143,7 @@ void Invigilator::Initialise() {
   while (!ListenForMessages()) {
     if (need_to_stop_)
       return;
-    LOG(kError) << "Invigilator failed to create a listening port. Shutting down.";
+    LOG(kError) << "LifeStuffManager failed to create a listening port. Shutting down.";
     Sleep(boost::posix_time::seconds(1));
   }
 
@@ -154,10 +154,10 @@ void Invigilator::Initialise() {
   ReadConfigFileAndStartVaults();
   error_code.clear();
   CheckForUpdates(error_code);
-  LOG(kInfo) << "Invigilator started";
+  LOG(kInfo) << "LifeStuffManager started";
 }
 
-Invigilator::~Invigilator() {
+LifeStuffManager::~LifeStuffManager() {
   need_to_stop_ = true;
   process_manager_.LetAllProcessesDie();
   StopAllVaults();
@@ -169,24 +169,24 @@ Invigilator::~Invigilator() {
   asio_service_.Stop();
 }
 
-boost::posix_time::time_duration Invigilator::kMinUpdateInterval() {
+boost::posix_time::time_duration LifeStuffManager::kMinUpdateInterval() {
   return bptime::minutes(5);
 }
 
-boost::posix_time::time_duration Invigilator::kMaxUpdateInterval() {
+boost::posix_time::time_duration LifeStuffManager::kMaxUpdateInterval() {
   return bptime::hours(24 * 7);
 }
 
-void Invigilator::RestartInvigilator(const std::string& /*latest_file*/,
-                                     const std::string& /*executable_name*/) const {
+void LifeStuffManager::RestartLifeStuffManager(const std::string& /*latest_file*/,
+                                               const std::string& /*executable_name*/) const {
   // system("/etc/init.d/mvm restart");
 //  int result(system(command.c_str()));
 //  if (result != 0)
   LOG(kWarning) << "Not implemented";
 }
 
-bool Invigilator::CreateConfigFile() {
-  protobuf::InvigilatorConfig config;
+bool LifeStuffManager::CreateConfigFile() {
+  protobuf::LifeStuffManagerConfig config;
   config.set_update_interval(update_interval_.total_seconds());
 
   int count(0);
@@ -204,7 +204,7 @@ bool Invigilator::CreateConfigFile() {
   return true;
 }
 
-bool Invigilator::ReadConfigFileAndStartVaults() {
+bool LifeStuffManager::ReadConfigFileAndStartVaults() {
   std::string content;
   {
     std::lock_guard<std::mutex> lock(config_file_mutex_);
@@ -213,7 +213,7 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
       return false;
     }
   }
-  protobuf::InvigilatorConfig config;
+  protobuf::LifeStuffManagerConfig config;
   if (!config.ParseFromString(content)) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
@@ -237,8 +237,8 @@ bool Invigilator::ReadConfigFileAndStartVaults() {
   return true;
 }
 
-bool Invigilator::WriteConfigFile() {
-  protobuf::InvigilatorConfig config;
+bool LifeStuffManager::WriteConfigFile() {
+  protobuf::LifeStuffManagerConfig config;
   {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
@@ -260,7 +260,7 @@ bool Invigilator::WriteConfigFile() {
   return true;
 }
 
-bool Invigilator::ListenForMessages() {
+bool LifeStuffManager::ListenForMessages() {
   int result(0);
   transport_->StartListening(local_port_, result);
   while (result != kSuccess) {
@@ -275,7 +275,7 @@ bool Invigilator::ListenForMessages() {
   return true;
 }
 
-void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_port) {
+void LifeStuffManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -304,8 +304,8 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
     case MessageType::kUpdateIntervalRequest:
       HandleUpdateIntervalRequest(payload, response);
       break;
-    case MessageType::kSendEndpointToInvigilatorRequest:
-      HandleSendEndpointToInvigilatorRequest(payload, response);
+    case MessageType::kSendEndpointToLifeStuffManagerRequest:
+      HandleSendEndpointToLifeStuffManagerRequest(payload, response);
       break;
     case MessageType::kBootstrapRequest:
       HandleBootstrapRequest(payload, response);
@@ -316,7 +316,7 @@ void Invigilator::HandleReceivedMessage(const std::string& message, Port peer_po
   transport_->Send(response, peer_port);
 }
 
-void Invigilator::HandleClientRegistrationRequest(const std::string& request,
+void LifeStuffManager::HandleClientRegistrationRequest(const std::string& request,
                                                   std::string& response) {
   protobuf::ClientRegistrationRequest client_request;
   if (!client_request.ParseFromString(request)) {  // Silently drop
@@ -332,8 +332,8 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
 
   protobuf::ClientRegistrationResponse client_response;
   if (endpoints_.empty()) {
-    protobuf::InvigilatorConfig config;
-    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+    protobuf::LifeStuffManagerConfig config;
+    if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
     }
@@ -365,7 +365,7 @@ void Invigilator::HandleClientRegistrationRequest(const std::string& request,
                                  client_response.SerializeAsString());
 }
 
-void Invigilator::HandleStartVaultRequest(const std::string& request, std::string& response) {
+void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::string& response) {
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -385,7 +385,7 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     auto client_itr(client_ports_and_versions_.find(client_port));
     if (client_itr == client_ports_and_versions_.end()) {
-      LOG(kError) << "Client is not registered with Invigilator.";
+      LOG(kError) << "Client is not registered with LifeStuffManager.";
       return set_response(false);
     }
   }
@@ -450,7 +450,8 @@ void Invigilator::HandleStartVaultRequest(const std::string& request, std::strin
   set_response(true);
 }
 
-void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::string& response) {
+void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
+                                                  std::string& response) {
   protobuf::VaultIdentityRequest vault_identity_request;
   if (!vault_identity_request.ParseFromString(request)) {
     // Silently drop
@@ -471,8 +472,8 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
   } else {
     serialised_fob = utils::SerialiseFob((*itr)->fob);
     if (endpoints_.empty()) {
-      protobuf::InvigilatorConfig config;
-      if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+      protobuf::LifeStuffManagerConfig config;
+      if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
         // TODO(Team): Should have counter for failures to trigger recreation?
         LOG(kError) << "Failed to read & parse config file " << config_file_path_;
         successful_response = false;
@@ -517,8 +518,8 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
                                  vault_identity_response.SerializeAsString());
 }
 
-void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
-                                                  std::string& response) {
+void LifeStuffManager::HandleVaultJoinedNetworkRequest(const std::string& request,
+                                                       std::string& response) {
   protobuf::VaultJoinedNetwork vault_joined_network;
   if (!vault_joined_network.ParseFromString(request)) {
     // Silently drop
@@ -545,7 +546,7 @@ void Invigilator::HandleVaultJoinedNetworkRequest(const std::string& request,
                                  vault_joined_network_ack.SerializeAsString());
 }
 
-void Invigilator::HandleStopVaultRequest(const std::string& request, std::string& response) {
+void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
   protobuf::StopVaultRequest stop_vault_request;
   if (!stop_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -578,7 +579,8 @@ void Invigilator::HandleStopVaultRequest(const std::string& request, std::string
                                  stop_vault_response.SerializeAsString());
 }
 
-void Invigilator::HandleUpdateIntervalRequest(const std::string& request, std::string& response) {
+void LifeStuffManager::HandleUpdateIntervalRequest(const std::string& request,
+                                                   std::string& response) {
   protobuf::UpdateIntervalRequest update_interval_request;
   if (!update_interval_request.ParseFromString(request)) {  // Silently drop
     LOG(kError) << "Failed to parse UpdateIntervalRequest.";
@@ -599,12 +601,12 @@ void Invigilator::HandleUpdateIntervalRequest(const std::string& request, std::s
                                  update_interval_response.SerializeAsString());
 }
 
-void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& request,
-                                                         std::string& response) {
-  protobuf::SendEndpointToInvigilatorRequest send_endpoint_request;
-  protobuf::SendEndpointToInvigilatorResponse send_endpoint_response;
+void LifeStuffManager::HandleSendEndpointToLifeStuffManagerRequest(const std::string& request,
+                                                                   std::string& response) {
+  protobuf::SendEndpointToLifeStuffManagerRequest send_endpoint_request;
+  protobuf::SendEndpointToLifeStuffManagerResponse send_endpoint_response;
   if (!send_endpoint_request.ParseFromString(request)) {
-    LOG(kError) << "Failed to parse SendEndpointToInvigilator.";
+    LOG(kError) << "Failed to parse SendEndpointToLifeStuffManager.";
     return;
   }
   if (AddBootstrapEndPoint(
@@ -614,11 +616,11 @@ void Invigilator::HandleSendEndpointToInvigilatorRequest(const std::string& requ
   } else {
     send_endpoint_response.set_result(false);
   }
-  response = detail::WrapMessage(MessageType::kSendEndpointToInvigilatorResponse,
+  response = detail::WrapMessage(MessageType::kSendEndpointToLifeStuffManagerResponse,
                                  send_endpoint_response.SerializeAsString());
 }
 
-void Invigilator::HandleBootstrapRequest(const std::string& request, std::string& response) {
+void LifeStuffManager::HandleBootstrapRequest(const std::string& request, std::string& response) {
   protobuf::BootstrapRequest bootstrap_request;
   protobuf::BootstrapResponse bootstrap_response;
   if (!bootstrap_request.ParseFromString(request)) {
@@ -626,8 +628,8 @@ void Invigilator::HandleBootstrapRequest(const std::string& request, std::string
     return;
   }
   if (endpoints_.empty()) {
-    protobuf::InvigilatorConfig config;
-    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+    protobuf::LifeStuffManagerConfig config;
+    if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
     }
@@ -650,7 +652,7 @@ void Invigilator::HandleBootstrapRequest(const std::string& request, std::string
                                  bootstrap_response.SerializeAsString());
 }
 
-bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval) {
+bool LifeStuffManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
   if (update_interval < kMinUpdateInterval() || update_interval > kMaxUpdateInterval()) {
     LOG(kError) << "Invalid update interval of " << update_interval;
     return false;
@@ -662,12 +664,12 @@ bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval
   return true;
 }
 
-bptime::time_duration Invigilator::GetUpdateInterval() const {
+bptime::time_duration LifeStuffManager::GetUpdateInterval() const {
   std::lock_guard<std::mutex> lock(update_mutex_);
   return update_interval_;
 }
 
-void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
+void LifeStuffManager::CheckForUpdates(const boost::system::error_code& ec) {
   if (ec) {
     if (ec != boost::asio::error::operation_aborted) {
       LOG(kError) << ec.message();
@@ -682,7 +684,7 @@ void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
-void Invigilator::SendVaultJoinConfirmation(const Identity& identity, bool join_result) {
+void LifeStuffManager::SendVaultJoinConfirmation(const Identity& identity, bool join_result) {
   protobuf::VaultJoinConfirmation vault_join_confirmation;
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
@@ -709,7 +711,7 @@ void Invigilator::SendVaultJoinConfirmation(const Identity& identity, bool join_
   }
 
   request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
+      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleVaultJoinConfirmationAck(message, callback);
       });
   request_transport->on_error().connect([this, callback] (const int& error) {
@@ -730,8 +732,8 @@ void Invigilator::SendVaultJoinConfirmation(const Identity& identity, bool join_
     LOG(kError) << "Failed to confirm joining of vault to client.";
 }
 
-void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
-                                                 std::function<void(bool)> callback) {  // NOLINT (Philip)
+void LifeStuffManager::HandleVaultJoinConfirmationAck(const std::string& message,
+                                                      std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -747,7 +749,7 @@ void Invigilator::HandleVaultJoinConfirmationAck(const std::string& message,
   callback(ack.ack());
 }
 
-void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
+void LifeStuffManager::SendNewVersionAvailable(uint16_t client_port) {
   protobuf::NewVersionAvailable new_version_available;
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -766,7 +768,7 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
     callback(false);
   }
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleNewVersionAvailableAck(message, callback);
       });
   request_transport->on_error().connect([this, callback] (const int& error) {
@@ -793,15 +795,15 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     auto client_itr(client_ports_and_versions_.find(client_port));
     if (client_itr == client_ports_and_versions_.end()) {
-      LOG(kError) << "Client is not registered with Invigilator.";
+      LOG(kError) << "Client is not registered with LifeStuffManager.";
       return;
     }
     (*client_itr).second = VersionToInt(download_manager_.latest_local_version());
   }
 }
 
-void Invigilator::HandleNewVersionAvailableAck(const std::string& message,
-                                               std::function<void(bool)> callback) {  // NOLINT (Philip)
+void LifeStuffManager::HandleNewVersionAvailableAck(const std::string& message,
+                                                    std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -818,18 +820,18 @@ void Invigilator::HandleNewVersionAvailableAck(const std::string& message,
 }
 
 #if defined MAIDSAFE_LINUX
-bool Invigilator::IsInstaller(const fs::path& path) {
+bool LifeStuffManager::IsInstaller(const fs::path& path) {
   return path.extension() == ".deb" &&
          path.stem().string().length() > 8 &&
          path.stem().string().substr(0, 9) == "LifeStuff";
 }
 #else
-bool Invigilator::IsInstaller(const fs::path& path) {
+bool LifeStuffManager::IsInstaller(const fs::path& path) {
   return path.extension() == ".exe" && path.stem().string().substr(0, 9) == "LifeStuff";
 }
 #endif
 
-void Invigilator::UpdateExecutor() {
+void LifeStuffManager::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) != kSuccess) {
     LOG(kInfo) << "No update identified in the server.";
@@ -899,11 +901,11 @@ void Invigilator::UpdateExecutor() {
   }
 }
 
-bool Invigilator::InTestMode() const {
+bool LifeStuffManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / detail::kGlobalConfigFilename;
 }
 
-std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromIdentity(
+std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromIdentity(
     const Identity& identity) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
@@ -912,7 +914,7 @@ std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromIdentity(
                       });
 }
 
-std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromProcessIndex(
+std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromProcessIndex(
     ProcessIndex process_index) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
@@ -921,7 +923,7 @@ std::vector<Invigilator::VaultInfoPtr>::iterator Invigilator::FindFromProcessInd
                       });
 }
 
-void Invigilator::RestartVault(const Identity& identity) {
+void LifeStuffManager::RestartVault(const Identity& identity) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
@@ -934,10 +936,10 @@ void Invigilator::RestartVault(const Identity& identity) {
 // NOTE: vault_infos_mutex_ must be locked before calling this function.
 // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
 //                               Try to reduce lock scope eventually.
-bool Invigilator::StopVault(const Identity& identity,
-                            const asymm::PlainText& data,
-                            const asymm::Signature& signature,
-                            bool permanent) {
+bool LifeStuffManager::StopVault(const Identity& identity,
+                                 const asymm::PlainText& data,
+                                 const asymm::Signature& signature,
+                                 bool permanent) {
   auto itr(FindFromIdentity(identity));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
@@ -965,7 +967,7 @@ bool Invigilator::StopVault(const Identity& identity,
   return process_manager_.WaitForProcessToStop((*itr)->process_index);
 }
 
-void Invigilator::StopAllVaults() {
+void LifeStuffManager::StopAllVaults() {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   std::for_each(vault_infos_.begin(),
                 vault_infos_.end(),
@@ -984,7 +986,7 @@ void Invigilator::StopAllVaults() {
 }
 
 /*
-//  void Invigilator::EraseVault(const std::string& account_name) {
+//  void LifeStuffManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {
 //      auto itr(processes_.begin() + (index - 1));
 //      process_manager_.KillProcess((*itr).second);
@@ -999,7 +1001,7 @@ void Invigilator::StopAllVaults() {
 //    }
 //  }
 
-//  int32_t Invigilator::ListVaults(bool select) const {
+//  int32_t LifeStuffManager::ListVaults(bool select) const {
 //    fs::path path((GetSystemAppDir() / "config.txt"));
 //
 //    std::string content;
@@ -1028,7 +1030,7 @@ void Invigilator::StopAllVaults() {
 //  }
 */
 
-bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config) {
+bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config) {
   std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());
   if (serialised_endpoints.empty()) {
     LOG(kError) << "Retrieved endpoints are empty.";
@@ -1045,7 +1047,7 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
   return true;
 }
 
-void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
+void LifeStuffManager::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
   int max_index(end_points.bootstrap_contacts_size());
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   endpoints_.clear();
@@ -1056,7 +1058,7 @@ void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
   }
 }
 
-bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
+bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef USE_TEST_KEYS
 #ifdef USE_DUMMY
@@ -1104,8 +1106,8 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   return true;
 }
 
-bool Invigilator::ReadFileToInvigilatorConfig(const fs::path& file_path,
-                                              protobuf::InvigilatorConfig& config) {
+bool LifeStuffManager::ReadFileToLifeStuffManagerConfig(const fs::path& file_path,
+                                                        protobuf::LifeStuffManagerConfig& config) {
   std::string config_content;
   {
     std::lock_guard<std::mutex> lock(config_file_mutex_);
@@ -1125,7 +1127,7 @@ bool Invigilator::ReadFileToInvigilatorConfig(const fs::path& file_path,
   return true;
 }
 
-bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
+bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
   std::unique_lock<std::mutex> lock(config_file_mutex_);
   auto it(std::find_if(endpoints_.begin(),
                        endpoints_.end(),
@@ -1140,8 +1142,8 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
       endpoints_.erase(itr);
     }
     lock.unlock();
-    protobuf::InvigilatorConfig config;
-    if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+    protobuf::LifeStuffManagerConfig config;
+    if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
       return false;
@@ -1167,10 +1169,10 @@ bool Invigilator::AddBootstrapEndPoint(const std::string& ip, const uint16_t& po
   return true;
 }
 
-bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
-                                                bool existing_vault) {
-  protobuf::InvigilatorConfig config;
-  if (!ReadFileToInvigilatorConfig(config_file_path_, config)) {
+bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
+                                                     bool existing_vault) {
+  protobuf::LifeStuffManagerConfig config;
+  if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
                 << Base64Substr(vault_info->fob.identity);
     return false;
@@ -1216,7 +1218,7 @@ bool Invigilator::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
   return true;
 }
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

@@ -19,8 +19,8 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/process_management/download_manager.h"
-#include "maidsafe/private/return_codes.h"
+#include "maidsafe/private/lifestuff_manager/download_manager.h"
+#include "maidsafe/private/lifestuff_manager/return_codes.h"
 
 // Note: These tests assume that there exists nonempty files publicly available on
 // dash.maidsafe.net/~phil called e.g.
@@ -33,7 +33,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 namespace test {
 
@@ -139,7 +139,7 @@ TEST(DownloadTest, DISABLED_BEH_Update_InvalidSignature) {
 
 }  // namespace test
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

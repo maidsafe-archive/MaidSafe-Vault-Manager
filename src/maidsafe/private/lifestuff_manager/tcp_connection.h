@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TCP_CONNECTION_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TCP_CONNECTION_H_
 
 #include <memory>
 #include <string>
@@ -27,7 +27,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 class LocalTcpTransport;
 
@@ -81,10 +81,10 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   size_t data_size_, data_received_;
 };
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_TCP_CONNECTION_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TCP_CONNECTION_H_

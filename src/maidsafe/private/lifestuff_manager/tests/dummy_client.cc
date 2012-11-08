@@ -17,12 +17,12 @@
 #include "maidsafe/common/types.h"
 
 #include "maidsafe/private/utils/fob.h"
-#include "maidsafe/private/process_management/client_controller.h"
+#include "maidsafe/private/lifestuff_manager/client_controller.h"
 
 
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
-  maidsafe::priv::process_management::ClientController client(
+  maidsafe::priv::lifestuff_manager::ClientController client(
       [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
   maidsafe::Fob fob;

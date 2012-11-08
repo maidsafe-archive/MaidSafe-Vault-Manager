@@ -39,36 +39,36 @@ include_directories(${common_SOURCE_DIR}/include)
 # Set up all files as GLOBs                                                                       #
 ###################################################################################################
 ####    CODE    ####
-file(GLOB SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
-file(GLOB HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.h")
-file(GLOB API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/process_management/*.h")
+file(GLOB SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.cc")
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
+file(GLOB HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.h")
+file(GLOB API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/lifestuff_manager/*.h")
 
-file(GLOB PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.proto")
-file(GLOB SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/*_pb.h")
+file(GLOB PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.proto")
+file(GLOB SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*_pb.h")
 
-set(ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                             ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                             ${PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                             ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-list(REMOVE_ITEM HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR ${HEADER_PROTO_FILES_PROCESS_MANAGEMENT_PRIVATE_DIR}
-                                                             ${MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                      ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                      ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/controller_messages.pb.h"
-                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/vault_info.pb.h")
+set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                             ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                             ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                             ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_PRIVATE_DIR}
+                                                            ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                      ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                      ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/controller_messages.pb.h"
+                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.h")
 
-source_group("Private Source Files" FILES ${SOURCE_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-source_group("Private Header Files" FILES ${HEADER_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-source_group("Private Proto Files" FILES ${PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                         ${SOURCE_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                         ${HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR}
-                                         ${MS_HEADER_PROTO_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-source_group("Private API Files" FILES ${API_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+source_group("LifeStuff Manager Source Files" FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Header Files" FILES ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Proto Files" FILES ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                         ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                         ${HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                         ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager API Files" FILES ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 
 
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.cc")
@@ -117,6 +117,15 @@ source_group("Private API Files" FILES ${RETURN_CODES_H})
 
 
 ####    TESTS    ####
+file(GLOB SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/*.cc")
+file(GLOB HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/*.h")
+set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR} ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Header Files" FILES ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
+list(REMOVE_ITEM ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
+list(REMOVE_ITEM ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
+
 file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
 file(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.h")
 set(ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
@@ -139,49 +148,45 @@ source_group("Utils Tests Source Files" FILES ${SOURCE_FILES_UTILS_TESTS_DIR})
 source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 
 
-
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
+ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+ms_add_static_library(lifestuff_manager_test ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+ms_add_static_library(lifestuff_manager_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
+ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
-ms_add_static_library(process_management ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR} ${RETURN_CODES_H})
-ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
-ms_add_static_library(process_management_dummy ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
+ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
+ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
+ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
+ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
+ms_add_executable(lifestuff_manager_test "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
+ms_add_executable(lifestuff_manager_demo "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
-ms_add_executable(TESTinvigilator "Tests/Private"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
-                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/invigilator_test.cc")
-ms_add_executable(DUMMYprocess "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_process.cc")
-ms_add_executable(DUMMYclient "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/dummy_client.cc")
-ms_add_executable(SigningTool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(invigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
-ms_add_executable(invigilator_test "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
-ms_add_executable(DEMOinvigilator "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/process_management/invigilator_main.cc")
+ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
 
+target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
+target_link_libraries(maidsafe_lifestuff_manager_test maidsafe_utilities)
+target_link_libraries(maidsafe_lifestuff_manager_dummy maidsafe_utilities)
+target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
-target_link_libraries(maidsafe_private maidsafe_common maidsafe_utilities)
-target_link_libraries(maidsafe_process_management maidsafe_utilities)
-target_link_libraries(maidsafe_process_management_test maidsafe_utilities)
-target_link_libraries(maidsafe_process_management_dummy maidsafe_utilities)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(TESTutilities maidsafe_utilities)
-target_link_libraries(DUMMYprocess maidsafe_process_management_dummy maidsafe_utilities ${BoostProgramOptionsLibs})
-target_link_libraries(DUMMYclient maidsafe_process_management_test maidsafe_utilities ${BoostProgramOptionsLibs})
-target_link_libraries(TESTinvigilator maidsafe_process_management_dummy ${BoostProgramOptionsLibs})
-target_link_libraries(invigilator maidsafe_process_management ${BoostProgramOptionsLibs})
-target_link_libraries(invigilator_test maidsafe_process_management_test ${BoostProgramOptionsLibs})
-target_link_libraries(DEMOinvigilator maidsafe_process_management_test ${BoostProgramOptionsLibs})
-target_link_libraries(SigningTool maidsafe_private ${BoostProgramOptionsLibs})
+target_link_libraries(dummy_vault maidsafe_lifestuff_manager_dummy maidsafe_utilities)
+target_link_libraries(dummy_client maidsafe_lifestuff_manager_test maidsafe_utilities)
+target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager_dummy)
+target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager)
+target_link_libraries(lifestuff_manager_test maidsafe_lifestuff_manager_test)
+target_link_libraries(lifestuff_manager_demo maidsafe_lifestuff_manager_test)
+target_link_libraries(signing_tool maidsafe_private)
 
-add_dependencies(TESTinvigilator DUMMYprocess)
+add_dependencies(TESTlifestuff_manager dummy_vault)
 
-set_target_properties(maidsafe_process_management_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
-set_target_properties(maidsafe_process_management_dummy PROPERTIES COMPILE_DEFINITIONS "USE_TEST_KEYS;USE_DUMMY")
-set_target_properties(invigilator_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
+set_target_properties(maidsafe_lifestuff_manager_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
+set_target_properties(maidsafe_lifestuff_manager_dummy PROPERTIES COMPILE_DEFINITIONS "USE_TEST_KEYS;USE_DUMMY")
+set_target_properties(lifestuff_manager_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
 
 rename_outdated_built_exes()
 
@@ -206,8 +211,8 @@ endif()
 # Tests                                                                                           #
 ###################################################################################################
 add_style_test(${STYLE_CHECK_FILES})
+add_gtests(TESTlifestuff_manager)
 add_gtests(TESTprivate)
-add_gtests(TESTinvigilator)
 add_gtests(TESTutilities)
 add_project_experimental()
 test_summary_output()

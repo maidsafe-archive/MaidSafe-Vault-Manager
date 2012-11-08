@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_management/vault_controller.h"
+#include "maidsafe/private/lifestuff_manager/vault_controller.h"
 
 #include <chrono>
 #include <iterator>
@@ -21,11 +21,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/process_management/controller_messages_pb.h"
-#include "maidsafe/private/process_management/local_tcp_transport.h"
-#include "maidsafe/private/process_management/utils.h"
-#include "maidsafe/private/process_management/invigilator.h"
+#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 
 
 namespace fs = boost::filesystem;
@@ -34,7 +34,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 typedef std::function<void()> VoidFunction;
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
@@ -43,7 +43,7 @@ namespace bai = boost::asio::ip;
 
 VaultController::VaultController(const std::string &usr_id)
     : process_index_(),
-      invigilator_port_(0),
+      lifestuff_manager_port_(0),
       local_port_(0),
       asio_service_(3),
       receiving_transport_(new LocalTcpTransport(asio_service_.service())),
@@ -116,8 +116,8 @@ bool VaultController::StartListeningPort() {
   }
 
   receiving_transport_->on_message_received().connect(
-      [this] (const std::string& message, Port invigilator_port) {
-        HandleReceivedRequest(message, invigilator_port);
+      [this] (const std::string& message, Port lifestuff_manager_port) {
+        HandleReceivedRequest(message, lifestuff_manager_port);
       });
   receiving_transport_->on_error().connect(
       [] (const int& error) {
@@ -127,17 +127,17 @@ bool VaultController::StartListeningPort() {
   return true;
 }
 
-bool VaultController::Start(const std::string& invigilator_identifier,
+bool VaultController::Start(const std::string& lifestuff_manager_identifier,
                             VoidFunction stop_callback) {
   if (!setuid_succeeded_) {
     LOG(kError) << "In constructor, failed to set the user ID to the correct user";
     return false;
   }
 
-  if (!detail::ParseVmidParameter(invigilator_identifier,
+  if (!detail::ParseVmidParameter(lifestuff_manager_identifier,
                                   process_index_,
-                                  invigilator_port_)) {
-    LOG(kError) << "Invalid --vmid parameter " << invigilator_identifier;
+                                  lifestuff_manager_port_)) {
+    LOG(kError) << "Invalid --vmid parameter " << lifestuff_manager_identifier;
     return false;
   }
 
@@ -154,8 +154,8 @@ bool VaultController::GetIdentity(
     Fob& fob,
     std::string& account_name,
     std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
-  if (invigilator_port_ == 0) {
-    LOG(kError) << "Invalid Invigilator port.";
+  if (lifestuff_manager_port_ == 0) {
+    LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
   }
   fob = fob_;
@@ -180,13 +180,13 @@ void VaultController::ConfirmJoin(bool joined) {
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return;
   }
   request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
+      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleVaultJoinedAck(message, callback);
       });
   request_transport->on_error().connect([callback](const int& error) {
@@ -195,10 +195,10 @@ void VaultController::ConfirmJoin(bool joined) {
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending joined notification to port " << invigilator_port_;
+  LOG(kVerbose) << "Sending joined notification to port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinedNetwork,
                                               vault_joined_network.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; }))  // NOLINT (Fraser)
     LOG(kError) << "Timed out waiting for reply.";
@@ -239,14 +239,14 @@ bool VaultController::GetBootstrapNodes(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
   request_transport->on_message_received().connect(
       [this, callback, &bootstrap_endpoints] (const std::string& message,
-                                             Port /*invigilator_port*/) {
+                                             Port /*lifestuff_manager_port*/) {
         HandleBootstrapResponse(message, bootstrap_endpoints, callback);
       });
   request_transport->on_error().connect([callback](const int& error) {
@@ -254,10 +254,10 @@ bool VaultController::GetBootstrapNodes(
     callback(false);
   });
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Requesting bootstrap nodes from port " << invigilator_port_;
+  LOG(kVerbose) << "Requesting bootstrap nodes from port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kBootstrapRequest,
                                               request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
     return false;
@@ -300,12 +300,12 @@ void VaultController::HandleBootstrapResponse(const std::string& message,
   callback(true);
 }
 
-bool VaultController::SendEndpointToInvigilator(
+bool VaultController::SendEndpointToLifeStuffManager(
     const std::pair<std::string, uint16_t>& endpoint) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
-  protobuf::SendEndpointToInvigilatorRequest request;
+  protobuf::SendEndpointToLifeStuffManagerRequest request;
   request.set_bootstrap_endpoint_ip(endpoint.first);
   request.set_bootstrap_endpoint_port(endpoint.second);
 
@@ -318,14 +318,14 @@ bool VaultController::SendEndpointToInvigilator(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
     request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*invigilator_port*/) {
-        HandleSendEndpointToInvigilatorResponse(message, callback);
+      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
+        HandleSendEndpointToLifeStuffManagerResponse(message, callback);
       });
     request_transport->on_error().connect([callback](const int& error) {
       LOG(kError) << "Transport reported error code " << error;
@@ -333,10 +333,10 @@ bool VaultController::SendEndpointToInvigilator(
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending bootstrap endpoint to port " << invigilator_port_;
-  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToInvigilatorRequest,
+  LOG(kVerbose) << "Sending bootstrap endpoint to port " << lifestuff_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToLifeStuffManagerRequest,
                                               request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
     return false;
@@ -344,8 +344,8 @@ bool VaultController::SendEndpointToInvigilator(
   return success;
 }
 
-void VaultController::HandleSendEndpointToInvigilatorResponse(const std::string& message,
-                                                              VoidFunctionBoolParam callback) {
+void VaultController::HandleSendEndpointToLifeStuffManagerResponse(const std::string& message,
+                                                                   VoidFunctionBoolParam callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -354,9 +354,9 @@ void VaultController::HandleSendEndpointToInvigilatorResponse(const std::string&
     return;
   }
 
-  protobuf::SendEndpointToInvigilatorResponse send_endpoint_response;
+  protobuf::SendEndpointToLifeStuffManagerResponse send_endpoint_response;
   if (!send_endpoint_response.ParseFromString(payload)) {
-    LOG(kError) << "Failed to parse SendEndpointToInvigilatorResponse.";
+    LOG(kError) << "Failed to parse SendEndpointToLifeStuffManagerResponse.";
     callback(false);
     return;
   }
@@ -374,16 +374,16 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int connect_result(0);
-  request_transport->Connect(invigilator_port_, connect_result);
+  request_transport->Connect(lifestuff_manager_port_, connect_result);
   if (connect_result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
 
   bool result(false);
   auto connection(request_transport->on_message_received().connect(
       [this, &local_mutex, &local_cond_var, &result] (const std::string& message,
-                                                      Port /*invigilator_port*/) {
+                                                      Port /*lifestuff_manager_port*/) {
         result = HandleVaultIdentityResponse(message, local_mutex);
         if (result)
           local_cond_var.notify_one();
@@ -393,10 +393,10 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
   }));
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending request for vault identity to port " << invigilator_port_;
+  LOG(kVerbose) << "Sending request for vault identity to port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
                                               vault_identity_request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(3),
@@ -486,7 +486,7 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
   stop_callback_();
 }
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

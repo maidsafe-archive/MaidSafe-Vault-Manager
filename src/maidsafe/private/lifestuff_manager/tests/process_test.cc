@@ -18,8 +18,8 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/process_management/process_manager.h"
-#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/lifestuff_manager/process_manager.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -30,7 +30,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 namespace test {
 
@@ -499,7 +499,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
 }  // namespace test
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

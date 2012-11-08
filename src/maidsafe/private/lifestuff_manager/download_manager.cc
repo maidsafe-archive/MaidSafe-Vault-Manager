@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_management/download_manager.h"
+#include "maidsafe/private/lifestuff_manager/download_manager.h"
 
 #include <cstdint>
 #include <istream>
@@ -29,8 +29,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/return_codes.h"
-#include "maidsafe/private/process_management/utils.h"
+#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -40,7 +40,7 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 DownloadManager::DownloadManager(const std::string& protocol,
                                  const std::string& site,
@@ -345,7 +345,7 @@ std::string DownloadManager::DownloadFileToMemory(const fs::path& from_path) {
                      response_buffer.size());
 }
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/process_management/client_controller.h"
+#include "maidsafe/private/lifestuff_manager/client_controller.h"
 
 #include <chrono>
 #include <limits>
@@ -18,12 +18,12 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/return_codes.h"
 #include "maidsafe/private/utils/fob.h"
-#include "maidsafe/private/process_management/controller_messages_pb.h"
-#include "maidsafe/private/process_management/local_tcp_transport.h"
-#include "maidsafe/private/process_management/utils.h"
-#include "maidsafe/private/process_management/invigilator.h"
+#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
 
 namespace bptime = boost::posix_time;
@@ -34,13 +34,13 @@ namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 ClientController::ClientController(
     std::function<void(const NonEmptyString&)> on_new_version_available_slot)
-        : invigilator_port_(Invigilator::kMinPort() - 1),
+        : lifestuff_manager_port_(LifeStuffManager::kMinPort() - 1),
           local_port_(0),
           asio_service_(3),
           receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
@@ -58,8 +58,8 @@ ClientController::ClientController(
   }
 
   std::string path_to_new_installer;
-  if (!ConnectToInvigilator(path_to_new_installer)) {
-    LOG(kError) << "Failed to connect to invigilator. Object useless.";
+  if (!ConnectToLifeStuffManager(path_to_new_installer)) {
+    LOG(kError) << "Failed to connect to lifestuff_manager. Object useless.";
     state_ = kFailed;
   } else {
     state_ = kVerified;
@@ -76,7 +76,7 @@ ClientController::~ClientController() {
 
 bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {
-    LOG(kError) << "Not connected to Invigilator.";
+    LOG(kError) << "Not connected to LifeStuffManager.";
     return false;
   }
 
@@ -99,8 +99,8 @@ bool ClientController::StartListeningPort() {
   }
 
   receiving_transport_->on_message_received().connect(
-      [this] (const std::string& message, Port invigilator_port) {
-        HandleReceivedRequest(message, invigilator_port);
+      [this] (const std::string& message, Port lifestuff_manager_port) {
+        HandleReceivedRequest(message, lifestuff_manager_port);
       });
   receiving_transport_->on_error().connect(
       [] (const int& error) {
@@ -113,19 +113,19 @@ bool ClientController::StartListeningPort() {
 bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
   request_transport->CloseConnections();
   int result(1);
-  request_transport->Connect(++invigilator_port_, result);
+  request_transport->Connect(++lifestuff_manager_port_, result);
   while (result != kSuccess) {
-    if (invigilator_port_ == Invigilator::kMaxPort()) {
-      LOG(kError) << "ClientController failed to connect to Invigilator on all ports in range "
-                  << Invigilator::kMinPort() << " to " << Invigilator::kMaxPort();
+    if (lifestuff_manager_port_ == LifeStuffManager::kMaxPort()) {
+      LOG(kError) << "ClientController failed to connect to LifeStuffManager on all ports in range "
+                  << LifeStuffManager::kMinPort() << " to " << LifeStuffManager::kMaxPort();
       return false;
     }
-    request_transport->Connect(++invigilator_port_, result);
+    request_transport->Connect(++lifestuff_manager_port_, result);
   }
   return true;
 }
 
-bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) {
+bool ClientController::ConnectToLifeStuffManager(std::string& path_to_new_installer) {
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   std::mutex mutex;
   std::condition_variable condition_variable;
@@ -133,8 +133,8 @@ bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) 
 
   request_transport->on_message_received().connect(
       [&mutex, &condition_variable, &state, &path_to_new_installer, this]
-      (const std::string& message, Port invigilator_port) {
-        HandleRegisterResponse(message, invigilator_port, mutex, condition_variable, state,
+      (const std::string& message, Port lifestuff_manager_port) {
+        HandleRegisterResponse(message, lifestuff_manager_port, mutex, condition_variable, state,
                                path_to_new_installer);
       });
   request_transport->on_error().connect(
@@ -150,8 +150,8 @@ bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) 
     request.set_version(VersionToInt(kApplicationVersion));
     request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
                                                 request.SerializeAsString()),
-                            invigilator_port_);
-    LOG(kVerbose) << "Sending registration request to port " << invigilator_port_;
+                            lifestuff_manager_port_);
+    LOG(kVerbose) << "Sending registration request to port " << lifestuff_manager_port_;
     {
       std::unique_lock<std::mutex> lock(mutex);
       if (!condition_variable.wait_for(lock,
@@ -173,7 +173,7 @@ bool ClientController::ConnectToInvigilator(std::string& path_to_new_installer) 
 }
 
 void ClientController::HandleRegisterResponse(const std::string& message,
-                                              Port /*invigilator_port*/,
+                                              Port /*lifestuff_manager_port*/,
                                               std::mutex& mutex,
                                               std::condition_variable& condition_variable,
                                               State& state,
@@ -224,7 +224,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
                                               response.bootstrap_endpoint_port(n)));
   }
 
-  LOG(kSuccess) << "Successfully registered with Invigilator on port " << invigilator_port_;
+  LOG(kSuccess) << "Successfully registered with LifeStuffManager on port " << lifestuff_manager_port_;
   std::lock_guard<std::mutex> lock(mutex);
   state = kVerified;
   condition_variable.notify_one();
@@ -234,7 +234,7 @@ bool ClientController::StartVault(const Fob& fob,
                                   const std::string& account_name,
                                   const fs::path& chunkstore) {
   if (state_ != kVerified) {
-    LOG(kError) << "Not connected to Invigilator.";
+    LOG(kError) << "Not connected to LifeStuffManager.";
     return false;
   }
 
@@ -261,13 +261,13 @@ bool ClientController::StartVault(const Fob& fob,
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleStartStopVaultResponse<protobuf::StartVaultResponse>(message, callback);
       });
   request_transport->on_error().connect([this, callback](const int& error) {
@@ -275,10 +275,10 @@ bool ClientController::StartVault(const Fob& fob,
     callback(false);
   });
 
-  LOG(kVerbose) << "Sending request to start vault to port " << invigilator_port_;
+  LOG(kVerbose) << "Sending request to start vault to port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kStartVaultRequest,
                                               start_vault_request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
   {
     std::unique_lock<std::mutex> local_lock(local_mutex);
     if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&done] { return done; })) {
@@ -308,7 +308,7 @@ bool ClientController::StopVault(const asymm::PlainText& data,
                                  const asymm::Signature& signature,
                                  const Identity& identity) {
   if (state_ != kVerified) {
-    LOG(kError) << "Not connected to Invigilator.";
+    LOG(kError) << "Not connected to LifeStuffManager.";
     return false;
   }
 
@@ -330,13 +330,13 @@ bool ClientController::StopVault(const asymm::PlainText& data,
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleStartStopVaultResponse<protobuf::StopVaultResponse>(message, callback);
       });
   request_transport->on_error().connect([this, callback](const int& error) {
@@ -344,10 +344,10 @@ bool ClientController::StopVault(const asymm::PlainText& data,
     callback(false);
   });
 
-  LOG(kVerbose) << "Sending request to stop vault to port " << invigilator_port_;
+  LOG(kVerbose) << "Sending request to stop vault to port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kStopVaultRequest,
                                               stop_vault_request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
 
   std::unique_lock<std::mutex> lock(local_mutex);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
@@ -381,11 +381,11 @@ void ClientController::HandleStartStopVaultResponse(const std::string& message,
 }
 
 bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval) {
-  if (update_interval < Invigilator::kMinUpdateInterval() ||
-      update_interval > Invigilator::kMaxUpdateInterval()) {
+  if (update_interval < LifeStuffManager::kMinUpdateInterval() ||
+      update_interval > LifeStuffManager::kMaxUpdateInterval()) {
     LOG(kError) << "Cannot set update interval to " << update_interval << "  It must be in range ["
-                << Invigilator::kMinUpdateInterval() << ", "
-                << Invigilator::kMaxUpdateInterval() << "]";
+                << LifeStuffManager::kMinUpdateInterval() << ", "
+                << LifeStuffManager::kMaxUpdateInterval() << "]";
     return false;
   }
   return SetOrGetUpdateInterval(update_interval) == update_interval;
@@ -398,7 +398,7 @@ bptime::time_duration ClientController::GetUpdateInterval() {
 bptime::time_duration ClientController::SetOrGetUpdateInterval(
       const bptime::time_duration& update_interval) {
   if (state_ != kVerified) {
-    LOG(kError) << "Not connected to Invigilator.";
+    LOG(kError) << "Not connected to LifeStuffManager.";
     return bptime::pos_infin;
   }
 
@@ -418,13 +418,13 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
       return bptime::pos_infin;
   }
   request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*invigilator_port*/) {
+      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
         HandleUpdateIntervalResponse(message, callback);
       });
   request_transport->on_error().connect([this, callback](const int& error) {
@@ -434,10 +434,10 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
 
   std::unique_lock<std::mutex> lock(local_mutex);
   LOG(kVerbose) << "Sending request to " << (update_interval.is_pos_infinity() ? "get" : "set")
-                << " update interval to Invigilator on port " << invigilator_port_;
+                << " update interval to LifeStuffManager on port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kUpdateIntervalRequest,
                                               update_interval_request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(10),
@@ -472,14 +472,14 @@ bool ClientController::GetBootstrapNodes(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(invigilator_port_, result);
+  request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to Invigilator.";
+    LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
   request_transport->on_message_received().connect(
       [this, callback, &bootstrap_endpoints] (const std::string& message,
-                                             Port /*invigilator_port*/) {
+                                             Port /*lifestuff_manager_port*/) {
         HandleBootstrapResponse(message, bootstrap_endpoints, callback);
       });
   request_transport->on_error().connect([callback](const int& error) {
@@ -487,10 +487,10 @@ bool ClientController::GetBootstrapNodes(
     callback(false);
   });
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Requesting bootstrap nodes from port " << invigilator_port_;
+  LOG(kVerbose) << "Requesting bootstrap nodes from port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kBootstrapRequest,
                                               request.SerializeAsString()),
-                          invigilator_port_);
+                          lifestuff_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
     return false;
@@ -561,7 +561,7 @@ void ClientController::HandleUpdateIntervalResponse(
 }
 
 void ClientController::HandleReceivedRequest(const std::string& message, Port peer_port) {
-  /*assert(peer_port == invigilator_port_);*/  // Invigilator does not currently use
+  /*assert(peer_port == lifestuff_manager_port_);*/  // LifeStuffManager does not currently use
                                                // its established port to contact ClientController
   MessageType type;
   std::string payload;
@@ -634,7 +634,7 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
                                  vault_join_confirmation_ack.SerializeAsString());
 }
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 

@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_
-#define MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_
+#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LIFESTUFF_MANAGER_H_
+#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LIFESTUFF_MANAGER_H_
 
 #include <condition_variable>
 #include <mutex>
@@ -34,16 +34,16 @@
 
 #include "maidsafe/private/utils/fob.h"
 
-#include "maidsafe/private/process_management/download_manager.h"
-#include "maidsafe/private/process_management/process_manager.h"
-#include "maidsafe/private/process_management/utils.h"
-#include "maidsafe/private/process_management/vault_info_pb.h"
+#include "maidsafe/private/lifestuff_manager/download_manager.h"
+#include "maidsafe/private/lifestuff_manager/process_manager.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
 
 namespace maidsafe {
 
 namespace priv {
 
-namespace process_management {
+namespace lifestuff_manager {
 
 namespace detail { class Platform; }
 
@@ -65,8 +65,8 @@ enum class MessageType {
   kVaultShutdownRequest,
   kVaultShutdownResponse,
   kVaultShutdownResponseAck,
-  kSendEndpointToInvigilatorRequest,
-  kSendEndpointToInvigilatorResponse,
+  kSendEndpointToLifeStuffManagerRequest,
+  kSendEndpointToLifeStuffManagerResponse,
   kUpdateIntervalRequest,
   kUpdateIntervalResponse,
   kNewVersionAvailable,
@@ -75,15 +75,15 @@ enum class MessageType {
   kBootstrapResponse
 };
 
-// The Invigilator has several responsibilities:
+// The LifeStuffManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file as having been started before.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
 // * Regularly checks for (and downloads) updated client or vault executables.
-class Invigilator {
+class LifeStuffManager {
  public:
-  Invigilator();
-  ~Invigilator();
+  LifeStuffManager();
+  ~LifeStuffManager();
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5490; }
 
@@ -108,18 +108,19 @@ class Invigilator {
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
   typedef std::pair<std::string, uint16_t> EndPoint;
 
-  Invigilator(const Invigilator&);
-  Invigilator operator=(const Invigilator&);
+  LifeStuffManager(const LifeStuffManager&);
+  LifeStuffManager operator=(const LifeStuffManager&);
 
   void Initialise();
-  void RestartInvigilator(const std::string& latest_file, const std::string& executable_name) const;
+  void RestartLifeStuffManager(const std::string& latest_file,
+                               const std::string& executable_name) const;
 
   // Config file handling
   bool CreateConfigFile();
   bool ReadConfigFileAndStartVaults();
   bool WriteConfigFile();
-  bool ReadFileToInvigilatorConfig(const boost::filesystem::path& file_path,
-                                   protobuf::InvigilatorConfig& config);
+  bool ReadFileToLifeStuffManagerConfig(const boost::filesystem::path& file_path,
+                                        protobuf::LifeStuffManagerConfig& config);
 
   // Client and vault request handling
   bool ListenForMessages();
@@ -129,7 +130,8 @@ class Invigilator {
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToInvigilatorRequest(const std::string& request, std::string& response);
+  void HandleSendEndpointToLifeStuffManagerRequest(const std::string& request,
+                                                   std::string& response);
   void HandleBootstrapRequest(const std::string& request, std::string& response);
 
   // Must be in range [kMinUpdateInterval, kMaxUpdateInterval]
@@ -159,7 +161,8 @@ class Invigilator {
   // General
   bool InTestMode() const;
   std::vector<VaultInfoPtr>::iterator FindFromIdentity(const Identity& identity);
-  std::vector<Invigilator::VaultInfoPtr>::iterator FindFromProcessIndex(ProcessIndex process_index);
+  std::vector<LifeStuffManager::VaultInfoPtr>::iterator FindFromProcessIndex(
+      ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const Identity& identity);
   bool StopVault(const Identity& identity,
@@ -169,7 +172,7 @@ class Invigilator {
   void StopAllVaults();
 //  void EraseVault(const std::string& identity);
 //  int32_t ListVaults(bool select) const;
-  bool ObtainBootstrapInformation(protobuf::InvigilatorConfig& config);
+  bool ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config);
   void LoadBootstrapEndpoints(protobuf::Bootstrap& end_points);
   bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);
   bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
@@ -192,10 +195,10 @@ class Invigilator {
   bool need_to_stop_;
 };
 
-}  // namespace process_management
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_PROCESS_MANAGEMENT_INVIGILATOR_H_
+#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LIFESTUFF_MANAGER_H_
