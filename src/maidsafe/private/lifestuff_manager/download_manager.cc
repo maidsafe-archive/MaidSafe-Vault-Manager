@@ -29,8 +29,10 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/lifestuff_manager/config.h"
 #include "maidsafe/private/lifestuff_manager/return_codes.h"
 #include "maidsafe/private/lifestuff_manager/utils.h"
+
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -55,7 +57,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
       resolver_(io_service_),
       query_(site_, protocol_),
       local_path_() {
-#ifdef USE_TEST_KEYS
+#ifdef TESTING
   fs::path temp_path(GetUserAppDir());
 #else
   fs::path temp_path(GetSystemAppSupportDir());
@@ -82,15 +84,15 @@ DownloadManager::~DownloadManager() {}
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
   std::string bootstrap_content;
-#ifndef USE_TEST_KEYS
+#ifdef TESTING
+  fs::path bootstrap_file("bootstrap");
+#else
   if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
                         local_path_ / detail::kBootstrapNodesFilename)) {
     LOG(kError) << "Failed to download bootstrap file";
     return "";
   }
   fs::path bootstrap_file(local_path_ / detail::kBootstrapNodesFilename);
-#else
-  fs::path bootstrap_file("bootstrap");
 #endif
   if (!ReadFile(bootstrap_file, &bootstrap_content)) {
     LOG(kError) << "Failed to read downloaded bootstrap file";

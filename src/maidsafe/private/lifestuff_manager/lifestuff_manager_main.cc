@@ -144,7 +144,7 @@ BOOL CtrlHandler(DWORD control_type) {
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
-#ifdef USE_TEST_KEYS
+#  ifdef TESTING
   if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
     maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
     boost::mutex::scoped_lock lock(g_mutex);
@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
     LOG(kError) << "Failed to set control handler.";
     return 1;
   }
-#else
+#  else
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
   service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
   service_table[1].lpServiceProc = NULL;
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
-#endif
+#  endif
 #else
   {
     maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;

@@ -31,10 +31,10 @@ int main(int argc, char** argv) {
   fob.validation_token = maidsafe::NonEmptyString(maidsafe::RandomAlphaNumericString(64));
   try {
     if (!client.StartVault(fob, account_name, "")) {
-      LOG(kError) << "DUMMYclient: Failed to start vault " << fob.identity.string();
+      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity.string();
     }
   } catch(...) {
-    LOG(kError) << "DUMMYclient: Problem starting vault " << fob.identity.string();
+    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity.string();
   }
   LOG(kInfo) << "Identity: " << fob.identity.string();
   LOG(kInfo) << "Validation Token: " << fob.validation_token.string();

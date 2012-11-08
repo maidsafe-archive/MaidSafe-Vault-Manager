@@ -43,7 +43,7 @@ void StopHandler() {
 
 int main(int argc, char* argv[]) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
-  LOG(kInfo) << "Starting DUMMYprocess.";
+  LOG(kInfo) << "Starting dummy_vault.";
   po::options_description options_description("Allowed options");
   options_description.add_options()
       ("help", "produce help message")
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (!variables_map.count("vmid")) {
-      LOG(kInfo) << "DUMMYprocess: You must supply a vaults manager ID";
+      LOG(kInfo) << "dummy_vault: You must supply a vaults manager ID";
       return 1;
     }
     std::string usr_id("lifestuff");
@@ -74,10 +74,10 @@ int main(int argc, char* argv[]) {
     }
     std::string lifestuff_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
-      LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
+      LOG(kInfo) << "dummy_vault: Starting VaultController.";
       maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
-        LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
+        LOG(kInfo) << "dummy_vault: Vault controller failed to start. Aborting...";
         return 1;
       }
 
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
       std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
       vault_controller.GetIdentity(fob, account_name, bootstrap_endpoints);
-      LOG(kInfo) << "DUMMYprocess: Identity: " << maidsafe::Base64Substr(fob.identity.string());
+      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(fob.identity.string());
       LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token.string());
       LOG(kInfo) << "Public Key: "
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.public_key));
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
       maidsafe::Sleep(boost::posix_time::seconds(runtime));
       if (variables_map.count("nocrash")) {
         g_check_finished = true;
-        LOG(kInfo) << "DUMMYprocess: Process finishing normally. ";
+        LOG(kInfo) << "dummy_vault: Process finishing normally. ";
         return 0;
       } else {
         return 1;

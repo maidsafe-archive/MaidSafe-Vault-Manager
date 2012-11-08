@@ -18,6 +18,7 @@
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/private/lifestuff_manager/client_controller.h"
+#include "maidsafe/private/lifestuff_manager/config.h"
 #include "maidsafe/private/lifestuff_manager/vault_controller.h"
 #include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
@@ -38,7 +39,7 @@ namespace test {
 namespace {
 
 int GetNumRunningProcesses() {
-  std::string dummy(detail::kDummyName);
+  std::string dummy(detail::kVaultName);
 #ifdef MAIDSAFE_WIN32
   std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
 #else
@@ -81,8 +82,6 @@ int GetNumRunningProcesses() {
 }  // namespace
 
 TEST(LifeStuffManagerTest, FUNC_StartStop) {
-//  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kVerbose);
-
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
   {

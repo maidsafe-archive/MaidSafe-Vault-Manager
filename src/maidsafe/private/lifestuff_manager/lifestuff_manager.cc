@@ -21,6 +21,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/lifestuff_manager/config.h"
 #include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
 #include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/private/lifestuff_manager/return_codes.h"
@@ -36,24 +37,6 @@ namespace maidsafe {
 namespace priv {
 
 namespace lifestuff_manager {
-
-#ifndef MAIDSAFE_WIN32
-namespace {
-
-std::string GetUserId() {
-#ifdef USE_DUMMY
-  return "maidsafe";
-#else
-  char user_name[64] = {0};
-  int result(getlogin_r(user_name, sizeof(user_name) - 1));
-  if (0 != result)
-    return "";
-  return std::string(user_name);
-#endif
-}
-
-}  // unnamed namespace
-#endif
 
 LifeStuffManager::VaultInfo::VaultInfo()
     : process_index(),
@@ -97,7 +80,7 @@ LifeStuffManager::LifeStuffManager()
       vault_infos_mutex_(),
       client_ports_and_versions_(),
       client_ports_mutex_(),
-#ifdef USE_TEST_KEYS
+#ifdef TESTING
       config_file_path_(GetUserAppDir() / detail::kGlobalConfigFilename),
 #else
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
@@ -106,17 +89,16 @@ LifeStuffManager::LifeStuffManager()
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false) {
-#ifdef USE_TEST_KEYS
+#ifdef TESTING
   WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
 #else
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
 #endif
   asio_service_.Start();
-#ifdef USE_DUMMY
-  Initialise();
-#else
-  asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
-#endif
+//  if (detail::kUsingDummyVault)
+    Initialise();
+//  else
+//    asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
 }
 
 void LifeStuffManager::Initialise() {
@@ -1060,24 +1042,18 @@ void LifeStuffManager::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
 
 bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
-#ifdef USE_TEST_KEYS
-#ifdef USE_DUMMY
-  std::string process_name(detail::kDummyName);
-#else
-  std::string process_name(detail::kVaultName);
-#endif
+#ifdef TESTING
   fs::path executable_path(".");
-#ifdef MAIDSAFE_WIN32
+#  ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
     if (GetModuleFileName(NULL, file_name, MAX_PATH))
       executable_path = fs::path(file_name).parent_path();
-#endif
+#  endif
 #else
-  std::string process_name(detail::kVaultName);
   fs::path executable_path(GetAppInstallDir());
 #endif
-  if (!process.SetExecutablePath(executable_path /
-                                 (process_name + detail::kThisPlatform().executable_extension()))) {
+  if (!process.SetExecutablePath(
+        executable_path / (detail::kVaultName + detail::kThisPlatform().executable_extension()))) {
     LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity);
     return false;
   }
@@ -1086,12 +1062,10 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   process.AddArgument("--log_config ./maidsafe_log.ini");
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
-#ifdef USE_TEST_KEYS
-#ifndef MAIDSAFE_WIN32
-  std::string user_id(GetUserId());
+#if defined TESTING && !defined MAIDSAFE_WIN32
+  std::string user_id(detail::GetUserId());
   if (!user_id.empty())
     process.AddArgument("--usr_id " + user_id);
-#endif
 #endif
 
   LOG(kInfo) << "Process Name: " << process.name();

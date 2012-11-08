@@ -30,15 +30,6 @@ enum class MessageType;
 
 namespace detail {
 
-extern const std::string kSignatureExtension;
-const std::string kVersionFilename("version");
-const std::string kManifestFilename("manifest");
-const std::string kGlobalConfigFilename("global-config.dat");
-const std::string kBootstrapNodesFilename("bootstrap-global.dat");
-const std::string kVaultName("lifestuff_vault");
-const std::string kDummyName("dummy_vault");
-const std::string kLifeStuffManagerName("lifestuff_mgr");
-
 class Platform {
  public:
   enum class Type { kWin32, kWin64, kLinux32, kLinux64, kOsx32, kOsx64, kUnknown };

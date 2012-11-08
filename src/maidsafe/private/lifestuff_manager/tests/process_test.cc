@@ -233,7 +233,7 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest()
       : process_manager_(),
-        kProcessName_("DUMMYprocess" + detail::kThisPlatform().executable_extension()),
+        kProcessName_("dummy_vault" + detail::kThisPlatform().executable_extension()),
         kExecutablePath_(fs::path(g_parent_path) / kProcessName_) {}
 
  protected:

@@ -152,8 +152,6 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
 ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-ms_add_static_library(lifestuff_manager_test ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-ms_add_static_library(lifestuff_manager_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
@@ -161,48 +159,41 @@ ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe
 ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
 ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
 ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
-ms_add_executable(lifestuff_manager_test "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
-ms_add_executable(lifestuff_manager_demo "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
 
 target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
-target_link_libraries(maidsafe_lifestuff_manager_test maidsafe_utilities)
-target_link_libraries(maidsafe_lifestuff_manager_dummy maidsafe_utilities)
 target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(TESTprivate maidsafe_private)
 target_link_libraries(TESTutilities maidsafe_utilities)
-target_link_libraries(dummy_vault maidsafe_lifestuff_manager_dummy maidsafe_utilities)
-target_link_libraries(dummy_client maidsafe_lifestuff_manager_test maidsafe_utilities)
-target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager_dummy)
+target_link_libraries(dummy_vault maidsafe_lifestuff_manager)
+target_link_libraries(dummy_client maidsafe_lifestuff_manager)
+target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager)
-target_link_libraries(lifestuff_manager_test maidsafe_lifestuff_manager_test)
-target_link_libraries(lifestuff_manager_demo maidsafe_lifestuff_manager_test)
 target_link_libraries(signing_tool maidsafe_private)
 
 add_dependencies(TESTlifestuff_manager dummy_vault)
 
-set_target_properties(maidsafe_lifestuff_manager_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
-set_target_properties(maidsafe_lifestuff_manager_dummy PROPERTIES COMPILE_DEFINITIONS "USE_TEST_KEYS;USE_DUMMY")
-set_target_properties(lifestuff_manager_test PROPERTIES COMPILE_DEFINITIONS USE_TEST_KEYS)
-
 rename_outdated_built_exes()
+
 
 ###################################################################################################
 # Set compiler and linker flags                                                                   #
 ###################################################################################################
 include(maidsafe_standard_flags)
 
+set_target_properties(TESTlifestuff_manager dummy_vault PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
+
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
 ms_disable_warnings(${PROTO_SOURCE_FILES})
 if(UNIX)
-  SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
+  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
                               "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
                                PROPERTIES COMPILE_FLAGS "-Wno-effc++")
-  SET_SOURCE_FILES_PROPERTIES("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc"
+  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc"
                               PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
 endif()
 
