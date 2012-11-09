@@ -66,7 +66,7 @@ class DownloadManager {
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
-  boost::filesystem::path local_path_;
+  boost::filesystem::path local_path_, latest_remote_path_;
   bool initialised_;
 };
 

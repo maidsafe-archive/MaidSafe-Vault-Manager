@@ -18,8 +18,10 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/lifestuff_manager/config.h"
 #include "maidsafe/private/lifestuff_manager/process_manager.h"
 #include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/private/lifestuff_manager/tests/test_utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -233,7 +235,7 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest()
       : process_manager_(),
-        kProcessName_("dummy_vault" + detail::kThisPlatform().executable_extension()),
+        kProcessName_(detail::kVaultName),
         kExecutablePath_(fs::path(g_parent_path) / kProcessName_) {}
 
  protected:
@@ -244,6 +246,8 @@ class ProcessManagerTest : public testing::Test {
 
 
 TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
+  ASSERT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
+
   Process test;
   ASSERT_TRUE(test.SetExecutablePath(kExecutablePath_));
   test.AddArgument("--runtime");
@@ -258,6 +262,8 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   auto start(boost::posix_time::microsec_clock::universal_time());
   process_manager_.StartProcess(process_index);
   EXPECT_NE(0, process_index);
+  EXPECT_EQ(1, GetNumRunningProcesses(detail::kVaultName));
+
   process_manager_.LetProcessDie(process_index);
   process_manager_.WaitForProcesses();
   auto end(boost::posix_time::microsec_clock::universal_time());
@@ -268,6 +274,7 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   EXPECT_EQ(1, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
+  EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
 }
 
 // TEST(ProcessManagerTest, BEH_KillProcess) {

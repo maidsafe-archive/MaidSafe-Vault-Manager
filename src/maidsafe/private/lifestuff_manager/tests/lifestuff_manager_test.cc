@@ -9,6 +9,10 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
+#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+
+#include <algorithm>
+
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/algorithm/string.hpp"
 
@@ -20,9 +24,9 @@
 #include "maidsafe/private/lifestuff_manager/client_controller.h"
 #include "maidsafe/private/lifestuff_manager/config.h"
 #include "maidsafe/private/lifestuff_manager/vault_controller.h"
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
 #include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/private/lifestuff_manager/tests/test_utils.h"
 
 
 namespace bptime = boost::posix_time;
@@ -35,51 +39,6 @@ namespace priv {
 namespace lifestuff_manager {
 
 namespace test {
-
-namespace {
-
-int GetNumRunningProcesses() {
-  std::string dummy(detail::kVaultName);
-#ifdef MAIDSAFE_WIN32
-  std::string command("tasklist /fi \"imagename eq " + dummy + ".exe\" /nh > process_count.txt");
-#else
-  std::string command("ps -ef | grep " + dummy + " | grep -v grep | wc -l > process_count.txt");
-#endif
-  int result(system(command.c_str()));
-  if (result != 0) {
-    LOG(kError) << "Failed to execute command that checks processes: " << command;
-    return -1;
-  }
-
-  try {
-#ifdef MAIDSAFE_WIN32
-    int num_processes(0);
-    char process_info[256];
-    std::streamsize number_of_characters(256);
-    fs::path file_path(fs::path(".") / "process_count.txt");
-    std::ifstream file(file_path.string().c_str(), std::ios_base::binary);
-    if (!file.good())
-      return num_processes;
-    while (file.getline(process_info, number_of_characters))
-      ++num_processes;
-    num_processes -= 1;
-#else
-    std::string process_string;
-    ReadFile(fs::path(".") / "process_count.txt", &process_string);
-    boost::trim(process_string);
-    // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
-    // overall ps and the piped grep
-    int num_processes(boost::lexical_cast<int>(process_string));
-#endif
-    return num_processes;
-  }
-  catch(const std::exception& e) {
-    LOG(kError) << e.what();
-    return -1;
-  }
-}
-
-}  // namespace
 
 TEST(LifeStuffManagerTest, FUNC_StartStop) {
   // test case for startup (non-existent config file)
@@ -99,7 +58,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(min_seconds - 1)));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
-    EXPECT_EQ(0, GetNumRunningProcesses());
+    EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   }
   std::string config_contents;
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
@@ -117,11 +76,11 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     first_fob = utils::GenerateFob(nullptr);
     EXPECT_TRUE(client_controller.StartVault(first_fob, first_fob.identity.string(), ""));
     Sleep(boost::posix_time::seconds(1));
-    EXPECT_EQ(1, GetNumRunningProcesses());
+    EXPECT_EQ(1, GetNumRunningProcesses(detail::kVaultName));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
   }
-  EXPECT_EQ(0, GetNumRunningProcesses());
+  EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
@@ -147,7 +106,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_EQ(2, GetNumRunningProcesses());
+    EXPECT_EQ(2, GetNumRunningProcesses(detail::kVaultName));
     Sleep(boost::posix_time::seconds(1));
     EXPECT_TRUE(fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code));
     std::vector<std::pair<std::string, uint16_t> > bootstrap_endpoints;
@@ -161,7 +120,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     }
     EXPECT_GE(1, endpoint_matches);
   }
-  EXPECT_EQ(0, GetNumRunningProcesses());
+  EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
@@ -174,15 +133,15 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     LifeStuffManager lifestuff_manager;
     ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_EQ(2, GetNumRunningProcesses());
+    EXPECT_EQ(2, GetNumRunningProcesses(detail::kVaultName));
     asymm::PlainText data(RandomString(64));
     asymm::Signature signature1(asymm::Sign(data, first_fob.keys.private_key));
     asymm::Signature signature2(asymm::Sign(data, second_fob.keys.private_key));
     EXPECT_TRUE(client_controller.StopVault(data, signature1, first_fob.identity));
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_EQ(1, GetNumRunningProcesses());
+    EXPECT_EQ(1, GetNumRunningProcesses(detail::kVaultName));
   }
-  EXPECT_EQ(0, GetNumRunningProcesses());
+  EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
@@ -197,14 +156,14 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   // test case for existing config file with two vaults (generated in previous test case, one
   // deactivated). One vault is started by config. Two clients are then used to start 30 new vaults.
   {
-    EXPECT_EQ(0, GetNumRunningProcesses());
+    EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
     config_contents.clear();
     maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
     lifestuff_manager_config.ParseFromString(config_contents);
     EXPECT_EQ(2, lifestuff_manager_config.vault_info_size());
     LifeStuffManager lifestuff_manager;
     Sleep(boost::posix_time::seconds(2));
-    EXPECT_EQ(1, GetNumRunningProcesses());
+    EXPECT_EQ(1, GetNumRunningProcesses(detail::kVaultName));
     ClientController client_controller1([](const NonEmptyString&) {}),
                      client_controller2([](const NonEmptyString&) {});  // NOLINT (Fraser)
 
@@ -215,10 +174,10 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
       else
         EXPECT_TRUE(client_controller2.StartVault(fob, fob.identity.string(), ""));
     }
-    EXPECT_EQ(51, GetNumRunningProcesses());
+    EXPECT_EQ(51, GetNumRunningProcesses(detail::kVaultName));
   }
-  EXPECT_EQ(0, GetNumRunningProcesses());
-  config_contents = "";
+  EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
+  config_contents.clear();
   maidsafe::ReadFile(GetUserAppDir() / detail::kGlobalConfigFilename, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
   EXPECT_EQ(52, lifestuff_manager_config.vault_info_size());

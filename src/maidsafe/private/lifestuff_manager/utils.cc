@@ -45,97 +45,6 @@ asymm::PublicKey kMaidSafePublicKey() {
   return decoded_key;
 }
 
-Platform::Platform(const Platform::Type& type) : type_(type), name_() {
-  switch (type) {
-    case Type::kWin32:
-      name_ = kWinStr() + "32";
-      break;
-    case Type::kWin64:
-      name_ = kWinStr() + "64";
-      break;
-    case Type::kLinux32:
-      name_ = kLinuxStr() + "32";
-      break;
-    case Type::kLinux64:
-      name_ = kLinuxStr() + "64";
-      break;
-    case Type::kOsx32:
-      name_ = kOsxStr() + "32";
-      break;
-    case Type::kOsx64:
-      name_ = kOsxStr() + "64";
-      break;
-    default:
-      type_ = Type::kUnknown;
-      break;
-  }
-}
-
-Platform::Platform(const std::string& name) : type_(Type::kUnknown), name_(name) {
-  if (name_ == kWinStr() + "32")
-    type_ = Type::kWin32;
-  else if (name_ == kWinStr() + "64")
-    type_ = Type::kWin64;
-  else if (name_ == kLinuxStr() + "32")
-    type_ = Type::kLinux32;
-  else if (name_ == kLinuxStr() + "64")
-    type_ = Type::kLinux64;
-  else if (name_ == kOsxStr() + "32")
-    type_ = Type::kOsx32;
-  else if (name_ == kOsxStr() + "64")
-    type_ = Type::kOsx64;
-  else
-    name_.clear();
-}
-
-Platform::Platform() : type_(Type::kUnknown), name_(kTargetPlatform + kSeparator + kTargetArchitecture) {
-
-  int32_t cpu_size(CpuSize());
-#if defined MAIDSAFE_WIN32
-  if (cpu_size == 32) {
-    name_ = kWinStr() + "32";
-    type_ = Type::kWin32;
-  } else if (cpu_size == 64) {
-    name_ = kWinStr() + "64";
-    type_ = Type::kWin64;
-  }
-#elif defined MAIDSAFE_LINUX
-  if (cpu_size == 32) {
-    name_ = kLinuxStr() + "32";
-    type_ = Type::kLinux32;
-  } else if (cpu_size == 64) {
-    name_ = kLinuxStr() + "64";
-    type_ = Type::kLinux64;
-  }
-#elif defined MAIDSAFE_APPLE
-  if (cpu_size == 32) {
-    name_ = kOsxStr() + "32";
-    type_ = Type::kOsx32;
-  } else if (cpu_size == 64) {
-    name_ = kOsxStr() + "64";
-    type_ = Type::kOsx64;
-  }
-#endif
-}
-
-std::string Platform::executable_extension() const {
-  return (type_ == Type::kWin32 || type_ == Type::kWin64) ? ".exe" : "";
-}
-
-std::string Platform::installer_extension() const {
-  return (type_ == Type::kWin32 || type_ == Type::kWin64) ? ".exe" : ".deb";
-}
-
-boost::filesystem::path Platform::UpdatePath() const {
-  return boost::filesystem::path(name_);
-}
-
-Platform kThisPlatform() {
-  static Platform this_platform;
-  return this_platform;
-}
-
-
 std::string WrapMessage(const MessageType& message_type,
                         const std::string& payload) {
   protobuf::WrapperMessage wrapper_message;
@@ -160,95 +69,6 @@ bool UnwrapMessage(const std::string& wrapped_message,
   }
 }
 
-std::string GenerateFileName(const std::string& application,
-                             const Platform& platform,
-                             const std::string& version) {
-  if (application.empty()) {
-    LOG(kError) << "application is empty.";
-    return "";
-  }
-
-  if (platform.type() == Platform::Type::kUnknown) {
-    LOG(kError) << "platform type unknown.";
-    return "";
-  }
-
-  if (VersionToInt(version) == kInvalidVersion) {
-    LOG(kError) << '\"' << version << "\" is an invalid version.";
-    return "";
-  }
-
-  return application + kSeparator + platform.name() + kSeparator + version +
-         platform.executable_extension();
-}
-
-bool TokeniseFileName(const std::string& file_name,
-                      std::string* application,
-                      Platform* platform,
-                      int* version,
-                      std::string* extension) {
-  auto fail([&]()->bool {
-    if (application)
-      application->clear();
-    if (platform)
-      *platform = Platform(Platform::Type::kUnknown);
-    if (version)
-      *version = kInvalidVersion;
-    if (extension)
-      extension->clear();
-    return false;
-  });
-
-  boost::tokenizer<boost::char_separator<char>> tokens(file_name,
-                                                       boost::char_separator<char>("_"));
-  if (std::distance(tokens.begin(), tokens.end()) != 3) {
-    LOG(kWarning) << "Invalid file name " << file_name;
-    return fail();
-  }
-
-  auto itr(tokens.begin());
-  const std::string kApplication(*itr++);
-  if (kApplication.empty()) {
-    LOG(kWarning) << "application name empty in " << file_name;
-    return fail();
-  }
-
-  const Platform kPlatform(*itr);
-  if (kPlatform.type() == Platform::Type::kUnknown) {
-    LOG(kWarning) << "Invalid platform of \"" << (*itr) << "\" in " << file_name;
-    return fail();
-  }
-  ++itr;
-
-  const std::string kVersionAndExtension(*itr);
-  int versn(VersionToInt(kVersionAndExtension));
-  std::string extnsn;
-  if (versn == kInvalidVersion) {
-    size_t last_dot_pos(kVersionAndExtension.find_last_of("."));
-    versn = VersionToInt(kVersionAndExtension.substr(0, last_dot_pos));
-    if (versn == kInvalidVersion) {
-      LOG(kWarning) << "Invalid version of \"" << kVersionAndExtension.substr(0, last_dot_pos)
-                    << "\" in " << file_name;
-      return fail();
-    }
-    extnsn = kVersionAndExtension.substr(last_dot_pos);
-    if (extnsn != kPlatform.executable_extension()) {
-      LOG(kWarning) << "Invalid executable extension of \"" << extnsn << "\" in " << file_name;
-      return fail();
-    }
-  }
-
-  if (application)
-    *application = kApplication;
-  if (platform)
-    *platform = kPlatform;
-  if (version)
-    *version = versn;
-  if (extension)
-    *extension = extnsn;
-  return true;
-}
-
 std::string GenerateVmidParameter(const ProcessIndex& process_index,
                                   const Port& lifestuff_manager_port) {
   return boost::lexical_cast<std::string>(process_index) + kSeparator +
@@ -265,12 +85,13 @@ bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
 
   size_t separator_position(lifestuff_manager_identifier.find(kSeparator));
   if (separator_position == std::string::npos) {
-    LOG(kError) << "lifestuff_manager_identifier " << lifestuff_manager_identifier << " has wrong format";
+    LOG(kError) << "lifestuff_manager_identifier " << lifestuff_manager_identifier
+                << " has wrong format";
     return do_fail();
   }
   try {
-    process_index =
-        boost::lexical_cast<ProcessIndex>(lifestuff_manager_identifier.substr(0, separator_position));
+    process_index = boost::lexical_cast<ProcessIndex>(
+        lifestuff_manager_identifier.substr(0, separator_position));
     lifestuff_manager_port =
         boost::lexical_cast<Port>(lifestuff_manager_identifier.substr(separator_position + 1));
   }
@@ -292,29 +113,6 @@ bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
   }
 
   return true;
-}
-
-uint16_t GetRandomPort() {
-  static std::set<uint16_t> already_used_ports;
-  bool unique(false);
-  uint16_t port(0);
-  uint16_t failed_attempts(0);
-  do {
-    port = (RandomUint32() % 48126) + 1025;
-    unique = (already_used_ports.insert(port)).second;
-  } while (!unique && failed_attempts++ < 1000);
-  if (failed_attempts > 1000)
-    LOG(kError) << "Unable to generate unique ports";
-  return port;
-}
-
-bool GenerateFakeBootstrapFile(const int& number_of_entries) {
-  protobuf::BootstrapEndpoints eps;
-  for (int i(0); i < number_of_entries; ++i) {
-    eps.add_bootstrap_endpoint_ip("127.0.0.1");
-    eps.add_bootstrap_endpoint_port(5483);
-  }
-  return WriteFile(boost::filesystem::path(".") / "fake_bootstrap.dat", eps.SerializeAsString());
 }
 
 }  // namespace detail

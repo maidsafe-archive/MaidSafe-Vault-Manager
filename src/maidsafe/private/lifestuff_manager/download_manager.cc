@@ -57,6 +57,7 @@ DownloadManager::DownloadManager(const std::string& protocol,
       resolver_(io_service_),
       query_(site_, protocol_),
       local_path_(GetSystemAppSupportDir()),
+      latest_remote_path_(),
       initialised_(false) {
   if (InitialiseLocalPath())
     initialised_ = InitialisePublicKey();
@@ -95,7 +96,7 @@ bool DownloadManager::InitialisePublicKey() {
   try {
 #ifdef TESTING
     maidsafe_public_key_ =
-        asymm::DecodeKey(asymm::EncodedPublicKey(DownloadFile("public_key.dat")));
+        asymm::DecodeKey(asymm::EncodedPublicKey(DownloadFile("test_public_key.dat")));
 #endif
     if (!asymm::ValidateKey(maidsafe_public_key_)) {
       LOG(kError) << "MaidSafe public key invalid.";
@@ -157,7 +158,6 @@ int DownloadManager::GetAndCheckLatestRemoteVersion() {
     return kInvalidVersion;
   }
 
-  latest_remote_version_.erase(latest_remote_version_.end() - 1);
   LOG(kVerbose) << "Latest local version is " << latest_local_version_
                 << " and latest remote version is " << latest_remote_version_;
 
@@ -168,6 +168,7 @@ int DownloadManager::GetAndCheckLatestRemoteVersion() {
     return kDownloadFailure;
   }
 
+  latest_remote_path_ = fs::path(latest_remote_version_) / detail::kTargetPlatformAndArchitecture;
   if (latest_remote_version <= VersionToInt(latest_local_version_)) {
     LOG(kInfo) << "No version change.";
     return kNoVersionChange;
@@ -177,9 +178,7 @@ int DownloadManager::GetAndCheckLatestRemoteVersion() {
 }
 
 bool DownloadManager::GetManifest(std::vector<std::string>& files_in_manifest) {
-  std::string manifest_content(
-      GetAndVerifyFile(latest_remote_version_ / detail::kThisPlatform().UpdatePath() /
-                       detail::kManifestFilename));
+  std::string manifest_content(GetAndVerifyFile(latest_remote_path_ / detail::kManifestFilename));
   if (manifest_content.empty()) {
     LOG(kError) << "Failed to download manifest file";
     return false;
@@ -205,8 +204,7 @@ bool DownloadManager::GetManifest(std::vector<std::string>& files_in_manifest) {
 void DownloadManager::GetNewFiles(const std::vector<std::string>& files_in_manifest,
                                   std::vector<fs::path>& updated_files) {
   for (const auto& file : files_in_manifest) {
-    std::string content(
-        GetAndVerifyFile(latest_remote_version_ / detail::kThisPlatform().UpdatePath() / file));
+    std::string content(GetAndVerifyFile(latest_remote_path_ / file));
     if (content.empty())
       continue;
 

@@ -45,12 +45,13 @@ LocalTcpTransport::~LocalTcpTransport() {
   CloseConnections();
 }
 
-void LocalTcpTransport::StartListening(Port port, int& result) {
+Port LocalTcpTransport::StartListening(Port port, int& result) {
   std::unique_lock<std::mutex> lock(mutex_);
   strand_.post(std::bind(&LocalTcpTransport::DoStartListening, shared_from_this(), port,
                              &result));
   cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
   done_ = false;
+  return acceptor_.local_endpoint().port();
 }
 
 void LocalTcpTransport::DoStartListening(Port port, int* result) {

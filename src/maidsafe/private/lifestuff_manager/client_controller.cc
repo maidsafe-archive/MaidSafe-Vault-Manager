@@ -85,13 +85,10 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
 }
 
 bool ClientController::StartListeningPort() {
-  local_port_ = detail::GetRandomPort();
   int count(0), result(1);
-  receiving_transport_->StartListening(local_port_, result);
-  while (result != kSuccess && count++ < 100) {
-    local_port_ = detail::GetRandomPort();
-    receiving_transport_->StartListening(local_port_, result);
-  }
+  local_port_ = receiving_transport_->StartListening(0, result);
+  while (result != kSuccess && count++ < 10)
+    local_port_ = receiving_transport_->StartListening(0, result);
 
   if (result != kSuccess) {
     LOG(kError) << "Failed to start listening port. Aborting initialisation.";
@@ -596,10 +593,6 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
     fs::path new_version(new_version_available.new_version_filepath());
     if (!fs::exists(new_version, error_code) || error_code) {
       LOG(kError) << "New version file missing: " << new_version;
-      new_version_available_ack.set_new_version_filepath("");
-    } else if (!detail::TokeniseFileName(new_version.filename().string())) {
-      LOG(kError) << "New version " << new_version_available.new_version_filepath()
-                  << " isn't a valid MaidSafe filename.";
       new_version_available_ack.set_new_version_filepath("");
     } else {
       new_version_available_ack.set_new_version_filepath(

@@ -24,14 +24,37 @@ namespace lifestuff_manager {
 namespace detail {
 
 const std::string kSignatureExtension(".sig");
-const std::string kVersionFilename("version.gz");
+const std::string kVersionFilename("version.dat");
 const std::string kManifestFilename("manifest.gz");
 const std::string kGlobalConfigFilename("global-config.dat");
 const std::string kGlobalBootstrapFilename("global-bootstrap.dat");
 const std::string kLifeStuffManagerName("lifestuff_mgr");
 
+const std::string kExecutableExtension([]()->std::string {
+    if (kTargetPlatform == "Win8" || kTargetPlatform == "Win7" || kTargetPlatform == "Vista")
+      return ".exe";
+    if (kTargetPlatform == "OSX10.8")
+      return "";
+    if (kTargetPlatform == "Linux")
+      return "";
+    return ".unknown";
+  }());
+
+const std::string kInstallerExtension([]()->std::string {
+    if (kTargetPlatform == "Win8" || kTargetPlatform == "Win7" || kTargetPlatform == "Vista")
+      return ".exe";
+    if (kTargetPlatform == "OSX10.8")
+      return ".dmg";
+    if (kTargetPlatform == "Linux")
+      return ".rpm";
+    return ".unknown";
+  }());
+
+const std::string kTargetPlatformAndArchitecture(kTargetPlatform + '_' + kTargetArchitecture);
+
+
 #ifdef USE_DUMMY_VAULT
-const std::string kVaultName("dummy_vault");
+const std::string kVaultName("dummy_vault" + kExecutableExtension);
 
 #  ifndef MAIDSAFE_WIN32
 std::string GetUserId() {
@@ -40,7 +63,7 @@ std::string GetUserId() {
 #  endif
 
 #else
-const std::string kVaultName("lifestuff_vault");
+const std::string kVaultName("lifestuff_vault" + kExecutableExtension);
 
 #  ifndef MAIDSAFE_WIN32
 std::string GetUserId() {

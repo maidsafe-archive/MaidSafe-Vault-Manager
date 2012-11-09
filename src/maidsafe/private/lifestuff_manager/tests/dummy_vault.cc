@@ -51,9 +51,8 @@ int main(int argc, char* argv[]) {
       ("nocrash", "set no crash on runtime ended")
       ("vmid", po::value<std::string>(), "vaults manager ID")
       ("nocontroller", "set to use no vault controller")
-      ("usr_id",
-          po::value<std::string>()->default_value("lifestuff"),
-          "user id if running under in non-win OS and from inside a process");
+      ("usr_id", po::value<std::string>()->default_value("lifestuff"),
+          "user id if running in non-win OS and from inside a process");
   try {
     po::variables_map variables_map;
     po::store(po::command_line_parser(argc, argv).options(options_description).
@@ -61,11 +60,11 @@ int main(int argc, char* argv[]) {
     po::notify(variables_map);
 
     if (variables_map.count("help")) {
-        LOG(kInfo) << options_description;
+        std::cout << options_description;
         return 1;
     }
     if (!variables_map.count("vmid")) {
-      LOG(kInfo) << "dummy_vault: You must supply a vaults manager ID";
+      LOG(kError) << "dummy_vault: You must supply a vaults manager ID";
       return 1;
     }
     std::string usr_id("lifestuff");
@@ -77,7 +76,7 @@ int main(int argc, char* argv[]) {
       LOG(kInfo) << "dummy_vault: Starting VaultController.";
       maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
-        LOG(kInfo) << "dummy_vault: Vault controller failed to start. Aborting...";
+        LOG(kError) << "dummy_vault: Vault controller failed to start. Aborting...";
         return 1;
       }
 

@@ -51,9 +51,8 @@ class DownloadManagerTest: public testing::Test {
 };
 
 TEST_F(DownloadManagerTest, BEH_Update_Successful) {
-  InitialiseDownloadManager("/downloads/tests/test_successful");
+  InitialiseDownloadManager("/downloads/download_manager_tests/successful");
   std::vector<fs::path> updated_files;
-  // NOTE: version file on server MUST be set to "1.01.02"
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kSuccess, download_manager_->Update(updated_files));
   EXPECT_FALSE(updated_files.empty());
@@ -73,9 +72,8 @@ TEST_F(DownloadManagerTest, BEH_Update_Successful) {
 }
 
 TEST_F(DownloadManagerTest, BEH_Update_HasLatestVersion) {
-  InitialiseDownloadManager("/downloads/tests/test_has_latest");
+  InitialiseDownloadManager("/downloads/download_manager_tests/has_latest");
   std::vector<fs::path> updated_files;
-  // NOTE: version file on server MUST be set to "1.01.02"
   SetLatestLocalVersion("1.1.002");
   EXPECT_EQ(kNoVersionChange, download_manager_->Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
@@ -92,7 +90,7 @@ TEST_F(DownloadManagerTest, BEH_Update_HasLatestVersion) {
 }
 
 TEST_F(DownloadManagerTest, BEH_Update_NoManifestFile) {
-  InitialiseDownloadManager("/downloads/tests/test_no_manifest");
+  InitialiseDownloadManager("/downloads/download_manager_tests/no_manifest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kManifestFailure, download_manager_->Update(updated_files));
@@ -110,7 +108,7 @@ TEST_F(DownloadManagerTest, BEH_Update_NoManifestFile) {
 }
 
 TEST_F(DownloadManagerTest, BEH_Update_IncorrectManifestFile) {
-  InitialiseDownloadManager("/downloads/tests/test_incorrect_manifest");
+  InitialiseDownloadManager("/downloads/download_manager_tests/incorrect_manifest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));
@@ -121,7 +119,7 @@ TEST_F(DownloadManagerTest, BEH_Update_IncorrectManifestFile) {
 }
 
 TEST_F(DownloadManagerTest, BEH_Update_NoSignature) {
-  InitialiseDownloadManager("/downloads/tests/test_no_signature");
+  InitialiseDownloadManager("/downloads/download_manager_tests/no_signature");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));
@@ -132,7 +130,7 @@ TEST_F(DownloadManagerTest, BEH_Update_NoSignature) {
 }
 
 TEST_F(DownloadManagerTest, BEH_Update_InvalidSignature) {
-  InitialiseDownloadManager("/downloads/tests/test_incorrect_signature");
+  InitialiseDownloadManager("/downloads/download_manager_tests/incorrect_signature");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));

@@ -129,7 +129,6 @@ void LifeStuffManager::Initialise() {
     Sleep(boost::posix_time::seconds(1));
   }
 
-  download_manager_.SetLatestLocalVersion(kApplicationVersion);
   UpdateExecutor();
 
 
@@ -867,10 +866,7 @@ void LifeStuffManager::UpdateExecutor() {
   if (!new_local_vault_path.empty()) {
     StopAllVaults();
     boost::system::error_code error_code;
-    fs::rename(new_local_vault_path,
-               GetAppInstallDir() / (detail::kVaultName +
-                                     detail::kThisPlatform().executable_extension()),
-               error_code);
+    fs::rename(new_local_vault_path, GetAppInstallDir() / detail::kVaultName, error_code);
     if (error_code)
       LOG(kError) << "Failed to move new vault executable.";
 
@@ -1052,8 +1048,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
 #else
   fs::path executable_path(GetAppInstallDir());
 #endif
-  if (!process.SetExecutablePath(
-        executable_path / (detail::kVaultName + detail::kThisPlatform().executable_extension()))) {
+  if (!process.SetExecutablePath(executable_path / detail::kVaultName)) {
     LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity);
     return false;
   }
