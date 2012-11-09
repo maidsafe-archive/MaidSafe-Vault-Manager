@@ -68,31 +68,35 @@ class RemoteChunkStore {
         : op_type(),
           active(false),
           ready(false),
+          try_cache(false),
           fob(),
           local_version(),
           content(),
           callback() {}
-    explicit OperationData(const OpType& op_type_in)
-        : op_type(op_type_in),
+    explicit OperationData(const OpType& op_type)
+        : op_type(op_type),
           active(false),
           ready(false),
+          try_cache(false),
           fob(),
           local_version(),
           content(),
           callback() {}
-    OperationData(const OpType& op_type_in,
-                  const OpFunctor& callback_in,
-                  const Fob& fob_in,
-                  bool ready_in)
-        : op_type(op_type_in),
+    OperationData(const OpType& op_type,
+                  const OpFunctor& callback,
+                  const Fob& fob,
+                  bool ready,
+                  bool try_cache)
+        : op_type(op_type),
           active(false),
-          ready(ready_in),
-          fob(fob_in),
+          ready(ready),
+          try_cache(try_cache),
+          fob(fob),
           local_version(),
           content(),
-          callback(callback_in) {}
+          callback(callback) {}
     OpType op_type;
-    bool active, ready;
+    bool active, ready, try_cache;
     Fob fob;
     ChunkVersion local_version;
     NonEmptyString content;
@@ -118,7 +122,7 @@ class RemoteChunkStore {
 
   ~RemoteChunkStore();
 
-  std::string Get(const ChunkId& name, const Fob& fob);
+  std::string Get(const ChunkId& name, const Fob& fob, bool try_cache = true);
 
   int GetAndLock(const ChunkId& name,
                  const ChunkVersion& local_version,
