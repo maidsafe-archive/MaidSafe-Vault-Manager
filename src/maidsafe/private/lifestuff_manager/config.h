@@ -12,12 +12,7 @@
 #ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CONFIG_H_
 #define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CONFIG_H_
 
-#include <cstdint>
 #include <string>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/rsa.h"
 
 
 namespace maidsafe {
@@ -29,10 +24,10 @@ namespace lifestuff_manager {
 namespace detail {
 
 const std::string kSignatureExtension(".sig");
-const std::string kVersionFilename("version");
-const std::string kManifestFilename("manifest");
+const std::string kVersionFilename("version.gz");
+const std::string kManifestFilename("manifest.gz");
 const std::string kGlobalConfigFilename("global-config.dat");
-const std::string kBootstrapNodesFilename("bootstrap-global.dat");
+const std::string kGlobalBootstrapFilename("global-bootstrap.dat");
 const std::string kLifeStuffManagerName("lifestuff_mgr");
 
 #ifdef USE_DUMMY_VAULT

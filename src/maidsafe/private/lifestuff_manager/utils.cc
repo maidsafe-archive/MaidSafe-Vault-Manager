@@ -88,7 +88,8 @@ Platform::Platform(const std::string& name) : type_(Type::kUnknown), name_(name)
     name_.clear();
 }
 
-Platform::Platform() : type_(Type::kUnknown), name_() {
+Platform::Platform() : type_(Type::kUnknown), name_(kTargetPlatform + kSeparator + kTargetArchitecture) {
+
   int32_t cpu_size(CpuSize());
 #if defined MAIDSAFE_WIN32
   if (cpu_size == 32) {

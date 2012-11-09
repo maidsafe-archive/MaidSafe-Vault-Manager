@@ -50,123 +50,138 @@ DownloadManager::DownloadManager(const std::string& protocol,
     : protocol_(protocol),
       site_(site),
       location_(location),
-      latest_local_version_("0.00.00"),
-      latest_remote_version_("0.00.00"),
-      maidsafe_public_key_(),
+      latest_local_version_(kApplicationVersion),
+      latest_remote_version_("0.0.000"),
+      maidsafe_public_key_(detail::kMaidSafePublicKey()),
       io_service_(),
       resolver_(io_service_),
       query_(site_, protocol_),
-      local_path_() {
-#ifdef TESTING
-  fs::path temp_path(GetUserAppDir());
-#else
-  fs::path temp_path(GetSystemAppSupportDir());
-#endif
-
-  boost::system::error_code error_code;
-  LOG(kError) << "temp_path: " << temp_path;
-  if (!fs::exists(temp_path, error_code))
-    fs::create_directories(temp_path, error_code);
-  if (error_code) {
-    LOG(kError) << "Problem establishing temporary path for downloads.";
-  } else {
-    local_path_ = temp_path;
-  }
-
-  LOG(kInfo) << "Using the production fob.";
-  maidsafe_public_key_ = detail::kMaidSafePublicKey();
-
-  if (!asymm::ValidateKey(maidsafe_public_key_))
-    LOG(kError) << "MaidSafe public key invalid";
+      local_path_(GetSystemAppSupportDir()),
+      initialised_(false) {
+  if (InitialiseLocalPath())
+    initialised_ = InitialisePublicKey();
 }
 
-DownloadManager::~DownloadManager() {}
-
-std::string DownloadManager::RetrieveBootstrapInfo() {
-  std::string bootstrap_content;
+DownloadManager::~DownloadManager() {
 #ifdef TESTING
-  fs::path bootstrap_file("bootstrap");
-#else
-  if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
-                        local_path_ / detail::kBootstrapNodesFilename)) {
-    LOG(kError) << "Failed to download bootstrap file";
-    return "";
-  }
-  fs::path bootstrap_file(local_path_ / detail::kBootstrapNodesFilename);
+  boost::system::error_code error_code;
+  if (!local_path_.empty())
+    fs::remove_all(local_path_, error_code);
 #endif
-  if (!ReadFile(bootstrap_file, &bootstrap_content)) {
-    LOG(kError) << "Failed to read downloaded bootstrap file";
+}
+
+bool DownloadManager::InitialiseLocalPath() {
+#ifdef TESTING
+  boost::system::error_code error_code;
+  local_path_ = fs::unique_path(fs::temp_directory_path(error_code) /
+                                "MaidSafe_Test_DownloadManager_%%%%-%%%%-%%%%");
+#endif
+  if (!fs::exists(local_path_, error_code)) {
+    if (!fs::create_directories(local_path_, error_code) || error_code) {
+      LOG(kError) << "Problem establishing temporary path for downloads: " << error_code.message();
+      local_path_.clear();
+      return false;
+    }
+  }
+  if (!fs::is_directory(local_path_, error_code) || error_code) {
+    LOG(kError) << "Download local path is not a directory: " << error_code.message();
+    local_path_.clear();
+    return false;
+  }
+  return true;
+}
+
+bool DownloadManager::InitialisePublicKey() {
+  try {
+#ifdef TESTING
+    maidsafe_public_key_ =
+        asymm::DecodeKey(asymm::EncodedPublicKey(DownloadFile("public_key.dat")));
+#endif
+    if (!asymm::ValidateKey(maidsafe_public_key_)) {
+      LOG(kError) << "MaidSafe public key invalid.";
+      return false;
+    }
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << "Exception validating MaidSafe public key: " << e.what();
+    return false;
+  }
+  return true;
+}
+
+std::string DownloadManager::GetBootstrapInfo() {
+  if (!initialised_) {
+    LOG(kError) << "DownloadManager is not initialised.";
     return "";
   }
-
+  std::string bootstrap_content(GetAndVerifyFile(detail::kGlobalBootstrapFilename));
+  if (bootstrap_content.empty())
+    LOG(kError) << "Failed to download bootstrap file.";
   return bootstrap_content;
 }
 
 int DownloadManager::Update(std::vector<fs::path>& updated_files) {
-  RetrieveLatestRemoteVersion();
-  LOG(kVerbose) << "Latest local version is " << latest_local_version_;
-  LOG(kVerbose) << "Latest remote version is " << latest_remote_version_;
+  updated_files.clear();
+  if (!initialised_) {
+    LOG(kError) << "DownloadManager is not initialised.";
+    return kUninitialised;
+  }
+  int latest_remote_version(GetAndCheckLatestRemoteVersion());
+  if (latest_remote_version < 0)
+    return latest_remote_version;
+
+  boost::system::error_code error_code;
+  if (!fs::create_directories(local_path_ / latest_remote_version_, error_code) || error_code) {
+    LOG(kError) << "Failed to create download directory for latest version at "
+                << local_path_ / latest_remote_version_ << ": " << error_code.message();
+    return kLocalFailure;
+  }
 
   std::vector<std::string> files_in_manifest;
-  if (VersionToInt(latest_remote_version_) <= VersionToInt(latest_local_version_)) {
+  if (!GetManifest(files_in_manifest))
+    return kManifestFailure;
+
+  GetNewFiles(files_in_manifest, updated_files);
+  if (updated_files.empty())
+    return kDownloadFailure;
+
+  latest_local_version_ = latest_remote_version_;
+  return kSuccess;
+}
+
+int DownloadManager::GetAndCheckLatestRemoteVersion() {
+  latest_remote_version_ = GetAndVerifyFile(detail::kVersionFilename);
+  if (latest_remote_version_.empty()) {
+    LOG(kError) << "Failed to download version file.";
+    latest_remote_version_ = "0.0.000";
+    return kInvalidVersion;
+  }
+
+  latest_remote_version_.erase(latest_remote_version_.end() - 1);
+  LOG(kVerbose) << "Latest local version is " << latest_local_version_
+                << " and latest remote version is " << latest_remote_version_;
+
+  int latest_remote_version(VersionToInt(latest_remote_version_));
+  if (latest_remote_version == kInvalidVersion) {
+    LOG(kError) << "Downloaded version file yields invalid version: " << latest_remote_version_;
+    latest_remote_version_ = "0.0.000";
+    return kDownloadFailure;
+  }
+
+  if (latest_remote_version <= VersionToInt(latest_local_version_)) {
     LOG(kInfo) << "No version change.";
     return kNoVersionChange;
   }
 
-  boost::system::error_code error;
-  fs::create_directories(local_path_ / latest_remote_version_, error);
-  if (error) {
-    LOG(kError) << "Failed to create download directory for latest version "
-                << latest_remote_version_;
-    return kLocalFailure;
-  }
-
-  fs::path remote_update_path(detail::kThisPlatform().UpdatePath() / latest_remote_version_);
-  if (!RetrieveManifest(remote_update_path / detail::kManifestFilename, files_in_manifest)) {
-    LOG(kError) << "Manifest was not successfully retrieved";
-    return kManifestFailure;
-  }
-
-  for (auto file : files_in_manifest) {
-    if (!GetAndVerifyFile(remote_update_path / file, local_path_ / latest_remote_version_ / file)) {
-      LOG(kError) << "Failed to get and verify file: " << file;
-      updated_files.clear();
-      return kDownloadFailure;
-    }
-    LOG(kInfo) << "Updated file: " << file;
-    updated_files.push_back(local_path_ / latest_remote_version_ / file);
-  }
-  latest_local_version_ = latest_remote_version_;
-
-  return kSuccess;
+  return latest_remote_version;
 }
 
-std::string DownloadManager::RetrieveLatestRemoteVersion() {
-  if (!GetAndVerifyFile(detail::kVersionFilename, local_path_ / detail::kVersionFilename)) {
-    LOG(kError) << "Failed to download version file";
-    return "";
-  }
-  std::string version_content;
-  if (!ReadFile(local_path_ / detail::kVersionFilename, &version_content)) {
-    LOG(kError) << "Failed to read downloaded version file";
-    return "";
-  }
-  latest_remote_version_ = version_content.substr(0, version_content.size() - 1);
-  return latest_remote_version_;
-}
-
-bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
-                                       std::vector<std::string>& files_in_manifest) {
-  if (!GetAndVerifyFile(manifest_download_path, local_path_ / latest_remote_version_ /
-                        detail::kManifestFilename)) {
+bool DownloadManager::GetManifest(std::vector<std::string>& files_in_manifest) {
+  std::string manifest_content(
+      GetAndVerifyFile(latest_remote_version_ / detail::kThisPlatform().UpdatePath() /
+                       detail::kManifestFilename));
+  if (manifest_content.empty()) {
     LOG(kError) << "Failed to download manifest file";
-    return false;
-  }
-
-  std::string manifest_content;
-  if (!ReadFile(local_path_ / latest_remote_version_ / detail::kManifestFilename,
-                &manifest_content)) {
-    LOG(kError) << "Failed to read downloaded manifest file";
     return false;
   }
 
@@ -180,165 +195,124 @@ bool DownloadManager::RetrieveManifest(const fs::path& manifest_download_path,
   }
 
 #ifdef DEBUG
-  for (std::string file : files_in_manifest)
+  for (auto file : files_in_manifest)
     LOG(kInfo) << "file in manifest: " << file;
 #endif
 
   return !files_in_manifest.empty();
 }
 
-bool DownloadManager::GetAndVerifyFile(const fs::path& from_path, const fs::path& to_path) {
-  /*std::string signature(DownloadFileToMemory(from_path.string() + detail::kSignatureExtension));
-  if (signature.empty()) {
-    LOG(kWarning) << "Failed to download signature for file " << from_path;
-    return false;
-  }*/
+void DownloadManager::GetNewFiles(const std::vector<std::string>& files_in_manifest,
+                                  std::vector<fs::path>& updated_files) {
+  for (const auto& file : files_in_manifest) {
+    std::string content(
+        GetAndVerifyFile(latest_remote_version_ / detail::kThisPlatform().UpdatePath() / file));
+    if (content.empty())
+      continue;
 
-  if (!DownloadFileToDisk(from_path, to_path)) {
-    LOG(kWarning) << "Failed to download file " << from_path;
-    return false;
+    fs::path new_file_path(local_path_ / latest_remote_version_ / file);
+    if (!WriteFile(new_file_path, content)) {
+      LOG(kError) << "Failed to write downloaded file to " << new_file_path;
+      continue;
+    }
+
+    LOG(kInfo) << "Updated file: " << new_file_path;
+    updated_files.push_back(new_file_path);
   }
-
-  /*int result(asymm::CheckFileSignature(to_path, signature, maidsafe_public_key_));
-  if (result != kSuccess)  {
-    LOG(kError) << "Signature of " << to_path << " is invalid. Removing file: " << result;
-    boost::system::error_code error;
-    fs::remove(to_path, error);
-    if (error)
-      LOG(kError) << "Filed to remove file " << to_path << " with invalid signature.";
-    return false;
-  }
-  LOG(kVerbose) << "Signature of " << to_path << " is valid.";*/
-
-  return true;
 }
 
-bool DownloadManager::PrepareDownload(const fs::path& from_path,
-                                      asio::streambuf* response_buffer,
-                                      std::istream* response_stream,
-                                      ip::tcp::socket* socket) {
+std::string DownloadManager::GetAndVerifyFile(const fs::path& remote_path) {
+  try {
+    asymm::Signature signature(DownloadFile(remote_path.string() + detail::kSignatureExtension));
+    asymm::PlainText contents(DownloadFile(remote_path));
+    if (!asymm::CheckSignature(contents, signature, maidsafe_public_key_)) {
+      LOG(kError) << "Signature of " << remote_path << " is invalid.";
+      return "";
+    }
+    return contents.string();
+  }
+  catch(const std::exception &e) {
+    LOG(kError) << "Error getting and verifying " << remote_path << ": " << e.what();
+    return "";
+  }
+}
+
+bool DownloadManager::PrepareDownload(const fs::path& remote_path,
+                                      asio::streambuf& response_buffer,
+                                      std::istream& response_stream,
+                                      ip::tcp::socket& socket) {
   try {
     asio::streambuf request_buffer;
     std::ostream request_stream(&request_buffer);
-    asio::connect(*socket, resolver_.resolve(query_));
-    // Form the request. We specify the "Connection: close" header so that the
-    // server will close the socket after transmitting the response. This will
-    // allow us to treat all data up until the EOF as the content.
-    request_stream << "GET /" << location_ << "/" << from_path.generic_string() << " HTTP/1.0\r\n";
-    request_stream << "Host: " << site_ << "\r\n";
-    request_stream << "Accept: */*\r\n";
-    request_stream << "Connection: close\r\n\r\n";
+    asio::connect(socket, resolver_.resolve(query_));
+    // Form the request. Use "Connection: close" header so that the server will close the socket
+    // after transmitting the response; allowing us to treat all data up until the EOF as content.
+    request_stream << "GET /" << location_ << "/" << remote_path.generic_string() << " HTTP/1.0\r\n"
+                   << "Host: " << site_ << "\r\nAccept: */*\r\n" << "Connection: close\r\n\r\n";
     // Send the request.
-    asio::write(*socket, request_buffer);
-    // Read the response status line. The response streambuf will automatically
-    // grow to accommodate the entire line. The growth may be limited by passing
-    // a maximum size to the streambuf constructor.
-    asio::read_until(*socket, *response_buffer, "\r\n");
-
+    asio::write(socket, request_buffer);
+    // Read the response status line. The response streambuf will automatically grow to accommodate
+    // the entire line. The growth may be limited by passing a maximum size to response_buffer ctor.
+    asio::read_until(socket, response_buffer, "\r\n");
     // Check that response is OK.
-    std::string http_version;
-    *response_stream >> http_version;
-    unsigned int status_code;
-    *response_stream >> status_code;
-
-    std::string status_message;
-    std::getline(*response_stream, status_message);
-    if (!(*response_stream) || http_version.substr(0, 5) != "HTTP/") {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path.string()
-                  << "  Invalid response.";
+    if (!CheckResponse(remote_path, response_stream))
       return false;
-    }
-    if (status_code != 200) {
-      LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path.string()
-                  << "  Returned " << status_code;
-      return false;
-    }
-
-    // Process the response headers.
+    // Process (discard) the response headers.
     std::string header;
-    while (std::getline(*response_stream, header)) {
+    while (std::getline(response_stream, header)) {
       if (header == "\r")
         break;
     }
   }
   catch(const std::exception &e) {
     LOG(kError) << "Error preparing downloading of " << site_ << "/" << location_ << "/"
-                << from_path.string() << "  : " << e.what();
+                << remote_path << "  : " << e.what();
     return false;
   }
-
   return true;
 }
 
-bool DownloadManager::DownloadFileToDisk(const fs::path& from_path, const fs::path& to_path) {
-  ip::tcp::socket socket(io_service_);
-  std::vector<char> char_buffer(1024);
-  asio::streambuf response_buffer(1024);
-  std::istream response_stream(&response_buffer);
+bool DownloadManager::CheckResponse(const fs::path& remote_path, std::istream& response_stream) {
+  std::string http_version;
+  response_stream >> http_version;
+  unsigned int status_code;
+  response_stream >> status_code;
 
-  if (!PrepareDownload(from_path, &response_buffer, &response_stream, &socket)) {
-    LOG(kError) << "Failed to prepare download for " << from_path;
+  std::string status_message;
+  std::getline(response_stream, status_message);
+  if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
+    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
+                << "  Invalid response.";
     return false;
   }
-
-  try {
-    std::ofstream file_out(to_path.c_str(), std::ios::trunc | std::ios::binary);
-    if (!file_out.good()) {
-      LOG(kError) << "DownloadFileToDisk: Can't get ofstream created for " << to_path;
-      return false;
-    }
-
-    boost::system::error_code error;
-    // Read until EOF, copies 1024 byte chunks of file into memory at a time before adding to file
-    std::streamsize length(response_stream.readsome(&char_buffer[0], std::streamsize(1024)));
-    std::string current_block(char_buffer.begin(), char_buffer.begin() + static_cast<int>(length));
-    file_out.write(current_block.c_str(), current_block.size());
-
-    std::size_t size(boost::asio::read(socket, boost::asio::buffer(char_buffer), error));
-    while (size > 0) {
-      if (error && error != boost::asio::error::eof) {
-        LOG(kError) << "DownloadFileToDisk: Error downloading file " << from_path << ": "
-                    << error.message();
-        return false;
-      }
-      current_block.assign(char_buffer.begin(), char_buffer.begin() + size);
-      file_out.write(current_block.c_str(), current_block.size());
-      size = boost::asio::read(socket, boost::asio::buffer(char_buffer), error);
-    }
-    LOG(kInfo) << "DownloadFileToDisk: Finished downloading file " << to_path
-               << ", closing file.";
-    file_out.close();
-  }
-  catch(const std::exception &e) {
-    LOG(kError) << "DownloadFileToDisk: Exception " << to_path << ": " << e.what();
+  if (status_code != 200) {
+    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
+                << "  Returned " << status_code;
     return false;
   }
-
   return true;
 }
 
-std::string DownloadManager::DownloadFileToMemory(const fs::path& from_path) {
+std::string DownloadManager::DownloadFile(const fs::path& remote_path) {
   ip::tcp::socket socket(io_service_);
   asio::streambuf response_buffer;
   std::istream response_stream(&response_buffer);
-  if (!PrepareDownload(from_path, &response_buffer, &response_stream, &socket)) {
-    LOG(kError) << "Failed to prepare download for " << from_path;
+  if (!PrepareDownload(remote_path, response_buffer, response_stream, socket))
     return "";
-  }
 
   try {
-    // Read until EOF, puts whole file in memory, so this should be of manageable size
+    // Read until EOF, puts whole file in memory, so this should be of manageable size.
     boost::system::error_code error_code;
     while (asio::read(socket, response_buffer, asio::transfer_at_least(1), error_code))
       boost::this_thread::interruption_point();
     if (error_code != asio::error::eof) {
-      LOG(kWarning) << "Error downloading " << site_ << "/" << location_ << "/" << from_path
+      LOG(kWarning) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
                     << ": " << error_code.message();
       return "";
     }
   }
   catch(const std::exception &e) {
-    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << from_path
+    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
                 << ": " << e.what();
     return "";
   }

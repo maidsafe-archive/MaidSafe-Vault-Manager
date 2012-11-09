@@ -28,6 +28,9 @@ namespace priv {
 
 namespace lifestuff_manager {
 
+namespace test { class DownloadManagerTest; }
+
+
 class DownloadManager {
  public:
   DownloadManager(const std::string& protocol,
@@ -35,34 +38,28 @@ class DownloadManager {
                   const std::string& location);
   ~DownloadManager();
   // Retrieves the latest bootstrap file from the server.
-  std::string RetrieveBootstrapInfo();
+  std::string GetBootstrapInfo();
   // Check for an update and carry out required updates. Populates updated_files with list of files
   // that were updated. Return code indicates success/type of failure.
   int Update(std::vector<boost::filesystem::path>& updated_files);
-  // Returns the local path to which the DownloadManager downloads files.
-  boost::filesystem::path GetLocalPath() const { return local_path_; }
-  boost::filesystem::path GetCurrentVersionDownloadPath() const {
-    return local_path_ / latest_remote_version_;
-  }
-  void SetLatestLocalVersion(const std::string& version) { latest_local_version_ = version; }
   std::string latest_local_version() const { return latest_local_version_; }
   std::string latest_remote_version() const { return latest_remote_version_; }
+  friend class test::DownloadManagerTest;
 
  private:
-  // Get the version of the files on the update server
-  std::string RetrieveLatestRemoteVersion();
-  // Retrieves the manifest file from the specified location.
-  bool RetrieveManifest(const boost::filesystem::path& manifest_location,
-                        std::vector<std::string>& files_in_manifest);
-  bool GetAndVerifyFile(const boost::filesystem::path& from_path,
-                        const boost::filesystem::path& to_path);
-  bool PrepareDownload(const boost::filesystem::path& file_name,
-                       boost::asio::streambuf* response_buffer,
-                       std::istream* response_stream,
-                       boost::asio::ip::tcp::socket* socket);
-  bool DownloadFileToDisk(const boost::filesystem::path& from_path,
-                          const boost::filesystem::path& to_path);
-  std::string DownloadFileToMemory(const boost::filesystem::path& from_path);
+  bool InitialiseLocalPath();
+  bool InitialisePublicKey();
+  int GetAndCheckLatestRemoteVersion();
+  bool GetManifest(std::vector<std::string>& files_in_manifest);
+  void GetNewFiles(const std::vector<std::string>& files_in_manifest,
+                   std::vector<boost::filesystem::path>& updated_files);
+  std::string GetAndVerifyFile(const boost::filesystem::path& remote_path);
+  bool PrepareDownload(const boost::filesystem::path& remote_path,
+                       boost::asio::streambuf& response_buffer,
+                       std::istream& response_stream,
+                       boost::asio::ip::tcp::socket& socket);
+  bool CheckResponse(const boost::filesystem::path& remote_path, std::istream& response_stream);
+  std::string DownloadFile(const boost::filesystem::path& remote_path);
 
   std::string protocol_, site_, location_, latest_local_version_, latest_remote_version_;
   asymm::PublicKey maidsafe_public_key_;
@@ -70,6 +67,7 @@ class DownloadManager {
   boost::asio::ip::tcp::resolver resolver_;
   boost::asio::ip::tcp::resolver::query query_;
   boost::filesystem::path local_path_;
+  bool initialised_;
 };
 
 }  // namespace lifestuff_manager

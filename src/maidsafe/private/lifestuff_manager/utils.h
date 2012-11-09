@@ -48,7 +48,6 @@ class Platform {
  private:
   // Default constructs Platform using host machine's details.
   Platform();
-  Type type_;
   std::string name_;
 };
 

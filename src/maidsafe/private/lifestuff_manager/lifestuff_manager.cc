@@ -1013,7 +1013,7 @@ void LifeStuffManager::StopAllVaults() {
 */
 
 bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config) {
-  std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());
+  std::string serialised_endpoints(download_manager_.GetBootstrapInfo());
   if (serialised_endpoints.empty()) {
     LOG(kError) << "Retrieved endpoints are empty.";
 //    return false;

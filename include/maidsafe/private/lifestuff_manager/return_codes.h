@@ -20,10 +20,11 @@ enum ReturnCode {
   kSuccess = 0,
 
   // Download Manager
-  kManifestFailure = -250001,
-  kDownloadFailure = -250002,
-  kNoVersionChange = -250003,
-  kLocalFailure = -250004,
+  kUninitialised = -250001,
+  kManifestFailure = -250002,
+  kDownloadFailure = -250003,
+  kNoVersionChange = -250004,
+  kLocalFailure = -250005,
 
   // Transport
   kAlreadyStarted = -350001,
