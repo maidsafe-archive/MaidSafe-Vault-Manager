@@ -629,10 +629,11 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
     lock.unlock();
     switch (op_data.op_type) {
       case OpType::kGet:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, false);
+        // TODO(Steve) BEFORE_RELEASE pass through flag whether we want to check for cache copy
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, false, true);
         break;
       case OpType::kGetLock:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, true);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, true, false);
         break;
       case OpType::kStore:
         chunk_manager_->StoreChunk(name, op_data.fob);

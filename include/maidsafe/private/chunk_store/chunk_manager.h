@@ -52,7 +52,8 @@ class ChunkManager {
   virtual void GetChunk(const ChunkId& name,
                         const ChunkVersion& local_version,
                         const Fob& fob,
-                        bool lock) = 0;
+                        bool lock,
+                        bool try_cache) = 0;
   virtual void StoreChunk(const ChunkId& name, const Fob& fob) = 0;
   virtual void ModifyChunk(const ChunkId& name, const NonEmptyString& content, const Fob& fob) = 0;
   virtual void DeleteChunk(const ChunkId& name, const Fob& fob) = 0;
