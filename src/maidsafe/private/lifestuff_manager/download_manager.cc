@@ -252,15 +252,9 @@ bool DownloadManager::PrepareDownload(const fs::path& remote_path,
     // Read the response status line. The response streambuf will automatically grow to accommodate
     // the entire line. The growth may be limited by passing a maximum size to response_buffer ctor.
     asio::read_until(socket, response_buffer, "\r\n");
-    // Check that response is OK.
+    // Check that response is OK.  Consumes entire header.
     if (!CheckResponse(remote_path, response_stream))
       return false;
-    // Process (discard) the response headers.
-    std::string header;
-    while (std::getline(response_stream, header)) {
-      if (header == "\r")
-        break;
-    }
   }
   catch(const std::exception &e) {
     LOG(kError) << "Error preparing downloading of " << site_ << "/" << location_ << "/"
@@ -276,16 +270,16 @@ bool DownloadManager::CheckResponse(const fs::path& remote_path, std::istream& r
   unsigned int status_code;
   response_stream >> status_code;
 
-  std::string status_message;
-  std::getline(response_stream, status_message);
-  if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
-    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
-                << "  Invalid response.";
-    return false;
+  std::string status_message, header;
+  while (std::getline(response_stream, header)) {
+    if (header == "\r")
+      break;
+    status_message += header;
   }
-  if (status_code != 200) {
+
+  if (!response_stream || http_version.substr(0, 5) != "HTTP/" || status_code != 200) {
     LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
-                << "  Returned " << status_code;
+                << ".  Response header:\n" + status_message;
     return false;
   }
   return true;

@@ -50,46 +50,44 @@ class DownloadManagerTest: public testing::Test {
   std::unique_ptr<DownloadManager> download_manager_;
 };
 
-TEST_F(DownloadManagerTest, BEH_Update_Successful) {
+TEST_F(DownloadManagerTest, BEH_UpdateSuccessful) {
   InitialiseDownloadManager("/downloads/download_manager_tests/successful");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kSuccess, download_manager_->Update(updated_files));
-  EXPECT_FALSE(updated_files.empty());
+
+  EXPECT_EQ(3U, updated_files.size());
   fs::path local_path(GetCurrentVersionDownloadPath());
+  EXPECT_TRUE(std::find(updated_files.begin(), updated_files.end(),
+                        (local_path / "test_file1.gz").string()) != updated_files.end());
+  EXPECT_TRUE(std::find(updated_files.begin(), updated_files.end(),
+                        (local_path / "test_file2.gz").string()) != updated_files.end());
+  EXPECT_TRUE(std::find(updated_files.begin(), updated_files.end(),
+                        (local_path / "test_file3.gz").string()) != updated_files.end());
+
   boost::system::error_code error;
-  ASSERT_TRUE(fs::exists(local_path, error));
-  ASSERT_EQ(boost::system::errc::success, error.value());
-  error.clear();
-  ASSERT_TRUE(fs::exists(local_path / "test_file1.gz", error));
-  ASSERT_EQ(boost::system::errc::success, error.value());
-  error.clear();
-  ASSERT_TRUE(fs::exists(local_path / "test_file2.gz", error));
-  ASSERT_EQ(boost::system::errc::success, error.value());
-  error.clear();
-  ASSERT_TRUE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::success, error.value());
+  EXPECT_TRUE(fs::exists(local_path, error));
+  EXPECT_EQ(boost::system::errc::success, error.value());
+
+  for (auto updated_file : updated_files) {
+    error.clear();
+    EXPECT_TRUE(fs::exists(updated_file, error));
+    EXPECT_EQ(boost::system::errc::success, error.value());
+  }
 }
 
-TEST_F(DownloadManagerTest, BEH_Update_HasLatestVersion) {
+TEST_F(DownloadManagerTest, BEH_UpdateHasLatestVersion) {
   InitialiseDownloadManager("/downloads/download_manager_tests/has_latest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.002");
   EXPECT_EQ(kNoVersionChange, download_manager_->Update(updated_files));
   EXPECT_TRUE(updated_files.empty());
-  fs::path local_path(GetCurrentVersionDownloadPath());
   boost::system::error_code error;
-  ASSERT_FALSE(fs::exists(local_path / "test_file1.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
-  error.clear();
-  ASSERT_FALSE(fs::exists(local_path / "test_file2.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
-  error.clear();
-  ASSERT_FALSE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  EXPECT_FALSE(fs::exists(GetCurrentVersionDownloadPath(), error));
+  EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value()) << error.message();
 }
 
-TEST_F(DownloadManagerTest, BEH_Update_NoManifestFile) {
+TEST_F(DownloadManagerTest, BEH_UpdateNoManifestFile) {
   InitialiseDownloadManager("/downloads/download_manager_tests/no_manifest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
@@ -97,48 +95,53 @@ TEST_F(DownloadManagerTest, BEH_Update_NoManifestFile) {
   EXPECT_TRUE(updated_files.empty());
   fs::path local_path(GetCurrentVersionDownloadPath());
   boost::system::error_code error;
-  ASSERT_FALSE(fs::exists(local_path / "test_file1.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  EXPECT_FALSE(fs::exists(local_path / "test_file1.gz", error));
+  EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
   error.clear();
-  ASSERT_FALSE(fs::exists(local_path / "test_file2.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  EXPECT_FALSE(fs::exists(local_path / "test_file2.gz", error));
+  EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
   error.clear();
-  ASSERT_FALSE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  EXPECT_FALSE(fs::exists(local_path / "test_file3.gz", error));
+  EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
-TEST_F(DownloadManagerTest, BEH_Update_IncorrectManifestFile) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/incorrect_manifest");
+class DownloadManagerCommonTest : public DownloadManagerTest,
+                                  public ::testing::WithParamInterface<std::string> {};
+
+TEST_P(DownloadManagerCommonTest, BEH_UpdateThirdFileFail) {
+  InitialiseDownloadManager("/downloads/download_manager_tests/" + GetParam());
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
-  EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));
+  EXPECT_EQ(kSuccess, download_manager_->Update(updated_files));
+
+  EXPECT_EQ(2U, updated_files.size());
   fs::path local_path(GetCurrentVersionDownloadPath());
+  EXPECT_TRUE(std::find(updated_files.begin(), updated_files.end(),
+                        (local_path / "test_file1.gz").string()) != updated_files.end());
+  EXPECT_TRUE(std::find(updated_files.begin(), updated_files.end(),
+                        (local_path / "test_file2.gz").string()) != updated_files.end());
+  EXPECT_FALSE(std::find(updated_files.begin(), updated_files.end(),
+                         (local_path / "test_file3.gz").string()) != updated_files.end());
+
   boost::system::error_code error;
-  ASSERT_FALSE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
+  EXPECT_TRUE(fs::exists(local_path, error));
+  EXPECT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  EXPECT_TRUE(fs::exists(local_path / "test_file1.gz", error));
+  EXPECT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  EXPECT_TRUE(fs::exists(local_path / "test_file2.gz", error));
+  EXPECT_EQ(boost::system::errc::success, error.value());
+  error.clear();
+  EXPECT_FALSE(fs::exists(local_path / "test_file3.gz", error));
+  EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
-TEST_F(DownloadManagerTest, BEH_Update_NoSignature) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/no_signature");
-  std::vector<fs::path> updated_files;
-  SetLatestLocalVersion("1.1.001");
-  EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));
-  fs::path local_path(GetCurrentVersionDownloadPath());
-  boost::system::error_code error;
-  ASSERT_FALSE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
-}
-
-TEST_F(DownloadManagerTest, BEH_Update_InvalidSignature) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/incorrect_signature");
-  std::vector<fs::path> updated_files;
-  SetLatestLocalVersion("1.1.001");
-  EXPECT_EQ(kDownloadFailure, download_manager_->Update(updated_files));
-  fs::path local_path(GetCurrentVersionDownloadPath());
-  boost::system::error_code error;
-  ASSERT_FALSE(fs::exists(local_path / "test_file3.gz", error));
-  ASSERT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
-}
+INSTANTIATE_TEST_CASE_P(AllFail,
+                        DownloadManagerCommonTest,
+                        testing::Values("incorrect_manifest",
+                                        "no_signature",
+                                        "incorrect_signature"));
 
 }  // namespace test
 
