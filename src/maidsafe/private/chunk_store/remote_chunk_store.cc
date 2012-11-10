@@ -35,14 +35,10 @@ namespace chunk_store {
 
 namespace {
 
-// Default maximum number of operations to be processed in parallel.
-const int kMaxActiveOps(4);
 // Time to wait in WaitForCompletion before failing.
-const std::chrono::duration<int> kCompletionWaitTimeout(std::chrono::minutes(3));
+const std::chrono::duration<int> kCompletionWaitTimeout(std::chrono::minutes(6));
 // Time to wait in WaitForConflictingOps before failing.
-const std::chrono::duration<int> kOperationWaitTimeout(std::chrono::seconds(150));  // 2.5 mins
-// Time period in which not to retry a previously failed get operation.
-const std::chrono::duration<int> kGetRetryTimeout(std::chrono::seconds(3));
+const std::chrono::duration<int> kOperationWaitTimeout(std::chrono::minutes(5));  // 2.5 mins
 
 template <typename Elem, typename Traits>
 std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& ostream,
@@ -90,15 +86,12 @@ RemoteChunkStore::RemoteChunkStore(
           chunk_manager_delete_connection_(),
           mutex_(),
           cond_var_(),
-          max_active_ops_(kMaxActiveOps),
-          active_ops_count_(0),
           completion_wait_timeout_(kCompletionWaitTimeout),
           operation_wait_timeout_(kOperationWaitTimeout),
           pending_ops_(),
           failed_ops_(),
           waiting_gets_(),
           not_modified_gets_(),
-          failed_gets_(),
           op_count_(),
           op_success_count_(),
           op_skip_count_(),
@@ -122,19 +115,11 @@ RemoteChunkStore::~RemoteChunkStore() {
   chunk_manager_store_connection_.disconnect();
   chunk_manager_modify_connection_.disconnect();
   chunk_manager_delete_connection_.disconnect();
-  std::lock_guard<std::mutex> lock(mutex_);
-  active_ops_count_ = 0;
-  pending_ops_.clear();
-  failed_ops_.clear();
 }
 
 std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob) {
   LOG(kInfo) << "Get - " << Base32Substr(name);
   std::unique_lock<std::mutex> lock(mutex_);
-  if (!chunk_action_authority_->ValidName(name)) {
-    LOG(kError) << "Get - Invalid chunk name " << Base32Substr(name);
-    return "";
-  }
 
   if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name.string()) == 0) {
     std::string content(chunk_store_->Get(name));
@@ -194,23 +179,15 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob) {
 int RemoteChunkStore::GetAndLock(const ChunkId& name,
                                  const ChunkVersion& local_version,
                                  const Fob& fob,
-                                 std::string* content) {
+                                 std::string& content) {
   LOG(kInfo) << "GetAndLock - " << Base32Substr(name);
-  if (!content) {
-    LOG(kError) << "GetAndLock - NULL pointer passed for content";
-    return kGeneralError;
-  }
   std::unique_lock<std::mutex> lock(mutex_);
-  if (!chunk_action_authority_->ValidName(name)) {
-    LOG(kError) << "GetAndLock - Invalid chunk name " << Base32Substr(name);
-    return kGeneralError;
-  }
 
   if (chunk_action_authority_->Cacheable(name) && pending_ops_.left.count(name.string()) == 0) {
     std::string local_content(chunk_store_->Get(name));
     if (!local_content.empty()) {
       LOG(kInfo) << "GetAndLock - Found local content for " << Base32Substr(name);
-      *content = local_content;
+      content = local_content;
       return kSuccess;
     }
   }
@@ -248,7 +225,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
   }
 
   ProcessPendingOps(lock);
-  *content = local_content;
+  content = local_content;
   if (chunk_not_modified)
     return kChunkNotModified;
 
@@ -268,7 +245,8 @@ bool RemoteChunkStore::Store(const ChunkId& name,
     LOG(kWarning) << "Store - Terminated early for " << Base32Substr(name);
     return result == WaitResult::kCancelled;
   }
-  if (!chunk_action_authority_->Store(name, content, fob.public_key())) {
+
+  if (!chunk_store_->Store(name, content)) {
     LOG(kError) << "Store - Could not store " << Base32Substr(name) << " locally.";
     pending_ops_.right.erase(id);
     cond_var_.notify_all();
@@ -296,24 +274,9 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
     LOG(kWarning) << "Delete - Terminated early for " << Base32Substr(name);
     return result == WaitResult::kCancelled;
   }
-  NonEmptyString proof;
-  // Default chunks don't need proof of ownership to be deleted.
-  // TODO FIXME (dirvine) this test should  not be required 
-  if (GetChunkType(name) != ChunkType::kDefault) {
-    asymm::PlainText data(RandomString(16));
-    asymm::Signature signature(asymm::Sign(data, fob.private_key()));
-    chunk_actions::SignedData proto_proof;
-    proto_proof.set_data(data.string());
-    proto_proof.set_signature(signature.string());
-    proof = NonEmptyString(proto_proof.SerializeAsString());
-  }
 
-  if (!chunk_action_authority_->Delete(name, proof, fob.public_key())) {
-    LOG(kError) << "Delete - Could not delete " << Base32Substr(name) << " locally.";
-    pending_ops_.right.erase(id);
-    cond_var_.notify_all();
-    return false;
-  }
+  if (!chunk_store_->Delete(name))
+    LOG(kWarning) << "Delete - Could not delete " << Base32Substr(name) << " locally.";
 
   // operation can now be processed
   auto it = pending_ops_.right.find(id);
@@ -350,19 +313,31 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
   return true;
 }
 
+uintmax_t RemoteChunkStore::Size() const {
+  return chunk_manager_->StorageSize();
+}
+
+uintmax_t RemoteChunkStore::Capacity() const {
+  return chunk_manager_->StorageCapacity();
+}
+
 bool RemoteChunkStore::WaitForCompletion() {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!cond_var_.wait_for(
         lock,
         completion_wait_timeout_,
         [&]()->bool {
-          LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size() << " pending operations, "
-                     << active_ops_count_ << " of them active...";
-          (*sig_num_pending_ops_)(pending_ops_.size());
+          LOG(kInfo) << "WaitForCompletion - " << pending_ops_.size() << " pending operations...";
+          size_t pending_ops_count = pending_ops_.size();
+          if (!sig_num_pending_ops_->empty()) {
+            lock.unlock();
+            (*sig_num_pending_ops_)(pending_ops_count);
+            lock.lock();
+          }
           return pending_ops_.empty();
         })) {
     LOG(kError) << "WaitForCompletion - Timed out with " << pending_ops_.size()
-                << " pending operations, " << active_ops_count_ << " of them active.";
+                << " pending operations.";
     return false;
   }
 
@@ -382,13 +357,16 @@ void RemoteChunkStore::LogStats() {
   }
 
   std::ostringstream oss;
+  size_t active_ops_count(0);
   for (auto it = pending_ops_.begin(); it != pending_ops_.end(); ++it) {
+    if (it->info.active)
+      ++active_ops_count;
     oss << "\n\t" << Base32Substr(it->left) << " (" << it->info.op_type
         << (it->info.active ? ", active" : "") << ")";
   }
   if (!pending_ops_.empty()) {
     LOG(kWarning) << "LogStats() - " << pending_ops_.size() << " pending operations, "
-                  << active_ops_count_ << " active :" << oss.str();
+                  << active_ops_count << " active :" << oss.str();
   }
 
   oss.str("");
@@ -447,18 +425,15 @@ void RemoteChunkStore::OnOpResult(const OpType& op_type, const ChunkId& name, co
       default:
         break;
     }
-    failed_gets_.erase(name);  // [sic] any successful op, not just get
     if (op_type == OpType::kGet)
       waiting_gets_.insert(name);
   } else if (result == kChunkNotModified) {
-    LOG(kInfo) << "OnOpResult -GetAndLock done, local version of " << Base32Substr(name)
+    LOG(kInfo) << "OnOpResult - GetAndLock done, local version of " << Base32Substr(name)
                << "is up to date";
     not_modified_gets_.insert(name);
   } else {
     LOG(kError) << "OnOpResult - Failed to " << op_type << " " << Base32Substr(name) << " ("
                 << result << ")";
-    if (op_type == OpType::kGet)
-      failed_gets_[name] = std::chrono::system_clock::now();
     failed_ops_.insert(std::make_pair(name, op_type));
   }
 
@@ -473,7 +448,6 @@ void RemoteChunkStore::OnOpResult(const OpType& op_type, const ChunkId& name, co
   }
 
   OpFunctor callback(it->info.callback);
-  --active_ops_count_;
 //   LOG(kInfo) << "OnOpResult - Erasing completed op '" << kOpName[op_type]
 //              << "' for chunk " << Base32Substr(name) << " - ID "
 //              << it->right;
@@ -608,22 +582,8 @@ uint32_t RemoteChunkStore::EnqueueOp(const ChunkId& name,
 }
 
 void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
-//   LOG(kInfo) << "ProcessPendingOps - " << active_ops_count_ << " of max "
-//              << max_active_ops_ << " ops active.";
-  {
-    // remove previously failed gets that can now be retried again
-    auto now = std::chrono::system_clock::now();
-    auto it = failed_gets_.begin();
-    while (it != failed_gets_.end()) {
-      if (it->second + kGetRetryTimeout < now)
-        failed_gets_.erase(it++);
-      else
-        ++it;
-    }
-  }
-
   std::set<ChunkId> processed_gets;
-  while (active_ops_count_ < max_active_ops_) {
+  for (;;) {
     OperationData op_data;
     std::set<ChunkId> active_ops;
     auto it = pending_ops_.begin();  // always (re-)start from beginning!
@@ -656,12 +616,6 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
         pending_ops_.erase(it);
         cond_var_.notify_all();
         return;
-      } else if (failed_gets_.find(name) != failed_gets_.end()) {
-        LOG(kWarning) << "ProcessPendingOps - Retrieving " << Base32Substr(name)
-                      << " failed previously, not trying again. - ID " << it->right;
-        pending_ops_.erase(it);
-        cond_var_.notify_all();
-        return;
       } else {
         processed_gets.insert(name);
       }
@@ -672,7 +626,6 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
 
     it->info.active = true;
 
-    ++active_ops_count_;
     lock.unlock();
     switch (op_data.op_type) {
       case OpType::kGet:

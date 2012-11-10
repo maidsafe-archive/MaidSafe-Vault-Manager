@@ -56,9 +56,6 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
 
   int64_t StorageCapacity() { return chunk_store()->Capacity(); }
 
-  // do nothing, causing an eventual timeout
-  void Timeout() {}
-
   void StoreChunkPass(const ChunkId& chunk_name) {
     chunk_store()->Store(chunk_name, NonEmptyString(RandomString(128)));
     sig_chunk_stored_(chunk_name, kSuccess);

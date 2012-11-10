@@ -28,6 +28,8 @@
 #include "maidsafe/private/process_management/invigilator.h"
 
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace priv {
@@ -39,7 +41,7 @@ typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 namespace bai = boost::asio::ip;
 
-VaultController::VaultController()
+VaultController::VaultController(const std::string &usr_id)
     : process_index_(),
       invigilator_port_(0),
       local_port_(0),
@@ -51,7 +53,8 @@ VaultController::VaultController()
       stop_callback_(),
       setuid_succeeded_() {
 #ifndef MAIDSAFE_WIN32
-  int result(system("id -u lifestuff > ./uid.txt"));
+  std::string id("id -u " + usr_id + " > ./uid.txt");
+  int result(system(id.data()));
   if (result) {
     setuid_succeeded_ = false;
     LOG(kError) << "Failed to determine uid of lifestuff user";
@@ -87,6 +90,7 @@ VaultController::VaultController()
     }
   }
 #else
+  std::string uid = usr_id;
   setuid_succeeded_ = true;
 #endif
 }
@@ -125,12 +129,11 @@ bool VaultController::StartListeningPort() {
 
 bool VaultController::Start(const std::string& invigilator_identifier,
                             VoidFunction stop_callback) {
-#ifndef USE_TEST_KEYS
   if (!setuid_succeeded_) {
     LOG(kError) << "In constructor, failed to set the user ID to the correct user";
     return false;
   }
-#endif
+
   if (!detail::ParseVmidParameter(invigilator_identifier,
                                   process_index_,
                                   invigilator_port_)) {

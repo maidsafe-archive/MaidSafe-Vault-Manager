@@ -37,6 +37,24 @@ namespace priv {
 
 namespace process_management {
 
+#ifndef MAIDSAFE_WIN32
+namespace {
+
+std::string GetUserId() {
+#ifdef USE_DUMMY
+  return "maidsafe";
+#else
+  char user_name[64] = {0};
+  int result(getlogin_r(user_name, sizeof(user_name) - 1));
+  if (0 != result)
+    return "";
+  return std::string(user_name);
+#endif
+}
+
+}  // unnamed namespace
+#endif
+
 Invigilator::VaultInfo::VaultInfo()
     : process_index(),
       account_name(),
@@ -67,24 +85,20 @@ void Invigilator::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_in
 
 Invigilator::Invigilator()
     : process_manager_(),
-#ifdef USE_TEST_KEYS
-      download_manager_("http", "dash.maidsafe.net", "~phil/tests/test_vault_manager"),
-#else
       // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
       download_manager_("http", "dash.maidsafe.net", "~phil"),
-#endif
       asio_service_(3),
       update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
-      update_timer_(asio_service_.service()),
+//      update_timer_(asio_service_.service()),
       update_mutex_(),
-      transport_(new LocalTcpTransport(asio_service_.service())),
+      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
       client_ports_and_versions_(),
       client_ports_mutex_(),
 #ifdef USE_TEST_KEYS
-      config_file_path_(fs::path(".") / detail::kGlobalConfigFilename),
+      config_file_path_(GetUserAppDir() / detail::kGlobalConfigFilename),
 #else
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
 #endif
@@ -92,9 +106,17 @@ Invigilator::Invigilator()
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false) {
+#ifdef USE_TEST_KEYS
+  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
+#else
   WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
+#endif
   asio_service_.Start();
+#ifdef USE_DUMMY
+  Initialise();
+#else
   asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
+#endif
 }
 
 void Invigilator::Initialise() {
@@ -139,10 +161,10 @@ Invigilator::~Invigilator() {
   need_to_stop_ = true;
   process_manager_.LetAllProcessesDie();
   StopAllVaults();
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    update_timer_.cancel();
-  }
+//  {
+//    std::lock_guard<std::mutex> lock(update_mutex_);
+//    update_timer_.cancel();
+//  }
   transport_->StopListeningAndCloseConnections();
   asio_service_.Stop();
 }
@@ -167,9 +189,10 @@ bool Invigilator::CreateConfigFile() {
   protobuf::InvigilatorConfig config;
   config.set_update_interval(update_interval_.total_seconds());
 
-  if (!ObtainBootstrapInformation(config)) {
+  int count(0);
+  while (!ObtainBootstrapInformation(config) && count++ < 10) {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
-    return false;
+//    return false;
   }
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
@@ -487,6 +510,8 @@ void Invigilator::HandleVaultIdentityRequest(const std::string& request, std::st
     vault_identity_response.clear_account_name();
     vault_identity_response.clear_fob();
     vault_identity_response.clear_chunkstore_path();
+    // TODO(Team): further investigation on whether this return is suitable is required
+    return;
   }
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_identity_response.SerializeAsString());
@@ -632,8 +657,8 @@ bool Invigilator::SetUpdateInterval(const bptime::time_duration& update_interval
   }
   std::lock_guard<std::mutex> lock(update_mutex_);
   update_interval_ = update_interval;
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+//  update_timer_.expires_from_now(update_interval_);
+//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
   return true;
 }
 
@@ -652,8 +677,8 @@ void Invigilator::CheckForUpdates(const boost::system::error_code& ec) {
 
   UpdateExecutor();
 
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+//  update_timer_.expires_from_now(update_interval_);
+//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
@@ -733,7 +758,7 @@ void Invigilator::SendNewVersionAvailable(uint16_t client_port) {
                                          done = true;
                                          local_cond_var.notify_one();
                                        };
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   request_transport->Connect(client_port, result);
   if (result != kSuccess) {
@@ -925,7 +950,7 @@ bool Invigilator::StopVault(const Identity& identity,
   vault_shutdown_request.set_data(data.string());
   vault_shutdown_request.set_signature(signature.string());
   std::shared_ptr<LocalTcpTransport> sending_transport(
-      new LocalTcpTransport(asio_service_.service()));
+      std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   sending_transport->Connect((*itr)->vault_port, result);
   if (result != kSuccess) {
@@ -1007,7 +1032,7 @@ bool Invigilator::ObtainBootstrapInformation(protobuf::InvigilatorConfig& config
   std::string serialised_endpoints(download_manager_.RetrieveBootstrapInfo());
   if (serialised_endpoints.empty()) {
     LOG(kError) << "Retrieved endpoints are empty.";
-    return false;
+//    return false;
   }
   protobuf::Bootstrap end_points;
   if (!end_points.ParseFromString(serialised_endpoints)) {
@@ -1034,13 +1059,17 @@ void Invigilator::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
 bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef USE_TEST_KEYS
+#ifdef USE_DUMMY
   std::string process_name(detail::kDummyName);
+#else
+  std::string process_name(detail::kVaultName);
+#endif
   fs::path executable_path(".");
-# ifdef MAIDSAFE_WIN32
+#ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
     if (GetModuleFileName(NULL, file_name, MAX_PATH))
       executable_path = fs::path(file_name).parent_path();
-# endif
+#endif
 #else
   std::string process_name(detail::kVaultName);
   fs::path executable_path(GetAppInstallDir());
@@ -1051,10 +1080,18 @@ bool Invigilator::StartVaultProcess(VaultInfoPtr& vault_info) {
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
-#ifndef USE_TEST_KEYS
+
+  process.AddArgument("--log_config ./maidsafe_log.ini");
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
+#ifdef USE_TEST_KEYS
+#ifndef MAIDSAFE_WIN32
+  std::string user_id(GetUserId());
+  if (!user_id.empty())
+    process.AddArgument("--usr_id " + user_id);
 #endif
+#endif
+
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {

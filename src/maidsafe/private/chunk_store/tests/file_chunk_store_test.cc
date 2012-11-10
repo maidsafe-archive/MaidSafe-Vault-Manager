@@ -32,7 +32,7 @@ void ChunkStoreTest<FileChunkStore>::InitChunkStore(std::shared_ptr<ChunkStore>*
                                                     boost::asio::io_service&) {
   chunk_store->reset(new FileChunkStore);
   if (!chunk_dir.empty())
-    reinterpret_cast<FileChunkStore*>(chunk_store->get())->Init(chunk_dir);
+    static_cast<FileChunkStore*>(chunk_store->get())->Init(chunk_dir);
 }
 
 INSTANTIATE_TYPED_TEST_CASE_P(Files, ChunkStoreTest, FileChunkStore);

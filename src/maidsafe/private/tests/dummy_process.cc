@@ -42,18 +42,22 @@ void StopHandler() {
 
 
 int main(int argc, char* argv[]) {
+  maidsafe::log::Logging::Instance().Initialise(argc, argv);
   LOG(kInfo) << "Starting DUMMYprocess.";
-  maidsafe::log::Logging::instance().AddFilter("private", maidsafe::log::kInfo);
   po::options_description options_description("Allowed options");
   options_description.add_options()
       ("help", "produce help message")
       ("runtime", po::value<int>(), "Set runtime in seconds then crash")
       ("nocrash", "set no crash on runtime ended")
       ("vmid", po::value<std::string>(), "vaults manager ID")
-      ("nocontroller", "set to use no vault controller");
+      ("nocontroller", "set to use no vault controller")
+      ("usr_id",
+          po::value<std::string>()->default_value("lifestuff"),
+          "user id if running under in non-win OS and from inside a process");
   try {
     po::variables_map variables_map;
-    po::store(po::parse_command_line(argc, argv, options_description), variables_map);
+    po::store(po::command_line_parser(argc, argv).options(options_description).
+            allow_unregistered().run(), variables_map);
     po::notify(variables_map);
 
     if (variables_map.count("help")) {
@@ -64,10 +68,14 @@ int main(int argc, char* argv[]) {
       LOG(kInfo) << "DUMMYprocess: You must supply a vaults manager ID";
       return 1;
     }
+    std::string usr_id("lifestuff");
+    if (variables_map.count("usr_id")) {
+      usr_id = variables_map.at("usr_id").as<std::string>();
+    }
     std::string invigilator_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "DUMMYprocess: Starting VaultController.";
-      maidsafe::priv::process_management::VaultController vault_controller;
+      maidsafe::priv::process_management::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(invigilator_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
         LOG(kInfo) << "DUMMYprocess: Vault controller failed to start. Aborting...";
         return 1;
@@ -77,13 +85,13 @@ int main(int argc, char* argv[]) {
       std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
       vault_controller.GetIdentity(fob, account_name, bootstrap_endpoints);
-      LOG(kInfo) << "DUMMYprocess: Identity: " << maidsafe::Base64Substr(fob.identity());
-      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token());
+      LOG(kInfo) << "DUMMYprocess: Identity: " << maidsafe::Base64Substr(fob.identity.string());
+      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token.string());
       LOG(kInfo) << "Public Key: "
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
       LOG(kInfo) << "Private Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
-      LOG(kInfo) << "Account name: " << account_name;
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.private_key));
+      LOG(kInfo) << "Account name: " << maidsafe::Base64Substr(account_name);
       vault_controller.ConfirmJoin(true);
 
       std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);

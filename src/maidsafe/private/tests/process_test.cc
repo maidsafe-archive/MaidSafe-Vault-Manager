@@ -507,9 +507,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
 
 int main(int argc, char **argv) {
-  maidsafe::log::FilterMap filter;
   fs::path full_path(argv[0]);
   g_parent_path = full_path.parent_path().string();
-  filter["*"] = maidsafe::log::kVerbose;
-  return ExecuteMain(argc, argv, filter);
+  return maidsafe::test::ExecuteMain(argc, argv);
 }

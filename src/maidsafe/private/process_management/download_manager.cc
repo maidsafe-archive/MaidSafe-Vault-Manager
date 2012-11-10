@@ -55,13 +55,13 @@ DownloadManager::DownloadManager(const std::string& protocol,
       resolver_(io_service_),
       query_(site_, protocol_),
       local_path_() {
-  boost::system::error_code error_code;
 #ifdef USE_TEST_KEYS
-  fs::path temp_path(fs::temp_directory_path(error_code) /
-           fs::unique_path("%%%%-%%%%-%%%%-%%%%", error_code));
+  fs::path temp_path(GetUserAppDir());
 #else
   fs::path temp_path(GetSystemAppSupportDir());
 #endif
+
+  boost::system::error_code error_code;
   LOG(kError) << "temp_path: " << temp_path;
   if (!fs::exists(temp_path, error_code))
     fs::create_directories(temp_path, error_code);
@@ -70,18 +70,10 @@ DownloadManager::DownloadManager(const std::string& protocol,
   } else {
     local_path_ = temp_path;
   }
-#ifdef USE_TEST_KEYS
-  LOG(kError) << "Using the test fob.";
-  std::string serialised_public_key(DownloadFileToMemory("public_key.dat"));
-  if (serialised_public_key.empty())
-    LOG(kError) << "Failure to retrieve key from server.";
-  maidsafe_public_key_ = asymm::DecodeKey(asymm::EncodedPublicKey(serialised_public_key));
-  if (!asymm::ValidateKey(maidsafe_public_key_))
-    LOG(kError) << "Failure to decode retrieved serialised key.";
-#else
+
   LOG(kInfo) << "Using the production fob.";
   maidsafe_public_key_ = detail::kMaidSafePublicKey();
-#endif
+
   if (!asymm::ValidateKey(maidsafe_public_key_))
     LOG(kError) << "MaidSafe public key invalid";
 }
@@ -89,14 +81,18 @@ DownloadManager::DownloadManager(const std::string& protocol,
 DownloadManager::~DownloadManager() {}
 
 std::string DownloadManager::RetrieveBootstrapInfo() {
+  std::string bootstrap_content;
+#ifndef USE_TEST_KEYS
   if (!GetAndVerifyFile(detail::kBootstrapNodesFilename,
                         local_path_ / detail::kBootstrapNodesFilename)) {
     LOG(kError) << "Failed to download bootstrap file";
     return "";
   }
-
-  std::string bootstrap_content;
-  if (!ReadFile(local_path_ / detail::kBootstrapNodesFilename, &bootstrap_content)) {
+  fs::path bootstrap_file(local_path_ / detail::kBootstrapNodesFilename);
+#else
+  fs::path bootstrap_file("bootstrap");
+#endif
+  if (!ReadFile(bootstrap_file, &bootstrap_content)) {
     LOG(kError) << "Failed to read downloaded bootstrap file";
     return "";
   }

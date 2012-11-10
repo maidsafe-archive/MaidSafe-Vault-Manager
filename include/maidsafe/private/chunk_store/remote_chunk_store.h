@@ -123,7 +123,7 @@ class RemoteChunkStore {
   int GetAndLock(const ChunkId& name,
                  const ChunkVersion& local_version,
                  const Fob& fob,
-                 std::string* content);
+                 std::string& content);
 
   bool Store(const ChunkId& name,
              const NonEmptyString& content,
@@ -139,17 +139,14 @@ class RemoteChunkStore {
               const OpFunctor& callback,
               const Fob& fob);
 
-  uintmax_t Size() const {
-    // TODO(Steve) get from account
-    return 0;  // chunk_store_->Size();
-  }
+  uintmax_t Size() const;
 
-  uintmax_t Capacity() const {
-    // TODO(Steve) get from account
-    return 0;  // chunk_store_->Capacity();
-  }
+  uintmax_t Capacity() const;
 
-  uintmax_t NumPendingOps() const { return pending_ops_.size(); }
+  uintmax_t NumPendingOps() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pending_ops_.size();
+  }
 
   bool Empty() const;
 
@@ -160,14 +157,6 @@ class RemoteChunkStore {
 
   /// Print operation statistics to debug log.
   void LogStats();
-
-  /// Sets the maximum number of operations to be processed in parallel.
-  void SetMaxActiveOps(const int& max_active_ops) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    max_active_ops_ = max_active_ops;
-    if (max_active_ops_ < 1)
-      max_active_ops_ = 1;
-  }
 
   /// Sets the time to wait in WaitForCompletion before failing.
   void SetCompletionWaitTimeout(const std::chrono::duration<int>& value) {
@@ -215,15 +204,13 @@ class RemoteChunkStore {
   std::shared_ptr<chunk_actions::ChunkActionAuthority> chunk_action_authority_;
   bs2::connection chunk_manager_get_connection_, chunk_manager_store_connection_;
   bs2::connection chunk_manager_modify_connection_, chunk_manager_delete_connection_;
-  std::mutex mutex_;
-  std::condition_variable cond_var_;
-  int max_active_ops_, active_ops_count_;
+  mutable std::mutex mutex_;
+  mutable std::condition_variable cond_var_;
   std::chrono::duration<int> completion_wait_timeout_, operation_wait_timeout_;
   OperationBimap pending_ops_;
   OperationMultiMap failed_ops_;
   std::multiset<ChunkId> waiting_gets_;
   std::set<ChunkId> not_modified_gets_;
-  std::map<ChunkId, std::chrono::time_point<std::chrono::system_clock> > failed_gets_;
   uintmax_t op_count_[5], op_success_count_[5], op_skip_count_[5], op_size_[5];
 };
 
