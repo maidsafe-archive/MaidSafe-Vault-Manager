@@ -19,23 +19,31 @@
 
 #include "maidsafe/common/types.h"
 
-class StoreToNetwork {
- protected:  // not exposing rich interface (public inheritance)
+namespace maidsafe {
+
 template <typename T>
+class StoreMakePayment {
+ protected:  // not exposing rich interface (public inheritance)
   static bool Store(T) {
   // implementation
   }
 };
 
-class StoreToDisk {
+template <typename T>
+class StoreCheckPayment {
  protected:
-   template <typename T>
-  static bool Store(const T data,
-                    const NonEmptyString& content,
-                    const asymm::PublicKey& public_key,
-                    std::shared_ptr<chunk_store::ChunkStore> chunk_store) {
-
+  static bool Store(std::string data) {
+  }
 };
+
+template <typename T>
+class StoreIssuePayment {
+ protected:
+  static bool Store(std::string data) {
+  }
+};
+
+}  // namespace maidsafe
 
 #endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_STORE_POLICIES_H_
 

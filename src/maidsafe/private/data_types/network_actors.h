@@ -17,8 +17,9 @@
 #ifndef MAIDSAFE_PRIVATE_DATA_TYPES_NETWORK_ACTORS_H_
 #define MAIDSAFE_PRIVATE_DATA_TYPES_NETWORK_ACTORS_H_
 
+#include "boost/filesystem/path.hpp"
+
 #include "maidsafe/common/types.h"
-#include "maidsafe/private/data_types/data_manager.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/private/utils/fob.h"
 #include "maidsafe/private/data_types/store_policies.h"
@@ -26,58 +27,62 @@
 #include "maidsafe/private/data_types/delete_policies.h"
 #include "maidsafe/private/data_types/edit_policies.h"
 #include "maidsafe/private/data_types/amend_policies.h"
-// These are Actors in the maidsafe manner not actor based design (concurrency)
-// Host class
-template <typename StoragePolicy,
-          typename StorePolicy,
-          typename GetPolicy,
-          typename DeletePolicy,
-          typename EditPolicy,
-          typename AppendPolicy>
-class Actor : private StoragePolicy,
-                    private StorePolicy,
-                    private GetPolicy,
-                    private DeletePolicy,
-                    private EditPolicy,
-                    private AppendPolicy {
- public:
-  Actor(Routing routing) :
-  //             chunk_store_dir_(chunk_store),
-               routing_(routing),
-  //             message_handler_() {}
+#include "maidsafe/routing/routing_api.h"
 
-  static bool Store(NonEmptyString key, NonEmptyString value, Signature Signature, Identity id) {
-    return StoragePolicy::Process(StorePolicy::Store(NonEmptyString key, NonEmptyString value));
+namespace maidsafe {
+
+template <typename DataType,
+          template <class> class StoragePolicy, // network disk proxy
+          template <class> class PaymentPolicy,  // pay|refund check issue
+          template <class> class StorePolicy,
+          template <class> class GetPolicy,
+          template <class> class DeletePolicy,
+          template <class> class EditPolicy,
+          template <class> class AppendPolicy>
+class DataHandler : private StorePolicy<typename PaymentPolicy<DataType>::payment_type>,
+                    private GetPolicy<DataType>,
+                    private DeletePolicy<typename PaymentPolicy<DataType>::payment_type>,
+                    private EditPolicy<typename PaymentPolicy<DataType>::payment_type>,
+                    private AppendPolicy<DataType> {
+ public:
+  DataHandler(routing::Routing network, boost::filesystem::path fs_path) :
+               fs_path_(fs_path),
+               network_(network) {}
+
+  static bool Store(DataType data) {
+    return StorePolicy::Store(data));
   }
-  static GetPolicy::value Get(NonEmptyString key) {
-    return StoragePolicy::Process(GetPolicy::Get(key));
+  static bool Get(DataType data) {
+    return GetPolicy::Get(data);
   }
-  static bool Delete(NonEmptyString key, Signature Signature, Identity id) {
-    return DeletePolicy::Delete(key);
+  static bool Delete(DataType data) {
+    return DeletePolicy::Delete(data);
   }
-  static bool Edit(NonEmptyString& key,
+  static bool Edit(DataType data,
                    NonEmptyString& version,  // or old_content ??
                    NonEmptyString& new_content) {
     return EditPolicy::Edit(key, version, value);
   }
  private:
-  Routing routing_;
-  MessageHandler message_handler_;
+  boost::filesystem::path fs_path_;
+  routing::Routing network_;
+  DataType data_;
 };
 
-// Actors
+// DataHandlers
 
-typedef Actor<StoreIfPayed, Get, template<DeleteIfOwner, DeleteIfTold>,
+typedef DataHandler<StoreIfPayed, Get, template<DeleteIfOwner, DeleteIfTold>,
               template<EditByOwner, EditIfPayed>,AppendIfAllowed>
-                                                                      ChunkHolder;
-typedef Actor<StoreAll, Get, DeleteIfOwner, EditIfOwner, NoAppend>
-                                                                      ChunkInfoHolder;
+                                                                      DataHolder;
+typedef DataHandler<StoreAndPay, Get, DeleteAndRefund, EditIfOwner, NoAppend>
+                                                                      DataManager;
 
-typedef Actor<StoreAll, Get, DeleteIfOwner, NoEdit, AppendIfAllowed>
-                                                                      AccountHolder;
+typedef DataHandler<StoreIssuePayment, Get, DeleteGetRefund, EditAndBalance, AppendNoPay>
+                                                                      AccountManager;
 
-typedef Actor<StoreAndPay, Get, Delete, Edit, Append>
-                                                                      Client;
+typedef DataHandler<StoreAndPay, Get, Delete, Edit, Append>
+                                                                      ClientDataHandler;
 
+}  // namespace maidsafe
 #endif  // MAIDSAFE_PRIVATE_DATA_TYPES_NETWORK_ACTORS_H_
 

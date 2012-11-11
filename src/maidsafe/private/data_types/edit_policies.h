@@ -23,7 +23,7 @@
 template <typename T>
 class EditIfOwner {
  public:
-  Edit();
+  static bool Edit();
  protected:
   ~EditIfOwner() {}
 };

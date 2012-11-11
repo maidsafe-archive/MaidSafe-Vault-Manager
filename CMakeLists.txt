@@ -33,6 +33,8 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h")
 endif()
 
 include_directories(${common_SOURCE_DIR}/include)
+include_directories(${rudp_SOURCE_DIR}/include)
+include_directories(${routing_SOURCE_DIR}/include)
 
 
 ###################################################################################################
@@ -151,6 +153,8 @@ ms_add_static_library(process_management_test ${ALL_FILES_PRIVATE_PROCESS_MANAGE
 ms_add_static_library(process_management_dummy ${ALL_FILES_PRIVATE_PROCESS_MANAGEMENT_DIR})
 ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
+ms_add_executable(TESTdata_types "Tests/Private"
+                  "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/data_types_test.cc")
 ms_add_executable(TESTinvigilator "Tests/Private"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/download_test.cc"
                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tests/process_test.cc"
@@ -208,6 +212,7 @@ endif()
 add_style_test(${STYLE_CHECK_FILES})
 add_gtests(TESTprivate)
 add_gtests(TESTinvigilator)
+add_gtests(TESTdata_types)
 add_gtests(TESTutilities)
 add_project_experimental()
 test_summary_output()

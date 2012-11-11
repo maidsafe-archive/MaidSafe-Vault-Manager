@@ -19,8 +19,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 // This object is immutable by design, it does not allow any alteration after construction.
 class Fob {
  public:
@@ -55,6 +53,7 @@ class Fob {
   Identity signed_by_;
 };
 
+namespace priv {
 
 namespace utils {
 

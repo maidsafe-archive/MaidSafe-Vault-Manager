@@ -25,7 +25,7 @@ class NoAppend {};
 template <typename T>
 class AppendIfAllowed {
  protected:
-  static bool Append(T, Authority auth)  {
+  static bool Append(T auth)  {
   // implementation 
  }
 };
