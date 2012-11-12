@@ -27,7 +27,7 @@ enum class ChunkType : char {
   kAppendableByAll = 1,
   kModifiableByOwner = 2,
   kSignaturePacket = 3,
-  kUnknown = 0x80
+  kUnknown = static_cast<char>(-128)
 };
 
 }  // namespace priv
