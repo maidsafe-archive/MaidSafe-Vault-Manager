@@ -45,13 +45,13 @@ VaultController::VaultController(const std::string &usr_id)
     : process_index_(),
       lifestuff_manager_port_(0),
       local_port_(0),
-      asio_service_(3),
-      receiving_transport_(new LocalTcpTransport(asio_service_.service())),
       fob_(),
       account_name_(),
       bootstrap_endpoints_(),
       stop_callback_(),
-      setuid_succeeded_() {
+      setuid_succeeded_(),
+      asio_service_(3),
+      receiving_transport_(new LocalTcpTransport(asio_service_.service())) {
 #ifndef MAIDSAFE_WIN32
   std::string id("id -u " + usr_id + " > ./uid.txt");
   int result(system(id.data()));
@@ -95,39 +95,10 @@ VaultController::VaultController(const std::string &usr_id)
 #endif
 }
 
-VaultController::~VaultController() {
-  receiving_transport_->StopListening();
-  receiving_transport_.reset();
-  asio_service_.Stop();
-}
-
-bool VaultController::StartListeningPort() {
-  int count(0), result(1);
-  local_port_ = receiving_transport_->StartListening(0, result);
-  while (result != kSuccess && count++ < 10)
-    local_port_ = receiving_transport_->StartListening(0, result);
-
-  if (result != kSuccess) {
-    LOG(kError) << "Failed to start listening port. Aborting initialisation.";
-    return false;
-  }
-
-  receiving_transport_->on_message_received().connect(
-      [this] (const std::string& message, Port lifestuff_manager_port) {
-        HandleReceivedRequest(message, lifestuff_manager_port);
-      });
-  receiving_transport_->on_error().connect(
-      [] (const int& error) {
-        LOG(kError) << "Transport reported error code " << error;
-      });
-
-  return true;
-}
-
 bool VaultController::Start(const std::string& lifestuff_manager_identifier,
                             VoidFunction stop_callback) {
   if (!setuid_succeeded_) {
-    LOG(kError) << "In constructor, failed to set the user ID to the correct user";
+    LOG(kError) << "In constructor, failed to set the user ID to the correct user.";
     return false;
   }
 
@@ -140,10 +111,15 @@ bool VaultController::Start(const std::string& lifestuff_manager_identifier,
 
   stop_callback_ = stop_callback;
   asio_service_.Start();
-  if (!StartListeningPort()) {
+  OnMessageReceived::slot_type on_message_slot(
+      [this](const std::string& message, Port lifestuff_manager_port) {
+          HandleReceivedRequest(message, lifestuff_manager_port);
+      });
+  if (!detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_)) {
     LOG(kError) << "Failed to start listening port.";
     return false;
   }
+
   return RequestVaultIdentity(local_port_);
 }
 
@@ -201,8 +177,7 @@ void VaultController::ConfirmJoin(bool joined) {
     LOG(kError) << "Timed out waiting for reply.";
 }
 
-void VaultController::HandleVaultJoinedAck(const std::string& message,
-                                           VoidFunction callback) {
+void VaultController::HandleVaultJoinedAck(const std::string& message, VoidFunction callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {

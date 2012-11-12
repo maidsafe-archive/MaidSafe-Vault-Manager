@@ -68,13 +68,10 @@ void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vau
 
 LifeStuffManager::LifeStuffManager()
     : process_manager_(),
-      // TODO(Fraser#5#): 2012-08-12 - Provide proper path to server as constants
-      download_manager_("http", "dash.maidsafe.net", "~phil"),
-      asio_service_(3),
+      download_manager_(),
       update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
 //      update_timer_(asio_service_.service()),
       update_mutex_(),
-      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
       local_port_(kMinPort()),
       vault_infos_(),
       vault_infos_mutex_(),
@@ -88,12 +85,14 @@ LifeStuffManager::LifeStuffManager()
       latest_local_installer_path_(),
       endpoints_(),
       config_file_mutex_(),
-      need_to_stop_(false) {
-#ifdef TESTING
-  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
-#else
-  WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
-#endif
+      need_to_stop_(false),
+      asio_service_(3),
+      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
+//#ifdef TESTING
+//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
+//#else
+//  WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
+//#endif
   asio_service_.Start();
 //  if (detail::kUsingDummyVault)
     Initialise();
@@ -117,7 +116,7 @@ void LifeStuffManager::Initialise() {
     while (!CreateConfigFile()) {
       if (need_to_stop_)
         return;
-      LOG(kError) << "Will retry to to create new config file at " << config_file_path_;
+      LOG(kError) << "Will retry to create new config file at " << config_file_path_;
       Sleep(boost::posix_time::seconds(1));
     }
   }
@@ -130,7 +129,6 @@ void LifeStuffManager::Initialise() {
   }
 
   UpdateExecutor();
-
 
   ReadConfigFileAndStartVaults();
   error_code.clear();
@@ -146,8 +144,6 @@ LifeStuffManager::~LifeStuffManager() {
 //    std::lock_guard<std::mutex> lock(update_mutex_);
 //    update_timer_.cancel();
 //  }
-  transport_->StopListeningAndCloseConnections();
-  asio_service_.Stop();
 }
 
 boost::posix_time::time_duration LifeStuffManager::kMinUpdateInterval() {

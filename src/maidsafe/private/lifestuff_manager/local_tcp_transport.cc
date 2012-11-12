@@ -42,7 +42,7 @@ LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // N
       done_(false) {}
 
 LocalTcpTransport::~LocalTcpTransport() {
-  CloseConnections();
+  StopListening();
 }
 
 Port LocalTcpTransport::StartListening(Port port, int& result) {
@@ -141,20 +141,6 @@ void LocalTcpTransport::StopListening() {
     if (ec.value() != 0)
       LOG(kError) << "Acceptor close error: " << ec.message();
   });
-}
-
-void LocalTcpTransport::StopListeningAndCloseConnections() {
-  strand_.dispatch([=] {
-    boost::system::error_code ec;
-    if (acceptor_.is_open())
-      acceptor_.close(ec);
-    if (ec.value() != 0)
-      LOG(kError) << "Acceptor close error: " << ec.message();
-  });
-  CloseConnections();
-}
-
-void LocalTcpTransport::CloseConnections() {
   for (auto connection : connections_)
     connection->Close();
 }

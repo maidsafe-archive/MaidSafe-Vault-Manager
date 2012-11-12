@@ -179,11 +179,9 @@ class LifeStuffManager {
 
   ProcessManager process_manager_;
   DownloadManager download_manager_;
-  AsioService asio_service_;
   boost::posix_time::time_duration update_interval_;
 //  boost::asio::deadline_timer update_timer_;
   mutable std::mutex update_mutex_;
-  std::shared_ptr<LocalTcpTransport> transport_;
   uint16_t local_port_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
@@ -193,6 +191,8 @@ class LifeStuffManager {
   std::vector<EndPoint> endpoints_;
   std::mutex config_file_mutex_;
   bool need_to_stop_;
+  AsioService asio_service_;
+  std::shared_ptr<LocalTcpTransport> transport_;
 };
 
 }  // namespace lifestuff_manager

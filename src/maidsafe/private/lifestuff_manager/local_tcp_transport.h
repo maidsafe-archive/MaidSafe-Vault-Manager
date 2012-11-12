@@ -54,9 +54,6 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   explicit LocalTcpTransport(boost::asio::io_service& asio_service);  // NOLINT (Fraser)
   ~LocalTcpTransport();
   Port StartListening(Port port, int& result);
-  void StopListening();
-  void StopListeningAndCloseConnections();
-  void CloseConnections();
   void Connect(Port server_port, int& result);
   void Send(const std::string& data, Port port);
   OnMessageReceived& on_message_received() { return on_message_received_; }
@@ -68,6 +65,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
  private:
   LocalTcpTransport(const LocalTcpTransport&);
   LocalTcpTransport& operator=(const LocalTcpTransport&);
+  void StopListening();
 
   typedef std::shared_ptr<TcpConnection> ConnectionPtr;
   typedef std::set<ConnectionPtr> ConnectionSet;

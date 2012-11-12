@@ -13,11 +13,12 @@
 #define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_UTILS_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/rsa.h"
+#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
 
 
 namespace maidsafe {
@@ -29,8 +30,6 @@ namespace lifestuff_manager {
 enum class MessageType;
 
 namespace detail {
-
-asymm::PublicKey kMaidSafePublicKey();
 
 std::string WrapMessage(const MessageType& message_type, const std::string& payload);
 
@@ -46,6 +45,10 @@ std::string GenerateVmidParameter(const uint32_t& process_index,
 bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
                         uint32_t& process_index,
                         uint16_t& lifestuff_manager_port);
+
+bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
+                                  OnMessageReceived::slot_type on_message_received_slot,
+                                  Port& local_port);
 
 }  // namespace detail
 

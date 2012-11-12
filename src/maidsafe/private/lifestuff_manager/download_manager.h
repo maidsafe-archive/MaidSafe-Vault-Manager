@@ -19,7 +19,10 @@
 #include "boost/asio/ip/tcp.hpp"
 #include "boost/filesystem/path.hpp"
 #include "boost/asio/streambuf.hpp"
+
 #include "maidsafe/common/rsa.h"
+
+#include "maidsafe/private/lifestuff_manager/config.h"
 
 
 namespace maidsafe {
@@ -33,9 +36,9 @@ namespace test { class DownloadManagerTest; }
 
 class DownloadManager {
  public:
-  DownloadManager(const std::string& protocol,
-                  const std::string& site,
-                  const std::string& location);
+  DownloadManager(const std::string& location = detail::kDownloadManagerLocation,
+                  const std::string& site = detail::kDownloadManagerSite,
+                  const std::string& protocol = detail::kDownloadManagerProtocol);
   ~DownloadManager();
   // Retrieves the latest bootstrap file from the server.
   std::string GetBootstrapInfo();
@@ -61,7 +64,7 @@ class DownloadManager {
   bool CheckResponse(const boost::filesystem::path& remote_path, std::istream& response_stream);
   std::string DownloadFile(const boost::filesystem::path& remote_path);
 
-  std::string protocol_, site_, location_, latest_local_version_, latest_remote_version_;
+  std::string location_, site_, protocol_, latest_local_version_, latest_remote_version_;
   asymm::PublicKey maidsafe_public_key_;
   boost::asio::io_service io_service_;
   boost::asio::ip::tcp::resolver resolver_;

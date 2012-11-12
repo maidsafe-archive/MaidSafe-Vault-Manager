@@ -40,7 +40,6 @@ class LocalTcpTransport;
 class VaultController {
  public:
   explicit VaultController(const std::string& usr_id = "lifestuff");
-  ~VaultController();
 
   bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(Fob& fob,
@@ -54,7 +53,6 @@ class VaultController {
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
-  bool StartListeningPort();
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   bool RequestVaultIdentity(uint16_t listening_port);
   bool HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
@@ -67,13 +65,13 @@ class VaultController {
                                std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
   uint16_t lifestuff_manager_port_, local_port_;
-  AsioService asio_service_;
-  TransportPtr receiving_transport_;
   Fob fob_;
   std::string account_name_;
   std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
   bool setuid_succeeded_;
+  AsioService asio_service_;
+  TransportPtr receiving_transport_;
 };
 
 }  // namespace lifestuff_manager

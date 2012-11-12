@@ -43,6 +43,7 @@ namespace test {
 TEST(LifeStuffManagerTest, FUNC_StartStop) {
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
+  LOG(kError) << GetUserAppDir() / detail::kGlobalConfigFilename;
   {
     if (fs::exists(GetUserAppDir() / detail::kGlobalConfigFilename, error_code))
       fs::remove(GetUserAppDir() / detail::kGlobalConfigFilename, error_code);

@@ -42,17 +42,20 @@ ClientController::ClientController(
     std::function<void(const NonEmptyString&)> on_new_version_available_slot)
         : lifestuff_manager_port_(LifeStuffManager::kMinPort() - 1),
           local_port_(0),
-          asio_service_(3),
-          receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
           on_new_version_available_(),
           state_(kInitialising),
           bootstrap_nodes_(),
           joining_vaults_(),
           joining_vaults_mutex_(),
-          joining_vaults_conditional_() {
+          joining_vaults_conditional_(),
+          asio_service_(3),
+          receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   asio_service_.Start();
-
-  if (!StartListeningPort()) {
+  OnMessageReceived::slot_type on_message_slot(
+      [this](const std::string& message, Port lifestuff_manager_port) {
+          HandleReceivedRequest(message, lifestuff_manager_port);
+      });
+  if (!detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_)) {
     LOG(kError) << "Failed to start listening port. Won't be able to start vaults.";
     state_ = kFailed;
   }
@@ -69,11 +72,6 @@ ClientController::ClientController(
     on_new_version_available_(NonEmptyString(path_to_new_installer));
 }
 
-ClientController::~ClientController() {
-  receiving_transport_->StopListeningAndCloseConnections();
-  asio_service_.Stop();
-}
-
 bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to LifeStuffManager.";
@@ -84,31 +82,8 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   return true;
 }
 
-bool ClientController::StartListeningPort() {
-  int count(0), result(1);
-  local_port_ = receiving_transport_->StartListening(0, result);
-  while (result != kSuccess && count++ < 10)
-    local_port_ = receiving_transport_->StartListening(0, result);
-
-  if (result != kSuccess) {
-    LOG(kError) << "Failed to start listening port. Aborting initialisation.";
-    return false;
-  }
-
-  receiving_transport_->on_message_received().connect(
-      [this] (const std::string& message, Port lifestuff_manager_port) {
-        HandleReceivedRequest(message, lifestuff_manager_port);
-      });
-  receiving_transport_->on_error().connect(
-      [] (const int& error) {
-        LOG(kError) << "Transport reported error code " << error;
-      });
-
-  return true;
-}
-
 bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
-  request_transport->CloseConnections();
+  //                                                                    request_transport->CloseConnections();
   int result(1);
   request_transport->Connect(++lifestuff_manager_port_, result);
   while (result != kSuccess) {
@@ -221,7 +196,8 @@ void ClientController::HandleRegisterResponse(const std::string& message,
                                               response.bootstrap_endpoint_port(n)));
   }
 
-  LOG(kSuccess) << "Successfully registered with LifeStuffManager on port " << lifestuff_manager_port_;
+  LOG(kSuccess) << "Successfully registered with LifeStuffManager on port "
+                << lifestuff_manager_port_;
   std::lock_guard<std::mutex> lock(mutex);
   state = kVerified;
   condition_variable.notify_one();

@@ -44,12 +44,12 @@ namespace priv {
 
 namespace lifestuff_manager {
 
-DownloadManager::DownloadManager(const std::string& protocol,
+DownloadManager::DownloadManager(const std::string& location,
                                  const std::string& site,
-                                 const std::string& location)
-    : protocol_(protocol),
+                                 const std::string& protocol)
+    : location_(location),
       site_(site),
-      location_(location),
+      protocol_(protocol),
       latest_local_version_(kApplicationVersion),
       latest_remote_version_("0.0.000"),
       maidsafe_public_key_(detail::kMaidSafePublicKey()),

@@ -47,7 +47,6 @@ typedef std::pair<std::string, uint16_t> EndPoint;
 class ClientController {
  public:
   ClientController(std::function<void(const NonEmptyString&)> on_new_version_available_slot);
-  ~ClientController();
 
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
@@ -71,7 +70,7 @@ class ClientController {
   boost::posix_time::time_duration GetUpdateInterval();
 
   // Blocking call to retrieve the latest bootstrap nodes from the LifeStuffManager.
-  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
+  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
@@ -81,7 +80,6 @@ class ClientController {
   ClientController& operator=(const ClientController&);
   bool FindNextAcceptingPort(TransportPtr requesting_transport);
   bool ConnectToLifeStuffManager(std::string& path_to_new_installer);
-  bool StartListeningPort();
   void HandleRegisterResponse(const std::string& message,
                               uint16_t lifestuff_manager_port,
                               std::mutex& mutex,
@@ -104,14 +102,14 @@ class ClientController {
                                std::function<void(bool)> callback);  //NOLINT (Philip)
 
   uint16_t lifestuff_manager_port_, local_port_;
-  AsioService asio_service_;
-  TransportPtr receiving_transport_;
   OnNewVersionAvailable on_new_version_available_;
   State state_;
   std::vector<EndPoint> bootstrap_nodes_;
   std::map<Identity, bool> joining_vaults_;
   std::mutex joining_vaults_mutex_;
   std::condition_variable joining_vaults_conditional_;
+  AsioService asio_service_;
+  TransportPtr receiving_transport_;
 };
 
 }  // namespace lifestuff_manager
