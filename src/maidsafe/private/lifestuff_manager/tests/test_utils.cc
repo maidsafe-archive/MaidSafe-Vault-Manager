@@ -50,7 +50,7 @@ int GetNumRunningProcesses(const std::string& process_name) {
 #ifdef MAIDSAFE_WIN32
     typedef boost::find_iterator<std::string::iterator> StringFindIterator;
     StringFindIterator itr =
-            boost::make_find_iterator(contents, boost::first_finder(process_name, boost::is_equal()));
+        boost::make_find_iterator(contents, boost::first_finder(process_name, boost::is_equal()));
     int num_processes(static_cast<int>(std::distance(itr, StringFindIterator())));
 #else
     boost::trim(contents);

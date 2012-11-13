@@ -106,7 +106,7 @@ TEST_F(DownloadManagerTest, BEH_UpdateNoManifestFile) {
 }
 
 class DownloadManagerCommonTest : public DownloadManagerTest,
-                                  public ::testing::WithParamInterface<std::string> {};
+                                  public ::testing::WithParamInterface<std::string> {};  // NOLINT (Fraser)
 
 TEST_P(DownloadManagerCommonTest, BEH_UpdateThirdFileFail) {
   InitialiseDownloadManager("/downloads/download_manager_tests/" + GetParam());

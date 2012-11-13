@@ -47,6 +47,7 @@ typedef std::pair<std::string, uint16_t> EndPoint;
 class ClientController {
  public:
   ClientController(std::function<void(const NonEmptyString&)> on_new_version_available_slot);
+  ~ClientController();
 
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
@@ -70,7 +71,7 @@ class ClientController {
   boost::posix_time::time_duration GetUpdateInterval();
 
   // Blocking call to retrieve the latest bootstrap nodes from the LifeStuffManager.
-  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);
+  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);  // NOLINT (Fraser)
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;

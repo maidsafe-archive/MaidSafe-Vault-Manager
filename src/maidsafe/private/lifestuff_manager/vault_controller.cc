@@ -95,6 +95,10 @@ VaultController::VaultController(const std::string &usr_id)
 #endif
 }
 
+VaultController::~VaultController() {
+  receiving_transport_->StopListening();
+}
+
 bool VaultController::Start(const std::string& lifestuff_manager_identifier,
                             VoidFunction stop_callback) {
   if (!setuid_succeeded_) {

@@ -41,7 +41,10 @@ include_directories(${common_SOURCE_DIR}/include)
 ####    CODE    ####
 file(GLOB SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.cc")
 list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc")
 file(GLOB HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.h")
+list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h")
+list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
 file(GLOB API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/lifestuff_manager/*.h")
 
 file(GLOB PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.proto")
@@ -53,6 +56,9 @@ set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_FILES_PRIVATE_LIFESTUFF_MAN
                                              ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
                                              ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
                                              ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
 list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_PRIVATE_DIR}
                                                             ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
@@ -64,10 +70,13 @@ list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/l
 
 source_group("LifeStuff Manager Source Files" FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 source_group("LifeStuff Manager Header Files" FILES ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Core Source Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc"})
+source_group("LifeStuff Manager Core Header Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+                                                         "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
 source_group("LifeStuff Manager Proto Files" FILES ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                         ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                         ${HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                         ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+                                                   ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                                   ${HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
+                                                   ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 source_group("LifeStuff Manager API Files" FILES ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 
 
@@ -152,6 +161,8 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
 ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+ms_add_static_library(lifestuff_manager_core ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
+ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
@@ -169,13 +180,13 @@ target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
 target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(signing_tool maidsafe_private)
-target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager)
+target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core)
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
   target_link_libraries(TESTutilities maidsafe_utilities)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager)
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
-  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager)
+  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
 
   add_dependencies(TESTlifestuff_manager dummy_vault)
 endif()
@@ -190,7 +201,7 @@ rename_outdated_built_exes()
 include(maidsafe_standard_flags)
 
 if(MAIDSAFE_TESTING)
-  set_target_properties(TESTlifestuff_manager dummy_vault PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
+  set_target_properties(maidsafe_lifestuff_manager_core_dummy TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
 endif()
 
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")

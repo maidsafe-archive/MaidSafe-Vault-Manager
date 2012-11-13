@@ -72,6 +72,10 @@ ClientController::ClientController(
     on_new_version_available_(NonEmptyString(path_to_new_installer));
 }
 
+ClientController::~ClientController() {
+  receiving_transport_->StopListening();
+}
+
 bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to LifeStuffManager.";
@@ -83,7 +87,6 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
 }
 
 bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
-  //                                                                    request_transport->CloseConnections();
   int result(1);
   request_transport->Connect(++lifestuff_manager_port_, result);
   while (result != kSuccess) {

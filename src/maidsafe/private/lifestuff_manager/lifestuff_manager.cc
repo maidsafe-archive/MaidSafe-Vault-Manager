@@ -88,16 +88,8 @@ LifeStuffManager::LifeStuffManager()
       need_to_stop_(false),
       asio_service_(3),
       transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
-//#ifdef TESTING
-//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
-//#else
-//  WriteFile(GetSystemAppSupportDir() / "ServiceVersion.txt", kApplicationVersion);
-//#endif
   asio_service_.Start();
-//  if (detail::kUsingDummyVault)
-    Initialise();
-//  else
-//    asio_service_.service().post([&] () { Initialise(); });  // NOLINT (Dan)
+  Initialise();
 }
 
 void LifeStuffManager::Initialise() {
@@ -144,14 +136,7 @@ LifeStuffManager::~LifeStuffManager() {
 //    std::lock_guard<std::mutex> lock(update_mutex_);
 //    update_timer_.cancel();
 //  }
-}
-
-boost::posix_time::time_duration LifeStuffManager::kMinUpdateInterval() {
-  return bptime::minutes(5);
-}
-
-boost::posix_time::time_duration LifeStuffManager::kMaxUpdateInterval() {
-  return bptime::hours(24 * 7);
+  transport_->StopListening();
 }
 
 void LifeStuffManager::RestartLifeStuffManager(const std::string& /*latest_file*/,
@@ -171,7 +156,16 @@ bool LifeStuffManager::CreateConfigFile() {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
 //    return false;
   }
+  boost::system::error_code error_code;
   std::lock_guard<std::mutex> lock(config_file_mutex_);
+  if (!fs::exists(config_file_path_.parent_path(), error_code)) {
+    if (!fs::create_directories(config_file_path_.parent_path(), error_code) || error_code) {
+      LOG(kError) << "Failed to create directories for config file " << config_file_path_
+                  << ": " << error_code.message();
+      return false;
+    }
+  }
+
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
     return false;
@@ -248,7 +242,7 @@ bool LifeStuffManager::ListenForMessages() {
     }
     transport_->StartListening(local_port_, result);
   }
-  LOG(kError) << "Listening on " << local_port_;
+  LOG(kInfo) << "Listening on " << local_port_;
   return true;
 }
 
@@ -1036,10 +1030,13 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef TESTING
   fs::path executable_path(".");
+  std::string user_id;
 #  ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
     if (GetModuleFileName(NULL, file_name, MAX_PATH))
       executable_path = fs::path(file_name).parent_path();
+#  else
+  user_id = detail::GetUserId();
 #  endif
 #else
   fs::path executable_path(GetAppInstallDir());
@@ -1050,11 +1047,11 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
 
-  process.AddArgument("--log_config ./maidsafe_log.ini");
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 #if defined TESTING && !defined MAIDSAFE_WIN32
-  std::string user_id(detail::GetUserId());
+  process.AddArgument("--log_folder ./dummy_vault_logfiles");
+  process.AddArgument("--log_private Info");
   if (!user_id.empty())
     process.AddArgument("--usr_id " + user_id);
 #endif

@@ -84,12 +84,21 @@ class LifeStuffManager {
  public:
   LifeStuffManager();
   ~LifeStuffManager();
+#ifdef TESTING
+  static uint16_t kMinPort() { return 5583; }
+  static uint16_t kMaxPort() { return 5590; }
+#else
   static uint16_t kMinPort() { return 5483; }
   static uint16_t kMaxPort() { return 5490; }
+#endif
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
-  static boost::posix_time::time_duration kMinUpdateInterval();  // 5 minutes
-  static boost::posix_time::time_duration kMaxUpdateInterval();  // 1 week
+  static boost::posix_time::time_duration kMinUpdateInterval() {
+    return boost::posix_time::minutes(5);
+  }
+  static boost::posix_time::time_duration kMaxUpdateInterval() {
+    return boost::posix_time::hours(24 * 7);
+  }
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;

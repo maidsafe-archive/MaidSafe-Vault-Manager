@@ -203,7 +203,7 @@ bool DownloadManager::GetManifest(std::vector<std::string>& files_in_manifest) {
 
 void DownloadManager::GetNewFiles(const std::vector<std::string>& files_in_manifest,
                                   std::vector<fs::path>& updated_files) {
-  for (const auto& file : files_in_manifest) {
+  for (const auto& file : files_in_manifest) {  // NOLINT (Fraser)
     std::string content(GetAndVerifyFile(latest_remote_path_ / file));
     if (content.empty())
       continue;

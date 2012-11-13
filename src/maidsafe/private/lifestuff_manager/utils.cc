@@ -125,7 +125,7 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
   }
 
   transport->on_message_received().connect(on_message_received_slot);
-  transport->on_error().connect([](const int& err) { LOG(kError) << "Transport error: " << err; });
+  transport->on_error().connect([](const int& err) { LOG(kError) << "Transport error: " << err; });  // NOLINT (Fraser)
 
   return true;
 }

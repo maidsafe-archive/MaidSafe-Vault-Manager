@@ -42,7 +42,8 @@ LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // N
       done_(false) {}
 
 LocalTcpTransport::~LocalTcpTransport() {
-  StopListening();
+  for (auto connection : connections_)
+    connection->Close();
 }
 
 Port LocalTcpTransport::StartListening(Port port, int& result) {
@@ -141,15 +142,13 @@ void LocalTcpTransport::StopListening() {
     if (ec.value() != 0)
       LOG(kError) << "Acceptor close error: " << ec.message();
   });
-  for (auto connection : connections_)
-    connection->Close();
 }
 
 void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
                                      ConnectionPtr connection,
                                      const bs::error_code& ec) {
   if (!acceptor.is_open())
-    return;
+    return connection->Close();
 
   if (!ec) {
     // It is safe to call DoInsertConnection directly because HandleAccept() is

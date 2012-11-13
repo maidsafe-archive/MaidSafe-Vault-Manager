@@ -40,6 +40,7 @@ class LocalTcpTransport;
 class VaultController {
  public:
   explicit VaultController(const std::string& usr_id = "lifestuff");
+  ~VaultController();
 
   bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(Fob& fob,
