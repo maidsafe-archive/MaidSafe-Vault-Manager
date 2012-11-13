@@ -69,25 +69,30 @@ void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vau
 LifeStuffManager::LifeStuffManager()
     : process_manager_(),
       download_manager_(),
-      update_interval_(/*bptime::hours(24)*/ kMinUpdateInterval()),
-//      update_timer_(asio_service_.service()),
-      update_mutex_(),
+#ifdef TESTING
+      local_port_(detail::GetTestLifeStuffManagerPort() == 0 ?
+                  kDefaultPort() + 100 : detail::GetTestLifeStuffManagerPort()),
+      config_file_path_((detail::GetTestEnvironmentRootDir().empty() ?
+                             GetUserAppDir() : detail::GetTestEnvironmentRootDir()) /
+                        detail::kGlobalConfigFilename),
+#else
       local_port_(kMinPort()),
+      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
+#endif
+      latest_local_installer_path_(),
       vault_infos_(),
       vault_infos_mutex_(),
       client_ports_and_versions_(),
       client_ports_mutex_(),
-#ifdef TESTING
-      config_file_path_(GetUserAppDir() / detail::kGlobalConfigFilename),
-#else
-      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
-#endif
-      latest_local_installer_path_(),
       endpoints_(),
       config_file_mutex_(),
       need_to_stop_(false),
       asio_service_(3),
+      update_interval_(kMinUpdateInterval()),
+      update_mutex_(),
+      update_timer_(asio_service_.service()),
       transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
+//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
   asio_service_.Start();
   Initialise();
 }
@@ -123,8 +128,10 @@ void LifeStuffManager::Initialise() {
   UpdateExecutor();
 
   ReadConfigFileAndStartVaults();
-  error_code.clear();
-  CheckForUpdates(error_code);
+
+  update_timer_.expires_from_now(update_interval_);
+  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+
   LOG(kInfo) << "LifeStuffManager started";
 }
 
@@ -132,10 +139,10 @@ LifeStuffManager::~LifeStuffManager() {
   need_to_stop_ = true;
   process_manager_.LetAllProcessesDie();
   StopAllVaults();
-//  {
-//    std::lock_guard<std::mutex> lock(update_mutex_);
-//    update_timer_.cancel();
-//  }
+  {
+    std::lock_guard<std::mutex> lock(update_mutex_);
+    update_timer_.cancel();
+  }
   transport_->StopListening();
 }
 
@@ -233,15 +240,18 @@ bool LifeStuffManager::WriteConfigFile() {
 
 bool LifeStuffManager::ListenForMessages() {
   int result(0);
-  transport_->StartListening(local_port_, result);
+  Port local(local_port_);
+  transport_->StartListening(local, result);
   while (result != kSuccess) {
-    ++local_port_;
-    if (local_port_ > kMaxPort()) {
-      LOG(kError) << "Listening failed on all ports in range " << kMinPort() << " - " << kMaxPort();
+    ++local;
+    if (local > local_port_ + kMaxRangeAboveDefaultPort()) {
+      LOG(kError) << "Listening failed on all ports in range " << local_port_ << " - "
+                  << local_port_ + kMaxRangeAboveDefaultPort();
       return false;
     }
-    transport_->StartListening(local_port_, result);
+    transport_->StartListening(local, result);
   }
+  local_port_ = local;
   LOG(kInfo) << "Listening on " << local_port_;
   return true;
 }
@@ -650,8 +660,8 @@ void LifeStuffManager::CheckForUpdates(const boost::system::error_code& ec) {
 
   UpdateExecutor();
 
-//  update_timer_.expires_from_now(update_interval_);
-//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+  update_timer_.expires_from_now(update_interval_);
+  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
@@ -805,7 +815,7 @@ bool LifeStuffManager::IsInstaller(const fs::path& path) {
 void LifeStuffManager::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) != kSuccess) {
-    LOG(kInfo) << "No update identified in the server.";
+    LOG(kVerbose) << "No update identified in the server.";
     return;  // failed or no updates.
   }
 

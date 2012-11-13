@@ -73,6 +73,11 @@ class ClientController {
   // Blocking call to retrieve the latest bootstrap nodes from the LifeStuffManager.
   bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);  // NOLINT (Fraser)
 
+#ifdef TESTING
+  static void SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
+                                          boost::filesystem::path test_env_root_dir);
+#endif
+
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
   enum State { kInitialising, kVerified, kFailed };

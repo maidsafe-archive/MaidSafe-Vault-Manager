@@ -40,7 +40,13 @@ typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 ClientController::ClientController(
     std::function<void(const NonEmptyString&)> on_new_version_available_slot)
-        : lifestuff_manager_port_(LifeStuffManager::kMinPort() - 1),
+#ifdef TESTING
+        : lifestuff_manager_port_(detail::GetTestLifeStuffManagerPort() == 0 ?
+                                  LifeStuffManager::kDefaultPort() + 100 :
+                                  detail::GetTestLifeStuffManagerPort()),
+#else
+        : lifestuff_manager_port_(LifeStuffManager::kDefaultPort()),
+#endif
           local_port_(0),
           on_new_version_available_(),
           state_(kInitialising),
@@ -76,6 +82,11 @@ ClientController::~ClientController() {
   receiving_transport_->StopListening();
 }
 
+void ClientController::SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
+                                                   fs::path test_env_root_dir) {
+  detail::SetTestEnvironmentVariables(test_lifestuff_manager_port, test_env_root_dir);
+}
+
 bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to LifeStuffManager.";
@@ -88,15 +99,19 @@ bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
 
 bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
   int result(1);
-  request_transport->Connect(++lifestuff_manager_port_, result);
+  Port manager_port(lifestuff_manager_port_);
+  request_transport->Connect(manager_port, result);
   while (result != kSuccess) {
-    if (lifestuff_manager_port_ == LifeStuffManager::kMaxPort()) {
+    ++manager_port;
+    if (manager_port > lifestuff_manager_port_ + LifeStuffManager::kMaxRangeAboveDefaultPort()) {
       LOG(kError) << "ClientController failed to connect to LifeStuffManager on all ports in range "
-                  << LifeStuffManager::kMinPort() << " to " << LifeStuffManager::kMaxPort();
+                  << lifestuff_manager_port_ << " to "
+                  << lifestuff_manager_port_ + LifeStuffManager::kMaxRangeAboveDefaultPort();
       return false;
     }
-    request_transport->Connect(++lifestuff_manager_port_, result);
+    request_transport->Connect(manager_port, result);
   }
+  lifestuff_manager_port_ = manager_port;
   return true;
 }
 

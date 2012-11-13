@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "boost/filesystem/path.hpp"
+#include "boost/program_options.hpp"
 #include "boost/tokenizer.hpp"
 #include "boost/thread.hpp"
 #include "boost/thread/condition_variable.hpp"
@@ -30,7 +32,11 @@
 #include "maidsafe/common/log.h"
 
 #include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/private/lifestuff_manager/utils.h"
 
+
+namespace fs = boost::filesystem;
+namespace po = boost::program_options;
 
 namespace {
 
@@ -145,12 +151,51 @@ int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
 #  ifdef TESTING
-  if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
-    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
-    boost::mutex::scoped_lock lock(g_mutex);
-    g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT
-  } else {
-    LOG(kError) << "Failed to set control handler.";
+  po::options_description options_description("Allowed options");
+  options_description.add_options()
+      ("help", "produce help message")
+      ("port", po::value<int>(), "Listening port")
+      ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore");
+  try {
+    po::variables_map variables_map;
+    po::store(po::command_line_parser(argc, argv).options(options_description).
+            allow_unregistered().run(), variables_map);
+    po::notify(variables_map);
+
+    if (variables_map.count("help")) {
+      std::cout << options_description;
+      return 1;
+    }
+
+    uint16_t port(maidsafe::priv::lifestuff_manager::LifeStuffManager::kDefaultPort() + 100);
+    bool has_port(variables_map.count("port") != 0);
+    if (has_port) {
+      if (variables_map["port"].as<int>() < 1025 ||
+          variables_map["port"].as<int>() > std::numeric_limits<uint16_t>::max()) {
+        LOG(kError) << "port must lie in range [1025, 65535]";
+        return 1;
+      }
+      port = static_cast<uint16_t>(variables_map["port"].as<int>());
+    }
+
+    fs::path root_dir;
+    bool has_root_dir(variables_map.count("root_dir") != 0);
+    if (has_root_dir)
+      root_dir = variables_map["root_dir"].as<std::string>();
+
+    maidsafe::priv::lifestuff_manager::detail::SetTestEnvironmentVariables(port, root_dir);
+
+    if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
+      maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+      boost::mutex::scoped_lock lock(g_mutex);
+      g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT
+    } else {
+      LOG(kError) << "Failed to set control handler.";
+      return 1;
+    }
+  }
+  catch(const std::exception& e) {
+    LOG(kError) << "Error: " << e.what();
     return 1;
   }
 #  else
