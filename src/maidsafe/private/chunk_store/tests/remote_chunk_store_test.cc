@@ -926,7 +926,8 @@ TEST_F(RemoteChunkStoreTest, FUNC_Order) {
 TEST_F(RemoteChunkStoreTest, FUNC_GetTimeout) {
   NonEmptyString content(RandomString(100));
   ChunkId name(crypto::Hash<crypto::SHA512>(content));
-  EXPECT_CALL(*mock_chunk_manager_, GetChunk(testing::_, testing::_, testing::_, testing::_));
+  EXPECT_CALL(*mock_chunk_manager_,
+              GetChunk(testing::_, testing::_, testing::_, testing::_, testing::_));
   for (int i(0); i < 10; ++i) {
     ++parallel_tasks_;
     LOG(kInfo) << "Before Posting: Parallel tasks: " << parallel_tasks_;

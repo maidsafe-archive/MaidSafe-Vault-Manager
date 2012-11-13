@@ -71,7 +71,8 @@ LocalChunkManager::~LocalChunkManager() {}
 void LocalChunkManager::GetChunk(const ChunkId& name,
                                  const ChunkVersion& local_version,
                                  const Fob& fob,
-                                 bool lock) {
+                                 bool lock,
+                                 bool /*try_cache*/) {
   if (get_wait_.total_milliseconds() != 0)
     Sleep(get_wait_);
 
