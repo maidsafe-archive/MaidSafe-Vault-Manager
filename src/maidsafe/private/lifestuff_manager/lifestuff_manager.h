@@ -84,13 +84,8 @@ class LifeStuffManager {
  public:
   LifeStuffManager();
   ~LifeStuffManager();
-#ifdef TESTING
-  static uint16_t kMinPort() { return 5583; }
-  static uint16_t kMaxPort() { return 5590; }
-#else
-  static uint16_t kMinPort() { return 5483; }
-  static uint16_t kMaxPort() { return 5490; }
-#endif
+  static uint16_t kDefaultPort() { return 5483; }
+  static uint16_t kMaxRangeAboveDefaultPort() { return 10; }
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
   static boost::posix_time::time_duration kMinUpdateInterval() {
@@ -188,19 +183,19 @@ class LifeStuffManager {
 
   ProcessManager process_manager_;
   DownloadManager download_manager_;
-  boost::posix_time::time_duration update_interval_;
-//  boost::asio::deadline_timer update_timer_;
-  mutable std::mutex update_mutex_;
   uint16_t local_port_;
+  boost::filesystem::path config_file_path_, latest_local_installer_path_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
   std::map<uint16_t, int> client_ports_and_versions_;
   mutable std::mutex client_ports_mutex_;
-  boost::filesystem::path config_file_path_, latest_local_installer_path_;
   std::vector<EndPoint> endpoints_;
   std::mutex config_file_mutex_;
   bool need_to_stop_;
   AsioService asio_service_;
+  boost::posix_time::time_duration update_interval_;
+  mutable std::mutex update_mutex_;
+  boost::asio::deadline_timer update_timer_;
   std::shared_ptr<LocalTcpTransport> transport_;
 };
 

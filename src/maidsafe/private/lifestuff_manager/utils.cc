@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <iterator>
+#include <mutex>
 #include <set>
 
 #include "boost/lexical_cast.hpp"
@@ -27,6 +28,8 @@
 #include "maidsafe/private/lifestuff_manager/return_codes.h"
 
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace priv {
@@ -38,6 +41,12 @@ namespace detail {
 namespace {
 
 const char kSeparator('_');
+
+#ifdef TESTING
+std::once_flag test_env_flag;
+Port g_test_lifestuff_manager_port(0);
+fs::path g_test_env_root_dir;
+#endif
 
 }  // unnamed namespace
 
@@ -102,11 +111,14 @@ bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
     return do_fail();
   }
 
-  if (lifestuff_manager_port < LifeStuffManager::kMinPort() ||
-      lifestuff_manager_port > LifeStuffManager::kMaxPort()) {
+#ifndef TESTING
+  if (lifestuff_manager_port < LifeStuffManager::kDefaultPort() ||
+      lifestuff_manager_port >
+          LifeStuffManager::kDefaultPort() + LifeStuffManager::kMaxRangeAboveDefaultPort()) {
     LOG(kError) << "Invalid Vaults Manager port " << lifestuff_manager_port;
     return do_fail();
   }
+#endif
 
   return true;
 }
@@ -129,6 +141,23 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 
   return true;
 }
+
+#ifdef TESTING
+void SetTestEnvironmentVariables(Port test_lifestuff_manager_port, fs::path test_env_root_dir) {
+  std::call_once(test_env_flag, [test_lifestuff_manager_port, test_env_root_dir] {
+    g_test_lifestuff_manager_port = test_lifestuff_manager_port;
+    g_test_env_root_dir = test_env_root_dir;
+  });
+}
+
+Port GetTestLifeStuffManagerPort() {
+  return g_test_lifestuff_manager_port;
+}
+
+fs::path GetTestEnvironmentRootDir() {
+  return g_test_env_root_dir;
+}
+#endif  // TESTING
 
 
 }  // namespace detail

@@ -60,8 +60,8 @@ int main(int argc, char* argv[]) {
     po::notify(variables_map);
 
     if (variables_map.count("help")) {
-        std::cout << options_description;
-        return 1;
+      std::cout << options_description;
+      return 1;
     }
     if (!variables_map.count("vmid")) {
       LOG(kError) << "dummy_vault: You must supply a vaults manager ID";

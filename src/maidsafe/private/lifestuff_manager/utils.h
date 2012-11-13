@@ -50,6 +50,13 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
                                   OnMessageReceived::slot_type on_message_received_slot,
                                   Port& local_port);
 
+#ifdef TESTING
+void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
+                                 boost::filesystem::path test_env_root_dir);
+Port GetTestLifeStuffManagerPort();
+boost::filesystem::path GetTestEnvironmentRootDir();
+#endif
+
 }  // namespace detail
 
 }  // namespace lifestuff_manager
