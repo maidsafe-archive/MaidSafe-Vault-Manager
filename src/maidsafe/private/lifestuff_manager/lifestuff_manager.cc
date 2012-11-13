@@ -407,12 +407,12 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       // The vault is not already registered.
       vault_info->fob = utils::ParseFob(NonEmptyString(start_vault_request.fob()));
       vault_info->account_name = start_vault_request.account_name();
+      std::string random_appendix(RandomAlphaNumericString(16));
       if (start_vault_request.has_chunkstore_path()) {
-        vault_info->chunkstore_path = start_vault_request.chunkstore_path();
+        vault_info->chunkstore_path =
+            (fs::path(start_vault_request.chunkstore_path()) / random_appendix).string();
       } else {
-        std::string short_vault_id(EncodeToBase64(crypto::Hash<crypto::SHA1>(
-                                                      vault_info->fob.identity)));
-        vault_info->chunkstore_path = (config_file_path_.parent_path() / short_vault_id).string();
+        vault_info->chunkstore_path = (config_file_path_.parent_path() / random_appendix).string();
       }
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
