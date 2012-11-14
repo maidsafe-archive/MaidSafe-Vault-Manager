@@ -1019,7 +1019,7 @@ bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConf
 
   protobuf::Bootstrap end_points;
 #ifdef TESTING
-  if (!detail::UsingDefaultEnvironment()) {
+  if (detail::UsingDefaultEnvironment()) {
 #endif
     std::string serialised_endpoints(download_manager_.GetBootstrapInfo());
     if (serialised_endpoints.empty()) {
@@ -1030,6 +1030,7 @@ bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConf
       return false;
     }
 #ifdef TESTING
+  } else {
     if (end_points.bootstrap_contacts_size() == 0) {
       protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
       local_endpoint->set_ip(GetLocalIp().to_string());
