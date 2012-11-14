@@ -203,7 +203,8 @@ void LocalTcpTransport::DoSend(const std::string& data, Port port) {
   auto itr(std::find_if(connections_.begin(),
                         connections_.end(),
                         [port](ConnectionPtr connection) {
-                          return connection->Socket().remote_endpoint().port() == port;
+                          boost::system::error_code error_code;
+                          return connection->Socket().remote_endpoint(error_code).port() == port;
                         }));
   if (itr == connections_.end()) {
     LOG(kError) << "Not connected to port " << port;

@@ -55,6 +55,7 @@ void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
                                  boost::filesystem::path test_env_root_dir);
 Port GetTestLifeStuffManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
+bool UsingDefaultEnvironment();
 #endif
 
 }  // namespace detail

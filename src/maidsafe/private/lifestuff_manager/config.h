@@ -62,8 +62,11 @@ inline asymm::PublicKey kMaidSafePublicKey() {
 }
 
 const std::string kDownloadManagerLocation("downloads");
-// TODO(Fraser#5#): 2012-11-10 - BEFORE_RELEASE - Change to actual value
-const std::string kDownloadManagerSite("109.228.30.58");
+#ifdef TESTING
+const std::string kDownloadManagerSite("dev.goLifestuff.com");
+#else
+const std::string kDownloadManagerSite("goLifestuff.com");
+#endif
 const std::string kDownloadManagerProtocol("http");
 
 

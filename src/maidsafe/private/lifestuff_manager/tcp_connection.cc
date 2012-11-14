@@ -163,8 +163,9 @@ void TcpConnection::HandleReadData(const bs::error_code& ec, size_t length) {
 
 void TcpConnection::DispatchMessage() {
   if (std::shared_ptr<LocalTcpTransport> transport = transport_.lock()) {
+    boost::system::error_code error_code;
     transport->on_message_received_(std::string(data_buffer_.begin(), data_buffer_.end()),
-                                    socket_.remote_endpoint().port());
+                                    socket_.remote_endpoint(error_code).port());
     strand_.dispatch(std::bind(&TcpConnection::StartReadSize, shared_from_this()));
   }
 }

@@ -1,16 +1,10 @@
 package maidsafe.priv.lifestuff_manager.protobuf;
 
-message BootstrapEndpoints {
-  repeated bytes bootstrap_endpoint_ip = 1;
-  repeated uint32 bootstrap_endpoint_port = 2;
-}
-
 message Endpoint {
   required bytes ip = 1;
   required int32 port = 2;
 }
 
-// contacts file
 message Bootstrap {
   repeated Endpoint bootstrap_contacts = 1;
 }

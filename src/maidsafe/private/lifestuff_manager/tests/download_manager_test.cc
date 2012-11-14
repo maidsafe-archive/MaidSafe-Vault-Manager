@@ -39,7 +39,7 @@ class DownloadManagerTest: public testing::Test {
 
  protected:
   void InitialiseDownloadManager(const std::string& remote_location) {
-    download_manager_.reset(new DownloadManager(remote_location, "109.228.30.58"));
+    download_manager_.reset(new DownloadManager(remote_location));
   }
   fs::path GetCurrentVersionDownloadPath() const {
     return download_manager_->local_path_ / download_manager_->latest_remote_version_;

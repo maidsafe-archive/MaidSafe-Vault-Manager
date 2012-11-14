@@ -1015,23 +1015,35 @@ void LifeStuffManager::StopAllVaults() {
 */
 
 bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config) {
-  std::string serialised_endpoints(download_manager_.GetBootstrapInfo());
-  if (serialised_endpoints.empty()) {
-    LOG(kError) << "Retrieved endpoints are empty.";
-//    return false;
-  }
+  protobuf::Bootstrap* bootstrap_list(config.mutable_bootstrap_endpoints());
+
   protobuf::Bootstrap end_points;
-  if (!end_points.ParseFromString(serialised_endpoints)) {
-    LOG(kError) << "Retrieved endpoints do not parse.";
-    return false;
+#ifdef TESTING
+  if (!detail::UsingDefaultEnvironment()) {
+#endif
+    std::string serialised_endpoints(download_manager_.GetBootstrapInfo());
+    if (serialised_endpoints.empty()) {
+      LOG(kError) << "Retrieved endpoints are empty.";
+    }
+    if (!end_points.ParseFromString(serialised_endpoints)) {
+      LOG(kError) << "Retrieved endpoints do not parse.";
+      return false;
+    }
+#ifdef TESTING
+    if (end_points.bootstrap_contacts_size() == 0) {
+      protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
+      local_endpoint->set_ip(GetLocalIp().to_string());
+      local_endpoint->set_port(5483);
+    }
   }
+#endif
   LoadBootstrapEndpoints(end_points);
 
-  config.mutable_bootstrap_endpoints()->CopyFrom(end_points);
+  bootstrap_list->CopyFrom(end_points);
   return true;
 }
 
-void LifeStuffManager::LoadBootstrapEndpoints(protobuf::Bootstrap& end_points) {
+void LifeStuffManager::LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points) {
   int max_index(end_points.bootstrap_contacts_size());
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   endpoints_.clear();

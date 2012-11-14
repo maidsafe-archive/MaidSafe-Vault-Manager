@@ -46,6 +46,7 @@ const char kSeparator('_');
 std::once_flag test_env_flag;
 Port g_test_lifestuff_manager_port(0);
 fs::path g_test_env_root_dir;
+bool g_using_default_environment(true);
 #endif
 
 }  // unnamed namespace
@@ -147,6 +148,7 @@ void SetTestEnvironmentVariables(Port test_lifestuff_manager_port, fs::path test
   std::call_once(test_env_flag, [test_lifestuff_manager_port, test_env_root_dir] {
     g_test_lifestuff_manager_port = test_lifestuff_manager_port;
     g_test_env_root_dir = test_env_root_dir;
+    g_using_default_environment = false;
   });
 }
 
@@ -156,6 +158,10 @@ Port GetTestLifeStuffManagerPort() {
 
 fs::path GetTestEnvironmentRootDir() {
   return g_test_env_root_dir;
+}
+
+bool UsingDefaultEnvironment() {
+  return g_using_default_environment;
 }
 #endif  // TESTING
 
