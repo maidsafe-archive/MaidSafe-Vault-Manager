@@ -202,7 +202,7 @@ void LocalTcpTransport::Send(const std::string& data, Port port) {
 void LocalTcpTransport::DoSend(const std::string& data, Port port) {
   auto itr(std::find_if(connections_.begin(),
                         connections_.end(),
-                        [port](ConnectionPtr connection) {
+                        [port](ConnectionPtr connection)->bool {
                           boost::system::error_code error_code;
                           return connection->Socket().remote_endpoint(error_code).port() == port;
                         }));
