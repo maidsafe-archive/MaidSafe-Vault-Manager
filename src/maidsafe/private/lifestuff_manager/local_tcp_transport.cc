@@ -52,7 +52,8 @@ Port LocalTcpTransport::StartListening(Port port, int& result) {
                              &result));
   cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
   done_ = false;
-  return acceptor_.local_endpoint().port();
+  boost::system::error_code error_code;
+  return acceptor_.local_endpoint(error_code).port();
 }
 
 void LocalTcpTransport::DoStartListening(Port port, int* result) {
@@ -135,7 +136,7 @@ void LocalTcpTransport::DoStartListening(Port port, int* result) {
 }
 
 void LocalTcpTransport::StopListening() {
-  strand_.dispatch([=] {
+  strand_.dispatch([this] {
     boost::system::error_code ec;
     if (acceptor_.is_open())
       acceptor_.close(ec);
