@@ -45,7 +45,7 @@ enum ReturnCode {
   kDifferentVersion = -150024,
   kChunkNotModified = -150025,
   kDataNotPublicKey = -150026,
-  kSerialisationError = -150027,
+  kSerialisationError = -150027
 };
 
 }  // namespace priv
