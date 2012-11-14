@@ -13,7 +13,7 @@
 
 #include <cstdlib>
 
-#include "boost/algorithm/string/find_iterator.hpp"
+#include "boost/algorithm/string.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/log.h"
@@ -56,7 +56,7 @@ int GetNumRunningProcesses(const std::string& process_name) {
     boost::trim(contents);
     // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
     // overall ps and the piped grep
-    int num_processes(boost::lexical_cast<int>(process_string));
+    int num_processes(boost::lexical_cast<int>(contents));
 #endif
     return num_processes;
   }

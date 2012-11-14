@@ -71,7 +71,7 @@ const std::string kDownloadManagerProtocol("http");
 const std::string kVaultName("dummy_vault" + kExecutableExtension);
 
 #  ifndef MAIDSAFE_WIN32
-std::string GetUserId() {
+inline std::string GetUserId() {
   return "maidsafe";
 }
 #  endif
