@@ -168,6 +168,11 @@ ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
+ms_add_executable(bootstrap_file_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/bootstrap_file_tool.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.h"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info_pb.h"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.proto")
 if(MAIDSAFE_TESTING)
   ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
   ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
@@ -180,6 +185,7 @@ target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
 target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(signing_tool maidsafe_private)
+target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
