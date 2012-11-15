@@ -10,6 +10,7 @@
  **************************************************************************************************/
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <ios>
@@ -54,7 +55,7 @@ class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy 
   }
   void Execute() const {
     MessagePolicy::PrintMessage();
-    InputPolicy::InputType input;
+    typename InputPolicy::InputType input;
     for (;;) {
       std::string error_info;
       if (InputPolicy::GetInput(input, error_info))
@@ -70,6 +71,7 @@ class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy 
 template <bool loading_file>
 class MessagePolicyGetPath {
  protected:
+  virtual ~MessagePolicyGetPath() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index
                          << (loading_file ? " to load an existing" : " to save to a")
@@ -87,6 +89,7 @@ class MessagePolicyGetPath {
 
 class MessagePolicyPrependEndpoint {
  protected:
+  virtual ~MessagePolicyPrependEndpoint() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index << " to prepend a bootstrap endpoint\n";
   }
@@ -102,6 +105,7 @@ class MessagePolicyPrependEndpoint {
 
 class MessagePolicyAppendEndpoint {
  protected:
+  virtual ~MessagePolicyAppendEndpoint() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index << " to append a bootstrap endpoint\n";
   }
@@ -117,6 +121,7 @@ class MessagePolicyAppendEndpoint {
 
 class MessagePolicyRemoveEndpoint {
  protected:
+  virtual ~MessagePolicyRemoveEndpoint() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index << " to remove a bootstrap endpoint\n";
   }
@@ -132,6 +137,7 @@ class MessagePolicyRemoveEndpoint {
 
 class MessagePolicyViewEndpoints {
  protected:
+  virtual ~MessagePolicyViewEndpoints() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index << " to view currently loaded bootstrap endpoints\n";
   }
@@ -141,6 +147,7 @@ class MessagePolicyViewEndpoints {
 
 class MessagePolicyExit {
  protected:
+  virtual ~MessagePolicyExit() {}
   static void PrintCommandPreamble(int index) {
     TLOG(kDefaultColour) << "Enter " << index << " to exit\n";
   }
@@ -152,13 +159,15 @@ class MessagePolicyExit {
 // Input Policies
 class InputPolicyNull {
  protected:
-  typedef nullptr_t InputType;
+  virtual ~InputPolicyNull() {}
+  typedef int InputType;
   bool GetInput(InputType&, std::string&) const { return true; }
 };
 
 template <bool loading_file>
 class InputPolicyGetPath {
  protected:
+  virtual ~InputPolicyGetPath() {}
   typedef fs::path InputType;
   bool GetInput(InputType& bootstrap_path, std::string& error_info) const {
     error_info.clear();
@@ -193,6 +202,7 @@ class InputPolicyGetPath {
 
 class InputPolicyGetEndpoint {
  protected:
+  virtual ~InputPolicyGetEndpoint() {}
   typedef boost::asio::ip::udp::endpoint InputType;
   bool GetInput(InputType& endpoint, std::string& error_info) const {
     error_info.clear();
@@ -267,6 +277,7 @@ class InputPolicyGetEndpoint {
 // Handle Policies
 class HandlePolicyLoadBootstrapFile {
  protected:
+  virtual ~HandlePolicyLoadBootstrapFile() {}
   void HandleInput(const fs::path& bootstrap_file) const {
     if (g_out_of_date) {
       if (!ConfirmChoice(false)) {
@@ -302,6 +313,7 @@ class HandlePolicyLoadBootstrapFile {
 
 class HandlePolicySaveBootstrapFile {
  protected:
+  virtual ~HandlePolicySaveBootstrapFile() {}
   void HandleInput(const fs::path& bootstrap_file) const {
     maidsafe::priv::lifestuff_manager::protobuf::Bootstrap pb_endpoints;
     for (auto endpoint : g_bootstrap_endpoints) {
@@ -322,6 +334,7 @@ class HandlePolicySaveBootstrapFile {
 
 class HandlePolicyPrependEndpoint {
  protected:
+  virtual ~HandlePolicyPrependEndpoint() {}
   void HandleInput(const boost::asio::ip::udp::endpoint& endpoint) const {
     g_bootstrap_endpoints.insert(g_bootstrap_endpoints.begin(), endpoint);
     g_out_of_date = true;
@@ -331,6 +344,7 @@ class HandlePolicyPrependEndpoint {
 
 class HandlePolicyAppendEndpoint {
  protected:
+  virtual ~HandlePolicyAppendEndpoint() {}
   void HandleInput(const boost::asio::ip::udp::endpoint& endpoint) const {
     g_bootstrap_endpoints.push_back(endpoint);
     g_out_of_date = true;
@@ -340,6 +354,7 @@ class HandlePolicyAppendEndpoint {
 
 class HandlePolicyRemoveEndpoint {
  protected:
+  virtual ~HandlePolicyRemoveEndpoint() {}
   void HandleInput(const boost::asio::ip::udp::endpoint& endpoint) const {
     auto itr(std::find(g_bootstrap_endpoints.begin(), g_bootstrap_endpoints.end(), endpoint));
     if (itr == g_bootstrap_endpoints.end()) {
@@ -354,7 +369,8 @@ class HandlePolicyRemoveEndpoint {
 
 class HandlePolicyViewEndpoints {
  protected:
-  void HandleInput(const nullptr_t&) const {
+  virtual ~HandlePolicyViewEndpoints() {}
+  void HandleInput(const int&) const {
     if (g_bootstrap_endpoints.empty()) {
       TLOG(kGreen) << "\nCurrently no endpoints are loaded.\n";
     } else {
@@ -368,7 +384,8 @@ class HandlePolicyViewEndpoints {
 
 class HandlePolicyExit {
  protected:
-  void HandleInput(const nullptr_t&) const {
+  virtual ~HandlePolicyExit() {}
+  void HandleInput(const int&) const {
     if (g_out_of_date) {
       if (ConfirmChoice(true))
         g_running = false;
