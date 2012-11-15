@@ -82,10 +82,12 @@ ClientController::~ClientController() {
   receiving_transport_->StopListening();
 }
 
+#ifdef TESTING
 void ClientController::SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
                                                    fs::path test_env_root_dir) {
   detail::SetTestEnvironmentVariables(test_lifestuff_manager_port, test_env_root_dir);
 }
+#endif
 
 bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
   if (state_ != kVerified) {

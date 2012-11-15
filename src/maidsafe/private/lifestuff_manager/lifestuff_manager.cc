@@ -76,7 +76,7 @@ LifeStuffManager::LifeStuffManager()
                              GetUserAppDir() : detail::GetTestEnvironmentRootDir()) /
                         detail::kGlobalConfigFilename),
 #else
-      local_port_(kMinPort()),
+      local_port_(kDefaultPort()),
       config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
 #endif
       latest_local_installer_path_(),

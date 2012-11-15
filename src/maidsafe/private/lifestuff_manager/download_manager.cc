@@ -72,8 +72,8 @@ DownloadManager::~DownloadManager() {
 }
 
 bool DownloadManager::InitialiseLocalPath() {
-#ifdef TESTING
   boost::system::error_code error_code;
+#ifdef TESTING
   local_path_ = fs::unique_path(fs::temp_directory_path(error_code) /
                                 "MaidSafe_Test_DownloadManager_%%%%-%%%%-%%%%");
 #endif
