@@ -283,7 +283,7 @@ void ProcessManager::WaitForProcesses() {
       }
     }
     thread.join();
-    Sleep(boost::posix_time::milliseconds(10));
+    Sleep(boost::posix_time::milliseconds(100));
   }
 }
 

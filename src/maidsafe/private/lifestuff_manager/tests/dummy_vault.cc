@@ -61,11 +61,11 @@ int main(int argc, char* argv[]) {
 
     if (variables_map.count("help")) {
       std::cout << options_description;
-      return 1;
+      return -1;
     }
     if (!variables_map.count("vmid")) {
       LOG(kError) << "dummy_vault: You must supply a vaults manager ID";
-      return 1;
+      return -2;
     }
     std::string usr_id("lifestuff");
     if (variables_map.count("usr_id")) {
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
       maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
         LOG(kError) << "dummy_vault: Vault controller failed to start. Aborting...";
-        return 1;
+        return -3;
       }
 
       maidsafe::Fob fob;
@@ -108,12 +108,12 @@ int main(int argc, char* argv[]) {
         LOG(kInfo) << "dummy_vault: Process finishing normally. ";
         return 0;
       } else {
-        return 1;
+        return -4;
       }
     }
   }
   catch(const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
-    return 1;
+    return -5;
   }
 }

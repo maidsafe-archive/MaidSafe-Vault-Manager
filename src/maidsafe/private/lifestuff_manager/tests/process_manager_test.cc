@@ -270,7 +270,7 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   boost::posix_time::time_duration elapsed(end - start);
   int64_t seconds(elapsed.seconds());
   EXPECT_GE(seconds, 2);
-  EXPECT_LE(seconds, 3);
+  EXPECT_LE(seconds, 5);
   EXPECT_EQ(1, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
@@ -410,7 +410,7 @@ TEST_F(ProcessManagerTest, BEH_StartThreeProcesses) {
   boost::posix_time::time_duration elapsed(end - start);
   int64_t seconds(elapsed.seconds());
   EXPECT_GE(seconds, 2);
-  EXPECT_LE(seconds, 3);
+  EXPECT_LE(seconds, 5);
   EXPECT_EQ(3, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
