@@ -244,6 +244,7 @@ int main(int argc, char** argv) {
 
     maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
     signal(SIGINT, ShutDownLifeStuffManager);
+    signal(SIGTERM, ShutDownLifeStuffManager);
     boost::mutex::scoped_lock lock(g_mutex);
     g_cond_var.wait(lock, [&] { return g_shutdown_service; });  // NOLINT (Philip)
   }
