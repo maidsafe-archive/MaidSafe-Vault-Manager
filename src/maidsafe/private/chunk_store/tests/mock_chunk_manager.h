@@ -39,10 +39,11 @@ class MockChunkManager : public priv::chunk_store::ChunkManager {
   explicit MockChunkManager(std::shared_ptr<priv::chunk_store::ChunkStore> chunk_store);
   virtual ~MockChunkManager();
 
-  MOCK_METHOD4(GetChunk, void(const ChunkId& name,
+  MOCK_METHOD5(GetChunk, void(const ChunkId& name,
                               const ChunkVersion& local_version,
                               const Fob& fob,
-                              bool lock));
+                              bool lock,
+                              bool try_cache));
 
   MOCK_METHOD2(StoreChunk, void(const ChunkId& chunk_name, const Fob& fob));
 

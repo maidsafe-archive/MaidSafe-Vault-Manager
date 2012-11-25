@@ -9,47 +9,45 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_RETURN_CODES_H_
-#define MAIDSAFE_PRIVATE_RETURN_CODES_H_
+#include "maidsafe/private/lifestuff_manager/utils.h"
+
+#include <string>
+
+#include "maidsafe/common/test.h"
+
 
 namespace maidsafe {
 
 namespace priv {
 
-enum ReturnCode {
-  kSuccess = 0,
-  kGeneralError = -100001,
-  kUnknownFailure = -150002,
-  kNullParameter = -150003,
-  kKeyNotUnique = -150004,
-  kKeyUnique = -150005,
-  kParseFailure = -150006,
-  kPreOperationCheckFailure = -150007,
-  kDuplicateNameFailure = -150008,
-  kVerifyDataFailure = -150009,
-  kGetFailure = -150010,
-  kStoreFailure = -150011,
-  kDeleteFailure = -150012,
-  kModifyFailure = -150013,
-  kInvalidSignedData = -150014,
-  kInvalidModify = -150015,
-  kFailedSignatureCheck = -150016,
-  kSignatureCheckError = -150016,
-  kNotHashable = -150017,
-  kNotOwner = -150018,
-  kInvalidChunkType = -150019,
-  kFailedToFindChunk = -150020,
-  kInvalidPublicKey = -150021,
-  kAppendDisallowed = -150022,
-  kHashFailure = -150023,
-  kDifferentVersion = -150024,
-  kChunkNotModified = -150025,
-  kDataNotPublicKey = -150026,
-  kSerialisationError = -150027
-};
+namespace lifestuff_manager {
+
+namespace detail {
+
+namespace test {
+
+TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) {
+  FAIL() << "Needs test";
+}
+
+TEST(UtilsTest, BEH_GenerateVmidParameter) {
+  EXPECT_EQ("0_0", GenerateVmidParameter(0, 0));
+  EXPECT_EQ("0_65535", GenerateVmidParameter(0, 65535));
+  EXPECT_EQ("1_65535", GenerateVmidParameter(1, 65535));
+  EXPECT_EQ("1000_65535", GenerateVmidParameter(1000, 65535));
+  EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
+}
+
+TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) {
+  FAIL() << "Needs test";
+}
+
+}  // namespace test
+
+}  // namespace detail
+
+}  // namespace lifestuff_manager
 
 }  // namespace priv
 
 }  // namespace maidsafe
-
-#endif  // MAIDSAFE_PRIVATE_RETURN_CODES_H_

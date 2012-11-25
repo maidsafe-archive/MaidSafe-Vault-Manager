@@ -18,8 +18,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 Fob::Fob() : identity_(), public_key_(), private_key_(), validation_token_(), signed_by_() {
   CreateKeys();
   validation_token_ = CreateValidation();
@@ -139,7 +137,5 @@ Fob ParseFob(const NonEmptyString& serialised_fob) {
 }
 
 }  // namespace utils
-
-}  // namespace priv
 
 }  // namespace maidsafe

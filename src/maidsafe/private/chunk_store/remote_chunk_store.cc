@@ -117,7 +117,7 @@ RemoteChunkStore::~RemoteChunkStore() {
   chunk_manager_delete_connection_.disconnect();
 }
 
-std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob) {
+std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob, bool try_cache) {
   LOG(kInfo) << "Get - " << Base32Substr(name);
   std::unique_lock<std::mutex> lock(mutex_);
 
@@ -129,7 +129,7 @@ std::string RemoteChunkStore::Get(const ChunkId& name, const Fob& fob) {
     }
   }
 
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kGet, nullptr, fob, true), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kGet, nullptr, fob, true, try_cache), lock));
   ProcessPendingOps(lock);
   if (!WaitForGetOps(name, id, lock)) {
     LOG(kError) << "Get - Timed out for " << Base32Substr(name) << " - ID " << id;
@@ -191,7 +191,7 @@ int RemoteChunkStore::GetAndLock(const ChunkId& name,
       return kSuccess;
     }
   }
-  OperationData op_data(OpType::kGetLock, nullptr, fob, true);
+  OperationData op_data(OpType::kGetLock, nullptr, fob, true, false);
   op_data.local_version = local_version;
   uint32_t id(EnqueueOp(name, op_data, lock));
   ProcessPendingOps(lock);
@@ -239,7 +239,7 @@ bool RemoteChunkStore::Store(const ChunkId& name,
   LOG(kInfo) << "Store - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kStore, callback, fob, false), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kStore, callback, fob, false, false), lock));
   WaitResult result(WaitForConflictingOps(name, OpType::kStore, id, lock));
   if (result != WaitResult::kSuccess) {
     LOG(kWarning) << "Store - Terminated early for " << Base32Substr(name);
@@ -268,7 +268,7 @@ bool RemoteChunkStore::Delete(const ChunkId& name,
   LOG(kInfo) << "Delete - " << Base32Substr(name);
 
   std::unique_lock<std::mutex> lock(mutex_);
-  uint32_t id(EnqueueOp(name, OperationData(OpType::kDelete, callback, fob, false), lock));
+  uint32_t id(EnqueueOp(name, OperationData(OpType::kDelete, callback, fob, false, false), lock));
   WaitResult result(WaitForConflictingOps(name, OpType::kDelete, id, lock));
   if (result != WaitResult::kSuccess) {
     LOG(kWarning) << "Delete - Terminated early for " << Base32Substr(name);
@@ -299,7 +299,7 @@ bool RemoteChunkStore::Modify(const ChunkId& name,
   }
 
   std::unique_lock<std::mutex> lock(mutex_);
-  OperationData op_data(OpType::kModify, callback, fob, true);
+  OperationData op_data(OpType::kModify, callback, fob, true, false);
   op_data.content = content;
   EnqueueOp(name, op_data, lock);
 //   uint32_t id(EnqueueOp(name, op_data, &lock));
@@ -629,10 +629,11 @@ void RemoteChunkStore::ProcessPendingOps(std::unique_lock<std::mutex>& lock) {
     lock.unlock();
     switch (op_data.op_type) {
       case OpType::kGet:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, false);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, false,
+                                 op_data.try_cache);
         break;
       case OpType::kGetLock:
-        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, true);
+        chunk_manager_->GetChunk(name, op_data.local_version, op_data.fob, true, op_data.try_cache);
         break;
       case OpType::kStore:
         chunk_manager_->StoreChunk(name, op_data.fob);
