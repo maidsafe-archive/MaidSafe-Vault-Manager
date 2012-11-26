@@ -31,11 +31,11 @@ ImmutableData::ImmutableData(const NonEmptyString& serialised_data) : data_(), n
    priv::chunk_manager::Data data_proto;
    name_ = data_proto.content.name();
    data_ = data_proto.content.data();
-     validate();
+   Validate();
 }
 
 void ImmutableData::Validate() {
- if (name_ != crypto::Hash<SHA512>Hash(data_))
+ if (name_ != crypto::Hash<crypto::SHA512>(data_))
    ThrowError(CommonErrors::hashing_error);
 }
 

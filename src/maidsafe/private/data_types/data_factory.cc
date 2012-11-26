@@ -25,7 +25,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/data_types/data_manager.h"
+#include "maidsafe/private/data_types/data_factory.h"
 
 namespace fs = boost::filesystem;
 
