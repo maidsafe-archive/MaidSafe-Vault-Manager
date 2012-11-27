@@ -144,10 +144,12 @@ int HandleProgramOptions(int argc, char** argv) {
   options_description.add_options()
       ("help", "produce help message")
       ("port", po::value<int>(), "Listening port")
+      ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
       ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore");
   po::variables_map variables_map;
   po::store(po::command_line_parser(argc, argv).options(options_description).
-          allow_unregistered().run(), variables_map);
+                allow_unregistered().run(),
+            variables_map);
   po::notify(variables_map);
 
   if (variables_map.count("help")) {
@@ -166,12 +168,17 @@ int HandleProgramOptions(int argc, char** argv) {
     port = static_cast<uint16_t>(variables_map["port"].as<int>());
   }
 
-  fs::path root_dir;
+  fs::path root_dir, path_to_vault;
   bool has_root_dir(variables_map.count("root_dir") != 0);
   if (has_root_dir)
     root_dir = variables_map["root_dir"].as<std::string>();
+  bool has_path_to_vault(variables_map.count("vault_path") != 0);
+  if (has_path_to_vault)
+    path_to_vault = variables_map["vault_path"].as<std::string>();
 
-  maidsafe::priv::lifestuff_manager::detail::SetTestEnvironmentVariables(port, root_dir);
+  maidsafe::priv::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
+                                                                         root_dir,
+                                                                         path_to_vault);
   return 0;
 }
 

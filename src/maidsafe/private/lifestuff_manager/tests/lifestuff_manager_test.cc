@@ -43,14 +43,15 @@ namespace test {
 TEST(LifeStuffManagerTest, FUNC_StartStop) {
   maidsafe::test::TestPath test_path =
       maidsafe::test::CreateTestPath("MaidSafe_Test_LifeStuffManager");
-  detail::SetTestEnvironmentVariables(maidsafe::test::GetRandomPort(), *test_path);
+  detail::SetTestEnvironmentVariables(maidsafe::test::GetRandomPort(), *test_path, fs::path());
   fs::path config_file_path(*test_path / detail::kGlobalConfigFilename);
 
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
+  auto update_callback = [] (const NonEmptyString&) {};
   {
     LifeStuffManager lifestuff_manager;
-    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller(update_callback);  // NOLINT (Fraser)
     int max_seconds = LifeStuffManager::kMaxUpdateInterval().total_seconds();
     EXPECT_FALSE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds + 1)));
     EXPECT_TRUE(client_controller.SetUpdateInterval(bptime::seconds(max_seconds)));
@@ -62,7 +63,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
     EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   }
   std::string config_contents;
-  maidsafe::ReadFile(config_file_path, &config_contents);
+  ReadFile(config_file_path, &config_contents);
   protobuf::LifeStuffManagerConfig lifestuff_manager_config;
   lifestuff_manager_config.ParseFromString(config_contents);
   EXPECT_EQ(0, lifestuff_manager_config.vault_info_size());
@@ -73,7 +74,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   Fob first_fob;
   {
     LifeStuffManager lifestuff_manager;
-    ClientController client_controller([](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller(update_callback);  // NOLINT (Fraser)
     first_fob = utils::GenerateFob(nullptr);
     EXPECT_TRUE(client_controller.StartVault(first_fob, first_fob.identity.string(), ""));
     Sleep(boost::posix_time::seconds(1));
@@ -83,7 +84,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   }
   EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
-  maidsafe::ReadFile(config_file_path, &config_contents);
+  ReadFile(config_file_path, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
   EXPECT_EQ(1, lifestuff_manager_config.vault_info_size());
 
@@ -104,7 +105,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   Fob second_fob(utils::GenerateFob(nullptr));
   {
     LifeStuffManager lifestuff_manager;
-    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller(update_callback);  // NOLINT (Fraser)
     EXPECT_TRUE(client_controller.StartVault(second_fob, "G", ""));
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses(detail::kVaultName));
@@ -123,7 +124,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   }
   EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
-  maidsafe::ReadFile(config_file_path, &config_contents);
+  ReadFile(config_file_path, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
   EXPECT_EQ(2, lifestuff_manager_config.vault_info_size());
 
@@ -132,7 +133,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   // down when the LifeStuffManager is destroyed. both should saved to the config file.
   {
     LifeStuffManager lifestuff_manager;
-    ClientController client_controller([](const NonEmptyString&){});  // NOLINT (Fraser)
+    ClientController client_controller(update_callback);  // NOLINT (Fraser)
     Sleep(boost::posix_time::seconds(2));
     EXPECT_EQ(2, GetNumRunningProcesses(detail::kVaultName));
     asymm::PlainText data(RandomString(64));
@@ -144,7 +145,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   }
   EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents = "";
-  maidsafe::ReadFile(config_file_path, &config_contents);
+  ReadFile(config_file_path, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
   ASSERT_EQ(2, lifestuff_manager_config.vault_info_size());
   int run_count(0);
@@ -159,7 +160,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   {
     EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
     config_contents.clear();
-    maidsafe::ReadFile(config_file_path, &config_contents);
+    ReadFile(config_file_path, &config_contents);
     lifestuff_manager_config.ParseFromString(config_contents);
     EXPECT_EQ(2, lifestuff_manager_config.vault_info_size());
     LifeStuffManager lifestuff_manager;
@@ -179,7 +180,7 @@ TEST(LifeStuffManagerTest, FUNC_StartStop) {
   }
   EXPECT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
   config_contents.clear();
-  maidsafe::ReadFile(config_file_path, &config_contents);
+  ReadFile(config_file_path, &config_contents);
   lifestuff_manager_config.ParseFromString(config_contents);
   EXPECT_EQ(52, lifestuff_manager_config.vault_info_size());
   boost::system::error_code error;

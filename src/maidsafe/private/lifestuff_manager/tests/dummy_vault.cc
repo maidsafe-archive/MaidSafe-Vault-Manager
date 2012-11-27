@@ -68,12 +68,12 @@ int main(int argc, char* argv[]) {
       return -2;
     }
     std::string usr_id("lifestuff");
-    if (variables_map.count("usr_id")) {
+    if (variables_map.count("usr_id"))
       usr_id = variables_map.at("usr_id").as<std::string>();
-    }
+
     std::string lifestuff_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
-      LOG(kInfo) << "dummy_vault: Starting VaultController.";
+      LOG(kInfo) << "dummy_vault: Starting VaultController: " << usr_id;
       maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
         LOG(kError) << "dummy_vault: Vault controller failed to start. Aborting...";

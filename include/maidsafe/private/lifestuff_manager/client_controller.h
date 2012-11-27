@@ -75,7 +75,8 @@ class ClientController {
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
-                                          boost::filesystem::path test_env_root_dir);
+                                          boost::filesystem::path test_env_root_dir,
+                                          boost::filesystem::path path_to_vault);
 #endif
 
  private:

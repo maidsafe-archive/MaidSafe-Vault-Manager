@@ -52,9 +52,11 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
-                                 boost::filesystem::path test_env_root_dir);
+                                 boost::filesystem::path test_env_root_dir,
+                                 boost::filesystem::path path_to_vault);
 Port GetTestLifeStuffManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
+boost::filesystem::path GetPathToVault();
 bool UsingDefaultEnvironment();
 #endif
 

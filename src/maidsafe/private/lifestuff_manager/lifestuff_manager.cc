@@ -837,7 +837,9 @@ void LifeStuffManager::UpdateExecutor() {
 
   it = (std::find_if(updated_files.begin(),
                      updated_files.end(),
-                     [&] (const fs::path& path)->bool { return path.stem() == detail::kVaultName; }));  // NOLINT
+                     [&] (const fs::path& path)->bool {
+                       return path.stem() == detail::kVaultName;
+                     }));
   fs::path new_local_vault_path;
   if (it != updated_files.end()) {
     new_local_vault_path = *it;
@@ -1058,7 +1060,9 @@ void LifeStuffManager::LoadBootstrapEndpoints(const protobuf::Bootstrap& end_poi
 bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef TESTING
-  fs::path executable_path(".");
+  fs::path executable_path(detail::GetPathToVault());
+  if (executable_path.empty())
+    executable_path = fs::path(".");
   std::string user_id;
 #  ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];

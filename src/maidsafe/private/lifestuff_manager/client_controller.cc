@@ -84,8 +84,11 @@ ClientController::~ClientController() {
 
 #ifdef TESTING
 void ClientController::SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
-                                                   fs::path test_env_root_dir) {
-  detail::SetTestEnvironmentVariables(test_lifestuff_manager_port, test_env_root_dir);
+                                                   fs::path test_env_root_dir,
+                                                   fs::path path_to_vault) {
+  detail::SetTestEnvironmentVariables(test_lifestuff_manager_port,
+                                      test_env_root_dir,
+                                      path_to_vault);
 }
 #endif
 

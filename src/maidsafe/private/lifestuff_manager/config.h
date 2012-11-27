@@ -69,20 +69,7 @@ const std::string kDownloadManagerSite("goLifestuff.com");
 #endif
 const std::string kDownloadManagerProtocol("http");
 
-
-#ifdef USE_DUMMY_VAULT
-const std::string kVaultName("dummy_vault" + kExecutableExtension);
-
-#  ifndef MAIDSAFE_WIN32
-inline std::string GetUserId() {
-  return "maidsafe";
-}
-#  endif
-
-#else
-const std::string kVaultName("lifestuff_vault" + kExecutableExtension);
-
-#  ifndef MAIDSAFE_WIN32
+#ifndef MAIDSAFE_WIN32
 inline std::string GetUserId() {
   char user_name[64] = {0};
   int result(getlogin_r(user_name, sizeof(user_name) - 1));
@@ -90,8 +77,12 @@ inline std::string GetUserId() {
     return "";
   return std::string(user_name);
 }
-#  endif
+#endif
 
+#ifdef USE_DUMMY_VAULT
+const std::string kVaultName("dummy_vault" + kExecutableExtension);
+#else
+const std::string kVaultName("lifestuff_vault" + kExecutableExtension);
 #endif
 
 }  // namespace detail
