@@ -1034,9 +1034,17 @@ bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConf
 #ifdef TESTING
   } else {
     if (end_points.bootstrap_contacts_size() == 0) {
-      protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
-      local_endpoint->set_ip(GetLocalIp().to_string());
-      local_endpoint->set_port(5483);
+      if (detail::GetBootstrapIps().empty()) {
+        protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
+        local_endpoint->set_ip(GetLocalIp().to_string());
+        local_endpoint->set_port(5483);
+      } else {
+        for (auto& ip : detail::GetBootstrapIps()) {
+          protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
+          local_endpoint->set_ip(ip);
+          local_endpoint->set_port(5483);
+        }
+      }
     }
   }
 #endif

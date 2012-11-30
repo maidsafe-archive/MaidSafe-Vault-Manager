@@ -43,12 +43,15 @@ namespace test {
 TEST(LifeStuffManagerTest, FUNC_StartStop) {
   maidsafe::test::TestPath test_path =
       maidsafe::test::CreateTestPath("MaidSafe_Test_LifeStuffManager");
-  detail::SetTestEnvironmentVariables(maidsafe::test::GetRandomPort(), *test_path, fs::path());
+  detail::SetTestEnvironmentVariables(maidsafe::test::GetRandomPort(),
+                                      *test_path,
+                                      fs::path(),
+                                      std::vector<std::string>());
   fs::path config_file_path(*test_path / detail::kGlobalConfigFilename);
 
   // test case for startup (non-existent config file)
   boost::system::error_code error_code;
-  auto update_callback = [] (const NonEmptyString&) {};
+  auto update_callback = [] (const NonEmptyString&) {};  // NOLINT (Dan)
   {
     LifeStuffManager lifestuff_manager;
     ClientController client_controller(update_callback);  // NOLINT (Fraser)

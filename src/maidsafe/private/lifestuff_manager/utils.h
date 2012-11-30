@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/path.hpp"
 
@@ -53,10 +54,12 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
                                  boost::filesystem::path test_env_root_dir,
-                                 boost::filesystem::path path_to_vault);
+                                 boost::filesystem::path path_to_vault,
+                                 std::vector<std::string> bootstrap_ips);
 Port GetTestLifeStuffManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
+std::vector<std::string> GetBootstrapIps();
 bool UsingDefaultEnvironment();
 #endif
 

@@ -22,10 +22,11 @@
 #include <thread>
 #include <vector>
 
+#include "boost/array.hpp"
 #include "boost/filesystem/path.hpp"
 #include "boost/program_options.hpp"
+#include "boost/regex.hpp"
 #include "boost/tokenizer.hpp"
-#include "boost/array.hpp"
 
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
@@ -139,13 +140,30 @@ BOOL CtrlHandler(DWORD control_type) {
 
 #endif
 
+std::vector<std::string> ParseIps(const std::string& parameter_ips) {
+  std::vector<std::string> ips;
+  boost::regex re(",");
+  boost::sregex_token_iterator it(parameter_ips.begin(), parameter_ips.end(), re, -1), end;
+  while (it != end)
+    ips.push_back(*it++);
+
+#ifndef NDEBUG
+  if (!ips.empty()) {
+    for (auto& ip : ips)
+      LOG(kInfo) << "IP candidate: " << ip;
+  }
+#endif
+  return ips;
+}
+
 int HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
   options_description.add_options()
       ("help", "produce help message")
       ("port", po::value<int>(), "Listening port")
       ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
-      ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore");
+      ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore")
+      ("bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.");
   po::variables_map variables_map;
   po::store(po::command_line_parser(argc, argv).options(options_description).
                 allow_unregistered().run(),
@@ -176,9 +194,15 @@ int HandleProgramOptions(int argc, char** argv) {
   if (has_path_to_vault)
     path_to_vault = variables_map["vault_path"].as<std::string>();
 
+  std::vector<std::string> booststrap_ips;
+  bool has_bootstrap_ips(variables_map.count("bootstrap_ips") != 0);
+  if (has_bootstrap_ips)
+    booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
+
   maidsafe::priv::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
                                                                          root_dir,
-                                                                         path_to_vault);
+                                                                         path_to_vault,
+                                                                         booststrap_ips);
   return 0;
 }
 
