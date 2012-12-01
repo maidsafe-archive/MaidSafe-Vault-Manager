@@ -181,7 +181,7 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 endif()
 
-target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
+target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities ${BoostRegexLibs})
 target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(signing_tool maidsafe_private)
