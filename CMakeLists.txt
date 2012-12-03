@@ -190,7 +190,7 @@ target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lif
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
   target_link_libraries(TESTutilities maidsafe_utilities)
-  target_link_libraries(dummy_vault maidsafe_lifestuff_manager)
+  target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
   target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
 
