@@ -54,8 +54,8 @@ class MutableData {
 class SignatureData {
  public:
   SignatureData(const priv::ChunkId name,
-              const asymm::PublicKey content,
-              const rsa::Signature signature);
+                const asymm::PublicKey content,
+                const rsa::Signature signature);
   SignatureData(const NonEmptyString serialised_data);
   NonEmptyString Serialise();
   Identity name();
@@ -66,21 +66,22 @@ class SignatureData {
   Identity name_;
 };
 
-class AppendableData {
- public:
-  AppendableData(const priv::ChunkId name,
-              const NonEmptyString content,
-              const std::vector<asymm::PublicKey> allowed,
-              const rsa::Signature signature);
-  AppendableData(const NonEmptyString serialised_data);
-  NonEmptyString Serialise();
-  Identity name();
-  NonEmptyString version();
- private:
-  void Validate();
-  NonEmptyString data_;
-  Identity name_;
-};
+// This will be factored out 
+// class AppendableData {
+//  public:
+//   AppendableData(const priv::ChunkId name,
+//               const NonEmptyString content,
+//               const std::vector<asymm::PublicKey> allowed,
+//               const rsa::Signature signature);
+//   AppendableData(const NonEmptyString serialised_data);
+//   NonEmptyString Serialise();
+//   Identity name();
+//   NonEmptyString version();
+//  private:
+//   void Validate();
+//   NonEmptyString data_;
+//   Identity name_;
+// };
 
 }  // namespace maidsafe
 
