@@ -25,7 +25,7 @@ namespace maidsafe {
 
 class ImmutableData {
  public:
-  ImmutableData(const priv::ChunkId name, const NonEmptyString& content);
+  ImmutableData(const Identity name, const NonEmptyString& content);
   ImmutableData(const NonEmptyString& serialised_data);
   NonEmptyString Serialise();
   Identity name();

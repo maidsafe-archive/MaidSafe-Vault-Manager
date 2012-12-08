@@ -51,7 +51,7 @@ LifeStuffManager::VaultInfo::VaultInfo()
 
 void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
-  pb_vault_info->set_fob(utils::SerialiseFob(fob).string());
+  pb_vault_info->set_fob(SerialiseFob(fob).string());
   pb_vault_info->set_chunkstore_path(chunkstore_path);
   pb_vault_info->set_requested_to_run(requested_to_run);
   pb_vault_info->set_version(vault_version);
@@ -59,7 +59,7 @@ void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info)
 
 void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
   account_name = pb_vault_info.account_name();
-  fob = utils::ParseFob(NonEmptyString(pb_vault_info.fob()));
+  fob = ParseFob(NonEmptyString(pb_vault_info.fob()));
   chunkstore_path = pb_vault_info.chunkstore_path();
   requested_to_run = pb_vault_info.requested_to_run();
   vault_version = pb_vault_info.version();
@@ -392,7 +392,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
           process_manager_.StartProcess((*itr)->process_index);
         }
       } else {
-        Fob temp_keys(utils::ParseFob(NonEmptyString(start_vault_request.fob())));
+        Fob temp_keys(ParseFob(NonEmptyString(start_vault_request.fob())));
         if ((*itr)->joined_network) {
           // TODO(Team): Stop and restart with new credentials
         } else {
@@ -405,7 +405,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       }
     } else {
       // The vault is not already registered.
-      vault_info->fob = utils::ParseFob(NonEmptyString(start_vault_request.fob()));
+      vault_info->fob = ParseFob(NonEmptyString(start_vault_request.fob()));
       vault_info->account_name = start_vault_request.account_name();
       bool exists(true);
       while (exists) {
@@ -457,7 +457,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
     successful_response = false;
     // TODO(Team): Should this be dropped silently?
   } else {
-    serialised_fob = utils::SerialiseFob((*itr)->fob);
+    serialised_fob = SerialiseFob((*itr)->fob);
     if (endpoints_.empty()) {
       protobuf::LifeStuffManagerConfig config;
       if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
@@ -1083,7 +1083,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   fs::path executable_path(GetAppInstallDir());
 #endif
   if (!process.SetExecutablePath(executable_path / detail::kVaultName)) {
-    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity);
+    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity());
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
@@ -1183,11 +1183,11 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
 
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
-      Fob fob(utils::ParseFob(NonEmptyString(config.vault_info(n).fob())));
+      Fob fob(ParseFob(NonEmptyString(config.vault_info(n).fob())));
       if (vault_info->fob.identity() == fob.identity()) {
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
         p_info->set_account_name(vault_info->account_name);
-        p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
+        p_info->set_fob(SerialiseFob(vault_info->fob).string());
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
         p_info->set_version(vault_info->vault_version);
@@ -1197,7 +1197,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
   } else {
     protobuf::VaultInfo* p_info = config.add_vault_info();
     p_info->set_account_name(vault_info->account_name);
-    p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
+    p_info->set_fob(SerialiseFob(vault_info->fob).string());
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
     p_info->set_version(kInvalidVersion);

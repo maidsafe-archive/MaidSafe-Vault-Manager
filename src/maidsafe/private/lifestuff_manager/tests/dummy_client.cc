@@ -16,7 +16,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 #include "maidsafe/private/lifestuff_manager/client_controller.h"
 
 
@@ -25,13 +25,13 @@ int main(int argc, char** argv) {
   maidsafe::priv::lifestuff_manager::ClientController client(
       [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
-  maidsafe::priv::Fob fob;
+  maidsafe::Fob fob;
   try {
     if (!client.StartVault(fob, account_name, "")) {
-      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity.string();
+      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity().string();
     }
   } catch(...) {
-    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity.string();
+    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity().string();
   }
   LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(fob.identity());
   LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token());

@@ -22,15 +22,16 @@
 
 namespace maidsafe {
 
-ImmutableData::ImmutableData(const priv::ChunkId name, const NonEmptyString& content)
+ImmutableData::ImmutableData(const Identity name, const NonEmptyString& content)
   : data_(content), name_(name) {
     Validate();
 }
 
 ImmutableData::ImmutableData(const NonEmptyString& serialised_data) : data_(), name_() {
-   priv::chunk_manager::Data data_proto;
-   name_ = data_proto.content.name();
-   data_ = data_proto.content.data();
+   priv::data_types::Data data_proto;
+   data_proto.ParseFromString(serialised_data.string());
+   name_ = Identity(data_proto.name());
+   data_ = NonEmptyString(data_proto.content().data());
    Validate();
 }
 
@@ -44,11 +45,13 @@ Identity ImmutableData::name() {
 }
 
 NonEmptyString ImmutableData::Serialise() {
-   priv::chunk_manager::Data data_proto;
-   data_proto.set_type(0);
-   data_proto.content.set_name(name_.string());
-   data_proto.content.set_data(data_.string());
-   return data_proto.SerializeAsString();
+   priv::data_types::Data data_proto;
+   priv::data_types::Content content_proto;
+   data_proto.set_type(priv::data_types::kDataType::ImmutableData);
+   data_proto.set_name(name_.string());
+   content_proto.set_data(data_.string());
+   data_proto.mutable_content()->CopyFrom(content_proto);
+   return NonEmptyString(data_proto.SerializeAsString());
 }
 
 //TODO implement these!! 

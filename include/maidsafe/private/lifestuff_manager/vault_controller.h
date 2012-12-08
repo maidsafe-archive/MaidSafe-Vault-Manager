@@ -26,7 +26,7 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 
 
 namespace maidsafe {

@@ -16,7 +16,7 @@
 #include "maidsafe/common/types.h"
 
 #include "maidsafe/private/utils/utilities.h"
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 
 
 namespace maidsafe {

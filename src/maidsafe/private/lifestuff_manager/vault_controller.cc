@@ -21,6 +21,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/private/data_types/fob.h"
 #include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
 #include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/private/lifestuff_manager/return_codes.h"
@@ -401,7 +402,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
 
-  fob_ = utils::ParseFob(NonEmptyString(vault_identity_response.fob()));
+  fob_ = ParseFob(NonEmptyString(vault_identity_response.fob()));
 
   account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {

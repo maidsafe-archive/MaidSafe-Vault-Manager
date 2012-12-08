@@ -30,7 +30,7 @@
 
 #include "maidsafe/private/chunk_store/file_chunk_store.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 
 namespace fs = boost::filesystem;
 
