@@ -316,7 +316,7 @@ bool BufferedChunkStore::Modify(const ChunkId& name, const NonEmptyString& conte
 
             int limit(kWaitTransfersForCacheVacantCheck);
             if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-                  return pending_xfers_.empty() || (--limit) <= 0;
+                  return pending_xfers_.empty() || limit-- <= 0;
                 })) {
               LOG(kError) << "Modify - Timed out modifying " << Base32Substr(name)
                           << " while waiting for pending transfers.";
@@ -574,7 +574,7 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name, const NonEmptyString&
         }
         int limit(kWaitTransfersForCacheVacantCheck);
         if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-              return pending_xfers_.empty() || (--limit) <= 0;
+              return pending_xfers_.empty() || limit-- <= 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";
@@ -619,7 +619,7 @@ bool BufferedChunkStore::DoCacheStore(const ChunkId& name,
         }
         int limit(kWaitTransfersForCacheVacantCheck);
         if (!xfer_cond_var_.wait_for(xfer_lock, kXferWaitTimeout, [&] {
-              return pending_xfers_.empty() || (--limit) <= 0;
+              return pending_xfers_.empty() || limit-- <= 0;
             })) {
           LOG(kError) << "DoCacheStore - Timed out for " << Base32Substr(name)
                       << " while waiting for pending transfers.";

@@ -194,7 +194,7 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(lifestuff_manager_core ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${ALL_FILES_PRIVATE_DATA_TYPES_DIR} ${RETURN_CODES_H})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
 ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
@@ -208,13 +208,11 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
   ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
   ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
-  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR}
-                                                ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR}
-                                                ${ALL_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
+  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
   ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 endif()
 
-target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities)
+target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities ${BoostRegexLibs})
 target_link_libraries(maidsafe_private maidsafe_utilities)
 target_link_libraries(maidsafe_utilities maidsafe_common)
 target_link_libraries(signing_tool maidsafe_private)
@@ -223,7 +221,7 @@ target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lif
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
   target_link_libraries(TESTutilities maidsafe_utilities)
-  target_link_libraries(dummy_vault maidsafe_lifestuff_manager)
+  target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
   target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
 
@@ -263,6 +261,113 @@ if(MAIDSAFE_TESTING)
   add_gtests(TESTlifestuff_manager)
   add_gtests(TESTprivate)
   add_gtests(TESTutilities)
+  label_as_critical_tests(LifeStuffManagerTest.FUNC_StartStop
+                          ProcessManagerTest.BEH_StartSingleProcess
+                          ProcessManagerTest.BEH_StartThreeProcesses
+                          ProcessManagerTest.BEH_StartManyDifferentProcesses
+                          DownloadManagerTest.BEH_UpdateSuccessful
+                          DownloadManagerTest.BEH_UpdateHasLatestVersion
+                          DownloadManagerTest.BEH_UpdateNoManifestFile
+                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/0
+                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/1
+                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/2
+                          ChunkActionAuthorityTest.BEH_ValidName
+                          ChunkActionAuthorityTest.BEH_Cacheable
+                          ChunkActionAuthorityTest.BEH_Modifiable
+                          ChunkActionAuthorityTest.BEH_ModifyReplaces
+                          ChunkActionAuthorityTest.BEH_Payable
+                          ChunkActionAuthorityTest.BEH_ValidStore
+                          ChunkActionAuthorityTest.BEH_ValidChunk
+                          ChunkActionAuthorityTest.BEH_ValidGet
+                          ChunkActionAuthorityTest.BEH_ValidDelete
+                          ChunkActionAuthorityTest.BEH_ValidModify
+                          ChunkActionAuthorityTest.BEH_ValidHas
+                          ChunkActionAuthorityTest.BEH_Version
+                          ChunkActionAuthorityTest.BEH_Delete
+                          FileChunkStoreTest.BEH_Init
+                          FileChunkStoreTest.BEH_Get
+                          FileChunkStoreTest.BEH_Store
+                          FileChunkStoreTest.DISABLED_BEH_Capacity
+                          FileChunkStoreTest.BEH_Delete
+                          FileChunkStoreTest.BEH_MoveTo
+                          FileChunkStoreTest.BEH_Size
+                          FileChunkStoreTest.BEH_Count
+                          FileChunkStoreTest.BEH_Methods
+                          FileChunkStoreTest.BEH_GetChunksContinuity
+                          ThreadsafeChunkStoreTest.BEH_Get
+                          ThreadsafeChunkStoreTest.BEH_Has
+                          ThreadsafeChunkStoreTest.BEH_Delete
+                          ThreadsafeChunkStoreTest.BEH_Size_For_Chunk
+                          ThreadsafeChunkStoreTest.BEH_Size
+                          ThreadsafeChunkStoreTest.BEH_Capacity
+                          ThreadsafeChunkStoreTest.BEH_SetCapacity
+                          ThreadsafeChunkStoreTest.BEH_Vacant
+                          ThreadsafeChunkStoreTest.BEH_Count
+                          ThreadsafeChunkStoreTest.BEH_Count_Total
+                          ThreadsafeChunkStoreTest.BEH_Empty
+                          ThreadsafeChunkStoreTest.BEH_Clear
+                          ThreadsafeChunkStoreTest.BEH_MoveTo
+                          ThreadsafeChunkStoreTest.BEH_Store
+                          ThreadsafeChunkStoreTest.BEH_Misc
+                          BufferedChunkStoreTest.BEH_CacheInit
+                          BufferedChunkStoreTest.BEH_CacheStore
+                          BufferedChunkStoreTest.BEH_CacheHitMiss
+                          BufferedChunkStoreTest.BEH_CacheCapacity
+                          BufferedChunkStoreTest.BEH_CacheClear
+                          BufferedChunkStoreTest.BEH_PermanentStore
+                          BufferedChunkStoreTest.BEH_WaitForTransfer
+                          BufferedChunkStoreTest.BEH_CacheFlooding
+                          BufferedChunkStoreTest.BEH_StoreWithRemovableChunks
+                          BufferedChunkStoreTest.BEH_ModifyCacheChunks
+                          BufferedChunkStoreTest.BEH_DeleteAllMarked
+                          Files/ChunkStoreTest/0.BEH_Init
+                          Threadsafe/ChunkStoreTest/0.BEH_Init
+                          Buffered/ChunkStoreTest/0.BEH_Init
+                          Memory/ChunkStoreTest/0.BEH_Init
+                          Files/ChunkStoreTest/0.BEH_Get
+                          Threadsafe/ChunkStoreTest/0.BEH_Get
+                          Buffered/ChunkStoreTest/0.BEH_Get
+                          Memory/ChunkStoreTest/0.BEH_Get
+                          Files/ChunkStoreTest/0.BEH_Store
+                          Threadsafe/ChunkStoreTest/0.BEH_Store
+                          Buffered/ChunkStoreTest/0.BEH_Store
+                          Memory/ChunkStoreTest/0.BEH_Store
+                          Files/ChunkStoreTest/0.BEH_RepeatedStore
+                          Threadsafe/ChunkStoreTest/0.BEH_RepeatedStore
+                          Buffered/ChunkStoreTest/0.BEH_RepeatedStore
+                          Memory/ChunkStoreTest/0.BEH_RepeatedStore
+                          Files/ChunkStoreTest/0.BEH_Delete
+                          Threadsafe/ChunkStoreTest/0.BEH_Delete
+                          Buffered/ChunkStoreTest/0.BEH_Delete
+                          Memory/ChunkStoreTest/0.BEH_Delete
+                          Files/ChunkStoreTest/0.BEH_Modify
+                          Threadsafe/ChunkStoreTest/0.BEH_Modify
+                          Buffered/ChunkStoreTest/0.BEH_Modify
+                          Memory/ChunkStoreTest/0.BEH_Modify
+                          Files/ChunkStoreTest/0.BEH_MoveTo
+                          Threadsafe/ChunkStoreTest/0.BEH_MoveTo
+                          Buffered/ChunkStoreTest/0.BEH_MoveTo
+                          Memory/ChunkStoreTest/0.BEH_MoveTo
+                          Files/ChunkStoreTest/0.BEH_Capacity
+                          Threadsafe/ChunkStoreTest/0.BEH_Capacity
+                          Buffered/ChunkStoreTest/0.BEH_Capacity
+                          Memory/ChunkStoreTest/0.BEH_Capacity
+                          Files/ChunkStoreTest/0.BEH_References
+                          Threadsafe/ChunkStoreTest/0.BEH_References
+                          Buffered/ChunkStoreTest/0.BEH_References
+                          Memory/ChunkStoreTest/0.BEH_References
+                          Files/ChunkStoreTest/0.BEH_Clear
+                          Threadsafe/ChunkStoreTest/0.BEH_Clear
+                          Buffered/ChunkStoreTest/0.BEH_Clear
+                          Memory/ChunkStoreTest/0.BEH_Clear
+                          Files/ChunkStoreTest/0.BEH_GetChunks
+                          Threadsafe/ChunkStoreTest/0.BEH_GetChunks
+                          Buffered/ChunkStoreTest/0.BEH_GetChunks
+                          Memory/ChunkStoreTest/0.BEH_GetChunks
+                          FobTest.BEH_FobGenerationAndValidation
+                          FobTest.BEH_FobSerialisationAndParsing
+                          )
+
   add_project_experimental()
   test_summary_output()
 endif()

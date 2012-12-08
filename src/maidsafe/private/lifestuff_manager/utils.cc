@@ -15,6 +15,7 @@
 #include <iterator>
 #include <mutex>
 #include <set>
+#include <vector>
 
 #include "boost/lexical_cast.hpp"
 #include "boost/tokenizer.hpp"
@@ -45,8 +46,9 @@ const char kSeparator('_');
 #ifdef TESTING
 std::once_flag test_env_flag;
 Port g_test_lifestuff_manager_port(0);
-fs::path g_test_env_root_dir;
+fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
+std::vector<std::string> g_bootstrap_ips;
 #endif
 
 }  // unnamed namespace
@@ -144,12 +146,18 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 }
 
 #ifdef TESTING
-void SetTestEnvironmentVariables(Port test_lifestuff_manager_port, fs::path test_env_root_dir) {
-  std::call_once(test_env_flag, [test_lifestuff_manager_port, test_env_root_dir] {
-    g_test_lifestuff_manager_port = test_lifestuff_manager_port;
-    g_test_env_root_dir = test_env_root_dir;
-    g_using_default_environment = false;
-  });
+void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
+                                 fs::path test_env_root_dir,
+                                 fs::path path_to_vault,
+                                 std::vector<std::string> bootstrap_ips) {
+  std::call_once(test_env_flag,
+                 [test_lifestuff_manager_port, test_env_root_dir, path_to_vault, bootstrap_ips] {
+                   g_test_lifestuff_manager_port = test_lifestuff_manager_port;
+                   g_test_env_root_dir = test_env_root_dir;
+                   g_path_to_vault = path_to_vault;
+                   g_bootstrap_ips = bootstrap_ips;
+                   g_using_default_environment = false;
+                 });
 }
 
 Port GetTestLifeStuffManagerPort() {
@@ -158,6 +166,14 @@ Port GetTestLifeStuffManagerPort() {
 
 fs::path GetTestEnvironmentRootDir() {
   return g_test_env_root_dir;
+}
+
+fs::path GetPathToVault() {
+  return g_path_to_vault;
+}
+
+std::vector<std::string> GetBootstrapIps() {
+  return g_bootstrap_ips;
 }
 
 bool UsingDefaultEnvironment() {

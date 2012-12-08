@@ -837,7 +837,9 @@ void LifeStuffManager::UpdateExecutor() {
 
   it = (std::find_if(updated_files.begin(),
                      updated_files.end(),
-                     [&] (const fs::path& path)->bool { return path.stem() == detail::kVaultName; }));  // NOLINT
+                     [&] (const fs::path& path)->bool {
+                       return path.stem() == detail::kVaultName;
+                     }));
   fs::path new_local_vault_path;
   if (it != updated_files.end()) {
     new_local_vault_path = *it;
@@ -1032,9 +1034,17 @@ bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConf
 #ifdef TESTING
   } else {
     if (end_points.bootstrap_contacts_size() == 0) {
-      protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
-      local_endpoint->set_ip(GetLocalIp().to_string());
-      local_endpoint->set_port(5483);
+      if (detail::GetBootstrapIps().empty()) {
+        protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
+        local_endpoint->set_ip(GetLocalIp().to_string());
+        local_endpoint->set_port(5483);
+      } else {
+        for (auto& ip : detail::GetBootstrapIps()) {
+          protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
+          local_endpoint->set_ip(ip);
+          local_endpoint->set_port(5483);
+        }
+      }
     }
   }
 #endif
@@ -1058,7 +1068,9 @@ void LifeStuffManager::LoadBootstrapEndpoints(const protobuf::Bootstrap& end_poi
 bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef TESTING
-  fs::path executable_path(".");
+  fs::path executable_path(detail::GetPathToVault());
+  if (executable_path.empty())
+    executable_path = fs::path(".");
   std::string user_id;
 #  ifdef MAIDSAFE_WIN32
     TCHAR file_name[MAX_PATH];
