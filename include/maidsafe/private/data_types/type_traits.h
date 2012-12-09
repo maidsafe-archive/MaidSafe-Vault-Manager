@@ -18,7 +18,6 @@
 #define MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/private/utils/fob.h"
 
 // traits
 //
@@ -28,9 +27,6 @@ struct is_editable : std::false_type {};
 template <>
 struct is_editable<MutableData> : std::true_type {};
 
-template <typename T>
-struct is_appendable : std::false_type {};
-
 template <>
 struct is_appendable<AppendableData> : std::true_type{};
 
@@ -39,5 +35,6 @@ struct is_cacheable : std::false_type {};
 
 template <>
 struct is_cacheable<ImmutableData> : std::true_type {};
+
 
 #endif  // MAIDSAFE_PRIVATE_DATA_MANAGER_TYPE_TRAITS_H_

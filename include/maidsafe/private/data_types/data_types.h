@@ -39,11 +39,12 @@ class MutableData {
  public:
   MutableData(const priv::ChunkId name,
               const NonEmptyString content,
-              const rsa::Signature signature);
+              const rsa::Signature signature,
+              const asymm::PublicKey validation_key);
   MutableData(const NonEmptyString serialised_data);
   NonEmptyString Serialise();
   Identity name();
-  NonEmptyString version();
+  int32_t version();  // use randomint32 as faster than hash
  private:
   void Validate();
   NonEmptyString data_;
@@ -55,11 +56,13 @@ class SignatureData {
  public:
   SignatureData(const priv::ChunkId name,
                 const asymm::PublicKey content,
-                const rsa::Signature signature);
+                const rsa::Signature signature,
+                const asymm::PublicKey validation_key);
   SignatureData(const NonEmptyString serialised_data);
   NonEmptyString Serialise();
   Identity name();
-  NonEmptyString version();
+  int32_t version();  // use randomint32 as faster than hash
+
  private:
   void Validate();
   NonEmptyString data_;

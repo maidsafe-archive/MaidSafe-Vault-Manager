@@ -23,6 +23,7 @@ message Content {
   optional bytes id = 3;
   repeated bytes ids = 4;
   optional Signature signature = 5;
+  optional bytes version = 6;
 }
 
 message Data {
