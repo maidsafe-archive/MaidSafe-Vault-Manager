@@ -1091,8 +1091,8 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 #if defined TESTING && !defined MAIDSAFE_WIN32
-  process.AddArgument("--log_folder ./dummy_vault_logfiles");
-  process.AddArgument("--log_private Info");
+  // process.AddArgument("--log_folder ./dummy_vault_logfiles");
+  // process.AddArgument("--log_private Info");
   if (!user_id.empty())
     process.AddArgument("--usr_id " + user_id);
 #endif
