@@ -16,7 +16,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 #include "maidsafe/private/lifestuff_manager/client_controller.h"
 
 
@@ -26,22 +26,19 @@ int main(int argc, char** argv) {
       [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
   maidsafe::Fob fob;
-  fob.keys = maidsafe::asymm::GenerateKeyPair();
-  fob.identity = maidsafe::Identity(maidsafe::RandomAlphaNumericString(64));
-  fob.validation_token = maidsafe::NonEmptyString(maidsafe::RandomAlphaNumericString(64));
   try {
     if (!client.StartVault(fob, account_name, "")) {
-      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity.string();
+      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity().string();
     }
   } catch(...) {
-    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity.string();
+    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity().string();
   }
-  LOG(kInfo) << "Identity: " << fob.identity.string();
-  LOG(kInfo) << "Validation Token: " << fob.validation_token.string();
+  LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(fob.identity());
+  LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token());
   LOG(kInfo) << "Public Key: "
-             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.public_key));
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
   LOG(kInfo) << "Private Key: "
-             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.private_key));
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
   LOG(kInfo) << "Account name: " << account_name;
   return 0;
 }

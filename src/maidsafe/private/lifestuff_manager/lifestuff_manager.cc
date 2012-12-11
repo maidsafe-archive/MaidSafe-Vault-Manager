@@ -51,7 +51,7 @@ LifeStuffManager::VaultInfo::VaultInfo()
 
 void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_account_name(account_name);
-  pb_vault_info->set_fob(utils::SerialiseFob(fob).string());
+  pb_vault_info->set_fob(SerialiseFob(fob).string());
   pb_vault_info->set_chunkstore_path(chunkstore_path);
   pb_vault_info->set_requested_to_run(requested_to_run);
   pb_vault_info->set_version(vault_version);
@@ -59,7 +59,7 @@ void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info)
 
 void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
   account_name = pb_vault_info.account_name();
-  fob = utils::ParseFob(NonEmptyString(pb_vault_info.fob()));
+  fob = ParseFob(NonEmptyString(pb_vault_info.fob()));
   chunkstore_path = pb_vault_info.chunkstore_path();
   requested_to_run = pb_vault_info.requested_to_run();
   vault_version = pb_vault_info.version();
@@ -208,7 +208,7 @@ bool LifeStuffManager::ReadConfigFileAndStartVaults() {
     vault_info->FromProtobuf(config.vault_info(i));
     if (vault_info->requested_to_run) {
       if (!StartVaultProcess(vault_info))
-        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->fob.identity);
+        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->fob.identity());
     }
   }
 
@@ -374,13 +374,13 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
   VaultInfoPtr vault_info(new VaultInfo);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(FindFromIdentity(vault_info->fob.identity));
+    auto itr(FindFromIdentity(vault_info->fob.identity()));
     bool existing_vault(false);
     if (itr != vault_infos_.end()) {
       existing_vault = true;
       if (!asymm::CheckSignature(asymm::PlainText(start_vault_request.token()),
                                  asymm::Signature(start_vault_request.token_signature()),
-                                 vault_info->fob.keys.public_key)) {
+                                 vault_info->fob.public_key())) {
         LOG(kError) << "Communication from someone that does not validate as owner.";
         return set_response(false);  // TODO(Team): Drop silienty?
       }
@@ -392,7 +392,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
           process_manager_.StartProcess((*itr)->process_index);
         }
       } else {
-        Fob temp_keys(utils::ParseFob(NonEmptyString(start_vault_request.fob())));
+        Fob temp_keys(ParseFob(NonEmptyString(start_vault_request.fob())));
         if ((*itr)->joined_network) {
           // TODO(Team): Stop and restart with new credentials
         } else {
@@ -405,7 +405,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       }
     } else {
       // The vault is not already registered.
-      vault_info->fob = utils::ParseFob(NonEmptyString(start_vault_request.fob()));
+      vault_info->fob = ParseFob(NonEmptyString(start_vault_request.fob()));
       vault_info->account_name = start_vault_request.account_name();
       bool exists(true);
       while (exists) {
@@ -423,13 +423,13 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
-                    << Base64Substr(vault_info->fob.identity);
+                    << Base64Substr(vault_info->fob.identity());
         return set_response(false);
       }
     }
     if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr(vault_info->fob.identity);
+                  << Base64Substr(vault_info->fob.identity());
       return set_response(false);
     }
   }
@@ -457,7 +457,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
     successful_response = false;
     // TODO(Team): Should this be dropped silently?
   } else {
-    serialised_fob = utils::SerialiseFob((*itr)->fob);
+    serialised_fob = SerialiseFob((*itr)->fob);
     if (endpoints_.empty()) {
       protobuf::LifeStuffManagerConfig config;
       if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
@@ -528,7 +528,7 @@ void LifeStuffManager::HandleVaultJoinedNetworkRequest(const std::string& reques
   }
   vault_joined_network_ack.set_ack(join_result);
   if ((*itr)->client_port != 0)
-  SendVaultJoinConfirmation((*itr)->fob.identity, join_result);
+  SendVaultJoinConfirmation((*itr)->fob.identity(), join_result);
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_joined_network_ack.SerializeAsString());
 }
@@ -550,7 +550,7 @@ void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::s
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
     stop_vault_response.set_result(false);
-  } else if (!asymm::CheckSignature(data, signature, (*itr)->fob.keys.public_key)) {
+  } else if (!asymm::CheckSignature(data, signature, (*itr)->fob.public_key())) {
     LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(identity);
     stop_vault_response.set_result(false);
   } else {
@@ -558,7 +558,7 @@ void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::s
     stop_vault_response.set_result(StopVault(identity, data, signature, true));
     if (!AmendVaultDetailsInConfigFile(*itr, true)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr((*itr)->fob.identity);
+                  << Base64Substr((*itr)->fob.identity());
       stop_vault_response.set_result(false);
     }
   }
@@ -896,7 +896,7 @@ std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFrom
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
                       [identity] (const VaultInfoPtr& vault_info)->bool {
-                        return vault_info->fob.identity == identity;
+                        return vault_info->fob.identity() == identity;
                       });
 }
 
@@ -963,10 +963,10 @@ void LifeStuffManager::StopAllVaults() {
                     return;
                   }
                   asymm::PlainText random_data(RandomString(64));
-                  asymm::Signature signature(asymm::Sign(random_data, info->fob.keys.private_key));
-                  if (!StopVault(info->fob.identity, random_data, signature, false)) {
+                  asymm::Signature signature(asymm::Sign(random_data, info->fob.private_key()));
+                  if (!StopVault(info->fob.identity(), random_data, signature, false)) {
                     LOG(kError) << "StopAllVaults: failed to stop - "
-                                << Base64Substr(info->fob.identity);
+                                << Base64Substr(info->fob.identity());
                   }
                 });
 }
@@ -1083,7 +1083,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   fs::path executable_path(GetAppInstallDir());
 #endif
   if (!process.SetExecutablePath(executable_path / detail::kVaultName)) {
-    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity);
+    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity());
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
@@ -1100,7 +1100,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
-    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->fob.identity);
+    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->fob.identity());
     return false;
   }
 
@@ -1177,17 +1177,17 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
   protobuf::LifeStuffManagerConfig config;
   if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
-                << Base64Substr(vault_info->fob.identity);
+                << Base64Substr(vault_info->fob.identity());
     return false;
   }
 
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
-      Fob fob(utils::ParseFob(NonEmptyString(config.vault_info(n).fob())));
-      if (vault_info->fob.identity == fob.identity) {
+      Fob fob(ParseFob(NonEmptyString(config.vault_info(n).fob())));
+      if (vault_info->fob.identity() == fob.identity()) {
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
         p_info->set_account_name(vault_info->account_name);
-        p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
+        p_info->set_fob(SerialiseFob(vault_info->fob).string());
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
         p_info->set_version(vault_info->vault_version);
@@ -1197,7 +1197,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
   } else {
     protobuf::VaultInfo* p_info = config.add_vault_info();
     p_info->set_account_name(vault_info->account_name);
-    p_info->set_fob(utils::SerialiseFob(vault_info->fob).string());
+    p_info->set_fob(SerialiseFob(vault_info->fob).string());
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
     p_info->set_version(kInvalidVersion);
@@ -1205,7 +1205,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
       std::lock_guard<std::mutex> lock(config_file_mutex_);
       if (!WriteFile(config_file_path_, config.SerializeAsString())) {
         LOG(kError) << "Failed to write config file to amend details of vault ID "
-                    << Base64Substr(vault_info->fob.identity);
+                    << Base64Substr(vault_info->fob.identity());
         return false;
       }
     }

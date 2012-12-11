@@ -19,7 +19,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 #include "maidsafe/private/lifestuff_manager/vault_controller.h"
 
 namespace po = boost::program_options;
@@ -84,12 +84,12 @@ int main(int argc, char* argv[]) {
       std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
       vault_controller.GetIdentity(fob, account_name, bootstrap_endpoints);
-      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(fob.identity.string());
-      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token.string());
+      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(fob.identity().string());
+      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token().string());
       LOG(kInfo) << "Public Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.public_key));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
       LOG(kInfo) << "Private Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.keys.private_key));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
       LOG(kInfo) << "Account name: " << maidsafe::Base64Substr(account_name);
       vault_controller.ConfirmJoin(true);
 

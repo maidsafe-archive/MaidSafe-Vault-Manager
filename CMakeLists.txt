@@ -31,8 +31,14 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h")
   file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h"
               "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/chunk.pb.h")
 endif()
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/data.pb.h")
+  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/data.pb.h"
+              "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/data.pb.h")
+endif()
 
 include_directories(${common_SOURCE_DIR}/include)
+include_directories(${rudp_SOURCE_DIR}/include)
+include_directories(${routing_SOURCE_DIR}/include)
 
 
 ###################################################################################################
@@ -109,6 +115,25 @@ source_group("Chunk Store Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE
 source_group("Chunk Store Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR})
 source_group("Chunk Store API Files" FILES ${API_FILES_PRIVATE_CHUNK_STORE_DIR})
 
+file(GLOB SOURCE_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.cc")
+file(GLOB HEADER_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.h")
+file(GLOB API_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*.h")
+set(ALL_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
+
+file(GLOB PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.proto")
+file(GLOB SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*_pb.h")
+
+set(ALL_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
+list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
+list(REMOVE_ITEM API_FILES_PRIVATE_DATA_TYPES_DIR ${HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
+
+source_group("Data Types Source Files" FILES ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR})
+source_group("Data Types Header Files" FILES ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR})
+source_group("Data Types Proto Files" FILES ${PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
+source_group("Data Types API Files" FILES ${API_FILES_PRIVATE_DATA_TYPES_DIR})
 
 file(GLOB SOURCE_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.cc")
 file(GLOB HEADER_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.h")
@@ -149,6 +174,13 @@ set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS
 source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
 
+file(GLOB SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/tests/*.cc")
+file(GLOB HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/tests/*.h")
+set(ALL_FILES_PRIVATE_DATA_TYPES_TESTS_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Header Files" FILES ${HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
+
 file(GLOB SOURCE_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.cc")
 file(GLOB HEADER_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.h")
 set(ALL_FILES_PRIVATE_UTILS_TESTS_DIR ${SOURCE_FILES_UTILS_TESTS_DIR} ${HEADER_FILES_UTILS_TESTS_DIR})
@@ -163,8 +195,7 @@ source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
 ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(lifestuff_manager_core ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${RETURN_CODES_H})
-ms_add_static_library(utilities ${ALL_FILES_PRIVATE_UTILS_DIR})
+ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${ALL_FILES_PRIVATE_DATA_TYPES_DIR} ${ALL_FILES_PRIVATE_UTILS_DIR} ${RETURN_CODES_H})
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
@@ -181,15 +212,14 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
 endif()
 
-target_link_libraries(maidsafe_lifestuff_manager maidsafe_utilities ${BoostRegexLibs})
-target_link_libraries(maidsafe_private maidsafe_utilities)
-target_link_libraries(maidsafe_utilities maidsafe_common)
+target_link_libraries(maidsafe_private maidsafe_common)
+target_link_libraries(maidsafe_lifestuff_manager maidsafe_private ${BoostRegexLibs})
 target_link_libraries(signing_tool maidsafe_private)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
-  target_link_libraries(TESTutilities maidsafe_utilities)
+  target_link_libraries(TESTutilities maidsafe_private)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
   target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
@@ -230,7 +260,7 @@ if(MAIDSAFE_TESTING)
   add_gtests(TESTlifestuff_manager)
   add_gtests(TESTprivate)
   add_gtests(TESTutilities)
-  label_as_critical_tests(LifeStuffManagerTest.FUNC_StartStop
+  label_as_critical_tests( #LifeStuffManagerTest.FUNC_StartStop
                           ProcessManagerTest.BEH_StartSingleProcess
                           ProcessManagerTest.BEH_StartThreeProcesses
                           ProcessManagerTest.BEH_StartManyDifferentProcesses
@@ -333,8 +363,8 @@ if(MAIDSAFE_TESTING)
                           Threadsafe/ChunkStoreTest/0.BEH_GetChunks
                           Buffered/ChunkStoreTest/0.BEH_GetChunks
                           Memory/ChunkStoreTest/0.BEH_GetChunks
-                          FobTest.BEH_FobGenerationAndValidation
-                          FobTest.BEH_FobSerialisationAndParsing
+                          #FobTest.BEH_FobGenerationAndValidation
+                          #FobTest.BEH_FobSerialisationAndParsing
                           )
 
   add_project_experimental()

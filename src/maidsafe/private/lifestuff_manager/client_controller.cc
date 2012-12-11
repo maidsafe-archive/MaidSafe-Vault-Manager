@@ -18,7 +18,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/utils/fob.h"
+#include "maidsafe/private/data_types/fob.h"
 #include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
 #include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
@@ -241,10 +241,10 @@ bool ClientController::StartVault(const Fob& fob,
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name);
-  start_vault_request.set_fob(utils::SerialiseFob(fob).string());
+  start_vault_request.set_fob(SerialiseFob(fob).string());
   asymm::PlainText token(maidsafe::RandomString(16));
   start_vault_request.set_token(token.string());
-  start_vault_request.set_token_signature(asymm::Sign(token, fob.keys.private_key).string());
+  start_vault_request.set_token_signature(asymm::Sign(token, fob.private_key()).string());
   start_vault_request.set_credential_change(false);
   start_vault_request.set_client_port(local_port_);
   if (!chunkstore.empty())
@@ -290,14 +290,14 @@ bool ClientController::StartVault(const Fob& fob,
   }
 
   std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
-  joining_vaults_[fob.identity] = false;
+  joining_vaults_[fob.identity()] = false;
   if (!joining_vaults_conditional_.wait_for(lock,
                                             std::chrono::minutes(1),
-                                            [&] { return joining_vaults_[fob.identity]; })) {
+                                            [&] { return joining_vaults_[fob.identity()]; })) {
     LOG(kError) << "Timed out waiting for vault join confirmation.";
     return false;
   }
-  joining_vaults_.erase(fob.identity);
+  joining_vaults_.erase(fob.identity());
 
   return true;
 }

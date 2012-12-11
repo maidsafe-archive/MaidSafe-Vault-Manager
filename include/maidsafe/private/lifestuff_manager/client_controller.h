@@ -27,13 +27,13 @@
 #include "boost/signals2/connection.hpp"
 #include "boost/signals2/signal.hpp"
 
+#include "maidsafe/private/data_types/fob.h"
+
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
 
 namespace maidsafe {
-
-struct Fob;
 
 namespace priv {
 

@@ -9,47 +9,21 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_UTILS_FOB_H_
-#define MAIDSAFE_PRIVATE_UTILS_FOB_H_
+#include "maidsafe/private/data_types/network_actors.h"
 
-#include <vector>
+#include <string>
 
-#include "maidsafe/common/rsa.h"
-#include "maidsafe/common/types.h"
+#include "maidsafe/common/test.h"
+
 
 namespace maidsafe {
 
-struct Fob {
-  typedef asymm::Signature ValidationToken;
-  Fob();
-  Identity identity;
-  asymm::Keys keys;
-  ValidationToken validation_token;
-};
+namespace test {
 
-namespace priv {
+TEST(DataTypesTest, BEH_ConstructType) {
+  EXPECT_NO_THROW(DataHolder data_holder);
+}
 
-namespace utils {
-
-// Generates the identity according to the maidsafe patent
-Fob GenerateFob(asymm::PrivateKey* private_key);
-
-// Generates chained identities according to the maidsafe patent
-std::vector<Fob> GenerateChainedFob(size_t amount, asymm::PrivateKey* private_key);
-
-// Validates identity according to the maidsafe patent
-bool ValidateFob(const Fob& fob, asymm::PrivateKey* private_key);
-
-// Serialise the fob using protocol buffers
-NonEmptyString SerialiseFob(const Fob& fob);
-
-// Parse a serialised protocol buffer to a fob
-Fob ParseFob(const NonEmptyString& serialised_fob);
-
-}  // namespace utils
-
-}  // namespace priv
+}  // namespace test
 
 }  // namespace maidsafe
-
-#endif  // MAIDSAFE_PRIVATE_UTILS_FOB_H_

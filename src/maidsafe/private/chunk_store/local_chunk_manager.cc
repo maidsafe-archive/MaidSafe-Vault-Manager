@@ -118,7 +118,7 @@ void LocalChunkManager::GetChunk(const ChunkId& name,
     current_transactions_[name] = transaction_id;
     LOG(kInfo) << "Wrote lock file for " << Base32Substr(name);
   }
-  content = simulation_chunk_action_authority_->Get(name, ChunkVersion(), fob.keys.public_key);
+  content = simulation_chunk_action_authority_->Get(name, ChunkVersion(), fob.public_key());
   if (content.empty()) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     sig_chunk_got_(name, kGetFailure);
@@ -148,7 +148,7 @@ void LocalChunkManager::StoreChunk(const ChunkId& name, const Fob& fob) {
   }
   asymm::PublicKey public_key;
   if (!is_cacheable)
-    public_key = fob.keys.public_key;
+    public_key = fob.public_key();
   if (!simulation_chunk_action_authority_->Store(name, NonEmptyString(content), public_key)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     sig_chunk_stored_(name, kStoreFailure);
@@ -169,9 +169,9 @@ void LocalChunkManager::DeleteChunk(const ChunkId& name, const Fob& fob) {
   ownership_proof.set_data(RandomString(16));
   std::string* signature(ownership_proof.mutable_signature());
   *signature = asymm::Sign(asymm::PlainText(ownership_proof.data()),
-                            fob.keys.private_key).string();
+                            fob.private_key()).string();
   ownership_proof.SerializeToString(&ownership_proof_string);
-  public_key = fob.keys.public_key;
+  public_key = fob.public_key();
 
   if (!simulation_chunk_action_authority_->Delete(name,
                                                   NonEmptyString(ownership_proof_string),
@@ -208,7 +208,7 @@ void LocalChunkManager::ModifyChunk(const ChunkId& name,
   int64_t operation_diff;
   if (!simulation_chunk_action_authority_->Modify(name,
                                                   content,
-                                                  fob.keys.public_key,
+                                                  fob.public_key(),
                                                   &operation_diff)) {
     LOG(kError) << "CAA failure on network chunkstore " << Base32Substr(name);
     sig_chunk_modified_(name, kModifyFailure);
