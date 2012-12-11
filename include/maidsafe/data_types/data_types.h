@@ -20,71 +20,60 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/private/chunk_actions/chunk_id.h"
+#include "maidsafe/common/tagged_value.h"
 
 namespace maidsafe {
 
 class ImmutableData {
  public:
-  ImmutableData(const Identity name, const NonEmptyString& content);
+  typedef TaggedValue<Identity, struct ImmutableDataTag> name_type;
+  ImmutableData(const name_type& name, const NonEmptyString& content);
   ImmutableData(const NonEmptyString& serialised_data);
-  NonEmptyString Serialise();
-  Identity name();
+  NonEmptyString Serialise() const;
+  name_type name() const;
  private:
   void Validate();
   NonEmptyString data_;
-  Identity name_;
+  name_type name_;
 };
 
 class MutableData {
  public:
-  MutableData(const priv::ChunkId name,
-              const NonEmptyString content,
-              const rsa::Signature signature,
-              const asymm::PublicKey validation_key);
-  MutableData(const NonEmptyString serialised_data);
-  NonEmptyString Serialise();
-  Identity name();
-  int32_t version();  // use randomint32 as faster than hash
+  typedef TaggedValue<Identity, struct MutableDataTag> name_type;
+  MutableData(const name_type& name,
+              const NonEmptyString& content,
+              const asymm::Signature& signature,
+              const asymm::PublicKey& validation_key);
+  MutableData(const NonEmptyString& serialised_data);
+  NonEmptyString Serialise() const;
+  name_type name() const;
+  int32_t version() const;  // use randomint32 as faster than hash
  private:
   void Validate();
   NonEmptyString data_;
-  Identity name_;
-  rsa::Signature signature_;
+  name_type name_;
+  asymm::Signature signature_;
+  int32_t version_;
 };
 
 class SignatureData {
  public:
-  SignatureData(const priv::ChunkId name,
-                const asymm::PublicKey content,
-                const rsa::Signature signature,
-                const asymm::PublicKey validation_key);
-  SignatureData(const NonEmptyString serialised_data);
-  NonEmptyString Serialise();
-  Identity name();
-  int32_t version();  // use randomint32 as faster than hash
+  typedef TaggedValue<Identity, struct SignatureDataTag> name_type;
+  SignatureData(const name_type& name,
+                const asymm::PublicKey& content,
+                const asymm::Signature& signature,
+                const asymm::PublicKey& validation_key);
+  SignatureData(const NonEmptyString& serialised_data);
+  NonEmptyString Serialise() const;
+  name_type name() const;
+  int32_t version() const;  // use randomint32 as faster than hash
 
  private:
   void Validate();
   NonEmptyString data_;
-  Identity name_;
+  name_type name_;
+  int32_t version_;
 };
-
-// This will be factored out 
-// class AppendableData {
-//  public:
-//   AppendableData(const priv::ChunkId name,
-//               const NonEmptyString content,
-//               const std::vector<asymm::PublicKey> allowed,
-//               const rsa::Signature signature);
-//   AppendableData(const NonEmptyString serialised_data);
-//   NonEmptyString Serialise();
-//   Identity name();
-//   NonEmptyString version();
-//  private:
-//   void Validate();
-//   NonEmptyString data_;
-//   Identity name_;
-// };
 
 }  // namespace maidsafe
 
