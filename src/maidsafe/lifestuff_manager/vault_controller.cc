@@ -21,7 +21,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/data_types/fob.h"
+#include "maidsafe/passport/fob.h"
 #include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
 #include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/private/lifestuff_manager/return_codes.h"

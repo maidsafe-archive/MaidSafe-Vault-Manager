@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/lifestuff_manager/utils.h"
 
 #include <cstdint>
 #include <iterator>
@@ -22,11 +22,11 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
-#include "maidsafe/private/lifestuff_manager/process_manager.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/process_manager.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
 
 
 namespace fs = boost::filesystem;

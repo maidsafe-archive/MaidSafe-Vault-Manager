@@ -22,7 +22,7 @@
 
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/lifestuff_manager/config.h"
+#include "maidsafe/lifestuff_manager/config.h"
 
 
 namespace maidsafe {

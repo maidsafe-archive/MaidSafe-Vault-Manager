@@ -16,7 +16,7 @@
 # pragma warning(push)
 # pragma warning(disable: 4127 4244 4267)
 #endif
-#include "maidsafe/private/lifestuff_manager/vault_info.pb.h"
+#include "maidsafe/lifestuff_manager/vault_info.pb.h"
 #ifdef __MSVC__
 # pragma warning(pop)
 #endif

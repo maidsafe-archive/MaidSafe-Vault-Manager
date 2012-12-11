@@ -19,7 +19,7 @@
 
 #include "boost/filesystem/path.hpp"
 
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 
 
 namespace maidsafe {
