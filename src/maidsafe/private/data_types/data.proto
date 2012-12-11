@@ -1,11 +1,10 @@
-package maidsafe.priv.data_types;
+package maidsafe.priv.data_types.proto;
 option optimize_for = LITE_RUNTIME;
 
 enum kDataType {
   ImmutableData = 0;
   MutableData = 1;
-  AppendAbleData = 2;
-  SignatureData = 3;
+  SignatureData = 2;
 }
 
 message PublicKey {
