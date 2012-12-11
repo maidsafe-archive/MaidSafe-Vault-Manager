@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/vault_controller.h"
+#include "maidsafe/lifestuff_manager/vault_controller.h"
 
 #include <chrono>
 #include <iterator>

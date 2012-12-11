@@ -26,7 +26,7 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/data_types/fob.h"
+#include "maidsafe/passport/config.h"
 
 
 namespace maidsafe {
@@ -43,7 +43,7 @@ class VaultController {
   ~VaultController();
 
   bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
-  bool GetIdentity(Fob& fob,
+  bool GetIdentity(PmidFob& fob,
                    std::string& account_name,
                    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
@@ -66,7 +66,7 @@ class VaultController {
                                std::function<void(bool)> callback);  //NOLINT (Philip)
   uint32_t process_index_;
   uint16_t lifestuff_manager_port_, local_port_;
-  Fob fob_;
+  PmidFob fob_;
   std::string account_name_;
   std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints_;
   std::function<void()> stop_callback_;

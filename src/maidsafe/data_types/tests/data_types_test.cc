@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/data_types/network_actors.h"
+#include "maidsafe/private/data_types/data_types.h"
 
 #include <string>
 

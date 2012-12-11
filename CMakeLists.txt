@@ -23,17 +23,17 @@ set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
 
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/appendable_by_all.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/appendable_by_all.pb.h")
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/appendable_by_all.pb.h")
+  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/appendable_by_all.pb.h"
+              "${PROJECT_SOURCE_DIR}/include/maidsafe/chunk_actions/appendable_by_all.pb.h")
 endif()
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/chunk.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/chunk.pb.h")
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/chunk.pb.h")
+  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/chunk.pb.h"
+              "${PROJECT_SOURCE_DIR}/include/maidsafe/chunk_actions/chunk.pb.h")
 endif()
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/data.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/data.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/data.pb.h")
+if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/data.pb.h")
+  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/data.pb.h"
+              "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/data.pb.h")
 endif()
 
 include_directories(${common_SOURCE_DIR}/include)
@@ -45,171 +45,106 @@ include_directories(${routing_SOURCE_DIR}/include)
 # Set up all files as GLOBs                                                                       #
 ###################################################################################################
 ####    CODE    ####
-file(GLOB SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc")
-file(GLOB HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.h")
-list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h")
-list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
-file(GLOB API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/lifestuff_manager/*.h")
+file(GLOB SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.cc")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc")
+file(GLOB HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.h")
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h")
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+file(GLOB API_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/lifestuff_manager/*.h")
 
-file(GLOB PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.proto")
-file(GLOB SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/*_pb.h")
+file(GLOB PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.proto")
+file(GLOB SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*_pb.h")
 
-set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                             ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                             ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                             ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc"
-                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h"
-                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-list(REMOVE_ITEM HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_PRIVATE_DIR}
-                                                            ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-set(STYLE_CHECK_FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                      ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                      ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/controller_messages.pb.h"
-                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.h")
+set(ALL_FILES_LIFESTUFF_MANAGER_DIR ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${HEADER_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${API_FILES_LIFESTUFF_MANAGER_DIR})
+set(ALL_FILES_LIFESTUFF_MANAGER_CORE "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR ${SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                            ${MS_HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+set(STYLE_CHECK_FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR}
+                      ${HEADER_FILES_LIFESTUFF_MANAGER_DIR}
+                      ${API_FILES_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/controller_messages.pb.h"
+                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.h")
 
-source_group("LifeStuff Manager Source Files" FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-source_group("LifeStuff Manager Header Files" FILES ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-source_group("LifeStuff Manager Core Source Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.cc"})
-source_group("LifeStuff Manager Core Header Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager.h"
-                                                         "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/config.h")
-source_group("LifeStuff Manager Proto Files" FILES ${PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                                   ${SOURCE_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                                   ${HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR}
-                                                   ${MS_HEADER_PROTO_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-source_group("LifeStuff Manager API Files" FILES ${API_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Source Files" FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Header Files" FILES ${HEADER_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Core Source Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc"})
+source_group("LifeStuff Manager Core Header Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h"
+                                                         "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+source_group("LifeStuff Manager Proto Files" FILES ${PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                   ${SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                   ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                   ${MS_HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager API Files" FILES ${API_FILES_LIFESTUFF_MANAGER_DIR})
 
+file(GLOB SOURCE_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.cc")
+file(GLOB HEADER_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.h")
+file(GLOB API_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*.h")
+set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
 
-file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.h")
-file(GLOB API_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/*.h")
+file(GLOB PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.proto")
+file(GLOB SOURCE_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*_pb.h")
 
-file(GLOB PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.proto")
-file(GLOB SOURCE_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_actions/*_pb.h")
+set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${PROTO_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM SOURCE_FILES_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM API_FILES_DATA_TYPES_DIR ${HEADER_PROTO_FILES_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
 
-set(ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${API_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR ${SOURCE_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-list(REMOVE_ITEM API_FILES_PRIVATE_CHUNK_ACTIONS_DIR ${HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${API_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
+source_group("Data Types Source Files" FILES ${SOURCE_FILES_DATA_TYPES_DIR})
+source_group("Data Types Header Files" FILES ${HEADER_FILES_DATA_TYPES_DIR})
+source_group("Data Types Proto Files" FILES ${PROTO_FILES_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
+source_group("Data Types API Files" FILES ${API_FILES_DATA_TYPES_DIR})
 
-source_group("Chunk Actions Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-source_group("Chunk Actions Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-source_group("Chunk Actions Proto Files" FILES ${PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${SOURCE_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-source_group("Chunk Actions API Files" FILES ${API_FILES_PRIVATE_CHUNK_ACTIONS_DIR})
-
-
-file(GLOB SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_CHUNK_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/*.h")
-file(GLOB API_FILES_PRIVATE_CHUNK_STORE_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/chunk_store/*.h")
-set(ALL_FILES_PRIVATE_CHUNK_STORE_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR} ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR} ${API_FILES_PRIVATE_CHUNK_STORE_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR})
-source_group("Chunk Store Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_DIR})
-source_group("Chunk Store Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_DIR})
-source_group("Chunk Store API Files" FILES ${API_FILES_PRIVATE_CHUNK_STORE_DIR})
-
-file(GLOB SOURCE_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.h")
-file(GLOB API_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*.h")
-set(ALL_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
-
-file(GLOB PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.proto")
-file(GLOB SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/data_types/*_pb.h")
-
-set(ALL_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
-list(REMOVE_ITEM SOURCE_FILES_PRIVATE_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
-list(REMOVE_ITEM API_FILES_PRIVATE_DATA_TYPES_DIR ${HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR} ${API_FILES_PRIVATE_DATA_TYPES_DIR})
-
-source_group("Data Types Source Files" FILES ${SOURCE_FILES_PRIVATE_DATA_TYPES_DIR})
-source_group("Data Types Header Files" FILES ${HEADER_FILES_PRIVATE_DATA_TYPES_DIR})
-source_group("Data Types Proto Files" FILES ${PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_PRIVATE_DATA_TYPES_DIR})
-source_group("Data Types API Files" FILES ${API_FILES_PRIVATE_DATA_TYPES_DIR})
-
-file(GLOB SOURCE_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/*.h")
-file(GLOB API_FILES_PRIVATE_UTILS_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/private/utils/*.h")
-set(ALL_FILES_PRIVATE_UTILS_DIR ${SOURCE_FILES_PRIVATE_UTILS_DIR} ${HEADER_FILES_PRIVATE_UTILS_DIR} ${API_FILES_PRIVATE_UTILS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_UTILS_DIR})
-list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/fob.pb.cc")
-list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/fob.pb.h")
-source_group("Utilities Source Files" FILES ${SOURCE_FILES_PRIVATE_UTILS_DIR})
-source_group("Utilities Header Files" FILES ${HEADER_FILES_PRIVATE_UTILS_DIR})
-source_group("Utilities API Files" FILES ${API_FILES_PRIVATE_UTILS_DIR})
-
-set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/private/return_codes.h")
+set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/return_codes.h")
 source_group("Private API Files" FILES ${RETURN_CODES_H})
 
 
 ####    TESTS    ####
-file(GLOB SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/*.h")
-set(ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR} ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
-source_group("LifeStuff Manager Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
-source_group("LifeStuff Manager Tests Header Files" FILES ${HEADER_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
-list(REMOVE_ITEM ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
-list(REMOVE_ITEM ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
-
-file(GLOB SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_actions/tests/*.h")
-set(ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-source_group("Chunk Actions Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-source_group("Chunk Actions Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR})
-
-file(GLOB SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/*.h")
-set(ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR} ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-source_group("Chunk Store Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-source_group("Chunk Store Tests Header Files" FILES ${HEADER_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-
-file(GLOB SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/tests/*.cc")
-file(GLOB HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/data_types/tests/*.h")
-set(ALL_FILES_PRIVATE_DATA_TYPES_TESTS_DIR ${SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR} ${HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
-source_group("Data Types Tests Source Files" FILES ${SOURCE_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
-source_group("Data Types Tests Header Files" FILES ${HEADER_FILES_PRIVATE_DATA_TYPES_TESTS_DIR})
-
-file(GLOB SOURCE_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.cc")
-file(GLOB HEADER_FILES_UTILS_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/private/utils/tests/*.h")
-set(ALL_FILES_PRIVATE_UTILS_TESTS_DIR ${SOURCE_FILES_UTILS_TESTS_DIR} ${HEADER_FILES_UTILS_TESTS_DIR})
-set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
-source_group("Utils Tests Source Files" FILES ${SOURCE_FILES_UTILS_TESTS_DIR})
-source_group("Utils Tests Header Files" FILES ${HEADER_FILES_UTILS_TESTS_DIR})
-
+file(GLOB SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/*.cc")
+file(GLOB HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/*.h")
+set(ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR ${SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR} ${HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Source Files" FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Header Files" FILES ${HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+list(REMOVE_ITEM ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
+list(REMOVE_ITEM ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
+file(GLOB SOURCE_FILES_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.cc")
+file(GLOB HEADER_FILES_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.h")
+set(ALL_FILES_DATA_TYPES_TESTS_DIR ${SOURCE_FILES_DATA_TYPES_TESTS_DIR} ${HEADER_FILES_DATA_TYPES_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Source Files" FILES ${SOURCE_FILES_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Header Files" FILES ${HEADER_FILES_DATA_TYPES_TESTS_DIR})
 
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
-ms_add_static_library(lifestuff_manager ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_DIR})
-ms_add_static_library(lifestuff_manager_core ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_DIR} ${ALL_FILES_PRIVATE_DATA_TYPES_DIR} ${ALL_FILES_PRIVATE_UTILS_DIR} ${RETURN_CODES_H})
+ms_add_static_library(lifestuff_manager ${ALL_FILES_LIFESTUFF_MANAGER_DIR})
+ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
+ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
+ms_add_static_library(private ${ALL_FILES_CHUNK_ACTIONS_DIR} ${ALL_FILES_CHUNK_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIRR} ${RETURN_CODES_H})
 
-ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/lifestuff_manager_main.cc")
-ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/signing_tool.cc")
-ms_add_executable(bootstrap_file_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/tools/bootstrap_file_tool.cc"
-                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.cc"
-                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.pb.h"
-                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info_pb.h"
-                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/vault_info.proto")
+ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
+ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
+ms_add_executable(bootstrap_file_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/bootstrap_file_tool.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.h"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info_pb.h"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.proto")
 if(MAIDSAFE_TESTING)
-  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_PRIVATE_LIFESTUFF_MANAGER_TESTS_DIR})
-  ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_client.cc")
-  ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/private/lifestuff_manager/tests/dummy_vault.cc")
-  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_PRIVATE_CHUNK_ACTIONS_TESTS_DIR} ${ALL_FILES_PRIVATE_CHUNK_STORE_TESTS_DIR})
-  ms_add_executable(TESTutilities "Tests/Private" ${ALL_FILES_PRIVATE_UTILS_TESTS_DIR})
+  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+  ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
+  ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
+  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR})
 endif()
 
 target_link_libraries(maidsafe_private maidsafe_common)
@@ -219,7 +154,6 @@ target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 if(MAIDSAFE_TESTING)
   target_link_libraries(TESTprivate maidsafe_private)
-  target_link_libraries(TESTutilities maidsafe_private)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
   target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
@@ -243,14 +177,6 @@ endif()
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
 ms_disable_warnings(${PROTO_SOURCE_FILES})
-if(UNIX)
-  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.cc"
-                              "${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/mock_chunk_manager.h"
-                               PROPERTIES COMPILE_FLAGS "-Wno-effc++")
-  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/maidsafe/private/chunk_store/tests/threadsafe_chunk_store_test.cc"
-                              PROPERTIES COMPILE_FLAGS "-Wstrict-overflow=2")
-endif()
-
 
 ###################################################################################################
 # Tests                                                                                           #
@@ -259,110 +185,7 @@ if(MAIDSAFE_TESTING)
   add_style_test(${STYLE_CHECK_FILES})
   add_gtests(TESTlifestuff_manager)
   add_gtests(TESTprivate)
-  add_gtests(TESTutilities)
   label_as_critical_tests( #LifeStuffManagerTest.FUNC_StartStop
-                          ProcessManagerTest.BEH_StartSingleProcess
-                          ProcessManagerTest.BEH_StartThreeProcesses
-                          ProcessManagerTest.BEH_StartManyDifferentProcesses
-                          DownloadManagerTest.BEH_UpdateSuccessful
-                          DownloadManagerTest.BEH_UpdateHasLatestVersion
-                          DownloadManagerTest.BEH_UpdateNoManifestFile
-                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/0
-                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/1
-                          AllFail/DownloadManagerCommonTest.BEH_UpdateThirdFileFail/2
-                          ChunkActionAuthorityTest.BEH_ValidName
-                          ChunkActionAuthorityTest.BEH_Cacheable
-                          ChunkActionAuthorityTest.BEH_Modifiable
-                          ChunkActionAuthorityTest.BEH_ModifyReplaces
-                          ChunkActionAuthorityTest.BEH_Payable
-                          ChunkActionAuthorityTest.BEH_ValidStore
-                          ChunkActionAuthorityTest.BEH_ValidChunk
-                          ChunkActionAuthorityTest.BEH_ValidGet
-                          ChunkActionAuthorityTest.BEH_ValidDelete
-                          ChunkActionAuthorityTest.BEH_ValidModify
-                          ChunkActionAuthorityTest.BEH_ValidHas
-                          ChunkActionAuthorityTest.BEH_Version
-                          ChunkActionAuthorityTest.BEH_Delete
-                          FileChunkStoreTest.BEH_Init
-                          FileChunkStoreTest.BEH_Get
-                          FileChunkStoreTest.BEH_Store
-                          FileChunkStoreTest.DISABLED_BEH_Capacity
-                          FileChunkStoreTest.BEH_Delete
-                          FileChunkStoreTest.BEH_MoveTo
-                          FileChunkStoreTest.BEH_Size
-                          FileChunkStoreTest.BEH_Count
-                          FileChunkStoreTest.BEH_Methods
-                          FileChunkStoreTest.BEH_GetChunksContinuity
-                          ThreadsafeChunkStoreTest.BEH_Get
-                          ThreadsafeChunkStoreTest.BEH_Has
-                          ThreadsafeChunkStoreTest.BEH_Delete
-                          ThreadsafeChunkStoreTest.BEH_Size_For_Chunk
-                          ThreadsafeChunkStoreTest.BEH_Size
-                          ThreadsafeChunkStoreTest.BEH_Capacity
-                          ThreadsafeChunkStoreTest.BEH_SetCapacity
-                          ThreadsafeChunkStoreTest.BEH_Vacant
-                          ThreadsafeChunkStoreTest.BEH_Count
-                          ThreadsafeChunkStoreTest.BEH_Count_Total
-                          ThreadsafeChunkStoreTest.BEH_Empty
-                          ThreadsafeChunkStoreTest.BEH_Clear
-                          ThreadsafeChunkStoreTest.BEH_MoveTo
-                          ThreadsafeChunkStoreTest.BEH_Store
-                          ThreadsafeChunkStoreTest.BEH_Misc
-                          BufferedChunkStoreTest.BEH_CacheInit
-                          BufferedChunkStoreTest.BEH_CacheStore
-                          BufferedChunkStoreTest.BEH_CacheHitMiss
-                          BufferedChunkStoreTest.BEH_CacheCapacity
-                          BufferedChunkStoreTest.BEH_CacheClear
-                          BufferedChunkStoreTest.BEH_PermanentStore
-                          BufferedChunkStoreTest.BEH_WaitForTransfer
-                          BufferedChunkStoreTest.BEH_CacheFlooding
-                          BufferedChunkStoreTest.BEH_StoreWithRemovableChunks
-                          BufferedChunkStoreTest.BEH_ModifyCacheChunks
-                          BufferedChunkStoreTest.BEH_DeleteAllMarked
-                          Files/ChunkStoreTest/0.BEH_Init
-                          Threadsafe/ChunkStoreTest/0.BEH_Init
-                          Buffered/ChunkStoreTest/0.BEH_Init
-                          Memory/ChunkStoreTest/0.BEH_Init
-                          Files/ChunkStoreTest/0.BEH_Get
-                          Threadsafe/ChunkStoreTest/0.BEH_Get
-                          Buffered/ChunkStoreTest/0.BEH_Get
-                          Memory/ChunkStoreTest/0.BEH_Get
-                          Files/ChunkStoreTest/0.BEH_Store
-                          Threadsafe/ChunkStoreTest/0.BEH_Store
-                          Buffered/ChunkStoreTest/0.BEH_Store
-                          Memory/ChunkStoreTest/0.BEH_Store
-                          Files/ChunkStoreTest/0.BEH_RepeatedStore
-                          Threadsafe/ChunkStoreTest/0.BEH_RepeatedStore
-                          Buffered/ChunkStoreTest/0.BEH_RepeatedStore
-                          Memory/ChunkStoreTest/0.BEH_RepeatedStore
-                          Files/ChunkStoreTest/0.BEH_Delete
-                          Threadsafe/ChunkStoreTest/0.BEH_Delete
-                          Buffered/ChunkStoreTest/0.BEH_Delete
-                          Memory/ChunkStoreTest/0.BEH_Delete
-                          Files/ChunkStoreTest/0.BEH_Modify
-                          Threadsafe/ChunkStoreTest/0.BEH_Modify
-                          Buffered/ChunkStoreTest/0.BEH_Modify
-                          Memory/ChunkStoreTest/0.BEH_Modify
-                          Files/ChunkStoreTest/0.BEH_MoveTo
-                          Threadsafe/ChunkStoreTest/0.BEH_MoveTo
-                          Buffered/ChunkStoreTest/0.BEH_MoveTo
-                          Memory/ChunkStoreTest/0.BEH_MoveTo
-                          Files/ChunkStoreTest/0.BEH_Capacity
-                          Threadsafe/ChunkStoreTest/0.BEH_Capacity
-                          Buffered/ChunkStoreTest/0.BEH_Capacity
-                          Memory/ChunkStoreTest/0.BEH_Capacity
-                          Files/ChunkStoreTest/0.BEH_References
-                          Threadsafe/ChunkStoreTest/0.BEH_References
-                          Buffered/ChunkStoreTest/0.BEH_References
-                          Memory/ChunkStoreTest/0.BEH_References
-                          Files/ChunkStoreTest/0.BEH_Clear
-                          Threadsafe/ChunkStoreTest/0.BEH_Clear
-                          Buffered/ChunkStoreTest/0.BEH_Clear
-                          Memory/ChunkStoreTest/0.BEH_Clear
-                          Files/ChunkStoreTest/0.BEH_GetChunks
-                          Threadsafe/ChunkStoreTest/0.BEH_GetChunks
-                          Buffered/ChunkStoreTest/0.BEH_GetChunks
-                          Memory/ChunkStoreTest/0.BEH_GetChunks
                           #FobTest.BEH_FobGenerationAndValidation
                           #FobTest.BEH_FobSerialisationAndParsing
                           )
