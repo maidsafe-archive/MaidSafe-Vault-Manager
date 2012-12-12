@@ -19,7 +19,6 @@
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/rsa.h"
-#include "maidsafe/private/chunk_actions/chunk_id.h"
 #include "maidsafe/common/tagged_value.h"
 
 namespace maidsafe {
