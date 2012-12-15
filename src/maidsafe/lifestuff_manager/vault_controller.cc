@@ -68,7 +68,7 @@ VaultController::VaultController(const std::string &usr_id)
     ReadFile(fs::path(".") / "uid.txt", &content);
     boost::trim(content);
     try {
-      uid_t uid(boost::lexical_cast<uid_t>(content));
+      uid_t uid(static_cast<uid_t>(std::stoull(content)));
       boost::system::error_code error;
       fs::remove(fs::path(".") / "uid.txt", error);
       if (error)

@@ -15,6 +15,7 @@
 #include <istream>
 #include <iterator>
 #include <ostream>
+#include <string>
 #include <vector>
 
 #include "boost/algorithm/string.hpp"
@@ -22,7 +23,6 @@
 #include "boost/asio/read.hpp"
 #include "boost/asio/read_until.hpp"
 #include "boost/asio/write.hpp"
-#include "boost/lexical_cast.hpp"
 #include "boost/filesystem/fstream.hpp"
 
 #include "maidsafe/common/error.h"

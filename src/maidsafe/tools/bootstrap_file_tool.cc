@@ -21,7 +21,6 @@
 #include "boost/asio/ip/udp.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/filesystem/path.hpp"
-#include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -252,7 +251,7 @@ class InputPolicyGetEndpoint {
                const std::function<bool(const std::string&)> fail_functor,
                uint16_t& port) const {
     try {
-      int port_as_int = boost::lexical_cast<int>(entered_port);
+      int port_as_int = std::stoi(entered_port);
       if (port_as_int < 1025 || port_as_int > std::numeric_limits<uint16_t>::max())
         return fail_functor("invalid port " + entered_port + ").");
       port = static_cast<uint16_t>(port_as_int);
@@ -444,7 +443,7 @@ int GetChoice() {
     TLOG(kDefaultColour) << ">> ";
     std::getline(std::cin, input);
     try {
-      choice = boost::lexical_cast<int>(input);
+      choice = std::stoi(input);
     }
     catch(const std::exception&) {}
 

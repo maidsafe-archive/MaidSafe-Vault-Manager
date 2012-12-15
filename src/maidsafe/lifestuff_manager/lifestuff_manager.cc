@@ -15,7 +15,6 @@
 #include <iostream>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"

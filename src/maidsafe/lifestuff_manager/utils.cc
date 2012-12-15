@@ -17,7 +17,6 @@
 #include <set>
 #include <vector>
 
-#include "boost/lexical_cast.hpp"
 #include "boost/tokenizer.hpp"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
@@ -79,8 +78,7 @@ bool UnwrapMessage(const std::string& wrapped_message,
 
 std::string GenerateVmidParameter(const ProcessIndex& process_index,
                                   const Port& lifestuff_manager_port) {
-  return boost::lexical_cast<std::string>(process_index) + kSeparator +
-         boost::lexical_cast<std::string>(lifestuff_manager_port);
+  return std::to_string(process_index) + kSeparator + std::to_string(lifestuff_manager_port);
 }
 
 bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
@@ -98,12 +96,12 @@ bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
     return do_fail();
   }
   try {
-    process_index = boost::lexical_cast<ProcessIndex>(
-        lifestuff_manager_identifier.substr(0, separator_position));
+    process_index = static_cast<ProcessIndex>(std::stoul(
+        lifestuff_manager_identifier.substr(0, separator_position)));
     lifestuff_manager_port =
-        boost::lexical_cast<Port>(lifestuff_manager_identifier.substr(separator_position + 1));
+        static_cast<Port>(std::stoi(lifestuff_manager_identifier.substr(separator_position + 1)));
   }
-  catch(const boost::bad_lexical_cast& exception) {
+  catch(const std::logic_error& exception) {
     LOG(kError) << "lifestuff_manager_identifier " << lifestuff_manager_identifier
                 << " has wrong format: " << exception.what();
     return do_fail();

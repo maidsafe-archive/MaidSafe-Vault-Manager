@@ -57,7 +57,7 @@ int GetNumRunningProcesses(const std::string& process_name) {
     boost::trim(contents);
     // In UNIX, adjust for the two extra commands containing kDUmmyName that we invoked - the
     // overall ps and the piped grep
-    int num_processes(boost::lexical_cast<int>(contents));
+    int num_processes(std::stoi(contents));
 #endif
     return num_processes;
   }
