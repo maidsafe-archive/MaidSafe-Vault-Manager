@@ -21,12 +21,13 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/passport/fob.h"
-#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
-#include "maidsafe/private/lifestuff_manager/utils.h"
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/passport/types.h"
+#include "maidsafe/passport/passport.h"
+#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/utils.h"
+#include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 
 
 namespace fs = boost::filesystem;
@@ -46,7 +47,7 @@ VaultController::VaultController(const std::string &usr_id)
     : process_index_(),
       lifestuff_manager_port_(0),
       local_port_(0),
-      fob_(),
+      pmid_(),
       account_name_(),
       bootstrap_endpoints_(),
       stop_callback_(),
@@ -129,14 +130,14 @@ bool VaultController::Start(const std::string& lifestuff_manager_identifier,
 }
 
 bool VaultController::GetIdentity(
-    Fob& fob,
+    passport::Pmid::name_type& pmid,
     std::string& account_name,
     std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
   if (lifestuff_manager_port_ == 0) {
     LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
   }
-  fob = fob_;
+  pmid = pmid_;
   account_name = account_name_;
   bootstrap_endpoints = bootstrap_endpoints_;
   return true;
@@ -402,7 +403,7 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
 
-  fob_ = ParseFob(NonEmptyString(vault_identity_response.fob()));
+  pmid_ = passport::Parse(NonEmptyString(vault_identity_response.pmid()));
 
   account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {

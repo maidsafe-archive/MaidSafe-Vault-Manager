@@ -32,7 +32,7 @@
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/passport/config.h"
+#include "maidsafe/passport/types.h"
 
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/process_manager.h"
@@ -103,7 +103,7 @@ class LifeStuffManager {
     void FromProtobuf(const protobuf::VaultInfo& pb_vault_info);
     ProcessIndex process_index;
     std::string account_name;
-    PmidFob fob;
+    passport::Pmid::name_type fob;
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
