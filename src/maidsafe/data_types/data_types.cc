@@ -13,49 +13,49 @@
 *
 * ============================================================================
 */
-#include "maidsafe/private/data_types/data_types.h"
+#include "maidsafe/data_types/data_types.h"
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
-#include "maidsafe/private/data_types/data.pb.h"
+#include "maidsafe/data_types/data.pb.h"
 
 namespace maidsafe {
 
-ImmutableData::ImmutableData(const Identity name, const NonEmptyString& content)
+ImmutableData::ImmutableData(const NameType& name, const NonEmptyString& content)
   : data_(content), name_(name) {
     Validate();
 }
 
 ImmutableData::ImmutableData(const NonEmptyString& serialised_data) : data_(), name_() {
-   priv::data_types::proto::Data data_proto;
-   data_proto.ParseFromString(serialised_data.string());
-   name_ = Identity(data_proto.name());
-   data_ = NonEmptyString(data_proto.content().data());
-   Validate();
+  data_types::proto::Content data_proto;
+  data_proto.ParseFromString(serialised_data.string());
+  // name_ = Identity(data_proto.name());
+  // data_ = NonEmptyString(data_proto.content().data());
+  Validate();
 }
 
 void ImmutableData::Validate() {
- if (name_ != crypto::Hash<crypto::SHA512>(data_))
-   ThrowError(CommonErrors::hashing_error);
+  // if (name_ != crypto::Hash<crypto::SHA512>(data_))
+  //   ThrowError(CommonErrors::hashing_error);
 }
 
-Identity ImmutableData::name() {
+ImmutableData::NameType ImmutableData::name() const {
   return name_;
 }
 
-NonEmptyString ImmutableData::Serialise() {
-   priv::data_types::proto::Data data_proto;
-   priv::data_types::proto::Content content_proto;
-   data_proto.set_type(priv::data_types::proto::kDataType::ImmutableData);
-   data_proto.set_name(name_.string());
-   content_proto.set_data(data_.string());
-   data_proto.mutable_content()->CopyFrom(content_proto);
-   return NonEmptyString(data_proto.SerializeAsString());
+NonEmptyString ImmutableData::Serialise() const {
+  data_types::proto::Content data_proto;
+  // priv::data_types::proto::Content content_proto;
+  // data_proto.set_type(priv::data_types::proto::kDataType::ImmutableData);
+  // data_proto.set_name(name_.string());
+  // content_proto.set_data(data_.string());
+  // data_proto.mutable_content()->CopyFrom(content_proto);
+  return NonEmptyString(data_proto.SerializeAsString());
 }
 
-//TODO implement these!! 
-// 
+// TODO(Team) implement these!!
+//
 // class MutableData {
 //  public:
 //   MutableData(const priv::ChunkId name,
@@ -70,7 +70,7 @@ NonEmptyString ImmutableData::Serialise() {
 //   NonEmptyString data_;
 //   Identity name_;
 // };
-// 
+//
 // class rsa::SignatureData {
 //  public:
 //   rsa::SignatureData(const priv::ChunkId name,
@@ -85,7 +85,7 @@ NonEmptyString ImmutableData::Serialise() {
 //   NonEmptyString data_;
 //   Identity name_;
 // };
-// 
+//
 // class AppendableData {
 //  public:
 //   AppendableData(const priv::ChunkId name,
