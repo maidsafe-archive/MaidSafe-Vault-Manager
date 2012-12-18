@@ -19,8 +19,8 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/lifestuff_manager/download_manager.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/download_manager.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
 
 
 namespace fs = boost::filesystem;

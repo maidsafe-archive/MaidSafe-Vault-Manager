@@ -19,8 +19,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/data_types/fob.h"
-#include "maidsafe/private/lifestuff_manager/vault_controller.h"
+#include "maidsafe/lifestuff_manager/vault_controller.h"
 
 namespace po = boost::program_options;
 
@@ -74,22 +73,26 @@ int main(int argc, char* argv[]) {
     std::string lifestuff_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "dummy_vault: Starting VaultController: " << usr_id;
-      maidsafe::priv::lifestuff_manager::VaultController vault_controller(usr_id);
+      maidsafe::lifestuff_manager::VaultController vault_controller(usr_id);
       if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
         LOG(kError) << "dummy_vault: Vault controller failed to start. Aborting...";
         return -3;
       }
 
-      maidsafe::Fob fob;
+      maidsafe::passport::Anmaid anmaid;
+      maidsafe::passport::Maid maid(anmaid);
+      std::unique_ptr<maidsafe::passport::Pmid> pmid(new maidsafe::passport::Pmid(maid));
+
       std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
-      vault_controller.GetIdentity(fob, account_name, bootstrap_endpoints);
-      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(fob.identity().string());
-      LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token().string());
+      vault_controller.GetIdentity(pmid, account_name, bootstrap_endpoints);
+      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().data);
+      LOG(kInfo) << "Validation Token: "
+                 << maidsafe::Base64Substr(pmid->validation_token().string());
       LOG(kInfo) << "Public Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
       LOG(kInfo) << "Private Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
+                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
       LOG(kInfo) << "Account name: " << maidsafe::Base64Substr(account_name);
       vault_controller.ConfirmJoin(true);
 

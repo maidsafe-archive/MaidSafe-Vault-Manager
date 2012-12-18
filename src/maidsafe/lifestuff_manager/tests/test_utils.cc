@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/tests/test_utils.h"
+#include "maidsafe/lifestuff_manager/tests/test_utils.h"
 
 #include <cstdlib>
 
@@ -20,7 +20,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/config.h"
+#include "maidsafe/lifestuff_manager/config.h"
 
 
 namespace fs = boost::filesystem;
@@ -68,7 +68,5 @@ int GetNumRunningProcesses(const std::string& process_name) {
 }  // namespace test
 
 }  //  namespace lifestuff_manager
-
-}  //  namespace priv
 
 }  //  namespace maidsafe
