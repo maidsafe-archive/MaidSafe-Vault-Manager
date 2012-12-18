@@ -220,9 +220,9 @@ void DataBuffer::WaitForSpaceOnDisk(const Identity& key,
       itr = FindOldestOnDisk();
       assert((*itr).state != StoringState::kStarted);
       if ((*itr).state == StoringState::kCompleted) {
-        Identity oldest_key((*itr).key);
+        Identity oldest_key(boost::apply_visitor(VariantIdentityGetter(), (*itr).key));
         NonEmptyString oldest_value;
-        RemoveFile((*itr).key, &oldest_value);
+        RemoveFile(oldest_key, &oldest_value);
         disk_store_.index.erase(itr);
         kPopFunctor_(oldest_key, oldest_value);
       }
@@ -295,7 +295,8 @@ void DataBuffer::DeleteFromDisk(const Identity& key) {
     if ((*itr).state == StoringState::kStarted) {
       (*itr).state = StoringState::kCancelled;
     } else if ((*itr).state == StoringState::kCompleted) {
-      RemoveFile((*itr).key, nullptr);
+      Identity id(boost::apply_visitor(VariantIdentityGetter(), (*itr).key));
+      RemoveFile(id, nullptr);
       disk_store_.index.erase(itr);
     }
   }
@@ -334,7 +335,7 @@ void DataBuffer::CopyQueueToDisk() {
       if (!running_)
         return;
 
-      key = (*itr).key;
+      key = boost::apply_visitor(VariantIdentityGetter(), (*itr).key);
       value = (*itr).value;
       (*itr).also_on_disk = StoringState::kStarted;
     }

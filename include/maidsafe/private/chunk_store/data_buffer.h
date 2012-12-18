@@ -107,6 +107,15 @@ class DataBuffer {
   DataBuffer(const DataBuffer&);
   DataBuffer& operator=(const DataBuffer&);
 
+  struct VariantIdentityGetter : public boost::static_visitor<Identity>
+  {
+     template<typename T>
+     Identity operator()(const T& t)
+     {
+        return t.value_type;
+     }
+  };
+
   template<typename UsageType, typename IndexType>
   struct Storage {
     typedef IndexType index_type;
