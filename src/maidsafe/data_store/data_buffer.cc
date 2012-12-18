@@ -124,13 +124,15 @@ DataBuffer::~DataBuffer() {
   }
 }
 
-void DataBuffer::Store(const Identity& key, const NonEmptyString& value) {
+template<typename DataType>
+void DataBuffer::Store(const DataType& key, const NonEmptyString& value) {
   CheckWorkerIsStillRunning();
   if (!StoreInMemory(key, value))
     StoreOnDisk(key, value);
 }
 
-bool DataBuffer::StoreInMemory(const Identity& key, const NonEmptyString& value) {
+template<typename DataType>
+bool DataBuffer::StoreInMemory(const DataType& key, const NonEmptyString& value) {
   {
     uint64_t required_space(value.string().size());
     std::unique_lock<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -165,7 +167,8 @@ void DataBuffer::WaitForSpaceInMemory(const uint64_t& required_space,
   }
 }
 
-void DataBuffer::StoreOnDisk(const Identity& key, const NonEmptyString& value) {
+template<typename DataType>
+void DataBuffer::StoreOnDisk(const DataType& key, const NonEmptyString& value) {
   {
     std::unique_lock<std::mutex> disk_store_lock(disk_store_.mutex);
     if (value.string().size() > disk_store_.max) {
@@ -178,6 +181,7 @@ void DataBuffer::StoreOnDisk(const Identity& key, const NonEmptyString& value) {
 
     bool cancelled(false);
     WaitForSpaceOnDisk(key, value.string().size(), disk_store_lock, cancelled);
+
     if (!running_)
       return;
 
@@ -197,7 +201,8 @@ void DataBuffer::StoreOnDisk(const Identity& key, const NonEmptyString& value) {
   disk_store_.cond_var.notify_all();
 }
 
-void DataBuffer::WaitForSpaceOnDisk(const Identity& key,
+template<typename DataType>
+void DataBuffer::WaitForSpaceOnDisk(const DataType& key,
                                     const uint64_t& required_space,
                                     std::unique_lock<std::mutex>& disk_store_lock,
                                     bool& cancelled) {
@@ -232,7 +237,8 @@ void DataBuffer::WaitForSpaceOnDisk(const Identity& key,
   }
 }
 
-NonEmptyString DataBuffer::Get(const Identity& key) {
+template<typename DataType>
+NonEmptyString DataBuffer::Get(const DataType& key) {
   CheckWorkerIsStillRunning();
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -254,7 +260,8 @@ NonEmptyString DataBuffer::Get(const Identity& key) {
   //                               from wherever it's found to the back of the memory index.
 }
 
-void DataBuffer::Delete(const Identity& key) {
+template<typename DataType>
+void DataBuffer::Delete(const DataType& key) {
   CheckWorkerIsStillRunning();
   StoringState also_on_disk(StoringState::kNotStarted);
   DeleteFromMemory(key, also_on_disk);
@@ -262,7 +269,8 @@ void DataBuffer::Delete(const Identity& key) {
     DeleteFromDisk(key);
 }
 
-void DataBuffer::DeleteFromMemory(const Identity& key, StoringState& also_on_disk) {
+template<typename DataType>
+void DataBuffer::DeleteFromMemory(const DataType& key, StoringState& also_on_disk) {
   bool changed(false);
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -281,7 +289,8 @@ void DataBuffer::DeleteFromMemory(const Identity& key, StoringState& also_on_dis
     memory_store_.cond_var.notify_all();
 }
 
-void DataBuffer::DeleteFromDisk(const Identity& key) {
+template<typename DataType>
+void DataBuffer::DeleteFromDisk(const DataType& key) {
   {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
     auto itr(Find(disk_store_, key));
@@ -301,7 +310,8 @@ void DataBuffer::DeleteFromDisk(const Identity& key) {
   disk_store_.cond_var.notify_all();
 }
 
-void DataBuffer::RemoveFile(const Identity& key, NonEmptyString* value) {
+template<typename DataType>
+void DataBuffer::RemoveFile(const DataType& key, NonEmptyString* value) {
   fs::path path(GetFilename(key));
   boost::system::error_code error_code;
   uint64_t size(fs::file_size(path, error_code));
@@ -333,7 +343,7 @@ void DataBuffer::CopyQueueToDisk() {
       if (!running_)
         return;
 
-      key = boost::apply_visitor(VariantIdentityGetter(), (*itr).key);
+      key = (*itr).key;
       value = (*itr).value;
       (*itr).also_on_disk = StoringState::kStarted;
     }
@@ -400,8 +410,8 @@ bool DataBuffer::HasSpace(const T& store, const uint64_t& required_space) {
   return store.current <= store.max - required_space;
 }
 
-template<typename T>
-typename T::index_type::iterator DataBuffer::Find(T& store, const Identity& key) {
+template<typename T, typename DataType>
+typename T::index_type::iterator DataBuffer::Find(T& store, const DataType& key) {
   return std::find_if(store.index.begin(),
                       store.index.end(),
                       [&key](const typename T::index_type::value_type& key_value) {
@@ -412,7 +422,7 @@ typename T::index_type::iterator DataBuffer::Find(T& store, const Identity& key)
 DataBuffer::MemoryIndex::iterator DataBuffer::FindOldestInMemoryOnly() {
   return std::find_if(memory_store_.index.begin(),
                       memory_store_.index.end(),
-                      [](const MemoryElement& key_value) {
+                      [](const MemoryElement<VariantType>& key_value) {
                           return key_value.also_on_disk == StoringState::kNotStarted;
                       });
 }
@@ -424,7 +434,7 @@ DataBuffer::MemoryIndex::iterator DataBuffer::FindMemoryRemovalCandidate(
   memory_store_.cond_var.wait(memory_store_lock, [this, &itr, &required_space]()->bool {
       itr = std::find_if(memory_store_.index.begin(),
                          memory_store_.index.end(),
-                         [](const MemoryElement& key_value) {
+                         [](const MemoryElement<VariantType>& key_value) {
                              return key_value.also_on_disk == StoringState::kCompleted;
                          });
       return itr != memory_store_.index.end() ||
@@ -434,10 +444,11 @@ DataBuffer::MemoryIndex::iterator DataBuffer::FindMemoryRemovalCandidate(
   return itr;
 }
 
-DataBuffer::DiskIndex::iterator DataBuffer::FindStartedToStoreOnDisk(const Identity& key) {
+template<typename DataType>
+DataBuffer::DiskIndex::iterator DataBuffer::FindStartedToStoreOnDisk(const DataType& key) {
   return std::find_if(disk_store_.index.begin(),
                       disk_store_.index.end(),
-                      [&key](const DiskElement& entry) {
+                      [&key](const DiskElement<VariantType>& entry) {
                           return entry.state == StoringState::kStarted && entry.key == key;
                       });
 }
@@ -446,7 +457,8 @@ DataBuffer::DiskIndex::iterator DataBuffer::FindOldestOnDisk() {
   return disk_store_.index.begin();
 }
 
-DataBuffer::DiskIndex::iterator DataBuffer::FindAndThrowIfCancelled(const Identity& key) {
+template<typename DataType>
+DataBuffer::DiskIndex::iterator DataBuffer::FindAndThrowIfCancelled(const DataType& key) {
   auto itr(Find(disk_store_, key));
   if (itr == disk_store_.index.end() || (*itr).state == StoringState::kCancelled) {
     LOG(kError) << HexSubstr(key) << " is not in the disk index or is cancelled.";

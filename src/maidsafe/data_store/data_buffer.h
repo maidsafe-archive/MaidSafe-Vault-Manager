@@ -77,23 +77,26 @@ class DataBuffer {
   // pop_functor is valid, the disk cache will pop excess items when it is full, otherwise Store
   // will block until there is space made via Delete calls.
   DataBuffer(MemoryUsage max_memory_usage,
-                 DiskUsage max_disk_usage,
-                 PopFunctor pop_functor,
-                 const boost::filesystem::path& disk_buffer);
+             DiskUsage max_disk_usage,
+             PopFunctor pop_functor,
+             const boost::filesystem::path& disk_buffer);
   ~DataBuffer();
   // Throws if the background worker has thrown (e.g. the disk has become inaccessible).  Throws if
   // the size of value is greater than the current specified maximum disk usage, or if the value
   // can't be written to disk (e.g. value is not initialised).  If there is not enough space to
   // store to memory, blocks until there is enough space to store to disk.  Space will be made
   // available via external calls to Delete, and also automatically if pop_functor_ is not NULL.
-  void Store(const Identity& key, const NonEmptyString& value);
+  template<typename DataType>
+  void Store(const DataType& key, const NonEmptyString& value);
   // Throws if the background worker has thrown (e.g. the disk has become inaccessible).  Throws if
   // the value can't be read from disk.  If the value isn't in memory and has started to be stored
   // to disk, blocks while waiting for the storing to complete.
-  NonEmptyString Get(const Identity& key);
+  template<typename DataType>
+  NonEmptyString Get(const DataType& key);
   // Throws if the background worker has thrown (e.g. the disk has become inaccessible).  Throws if
   // the value was written to disk and can't be removed.
-  void Delete(const Identity& key);
+  template<typename DataType>
+  void Delete(const DataType& key);
   // Throws if max_memory_usage > max_disk_usage_.
   void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
   // Throws if max_memory_usage_ > max_disk_usage.
@@ -146,31 +149,52 @@ class DataBuffer {
   typedef std::deque<DiskElement<VariantType> > DiskIndex;
 
   void Init();
-  bool StoreInMemory(const Identity& key, const NonEmptyString& value);
+
+  template<typename DataType>
+  bool StoreInMemory(const DataType& key, const NonEmptyString& value);
+
   void WaitForSpaceInMemory(const uint64_t& required_space,
                             std::unique_lock<std::mutex>& memory_store_lock);
-  void StoreOnDisk(const Identity& key, const NonEmptyString& value);
-  void WaitForSpaceOnDisk(const Identity& key,
+
+  template<typename DataType>
+  void StoreOnDisk(const DataType& key, const NonEmptyString& value);
+
+  template<typename DataType>
+  void WaitForSpaceOnDisk(const DataType& key,
                           const uint64_t& required_space,
                           std::unique_lock<std::mutex>& disk_store_lock,
                           bool& cancelled);
-  void DeleteFromMemory(const Identity& key, StoringState& also_on_disk);
-  void DeleteFromDisk(const Identity& key);
-  void RemoveFile(const Identity& key, NonEmptyString* value);
+
+  template<typename DataType>
+  void DeleteFromMemory(const DataType& key, StoringState& also_on_disk);
+
+  template<typename DataType>
+  void DeleteFromDisk(const DataType& key);
+
+  template<typename DataType>
+  void RemoveFile(const DataType& key, NonEmptyString* value);
+
   void CopyQueueToDisk();
   void CheckWorkerIsStillRunning();
   void StopRunning();
   boost::filesystem::path GetFilename(const Identity& key) const;
+
   template<typename T>
   bool HasSpace(const T& store, const uint64_t& required_space);
-  template<typename T>
-  typename T::index_type::iterator Find(T& store, const Identity& key);
+
+  template<typename T, typename DataType>
+  typename T::index_type::iterator Find(T& store, const DataType& key);
+
   MemoryIndex::iterator FindOldestInMemoryOnly();
   MemoryIndex::iterator FindMemoryRemovalCandidate(const uint64_t& required_space,
                                                    std::unique_lock<std::mutex>& memory_store_lock);
-  DiskIndex::iterator FindStartedToStoreOnDisk(const Identity& key);
+
+  template<typename DataType>
+  DiskIndex::iterator FindStartedToStoreOnDisk(const DataType& key);
   DiskIndex::iterator FindOldestOnDisk();
-  DiskIndex::iterator FindAndThrowIfCancelled(const Identity& key);
+
+  template<typename DataType>
+  DiskIndex::iterator FindAndThrowIfCancelled(const DataType& key);
 
   Storage<MemoryUsage, MemoryIndex> memory_store_;
   Storage<DiskUsage, DiskIndex> disk_store_;
