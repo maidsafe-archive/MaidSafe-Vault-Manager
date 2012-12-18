@@ -148,16 +148,16 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR})
 endif()
 
-target_link_libraries(maidsafe_private maidsafe_common)
+target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
 target_link_libraries(maidsafe_lifestuff_manager maidsafe_private ${BoostRegexLibs})
 target_link_libraries(signing_tool maidsafe_private)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 if(MAIDSAFE_TESTING)
-  target_link_libraries(TESTprivate maidsafe_private)
+  target_link_libraries(TESTprivate maidsafe_private maidsafe_passport)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
-  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
+  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
 
   add_dependencies(TESTlifestuff_manager dummy_vault)
 endif()
@@ -178,6 +178,10 @@ endif()
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
 ms_disable_warnings(${PROTO_SOURCE_FILES})
+
+if(UNIX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-effc++")
+endif()
 
 ###################################################################################################
 # Tests                                                                                           #
