@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
-#define MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
+#ifndef MAIDSAFE_PRIVATE_DATA_STORE_DATA_STORE_H_
+#define MAIDSAFE_PRIVATE_DATA_STORE_DATA_STORE_H_
 
 #include <deque>
 
@@ -53,4 +53,4 @@ class DataStore {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
+#endif  // MAIDSAFE_PRIVATE_DATA_STORE_DATA_STORE_H_
