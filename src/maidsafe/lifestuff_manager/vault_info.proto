@@ -1,0 +1,25 @@
+package maidsafe.lifestuff_manager.protobuf;
+
+message Endpoint {
+  required bytes ip = 1;
+  required int32 port = 2;
+}
+
+message Bootstrap {
+  repeated Endpoint bootstrap_contacts = 1;
+}
+
+message VaultInfo {
+  required bytes account_name = 1;
+  required bytes pmid = 2;
+  required bytes chunkstore_path = 3;
+  required bool requested_to_run = 4;
+  required int32 version = 5;
+}
+
+message LifeStuffManagerConfig {
+  required uint32 update_interval = 1;  // In seconds
+  required Bootstrap bootstrap_endpoints = 2;
+  repeated VaultInfo vault_info = 3;
+  optional bytes vault_permissions = 4;
+}
