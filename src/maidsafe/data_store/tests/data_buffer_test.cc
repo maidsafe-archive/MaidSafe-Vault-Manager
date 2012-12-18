@@ -10,7 +10,7 @@
  *  the explicit written permission of the board of directors of maidsafe.net. *
  ******************************************************************************/
 
-#include "maidsafe/private/chunk_store/data_buffer.h"
+#include "maidsafe/data_store/data_buffer.h"
 
 #include <memory>
 
@@ -26,9 +26,7 @@ namespace args = std::placeholders;
 
 namespace maidsafe {
 
-namespace priv {
-
-namespace chunk_store {
+namespace data_store {
 
 namespace test {
 
@@ -595,8 +593,6 @@ INSTANTIATE_TEST_CASE_P(TestDataBuffer,
 
 }  // namespace test
 
-}  // namespace chunk_store
-
-}  // namespace priv
+}  // namespace data_store
 
 }  // namespace maidsafe

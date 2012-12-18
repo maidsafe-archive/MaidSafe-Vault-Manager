@@ -106,6 +106,18 @@ source_group("Data Types Header Files" FILES ${HEADER_FILES_DATA_TYPES_DIR})
 source_group("Data Types Proto Files" FILES ${PROTO_FILES_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
 source_group("Data Types API Files" FILES ${API_FILES_DATA_TYPES_DIR})
 
+file(GLOB SOURCE_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.cc")
+file(GLOB HEADER_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.h")
+file(GLOB API_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_store/*.h")
+set(ALL_FILES_DATA_STORE_DIR ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+
+set(ALL_FILES_DATA_STORE_DIR ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+
+source_group("Data Store Source Files" FILES ${SOURCE_FILES_DATA_STORE_DIR})
+source_group("Data Store Header Files" FILES ${HEADER_FILES_DATA_STORE_DIR})
+source_group("Data Store API Files" FILES ${API_FILES_DATA_STORE_DIR})
+
 set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/return_codes.h")
 source_group("Private API Files" FILES ${RETURN_CODES_H})
 
@@ -126,13 +138,20 @@ set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_TYPES_TESTS_DIR})
 source_group("Data Types Tests Source Files" FILES ${SOURCE_FILES_DATA_TYPES_TESTS_DIR})
 source_group("Data Types Tests Header Files" FILES ${HEADER_FILES_DATA_TYPES_TESTS_DIR})
 
+file(GLOB SOURCE_FILES_DATA_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.cc")
+file(GLOB HEADER_FILES_DATA_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.h")
+set(ALL_FILES_DATA_STORE_TESTS_DIR ${SOURCE_FILES_DATA_STORE_TESTS_DIR} ${HEADER_FILES_DATA_STORE_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_STORE_TESTS_DIR})
+source_group("Data Store Tests Source Files" FILES ${SOURCE_FILES_DATA_STORE_TESTS_DIR})
+source_group("Data Store Tests Header Files" FILES ${HEADER_FILES_DATA_STORE_TESTS_DIR})
+
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
 ms_add_static_library(lifestuff_manager ${ALL_FILES_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_CHUNK_ACTIONS_DIR} ${ALL_FILES_CHUNK_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIRR} ${RETURN_CODES_H})
+ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR} ${RETURN_CODES_H})
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
@@ -145,7 +164,7 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
   ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
   ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
-  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR})
+  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR} ${ALL_FILES_DATA_STORE_TESTS_DIR})
 endif()
 
 target_link_libraries(maidsafe_private maidsafe_common)
@@ -186,11 +205,7 @@ if(MAIDSAFE_TESTING)
   add_style_test(${STYLE_CHECK_FILES})
   add_gtests(TESTlifestuff_manager)
   add_gtests(TESTprivate)
-  label_as_critical_tests( #LifeStuffManagerTest.FUNC_StartStop
-                          #FobTest.BEH_FobGenerationAndValidation
-                          #FobTest.BEH_FobSerialisationAndParsing
-                          )
-
+  
   add_project_experimental()
   test_summary_output()
 endif()
