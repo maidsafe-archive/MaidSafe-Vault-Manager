@@ -21,8 +21,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace detail {
@@ -88,8 +86,6 @@ const std::string kVaultName("lifestuff_vault" + kExecutableExtension);
 }  // namespace detail
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

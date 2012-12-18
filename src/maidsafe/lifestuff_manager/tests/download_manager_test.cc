@@ -27,8 +27,6 @@ namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace test {
@@ -146,7 +144,5 @@ INSTANTIATE_TEST_CASE_P(AllFail,
 }  // namespace test
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

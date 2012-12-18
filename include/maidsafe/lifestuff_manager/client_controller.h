@@ -27,15 +27,13 @@
 #include "boost/signals2/connection.hpp"
 #include "boost/signals2/signal.hpp"
 
-#include "maidsafe/private/data_types/fob.h"
-
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 
+#include "maidsafe/passport/types.h"
+
 
 namespace maidsafe {
-
-namespace priv {
 
 namespace lifestuff_manager {
 
@@ -52,7 +50,7 @@ class ClientController {
   bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const Fob& fob,
+  bool StartVault(const passport::Pmid& pmid,
                   const std::string& account_name,
                   const boost::filesystem::path& chunkstore);
 
@@ -113,7 +111,7 @@ class ClientController {
   OnNewVersionAvailable on_new_version_available_;
   State state_;
   std::vector<EndPoint> bootstrap_nodes_;
-  std::map<Identity, bool> joining_vaults_;
+  std::map<passport::Pmid::name_type, bool> joining_vaults_;
   std::mutex joining_vaults_mutex_;
   std::condition_variable joining_vaults_conditional_;
   AsioService asio_service_;
@@ -121,8 +119,6 @@ class ClientController {
 };
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

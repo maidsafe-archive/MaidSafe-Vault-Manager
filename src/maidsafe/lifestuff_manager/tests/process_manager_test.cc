@@ -30,8 +30,6 @@ namespace { std::string g_parent_path; }
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace test {
@@ -507,8 +505,6 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 }  // namespace test
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

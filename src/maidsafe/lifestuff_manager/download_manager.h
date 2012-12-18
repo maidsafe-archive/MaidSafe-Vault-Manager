@@ -27,8 +27,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace test { class DownloadManagerTest; }
@@ -74,8 +72,6 @@ class DownloadManager {
 };
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

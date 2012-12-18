@@ -9,14 +9,14 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 
 #include <functional>
 
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
-#include "maidsafe/private/lifestuff_manager/tcp_connection.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/tcp_connection.h"
 
 
 namespace asio = boost::asio;
@@ -25,8 +25,6 @@ namespace ip = asio::ip;
 namespace args = std::placeholders;
 
 namespace maidsafe {
-
-namespace priv {
 
 namespace lifestuff_manager {
 
@@ -233,7 +231,5 @@ void LocalTcpTransport::DoRemoveConnection(ConnectionPtr connection) {
 }
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

@@ -18,8 +18,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace detail {
@@ -47,7 +45,5 @@ TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) {
 }  // namespace detail
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

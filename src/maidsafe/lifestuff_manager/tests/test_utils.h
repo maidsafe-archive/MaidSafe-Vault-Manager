@@ -17,8 +17,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace test {
@@ -28,8 +26,6 @@ int GetNumRunningProcesses(const std::string& process_name);
 }  // namespace test
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

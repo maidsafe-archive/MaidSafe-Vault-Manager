@@ -25,8 +25,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 class LocalTcpTransport;
@@ -82,8 +80,6 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 };
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

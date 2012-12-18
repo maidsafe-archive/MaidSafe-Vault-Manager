@@ -24,8 +24,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 enum class MessageType;
@@ -66,8 +64,6 @@ bool UsingDefaultEnvironment();
 }  // namespace detail
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

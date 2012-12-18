@@ -41,8 +41,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace detail { class Platform; }
@@ -103,7 +101,7 @@ class LifeStuffManager {
     void FromProtobuf(const protobuf::VaultInfo& pb_vault_info);
     ProcessIndex process_index;
     std::string account_name;
-    passport::Pmid::name_type fob;
+    std::unique_ptr<passport::Pmid> pmid;
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
@@ -200,8 +198,6 @@ class LifeStuffManager {
 };
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

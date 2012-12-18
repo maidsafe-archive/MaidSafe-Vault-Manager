@@ -26,8 +26,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 typedef uint32_t ProcessIndex;
@@ -133,8 +131,6 @@ class ProcessManager {
 };
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

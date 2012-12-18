@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/tcp_connection.h"
+#include "maidsafe/lifestuff_manager/tcp_connection.h"
 
 #include <array>
 #include <algorithm>
@@ -23,8 +23,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
 
 
 namespace asio = boost::asio;
@@ -34,8 +34,6 @@ namespace bptime = boost::posix_time;
 namespace args = std::placeholders;
 
 namespace maidsafe {
-
-namespace priv {
 
 namespace lifestuff_manager {
 
@@ -199,7 +197,5 @@ void TcpConnection::HandleWrite(const bs::error_code& ec) {
 }
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

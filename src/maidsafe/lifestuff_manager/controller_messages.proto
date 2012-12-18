@@ -1,4 +1,4 @@
-package maidsafe.priv.lifestuff_manager.protobuf;
+package maidsafe.lifestuff_manager.protobuf;
 
 // All following messages are serialised into the payload field, and the message type added.
 message WrapperMessage {

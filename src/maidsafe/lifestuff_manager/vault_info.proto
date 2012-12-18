@@ -1,4 +1,4 @@
-package maidsafe.priv.lifestuff_manager.protobuf;
+package maidsafe.lifestuff_manager.protobuf;
 
 message Endpoint {
   required bytes ip = 1;

@@ -34,8 +34,6 @@ namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 typedef std::function<void()> VoidFunction;
@@ -130,14 +128,14 @@ bool VaultController::Start(const std::string& lifestuff_manager_identifier,
 }
 
 bool VaultController::GetIdentity(
-    passport::Pmid::name_type& pmid,
+    std::unique_ptr<passport::Pmid>& pmid,
     std::string& account_name,
     std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
   if (lifestuff_manager_port_ == 0) {
     LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
   }
-  pmid = pmid_;
+  pmid.reset(new passport::Pmid(*pmid_));
   account_name = account_name_;
   bootstrap_endpoints = bootstrap_endpoints_;
   return true;
@@ -387,8 +385,7 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
   return result;
 }
 
-bool VaultController::HandleVaultIdentityResponse(const std::string& message,
-                                                  std::mutex& mutex) {
+bool VaultController::HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex) {
   MessageType type;
   std::string payload;
   std::lock_guard<std::mutex> lock(mutex);
@@ -403,7 +400,8 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message,
     return false;
   }
 
-  pmid_ = passport::Parse(NonEmptyString(vault_identity_response.pmid()));
+  pmid_.reset(
+      new passport::Pmid(passport::ParsePmid(NonEmptyString(vault_identity_response.pmid()))));
 
   account_name_ = vault_identity_response.account_name();
   if (account_name_.empty()) {
@@ -465,7 +463,5 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
 }
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

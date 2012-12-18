@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/client_controller.h"
+#include "maidsafe/lifestuff_manager/client_controller.h"
 
 #include <chrono>
 #include <limits>
@@ -18,12 +18,13 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/data_types/fob.h"
-#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
-#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/passport/passport.h"
+
+#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/utils.h"
 
 
 namespace bptime = boost::posix_time;
@@ -31,8 +32,6 @@ namespace bs2 = boost::signals2;
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
-
-namespace priv {
 
 namespace lifestuff_manager {
 
@@ -228,7 +227,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   condition_variable.notify_one();
 }
 
-bool ClientController::StartVault(const Fob& fob,
+bool ClientController::StartVault(const passport::Pmid& pmid,
                                   const std::string& account_name,
                                   const fs::path& chunkstore) {
   if (state_ != kVerified) {
@@ -241,10 +240,10 @@ bool ClientController::StartVault(const Fob& fob,
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name);
-  start_vault_request.set_fob(SerialiseFob(fob).string());
+  start_vault_request.set_pmid(passport::SerialisePmid(pmid).string());
   asymm::PlainText token(maidsafe::RandomString(16));
   start_vault_request.set_token(token.string());
-  start_vault_request.set_token_signature(asymm::Sign(token, fob.private_key()).string());
+  start_vault_request.set_token_signature(asymm::Sign(token, pmid.private_key()).string());
   start_vault_request.set_credential_change(false);
   start_vault_request.set_client_port(local_port_);
   if (!chunkstore.empty())
@@ -290,14 +289,14 @@ bool ClientController::StartVault(const Fob& fob,
   }
 
   std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
-  joining_vaults_[fob.identity()] = false;
+  joining_vaults_[pmid.name()] = false;
   if (!joining_vaults_conditional_.wait_for(lock,
                                             std::chrono::minutes(1),
-                                            [&] { return joining_vaults_[fob.identity()]; })) {
+                                            [&] { return joining_vaults_[pmid.name()]; })) {
     LOG(kError) << "Timed out waiting for vault join confirmation.";
     return false;
   }
-  joining_vaults_.erase(fob.identity());
+  joining_vaults_.erase(pmid.name());
 
   return true;
 }
@@ -613,7 +612,7 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
     LOG(kError) << "Failed to parse VaultJoinConfirmation.";
     vault_join_confirmation_ack.set_ack(false);
   } else {
-    Identity identity(vault_join_confirmation.identity());
+    passport::Pmid::name_type identity(Identity(vault_join_confirmation.identity()));
     std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
     if (joining_vaults_.find(identity) == joining_vaults_.end()) {
       LOG(kError) << "Identity is not in list of joining vaults.";
@@ -629,7 +628,5 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
 }
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

@@ -14,8 +14,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 enum ReturnCode {
   kSuccess = 0,
   kGeneralError = -100001,
@@ -47,8 +45,6 @@ enum ReturnCode {
   kDataNotPublicKey = -150026,
   kSerialisationError = -150027
 };
-
-}  // namespace priv
 
 }  // namespace maidsafe
 

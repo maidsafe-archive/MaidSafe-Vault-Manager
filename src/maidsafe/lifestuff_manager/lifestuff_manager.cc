@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 
 #include <chrono>
 #include <iostream>
@@ -20,20 +20,18 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/config.h"
-#include "maidsafe/private/lifestuff_manager/controller_messages_pb.h"
-#include "maidsafe/private/lifestuff_manager/local_tcp_transport.h"
-#include "maidsafe/private/lifestuff_manager/return_codes.h"
-#include "maidsafe/private/lifestuff_manager/utils.h"
-#include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/config.h"
+#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/local_tcp_transport.h"
+#include "maidsafe/lifestuff_manager/return_codes.h"
+#include "maidsafe/lifestuff_manager/utils.h"
+#include "maidsafe/lifestuff_manager/vault_info_pb.h"
 
 
 namespace bptime = boost::posix_time;
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
-
-namespace priv {
 
 namespace lifestuff_manager {
 
@@ -1221,7 +1219,5 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
 }
 
 }  // namespace lifestuff_manager
-
-}  // namespace priv
 
 }  // namespace maidsafe

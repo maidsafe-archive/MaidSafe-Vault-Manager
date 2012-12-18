@@ -32,8 +32,6 @@ namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace priv {
-
 namespace lifestuff_manager {
 
 namespace detail {
@@ -183,7 +181,5 @@ bool UsingDefaultEnvironment() {
 }  // namespace detail
 
 }  //  namespace lifestuff_manager
-
-}  //  namespace priv
 
 }  //  namespace maidsafe

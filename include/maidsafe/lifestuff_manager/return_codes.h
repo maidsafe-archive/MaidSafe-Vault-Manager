@@ -14,8 +14,6 @@
 
 namespace maidsafe {
 
-namespace priv {
-
 enum ReturnCode {
   kSuccess = 0,
 
@@ -39,8 +37,6 @@ enum ReturnCode {
   kSendTimeout = -350010,
   kConnectFailure = -350011
 };
-
-}  // namespace priv
 
 }  // namespace maidsafe
 
