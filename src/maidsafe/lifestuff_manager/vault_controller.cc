@@ -373,7 +373,7 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(3),
-                               [&]()->bool { return pmid_; })) {  // NOLINT (Fraser)
+                               [&]()->bool { return static_cast<bool>(pmid_); })) {  // NOLINT (Fraser)
     connection.disconnect();
     error_connection.disconnect();
     LOG(kError) << "Timed out waiting for reply.";

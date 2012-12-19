@@ -14,8 +14,8 @@
 * ============================================================================
 */
 
-#ifndef MAIDSAFE_PRIVATE_DATA_TYPES_DATA_TYPES_H_
-#define MAIDSAFE_PRIVATE_DATA_TYPES_DATA_TYPES_H_
+#ifndef MAIDSAFE_DATA_TYPES_DATA_TYPES_H_
+#define MAIDSAFE_DATA_TYPES_DATA_TYPES_H_
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/rsa.h"
@@ -26,8 +26,9 @@ namespace maidsafe {
 class ImmutableData {
  public:
   typedef TaggedValue<Identity, struct ImmutableDataTag> name_type;
+
   ImmutableData(const name_type& name, const NonEmptyString& content);
-  ImmutableData(const NonEmptyString& serialised_data);
+  explicit ImmutableData(const NonEmptyString& serialised_data);
   NonEmptyString Serialise() const;
   name_type name() const;
  private:
@@ -76,5 +77,5 @@ class SignatureData {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_DATA_TYPES_DATA_TYPES_H_
+#endif  // MAIDSAFE_DATA_TYPES_DATA_TYPES_H_
 
