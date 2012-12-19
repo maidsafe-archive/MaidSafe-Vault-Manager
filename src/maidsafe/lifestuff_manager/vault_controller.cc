@@ -46,7 +46,6 @@ VaultController::VaultController(const std::string &usr_id)
       lifestuff_manager_port_(0),
       local_port_(0),
       pmid_(),
-      account_name_(),
       bootstrap_endpoints_(),
       stop_callback_(),
       setuid_succeeded_(),
@@ -129,14 +128,12 @@ bool VaultController::Start(const std::string& lifestuff_manager_identifier,
 
 bool VaultController::GetIdentity(
     std::unique_ptr<passport::Pmid>& pmid,
-    std::string& account_name,
     std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
   if (lifestuff_manager_port_ == 0) {
     LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
   }
   pmid.reset(new passport::Pmid(*pmid_));
-  account_name = account_name_;
   bootstrap_endpoints = bootstrap_endpoints_;
   return true;
 }
@@ -376,7 +373,7 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(3),
-                               [&] { return !account_name_.empty(); })) {  // NOLINT (Fraser)
+                               [&]()->bool { return pmid_; })) {  // NOLINT (Fraser)
     connection.disconnect();
     error_connection.disconnect();
     LOG(kError) << "Timed out waiting for reply.";
@@ -403,11 +400,6 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message, st
   pmid_.reset(
       new passport::Pmid(passport::ParsePmid(NonEmptyString(vault_identity_response.pmid()))));
 
-  account_name_ = vault_identity_response.account_name();
-  if (account_name_.empty()) {
-    LOG(kError) << "Account name is empty.";
-    return false;
-  }
   std::string address;
   uint16_t port(0);
   if (vault_identity_response.bootstrap_endpoint_ip_size()

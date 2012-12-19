@@ -481,7 +481,6 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
   }
   if (successful_response) {
     itr = FindFromProcessIndex(vault_identity_request.process_index());
-    vault_identity_response.set_account_name((*itr)->account_name);
     vault_identity_response.set_pmid(serialised_pmid.string());
     vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
     (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
@@ -493,7 +492,6 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
                     vault_identity_response.add_bootstrap_endpoint_port(element.second);
                   });
   } else {
-    vault_identity_response.clear_account_name();
     vault_identity_response.clear_pmid();
     vault_identity_response.clear_chunkstore_path();
     // TODO(Team): further investigation on whether this return is suitable is required

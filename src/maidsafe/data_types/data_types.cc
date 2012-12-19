@@ -13,12 +13,12 @@
 *
 * ============================================================================
 */
-#include "maidsafe/private/data_types/data_types.h"
+#include "maidsafe/data_types/data_types.h"
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
-#include "maidsafe/private/data_types/data.pb.h"
+#include "maidsafe/data_types/data.pb.h"
 
 namespace maidsafe {
 

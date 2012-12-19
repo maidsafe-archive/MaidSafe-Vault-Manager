@@ -13,7 +13,7 @@
 *
 * ============================================================================
 */
-#include "maidsafe/private/data_types/data_types.h"
+#include "maidsafe/data_types/data_types.h"
 
 #include <memory>
 #include <string>
@@ -25,7 +25,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/private/data_types/data_factory.h"
+#include "maidsafe/data_types/data_factory.h"
 
 namespace fs = boost::filesystem;
 

@@ -108,7 +108,7 @@ void ServiceMain() {
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
 
   try {
-    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+    maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
     std::unique_lock<std::mutex> lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
       return result;
 
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
-      maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+      maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
       std::unique_lock<std::mutex> lock(g_mutex);
       g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
     } else {

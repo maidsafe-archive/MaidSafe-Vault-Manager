@@ -83,9 +83,8 @@ int main(int argc, char* argv[]) {
       maidsafe::passport::Maid maid(anmaid);
       std::unique_ptr<maidsafe::passport::Pmid> pmid(new maidsafe::passport::Pmid(maid));
 
-      std::string account_name;
       std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
-      vault_controller.GetIdentity(pmid, account_name, bootstrap_endpoints);
+      vault_controller.GetIdentity(pmid, bootstrap_endpoints);
       LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().data);
       LOG(kInfo) << "Validation Token: "
                  << maidsafe::Base64Substr(pmid->validation_token().string());
@@ -93,7 +92,6 @@ int main(int argc, char* argv[]) {
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
       LOG(kInfo) << "Private Key: "
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
-      LOG(kInfo) << "Account name: " << maidsafe::Base64Substr(account_name);
       vault_controller.ConfirmJoin(true);
 
       std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
