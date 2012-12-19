@@ -21,22 +21,29 @@ namespace maidsafe {
 
 namespace data_store {
 
-class DataStore {
+template<typename StoragePolicy>
+class DataStore
+  : StoragePolicy {
  public:
   DataStore(MemoryUsage max_memory_usage,
             DiskUsage max_disk_usage,
-            DataBuffer::PopFunctor pop_functor);
+            DataBuffer::PopFunctor pop_functor)
+    : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor) {}
 
-  ~DataStore();
+  ~DataStore() {}
 
-  template <typename DataType>
-  void Store(const DataType& key, const NonEmptyString& value);
-
-  template <typename DataType>
-  NonEmptyString Get(const DataType& key);
-
-  template <typename DataType>
-  void Delete(const DataType& key);
+  template<typename T, typename Tag>
+  void Store(const TaggedValue<T, Tag>& key, const NonEmptyString& value) {
+    StoragePolicy::Store(key, value);
+  }
+  template<typename T, typename Tag>
+  NonEmptyString Get(const TaggedValue<T, Tag>& key) {
+    return StoragePolicy::Get(key);
+  }
+  template<typename T, typename Tag>
+  void Delete(const TaggedValue<T, Tag>& key) {
+    StoragePolicy::Delete(key);
+  }
 
   void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
@@ -44,9 +51,6 @@ class DataStore {
  private:
   DataStore(const DataStore&);
   DataStore& operator=(const DataStore&);
-
-  DataBuffer data_buffer_;
-  std::deque<DataBuffer::VariantType> data_index_;
 };
 
 }  // namespace data_store

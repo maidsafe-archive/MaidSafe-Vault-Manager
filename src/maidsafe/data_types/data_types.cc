@@ -22,7 +22,7 @@
 
 namespace maidsafe {
 
-ImmutableData::ImmutableData(const NameType& name, const NonEmptyString& content)
+ImmutableData::ImmutableData(const name_type& name, const NonEmptyString& content)
   : data_(content), name_(name) {
     Validate();
 }
@@ -40,7 +40,7 @@ void ImmutableData::Validate() {
   //   ThrowError(CommonErrors::hashing_error);
 }
 
-ImmutableData::NameType ImmutableData::name() const {
+ImmutableData::name_type ImmutableData::name() const {
   return name_;
 }
 

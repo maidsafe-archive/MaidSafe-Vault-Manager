@@ -25,16 +25,16 @@ namespace maidsafe {
 
 class ImmutableData {
  public:
-  typedef TaggedValue<Identity, struct ImmutableDataTag> NameType;
+  typedef TaggedValue<Identity, struct ImmutableDataTag> name_type;
 
-  ImmutableData(const NameType& name, const NonEmptyString& content);
+  ImmutableData(const name_type& name, const NonEmptyString& content);
   explicit ImmutableData(const NonEmptyString& serialised_data);
   NonEmptyString Serialise() const;
-  NameType name() const;
+  name_type name() const;
  private:
   void Validate();
   NonEmptyString data_;
-  NameType name_;
+  name_type name_;
 };
 
 class MutableData {
