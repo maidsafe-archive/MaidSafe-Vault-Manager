@@ -42,7 +42,6 @@ class VaultController {
 
   bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
-                   std::string& account_name,
                    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
   void ConfirmJoin(bool joined);
   bool SendEndpointToLifeStuffManager(const std::pair<std::string, uint16_t>& endpoint);
@@ -65,7 +64,6 @@ class VaultController {
   uint32_t process_index_;
   uint16_t lifestuff_manager_port_, local_port_;
   std::unique_ptr<passport::Pmid> pmid_;
-  std::string account_name_;
   std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
   bool setuid_succeeded_;

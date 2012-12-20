@@ -26,7 +26,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "maidsafe/data_store/data_buffer.h"
-
+#include <string>
 #include "boost/filesystem/convenience.hpp"
 #include "boost/lexical_cast.hpp"
 

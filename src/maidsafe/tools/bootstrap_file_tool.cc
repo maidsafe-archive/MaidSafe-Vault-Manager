@@ -25,7 +25,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/vault_info_pb.h"
 
 
 namespace fs = boost::filesystem;
@@ -286,7 +286,7 @@ class HandlePolicyLoadBootstrapFile {
     }
     try {
       maidsafe::NonEmptyString contents(maidsafe::ReadFile(bootstrap_file));
-      maidsafe::priv::lifestuff_manager::protobuf::Bootstrap parsed_endpoints;
+      maidsafe::lifestuff_manager::protobuf::Bootstrap parsed_endpoints;
       if (!parsed_endpoints.ParseFromString(contents.string())) {
         TLOG(kRed) << '\n' << bootstrap_file << " doesn't parse.\n\n";
         return;
@@ -314,9 +314,9 @@ class HandlePolicySaveBootstrapFile {
  protected:
   virtual ~HandlePolicySaveBootstrapFile() {}
   void HandleInput(const fs::path& bootstrap_file) const {
-    maidsafe::priv::lifestuff_manager::protobuf::Bootstrap pb_endpoints;
+    maidsafe::lifestuff_manager::protobuf::Bootstrap pb_endpoints;
     for (auto endpoint : g_bootstrap_endpoints) {
-      maidsafe::priv::lifestuff_manager::protobuf::Endpoint* pb_endpoint =
+      maidsafe::lifestuff_manager::protobuf::Endpoint* pb_endpoint =
           pb_endpoints.add_bootstrap_contacts();
       pb_endpoint->set_ip(endpoint.address().to_string());
       pb_endpoint->set_port(endpoint.port());

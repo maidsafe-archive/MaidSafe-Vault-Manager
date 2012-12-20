@@ -20,6 +20,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/passport/passport.h"
+
 #include "maidsafe/lifestuff_manager/config.h"
 #include "maidsafe/lifestuff_manager/controller_messages_pb.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
@@ -37,8 +39,7 @@ namespace lifestuff_manager {
 
 LifeStuffManager::VaultInfo::VaultInfo()
     : process_index(),
-      account_name(),
-      fob(),
+      pmid(),
       chunkstore_path(),
       vault_port(0),
       client_port(0),
@@ -47,16 +48,14 @@ LifeStuffManager::VaultInfo::VaultInfo()
       vault_version(kInvalidVersion) {}
 
 void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
-  pb_vault_info->set_account_name(account_name);
-  pb_vault_info->set_fob(SerialiseFob(fob).string());
+  pb_vault_info->set_pmid(passport::SerialisePmid(*pmid).string());
   pb_vault_info->set_chunkstore_path(chunkstore_path);
   pb_vault_info->set_requested_to_run(requested_to_run);
   pb_vault_info->set_version(vault_version);
 }
 
 void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
-  account_name = pb_vault_info.account_name();
-  fob = ParseFob(NonEmptyString(pb_vault_info.fob()));
+  pmid.reset(new passport::Pmid(passport::ParsePmid(NonEmptyString(pb_vault_info.pmid()))));
   chunkstore_path = pb_vault_info.chunkstore_path();
   requested_to_run = pb_vault_info.requested_to_run();
   vault_version = pb_vault_info.version();
@@ -205,7 +204,8 @@ bool LifeStuffManager::ReadConfigFileAndStartVaults() {
     vault_info->FromProtobuf(config.vault_info(i));
     if (vault_info->requested_to_run) {
       if (!StartVaultProcess(vault_info))
-        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->fob.identity());
+        LOG(kError) << "Failed to start vault ID"
+                    << Base64Substr(vault_info->pmid->name().data);
     }
   }
 
@@ -371,13 +371,13 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
   VaultInfoPtr vault_info(new VaultInfo);
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(FindFromIdentity(vault_info->fob.identity()));
+    auto itr(FindFromPmidName(vault_info->pmid->name()));
     bool existing_vault(false);
     if (itr != vault_infos_.end()) {
       existing_vault = true;
       if (!asymm::CheckSignature(asymm::PlainText(start_vault_request.token()),
                                  asymm::Signature(start_vault_request.token_signature()),
-                                 vault_info->fob.public_key())) {
+                                 vault_info->pmid->public_key())) {
         LOG(kError) << "Communication from someone that does not validate as owner.";
         return set_response(false);  // TODO(Team): Drop silienty?
       }
@@ -389,20 +389,21 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
           process_manager_.StartProcess((*itr)->process_index);
         }
       } else {
-        Fob temp_keys(ParseFob(NonEmptyString(start_vault_request.fob())));
         if ((*itr)->joined_network) {
           // TODO(Team): Stop and restart with new credentials
         } else {
           // TODO(Team): Start with new credentials
           (*itr)->account_name = start_vault_request.account_name();
-          (*itr)->fob = temp_keys;
+          (*itr)->pmid.reset(new passport::Pmid(passport::ParsePmid(
+                                                  NonEmptyString(start_vault_request.pmid()))));
           (*itr)->client_port = client_port;
           (*itr)->requested_to_run = true;
         }
       }
     } else {
       // The vault is not already registered.
-      vault_info->fob = ParseFob(NonEmptyString(start_vault_request.fob()));
+      vault_info->pmid.reset(new passport::Pmid(passport::ParsePmid(
+                                                  NonEmptyString(start_vault_request.pmid()))));
       vault_info->account_name = start_vault_request.account_name();
       bool exists(true);
       while (exists) {
@@ -420,13 +421,13 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
-                    << Base64Substr(vault_info->fob.identity());
+                    << Base64Substr(vault_info->pmid->name().data);
         return set_response(false);
       }
     }
     if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr(vault_info->fob.identity());
+                  << Base64Substr(vault_info->pmid->name().data);
       return set_response(false);
     }
   }
@@ -446,7 +447,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
   protobuf::VaultIdentityResponse vault_identity_response;
   bool successful_response(false);
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  NonEmptyString serialised_fob;
+  NonEmptyString serialised_pmid;
   auto itr(FindFromProcessIndex(vault_identity_request.process_index()));
   if (itr == vault_infos_.end()) {
     LOG(kError) << "Vault with process_index " << vault_identity_request.process_index()
@@ -454,7 +455,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
     successful_response = false;
     // TODO(Team): Should this be dropped silently?
   } else {
-    serialised_fob = SerialiseFob((*itr)->fob);
+    serialised_pmid = passport::SerialisePmid(*(*itr)->pmid);
     if (endpoints_.empty()) {
       protobuf::LifeStuffManagerConfig config;
       if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
@@ -480,8 +481,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
   }
   if (successful_response) {
     itr = FindFromProcessIndex(vault_identity_request.process_index());
-    vault_identity_response.set_account_name((*itr)->account_name);
-    vault_identity_response.set_fob(serialised_fob.string());
+    vault_identity_response.set_pmid(serialised_pmid.string());
     vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
     (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
     (*itr)->vault_version = vault_identity_request.version();
@@ -492,8 +492,7 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
                     vault_identity_response.add_bootstrap_endpoint_port(element.second);
                   });
   } else {
-    vault_identity_response.clear_account_name();
-    vault_identity_response.clear_fob();
+    vault_identity_response.clear_pmid();
     vault_identity_response.clear_chunkstore_path();
     // TODO(Team): further investigation on whether this return is suitable is required
     return;
@@ -525,7 +524,7 @@ void LifeStuffManager::HandleVaultJoinedNetworkRequest(const std::string& reques
   }
   vault_joined_network_ack.set_ack(join_result);
   if ((*itr)->client_port != 0)
-  SendVaultJoinConfirmation((*itr)->fob.identity(), join_result);
+  SendVaultJoinConfirmation((*itr)->pmid->name(), join_result);
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_joined_network_ack.SerializeAsString());
 }
@@ -539,23 +538,23 @@ void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::s
   }
 
   protobuf::StopVaultResponse stop_vault_response;
-  Identity identity(stop_vault_request.identity());
+  passport::Pmid::name_type pmid_name(Identity(stop_vault_request.identity()));
   asymm::PlainText data(stop_vault_request.data());
   asymm::Signature signature(stop_vault_request.signature());
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(FindFromIdentity(identity));
+  auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
     stop_vault_response.set_result(false);
-  } else if (!asymm::CheckSignature(data, signature, (*itr)->fob.public_key())) {
-    LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(identity);
+  } else if (!asymm::CheckSignature(data, signature, (*itr)->pmid->public_key())) {
+    LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(pmid_name.data);
     stop_vault_response.set_result(false);
   } else {
-    LOG(kInfo) << "Shutting down vault with identity " << Base64Substr(identity);
-    stop_vault_response.set_result(StopVault(identity, data, signature, true));
+    LOG(kInfo) << "Shutting down vault with identity " << Base64Substr(pmid_name.data);
+    stop_vault_response.set_result(StopVault(pmid_name, data, signature, true));
     if (!AmendVaultDetailsInConfigFile(*itr, true)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr((*itr)->fob.identity());
+                  << Base64Substr((*itr)->pmid->name().data);
       stop_vault_response.set_result(false);
     }
   }
@@ -668,11 +667,12 @@ void LifeStuffManager::CheckForUpdates(const boost::system::error_code& ec) {
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
-void LifeStuffManager::SendVaultJoinConfirmation(const Identity& identity, bool join_result) {
+void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::name_type& pmid_name,
+                                                 bool join_result) {
   protobuf::VaultJoinConfirmation vault_join_confirmation;
-  auto itr(FindFromIdentity(identity));
+  auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(identity)
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data)
                 << " hasn't been added.";
     return;
   }
@@ -702,7 +702,7 @@ void LifeStuffManager::SendVaultJoinConfirmation(const Identity& identity, bool 
                                           LOG(kError) << "Transport reported error code " << error;
                                           callback(false);
                                         });
-  vault_join_confirmation.set_identity(identity.string());
+  vault_join_confirmation.set_identity(pmid_name.data.string());
   vault_join_confirmation.set_joined(join_result);
   LOG(kVerbose) << "Sending vault join confirmation to client on port " << (*itr)->client_port;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinConfirmation,
@@ -888,12 +888,12 @@ bool LifeStuffManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / detail::kGlobalConfigFilename;
 }
 
-std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromIdentity(
-    const Identity& identity) {
+std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromPmidName(
+    const passport::Pmid::name_type& pmid_name) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
-                      [identity] (const VaultInfoPtr& vault_info)->bool {
-                        return vault_info->fob.identity() == identity;
+                      [pmid_name] (const VaultInfoPtr& vault_info)->bool {
+                        return vault_info->pmid->name() == pmid_name;
                       });
 }
 
@@ -906,11 +906,11 @@ std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFrom
                       });
 }
 
-void LifeStuffManager::RestartVault(const Identity& identity) {
+void LifeStuffManager::RestartVault(const passport::Pmid::name_type& pmid_name) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  auto itr(FindFromIdentity(identity));
+  auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
     return;
   }
   process_manager_.StartProcess((*itr)->process_index);
@@ -919,13 +919,13 @@ void LifeStuffManager::RestartVault(const Identity& identity) {
 // NOTE: vault_infos_mutex_ must be locked before calling this function.
 // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
 //                               Try to reduce lock scope eventually.
-bool LifeStuffManager::StopVault(const Identity& identity,
+bool LifeStuffManager::StopVault(const passport::Pmid::name_type& pmid_name,
                                  const asymm::PlainText& data,
                                  const asymm::Signature& signature,
                                  bool permanent) {
-  auto itr(FindFromIdentity(identity));
+  auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(identity) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
     return false;
   }
   (*itr)->requested_to_run = !permanent;
@@ -960,10 +960,10 @@ void LifeStuffManager::StopAllVaults() {
                     return;
                   }
                   asymm::PlainText random_data(RandomString(64));
-                  asymm::Signature signature(asymm::Sign(random_data, info->fob.private_key()));
-                  if (!StopVault(info->fob.identity(), random_data, signature, false)) {
+                  asymm::Signature signature(asymm::Sign(random_data, info->pmid->private_key()));
+                  if (!StopVault(info->pmid->name(), random_data, signature, false)) {
                     LOG(kError) << "StopAllVaults: failed to stop - "
-                                << Base64Substr(info->fob.identity());
+                                << Base64Substr(info->pmid->name().data);
                   }
                 });
 }
@@ -1080,7 +1080,8 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   fs::path executable_path(GetAppInstallDir());
 #endif
   if (!process.SetExecutablePath(executable_path / detail::kVaultName)) {
-    LOG(kError) << "Failed to set executable path for: " << Base64Substr(vault_info->fob.identity());
+    LOG(kError) << "Failed to set executable path for: "
+                << Base64Substr(vault_info->pmid->name().data);
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
@@ -1097,7 +1098,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
-    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->fob.identity());
+    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->pmid->name().data);
     return false;
   }
 
@@ -1174,17 +1175,16 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
   protobuf::LifeStuffManagerConfig config;
   if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
-                << Base64Substr(vault_info->fob.identity());
+                << Base64Substr(vault_info->pmid->name().data);
     return false;
   }
 
   if (existing_vault) {
     for (int n(0); n < config.vault_info_size(); ++n) {
-      Fob fob(ParseFob(NonEmptyString(config.vault_info(n).fob())));
-      if (vault_info->fob.identity() == fob.identity()) {
+      passport::Pmid pmid(passport::ParsePmid(NonEmptyString(config.vault_info(n).pmid())));
+      if (vault_info->pmid->name() == pmid.name()) {
         protobuf::VaultInfo* p_info = config.mutable_vault_info(n);
-        p_info->set_account_name(vault_info->account_name);
-        p_info->set_fob(SerialiseFob(vault_info->fob).string());
+        p_info->set_pmid(passport::SerialisePmid(*vault_info->pmid).string());
         p_info->set_chunkstore_path(vault_info->chunkstore_path);
         p_info->set_requested_to_run(vault_info->requested_to_run);
         p_info->set_version(vault_info->vault_version);
@@ -1193,8 +1193,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
     }
   } else {
     protobuf::VaultInfo* p_info = config.add_vault_info();
-    p_info->set_account_name(vault_info->account_name);
-    p_info->set_fob(SerialiseFob(vault_info->fob).string());
+    p_info->set_pmid(passport::SerialisePmid(*vault_info->pmid).string());
     p_info->set_chunkstore_path(vault_info->chunkstore_path);
     p_info->set_requested_to_run(true);
     p_info->set_version(kInvalidVersion);
@@ -1202,7 +1201,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
       std::lock_guard<std::mutex> lock(config_file_mutex_);
       if (!WriteFile(config_file_path_, config.SerializeAsString())) {
         LOG(kError) << "Failed to write config file to amend details of vault ID "
-                    << Base64Substr(vault_info->fob.identity());
+                    << Base64Substr(vault_info->pmid->name().data);
         return false;
       }
     }

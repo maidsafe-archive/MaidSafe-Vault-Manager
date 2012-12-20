@@ -16,29 +16,30 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 
-#include "maidsafe/private/data_types/fob.h"
-#include "maidsafe/private/lifestuff_manager/client_controller.h"
+#include "maidsafe/lifestuff_manager/client_controller.h"
 
 
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
-  maidsafe::priv::lifestuff_manager::ClientController client(
+  maidsafe::lifestuff_manager::ClientController client(
       [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
-  maidsafe::Fob fob;
+  maidsafe::passport::Anmaid anmaid;
+  maidsafe::passport::Maid maid(anmaid);
+  maidsafe::passport::Pmid pmid(maid);
   try {
-    if (!client.StartVault(fob, account_name, "")) {
-      LOG(kError) << "dummy_client: Failed to start vault " << fob.identity().string();
+    if (!client.StartVault(pmid, account_name, "")) {
+      LOG(kError) << "dummy_client: Failed to start vault " << pmid.name().data.string();
     }
   } catch(...) {
-    LOG(kError) << "dummy_client: Problem starting vault " << fob.identity().string();
+    LOG(kError) << "dummy_client: Problem starting vault " << pmid.name().data.string();
   }
-  LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(fob.identity());
-  LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(fob.validation_token());
+  LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(pmid.name().data.string());
+  LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(pmid.validation_token());
   LOG(kInfo) << "Public Key: "
-             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.public_key()));
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid.public_key()));
   LOG(kInfo) << "Private Key: "
-             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(fob.private_key()));
+             << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid.private_key()));
   LOG(kInfo) << "Account name: " << account_name;
   return 0;
 }

@@ -1,4 +1,4 @@
-package maidsafe.priv.data_types.proto;
+package maidsafe.data_types.proto;
 option optimize_for = LITE_RUNTIME;
 
 message Content {

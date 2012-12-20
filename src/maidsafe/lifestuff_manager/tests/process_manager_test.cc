@@ -18,10 +18,10 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/private/lifestuff_manager/config.h"
-#include "maidsafe/private/lifestuff_manager/process_manager.h"
-#include "maidsafe/private/lifestuff_manager/utils.h"
-#include "maidsafe/private/lifestuff_manager/tests/test_utils.h"
+#include "maidsafe/lifestuff_manager/config.h"
+#include "maidsafe/lifestuff_manager/process_manager.h"
+#include "maidsafe/lifestuff_manager/utils.h"
+#include "maidsafe/lifestuff_manager/tests/test_utils.h"
 
 
 namespace fs = boost::filesystem;

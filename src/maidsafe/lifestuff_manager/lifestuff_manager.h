@@ -146,7 +146,7 @@ class LifeStuffManager {
 
   // Requests to client
   // NOTE: vault_info_mutex_ must be locked when calling this function.
-  void SendVaultJoinConfirmation(const Identity& identity, bool join_result);
+  void SendVaultJoinConfirmation(const passport::Pmid::name_type& pmid_name, bool join_result);
   void SendNewVersionAvailable(uint16_t client_port);
 
   // Response handling from client
@@ -162,12 +162,12 @@ class LifeStuffManager {
 
   // General
   bool InTestMode() const;
-  std::vector<VaultInfoPtr>::iterator FindFromIdentity(const Identity& identity);
+  std::vector<VaultInfoPtr>::iterator FindFromPmidName(const passport::Pmid::name_type& pmid_name);
   std::vector<LifeStuffManager::VaultInfoPtr>::iterator FindFromProcessIndex(
       ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
-  void RestartVault(const Identity& identity);
-  bool StopVault(const Identity& identity,
+  void RestartVault(const passport::Pmid::name_type& pmid_name);
+  bool StopVault(const passport::Pmid::name_type& pmid_name,
                  const asymm::PlainText& data,
                  const asymm::Signature& signature,
                  bool permanent);

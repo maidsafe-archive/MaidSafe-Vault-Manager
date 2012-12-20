@@ -10,11 +10,10 @@ message Bootstrap {
 }
 
 message VaultInfo {
-  required bytes account_name = 1;
-  required bytes pmid = 2;
-  required bytes chunkstore_path = 3;
-  required bool requested_to_run = 4;
-  required int32 version = 5;
+  required bytes pmid = 1;
+  required bytes chunkstore_path = 2;
+  required bool requested_to_run = 3;
+  required int32 version = 4;
 }
 
 message LifeStuffManagerConfig {

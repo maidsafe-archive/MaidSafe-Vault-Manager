@@ -31,8 +31,8 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/private/lifestuff_manager/lifestuff_manager.h"
-#include "maidsafe/private/lifestuff_manager/utils.h"
+#include "maidsafe/lifestuff_manager/lifestuff_manager.h"
+#include "maidsafe/lifestuff_manager/utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -108,7 +108,7 @@ void ServiceMain() {
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
 
   try {
-    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+    maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
     std::unique_lock<std::mutex> lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -175,7 +175,7 @@ int HandleProgramOptions(int argc, char** argv) {
     return -1;
   }
 
-  uint16_t port(maidsafe::priv::lifestuff_manager::LifeStuffManager::kDefaultPort() + 100);
+  uint16_t port(maidsafe::lifestuff_manager::LifeStuffManager::kDefaultPort() + 100);
   bool has_port(variables_map.count("port") != 0);
   if (has_port) {
     if (variables_map["port"].as<int>() < 1025 ||
@@ -199,10 +199,10 @@ int HandleProgramOptions(int argc, char** argv) {
   if (has_bootstrap_ips)
     booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
-  maidsafe::priv::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
-                                                                         root_dir,
-                                                                         path_to_vault,
-                                                                         booststrap_ips);
+  maidsafe::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
+                                                                   root_dir,
+                                                                   path_to_vault,
+                                                                   booststrap_ips);
   return 0;
 }
 
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
       return result;
 
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
-      maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+      maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
       std::unique_lock<std::mutex> lock(g_mutex);
       g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
     } else {
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
     if (result != 0)
       return result;
 
-    maidsafe::priv::lifestuff_manager::LifeStuffManager lifestuff_manager;
+    maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
     signal(SIGINT, ShutDownLifeStuffManager);
     signal(SIGTERM, ShutDownLifeStuffManager);
     std::unique_lock<std::mutex> lock(g_mutex);

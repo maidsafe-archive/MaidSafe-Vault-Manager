@@ -153,6 +153,7 @@ ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE}
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR} ${RETURN_CODES_H})
 
+
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
 ms_add_executable(bootstrap_file_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/bootstrap_file_tool.cc"
@@ -167,16 +168,16 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR} ${ALL_FILES_DATA_STORE_TESTS_DIR})
 endif()
 
-target_link_libraries(maidsafe_private maidsafe_common)
-target_link_libraries(maidsafe_lifestuff_manager maidsafe_private ${BoostRegexLibs})
-target_link_libraries(signing_tool maidsafe_private)
+target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
+target_link_libraries(maidsafe_lifestuff_manager maidsafe_passport ${BoostRegexLibs})
+target_link_libraries(signing_tool maidsafe_passport)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 if(MAIDSAFE_TESTING)
-  target_link_libraries(TESTprivate maidsafe_private)
+  target_link_libraries(TESTprivate maidsafe_private maidsafe_passport)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
-  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy)
+  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
 
   add_dependencies(TESTlifestuff_manager dummy_vault)
 endif()
@@ -197,6 +198,10 @@ endif()
 file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
 file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
 ms_disable_warnings(${PROTO_SOURCE_FILES})
+
+if(UNIX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-effc++")
+endif()
 
 ###################################################################################################
 # Tests                                                                                           #

@@ -49,7 +49,7 @@ class DataStoreTest : public ::testing::Test {
       pop_functor_(),
       data_store_(new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_, pop_functor_))
   {}
-  
+
   void SetUp() {}
 
   template<typename KeyType>
@@ -231,15 +231,15 @@ class DataStoreTest : public ::testing::Test {
 TYPED_TEST_CASE_P(DataStoreTest);
 
 TYPED_TEST_P(DataStoreTest, BEH_Constructor) {
-  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(0), DiskUsage(0), pop_functor_));
-  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), pop_functor_));
-  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(0), pop_functor_),
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(0), DiskUsage(0), this->pop_functor_));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), this->pop_functor_));
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(0), this->pop_functor_),
                std::exception);
-  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(2), DiskUsage(1), pop_functor_),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(2), DiskUsage(1), this->pop_functor_),
                std::exception);
-  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(200001), DiskUsage(200000), this->pop_functor_),
                std::exception);
-  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(199999), DiskUsage(200000), this->pop_functor_));
   // Create a path to a file, and check that this can't be used as the disk buffer path.
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   ASSERT_FALSE(test_path->empty());
@@ -247,48 +247,53 @@ TYPED_TEST_P(DataStoreTest, BEH_Constructor) {
   ASSERT_TRUE(WriteFile(file_path, " "));
   EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
                                     DiskUsage(200000),
-                                    pop_functor_,
+                                    this->pop_functor_,
                                     file_path),
                std::exception);
   EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
                                     DiskUsage(200000),
-                                    pop_functor_,
+                                    this->pop_functor_,
                                     file_path / "base"),
                std::exception);
 
   boost::filesystem::path dir_path(*test_path / "Dir");
-  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), pop_functor_, dir_path));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), this->pop_functor_, dir_path));
   ASSERT_TRUE(fs::exists(dir_path));
 
   boost::filesystem::path data_store_path;
   {
-    DataStore<TypeParam> data_store(MemoryUsage(1), DiskUsage(1), pop_functor_);
-    data_store_path = GetkDiskBuffer(data_store);
+    DataStore<TypeParam> data_store(MemoryUsage(1), DiskUsage(1), this->pop_functor_);
+    data_store_path = this->GetkDiskBuffer(data_store);
     ASSERT_TRUE(fs::exists(data_store_path));
   }
   ASSERT_FALSE(fs::exists(data_store_path));
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_SetMaxDiskMemoryUsage) {
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ - 1)));
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_)));
-  EXPECT_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ + 1)), std::exception);
-  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ - 1)), std::exception);
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_)));
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ + 1)));
-  EXPECT_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))),
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_ - 1)));
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_)));
+  EXPECT_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_ + 1)),
                std::exception);
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(1))));
-  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))), std::exception);
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(1))));
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(0))));
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))));
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(std::numeric_limits<uint64_t>().max())));
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_ - 1)),
+               std::exception);
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_)));
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_ + 1)));
+  EXPECT_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))),
+               std::exception);
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(1))));
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))),
+               std::exception);
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(1))));
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(0))));
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))));
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(
+                      DiskUsage(std::numeric_limits<uint64_t>().max())));
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(
     MemoryUsage(std::numeric_limits<uint64_t>().max())));
-  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)), std::exception);
-  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(kDefaultMaxMemoryUsage)));
-  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(
+                   DiskUsage(kDefaultMaxDiskUsage)), std::exception);
+  EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(kDefaultMaxMemoryUsage)));
+  EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskBuffer) {
@@ -297,91 +302,91 @@ TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskBuffer) {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   fs::path data_buffer_path(*test_path / "kv_buffer");
   const uintmax_t kMemorySize(1), kDiskSize(2);
-  data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
-                                             DiskUsage(kDiskSize),
-                                             pop_functor_,
-                                             data_buffer_path));
+  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
+                                                   DiskUsage(kDiskSize),
+                                                   this->pop_functor_,
+                                                   data_buffer_path));
   KeyType key;
   key.data = Identity(RandomAlphaNumericString(crypto::SHA512::DIGESTSIZE));
   NonEmptyString small_value(std::string(kMemorySize, 'a'));
-  EXPECT_NO_THROW(data_store_->Store(key, small_value));
-  EXPECT_NO_THROW(data_store_->Delete(key));
+  EXPECT_NO_THROW(this->data_store_->Store(key, small_value));
+  EXPECT_NO_THROW(this->data_store_->Delete(key));
   ASSERT_EQ(1, fs::remove_all(data_buffer_path, error_code));
   ASSERT_FALSE(fs::exists(data_buffer_path, error_code));
   // Fits into memory buffer successfully.  Background thread in future should throw, causing other
   // API functions to throw on next execution.
-  EXPECT_NO_THROW(data_store_->Store(key, small_value));
+  EXPECT_NO_THROW(this->data_store_->Store(key, small_value));
   Sleep(boost::posix_time::seconds(1));
-  EXPECT_THROW(data_store_->Store(key, small_value), std::exception);
-  EXPECT_THROW(data_store_->Get(key), std::exception);
-  EXPECT_THROW(data_store_->Delete(key), std::exception);
+  EXPECT_THROW(this->data_store_->Store(key, small_value), std::exception);
+  EXPECT_THROW(this->data_store_->Get(key), std::exception);
+  EXPECT_THROW(this->data_store_->Delete(key), std::exception);
 
-  data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
-                                             DiskUsage(kDiskSize),
-                                             pop_functor_,
-                                             data_buffer_path));
+  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
+                                                   DiskUsage(kDiskSize),
+                                                   this->pop_functor_,
+                                                   data_buffer_path));
   NonEmptyString large_value(std::string(kDiskSize, 'a'));
-  EXPECT_NO_THROW(data_store_->Store(key, large_value));
-  EXPECT_NO_THROW(data_store_->Delete(key));
+  EXPECT_NO_THROW(this->data_store_->Store(key, large_value));
+  EXPECT_NO_THROW(this->data_store_->Delete(key));
   ASSERT_EQ(1, fs::remove_all(data_buffer_path, error_code));
   ASSERT_FALSE(fs::exists(data_buffer_path, error_code));
   // Skips memory buffer and goes straight to disk, causing exception.  Background thread in future
   // should finish, causing other API functions to throw on next execution.
   // - ADAPT TEST FOR MEMORY STORAGE ONLY!!!
-  EXPECT_THROW(data_store_->Store(key, large_value), std::exception);
-  EXPECT_THROW(data_store_->Get(key), std::exception);
-  EXPECT_THROW(data_store_->Delete(key), std::exception);
+  EXPECT_THROW(this->data_store_->Store(key, large_value), std::exception);
+  EXPECT_THROW(this->data_store_->Get(key), std::exception);
+  EXPECT_THROW(this->data_store_->Delete(key), std::exception);
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_SuccessfulStore) {
   NonEmptyString value1(std::string(RandomAlphaNumericString(
-                    static_cast<uint32_t>(max_memory_usage_))));
+                    static_cast<uint32_t>(this->max_memory_usage_))));
   TaggedValue<Identity, passport::detail::MidTag> key1(crypto::Hash<crypto::SHA512>(value1));
   NonEmptyString value2(std::string(RandomAlphaNumericString(
-                    static_cast<uint32_t>(max_memory_usage_))));
+                    static_cast<uint32_t>(this->max_memory_usage_))));
   TaggedValue<Identity, passport::detail::AnmidTag> key2(crypto::Hash<crypto::SHA512>(value2));
-  EXPECT_NO_THROW(data_store_->Store(key1, value1));
-  EXPECT_NO_THROW(data_store_->Store(key2, value2));
+  EXPECT_NO_THROW(this->data_store_->Store(key1, value1));
+  EXPECT_NO_THROW(this->data_store_->Store(key2, value2));
   NonEmptyString recovered;
-  EXPECT_NO_THROW(recovered = data_store_->Get(key1));
+  EXPECT_NO_THROW(recovered = this->data_store_->Get(key1));
   EXPECT_EQ(recovered, value1);
-  EXPECT_NO_THROW(recovered = data_store_->Get(key2));
+  EXPECT_NO_THROW(recovered = this->data_store_->Get(key2));
   EXPECT_EQ(recovered, value2);
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_UnsuccessfulStore) {
-  NonEmptyString value(std::string(static_cast<uint32_t>(max_disk_usage_ + 1), 'a'));
+  NonEmptyString value(std::string(static_cast<uint32_t>(this->max_disk_usage_ + 1), 'a'));
   TaggedValue<Identity, passport::detail::SmidTag> key(crypto::Hash<crypto::SHA512>(value));
-  EXPECT_THROW(data_store_->Store(key, value), std::exception);
+  EXPECT_THROW(this->data_store_->Store(key, value), std::exception);
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_DeleteOnDiskBufferOverfill) {
-  typedef TaggedValue<Identity, passport::detail::SmidTag> KeyType;
-  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
-  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
-  std::vector<std::pair<KeyType, NonEmptyString>> key_value_pairs(
-      PopulateDataStore<KeyType>(num_entries,
-                                 num_memory_entries,
-                                 num_disk_entries,
-                                 test_path,
-                                 pop_functor_));
-  NonEmptyString value, recovered;
-  KeyType key;
+//  typedef TaggedValue<Identity, passport::detail::SmidTag> KeyType;
+//  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
+//  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
+//  std::vector<std::pair<KeyType, NonEmptyString>> key_value_pairs(
+//      this->PopulateDataStore<KeyType>(num_entries,
+//                                       num_memory_entries,
+//                                       num_disk_entries,
+//                                       test_path,
+//                                       this->pop_functor_));
+//  NonEmptyString value, recovered;
+//  KeyType key;
 
-  KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
-  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
-  auto async = std::async(std::launch::async, [this, key, value] {
-                                                  data_store_->Store(key, value);
-                                              });
-  EXPECT_THROW(recovered = data_store_->Get(key), std::exception);
-  EXPECT_NO_THROW(data_store_->Delete(first_key));
-  EXPECT_NO_THROW(data_store_->Delete(second_key));
-  EXPECT_NO_THROW(async.wait());
-  EXPECT_NO_THROW(recovered = data_store_->Get(key));
-  EXPECT_EQ(recovered, value);
+//  KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
+//  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
+//  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+//  auto async = std::async(std::launch::async, [this, key, value] {
+//                                                  this->data_store_->Store(key, value);
+//                                              });
+//  EXPECT_THROW(recovered = this->data_store_->Get(key), std::exception);
+//  EXPECT_NO_THROW(this->data_store_->Delete(first_key));
+//  EXPECT_NO_THROW(this->data_store_->Delete(second_key));
+//  EXPECT_NO_THROW(async.wait());
+//  EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
+//  EXPECT_EQ(recovered, value);
 
-  EXPECT_TRUE(DeleteDirectory(data_buffer_path_));
+//  EXPECT_TRUE(DeleteDirectory(this->data_buffer_path_));
 }
 
 //TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskBufferOverfill) {
@@ -722,7 +727,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
 //  }
 //}
 //
-//INSTANTIATE_TEST_CASE_P(TestDataBuffer,
+//                       (TestDataBuffer,
 //                        DataBufferTestDiskMemoryUsage,
 //                        testing::Values(std::make_pair(1, 2),
 //                                        std::make_pair(1, 1024),
