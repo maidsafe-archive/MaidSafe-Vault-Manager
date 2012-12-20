@@ -39,7 +39,7 @@ const uint64_t kDefaultMaxDiskUsage(2000);
 template <typename StoragePolicy>
 class DataStoreTest : public ::testing::Test {
  protected:
-  typedef StoragePolicy storage_policy;
+  // typedef StoragePolicy StoragePolicy;
   typedef typename DataStore<StoragePolicy>::PopFunctor PopFunctor;
 
   DataStoreTest()
@@ -51,6 +51,24 @@ class DataStoreTest : public ::testing::Test {
   {}
   
   void SetUp() {}
+
+  template<typename KeyType>
+  void PopFunction(const KeyType& key_popped,
+                   const NonEmptyString& value_popped,
+                   const std::vector<std::pair<KeyType, NonEmptyString> >& key_value_pairs,
+                   size_t& cur_popped_index,
+                   std::mutex& pop_mutex,
+                   std::condition_variable& pop_cond_var) {
+    {
+      std::unique_lock<std::mutex> lock(pop_mutex);
+      KeyType to_be_popped_key(key_value_pairs[cur_popped_index].first);
+      NonEmptyString to_be_popped_value(key_value_pairs[cur_popped_index].second);
+      EXPECT_EQ(to_be_popped_key.data, key_popped.data);
+      EXPECT_EQ(to_be_popped_value, value_popped);
+      ++cur_popped_index;
+    }
+    pop_cond_var.notify_one();
+  }
 
   bool DeleteDirectory(const fs::path& directory) {
     boost::system::error_code error_code;
@@ -213,42 +231,106 @@ class DataStoreTest : public ::testing::Test {
 TYPED_TEST_CASE_P(DataStoreTest);
 
 TYPED_TEST_P(DataStoreTest, BEH_Constructor) {
-  EXPECT_NO_THROW(DataStore<storage_policy>(MemoryUsage(0), DiskUsage(0), pop_functor_));
-  EXPECT_NO_THROW(DataStore<storage_policy>(MemoryUsage(1), DiskUsage(1), pop_functor_));
-  EXPECT_THROW(DataStore<storage_policy>(MemoryUsage(1), DiskUsage(0), pop_functor_),
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(0), DiskUsage(0), pop_functor_));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), pop_functor_));
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(0), pop_functor_),
                std::exception);
-  EXPECT_THROW(DataStore<storage_policy>(MemoryUsage(2), DiskUsage(1), pop_functor_),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(2), DiskUsage(1), pop_functor_),
                std::exception);
-  EXPECT_THROW(DataStore<storage_policy>(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
                std::exception);
-  EXPECT_NO_THROW(DataStore<storage_policy>(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
   // Create a path to a file, and check that this can't be used as the disk buffer path.
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   ASSERT_FALSE(test_path->empty());
   boost::filesystem::path file_path(*test_path / "File");
   ASSERT_TRUE(WriteFile(file_path, " "));
-  EXPECT_THROW(DataStore<storage_policy>(MemoryUsage(199999),
-                                         DiskUsage(200000),
-                                         pop_functor_,
-                                         file_path),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
+                                    DiskUsage(200000),
+                                    pop_functor_,
+                                    file_path),
                std::exception);
-  EXPECT_THROW(DataStore<storage_policy>(MemoryUsage(199999),
-                                         DiskUsage(200000),
-                                         pop_functor_,
-                                         file_path / "base"),
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
+                                    DiskUsage(200000),
+                                    pop_functor_,
+                                    file_path / "base"),
                std::exception);
 
   boost::filesystem::path dir_path(*test_path / "Dir");
-  EXPECT_NO_THROW(DataStore<storage_policy>(MemoryUsage(1), DiskUsage(1), pop_functor_, dir_path));
+  EXPECT_NO_THROW(DataStore<TypeParam>(MemoryUsage(1), DiskUsage(1), pop_functor_, dir_path));
   ASSERT_TRUE(fs::exists(dir_path));
 
   boost::filesystem::path data_store_path;
   {
-    DataStore<storage_policy> data_store(MemoryUsage(1), DiskUsage(1), pop_functor_);
+    DataStore<TypeParam> data_store(MemoryUsage(1), DiskUsage(1), pop_functor_);
     data_store_path = GetkDiskBuffer(data_store);
     ASSERT_TRUE(fs::exists(data_store_path));
   }
   ASSERT_FALSE(fs::exists(data_store_path));
+}
+
+TYPED_TEST_P(DataStoreTest, BEH_SetMaxDiskMemoryUsage) {
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ - 1)));
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_)));
+  EXPECT_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ + 1)), std::exception);
+  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ - 1)), std::exception);
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_)));
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ + 1)));
+  EXPECT_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))),
+               std::exception);
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(1))));
+  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))), std::exception);
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(1))));
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(0))));
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))));
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(std::numeric_limits<uint64_t>().max())));
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(
+    MemoryUsage(std::numeric_limits<uint64_t>().max())));
+  EXPECT_THROW(data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)), std::exception);
+  EXPECT_NO_THROW(data_store_->SetMaxMemoryUsage(MemoryUsage(kDefaultMaxMemoryUsage)));
+  EXPECT_NO_THROW(data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
+}
+
+TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskBuffer) {
+  typedef TaggedValue<Identity, passport::detail::AnmpidTag> KeyType;
+  boost::system::error_code error_code;
+  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
+  fs::path data_buffer_path(*test_path / "kv_buffer");
+  const uintmax_t kMemorySize(1), kDiskSize(2);
+  data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
+                                             DiskUsage(kDiskSize),
+                                             pop_functor_,
+                                             data_buffer_path));
+  KeyType key;
+  key.data = Identity(RandomAlphaNumericString(crypto::SHA512::DIGESTSIZE));
+  NonEmptyString small_value(std::string(kMemorySize, 'a'));
+  EXPECT_NO_THROW(data_store_->Store(key, small_value));
+  EXPECT_NO_THROW(data_store_->Delete(key));
+  ASSERT_EQ(1, fs::remove_all(data_buffer_path, error_code));
+  ASSERT_FALSE(fs::exists(data_buffer_path, error_code));
+  // Fits into memory buffer successfully.  Background thread in future should throw, causing other
+  // API functions to throw on next execution.
+  EXPECT_NO_THROW(data_store_->Store(key, small_value));
+  Sleep(boost::posix_time::seconds(1));
+  EXPECT_THROW(data_store_->Store(key, small_value), std::exception);
+  EXPECT_THROW(data_store_->Get(key), std::exception);
+  EXPECT_THROW(data_store_->Delete(key), std::exception);
+
+  data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
+                                             DiskUsage(kDiskSize),
+                                             pop_functor_,
+                                             data_buffer_path));
+  NonEmptyString large_value(std::string(kDiskSize, 'a'));
+  EXPECT_NO_THROW(data_store_->Store(key, large_value));
+  EXPECT_NO_THROW(data_store_->Delete(key));
+  ASSERT_EQ(1, fs::remove_all(data_buffer_path, error_code));
+  ASSERT_FALSE(fs::exists(data_buffer_path, error_code));
+  // Skips memory buffer and goes straight to disk, causing exception.  Background thread in future
+  // should finish, causing other API functions to throw on next execution.
+  // - ADAPT TEST FOR MEMORY STORAGE ONLY!!!
+  EXPECT_THROW(data_store_->Store(key, large_value), std::exception);
+  EXPECT_THROW(data_store_->Get(key), std::exception);
+  EXPECT_THROW(data_store_->Delete(key), std::exception);
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_SuccessfulStore) {
@@ -302,132 +384,38 @@ TYPED_TEST_P(DataStoreTest, BEH_DeleteOnDiskBufferOverfill) {
   EXPECT_TRUE(DeleteDirectory(data_buffer_path_));
 }
 
-REGISTER_TYPED_TEST_CASE_P(DataStoreTest,
-                           BEH_Constructor,
-                           BEH_SuccessfulStore,
-                           BEH_UnsuccessfulStore,
-                           BEH_DeleteOnDiskBufferOverfill);
-
-typedef ::testing::Types<DataBuffer> StoragePolicies;
-INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
-
-
-//TEST_F(DataBufferTest, BEH_SetMaxDiskMemoryUsage) {
-//  EXPECT_NO_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ - 1)));
-//  EXPECT_NO_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_)));
-//  EXPECT_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ + 1)),
-//               std::exception);
-//  EXPECT_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ - 1)),
-//               std::exception);
-//  EXPECT_NO_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(max_disk_usage_)));
-//  EXPECT_NO_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(max_disk_usage_ + 1)));
-//  EXPECT_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))),
-//               std::exception);
-//  EXPECT_NO_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(1))));
-//  EXPECT_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))),
-//               std::exception);
-//  EXPECT_NO_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(1))));
-//  EXPECT_NO_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(0))));
-//  EXPECT_NO_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))));
-//  EXPECT_NO_THROW(
-//     data_buffer_->SetMaxDiskUsage(DiskUsage(std::numeric_limits<uint64_t>().max())));
-//  EXPECT_NO_THROW(
-//     data_buffer_->SetMaxMemoryUsage(MemoryUsage(std::numeric_limits<uint64_t>().max())));
-//  EXPECT_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)),
-//               std::exception);
-//  EXPECT_NO_THROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(kDefaultMaxMemoryUsage)));
-//  EXPECT_NO_THROW(data_buffer_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
-//}
-//
-//TEST_F(DataBufferTest, BEH_RemoveDiskBuffer) {
-//  boost::system::error_code error_code;
-//  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
-//  fs::path kv_buffer_path(*test_path / "kv_buffer");
-//  const uintmax_t kMemorySize(1), kDiskSize(2);
-//  data_buffer_.reset(new DataBuffer(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
-//                                             pop_functor_, kv_buffer_path));
-//  Identity key(RandomAlphaNumericString(crypto::SHA512::DIGESTSIZE));
-//  NonEmptyString small_value(std::string(kMemorySize, 'a'));
-//  EXPECT_NO_THROW(data_buffer_->Store(key, small_value));
-//  EXPECT_NO_THROW(data_buffer_->Delete(key));
-//  ASSERT_EQ(1, fs::remove_all(kv_buffer_path, error_code));
-//  ASSERT_FALSE(fs::exists(kv_buffer_path, error_code));
-//  // Fits into memory buffer successfully.  Background thread in future should throw, causing other
-//  // API functions to throw on next execution.
-//  EXPECT_NO_THROW(data_buffer_->Store(key, small_value));
-//  Sleep(boost::posix_time::seconds(1));
-//  EXPECT_THROW(data_buffer_->Store(key, small_value), std::exception);
-//  EXPECT_THROW(data_buffer_->Get(key), std::exception);
-//  EXPECT_THROW(data_buffer_->Delete(key), std::exception);
-//
-//  data_buffer_.reset(new DataBuffer(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
-//                                             pop_functor_, kv_buffer_path));
-//  NonEmptyString large_value(std::string(kDiskSize, 'a'));
-//  EXPECT_NO_THROW(data_buffer_->Store(key, large_value));
-//  EXPECT_NO_THROW(data_buffer_->Delete(key));
-//  ASSERT_EQ(1, fs::remove_all(kv_buffer_path, error_code));
-//  ASSERT_FALSE(fs::exists(kv_buffer_path, error_code));
-//  // Skips memory buffer and goes straight to disk, causing exception.  Background thread in future
-//  // should finish, causing other API functions to throw on next execution.
-//  EXPECT_THROW(data_buffer_->Store(key, large_value), std::exception);
-//  EXPECT_THROW(data_buffer_->Get(key), std::exception);
-//  EXPECT_THROW(data_buffer_->Delete(key), std::exception);
-//}
-
-//TEST_F(DataBufferTest, BEH_UnsuccessfulStore) {
-//  NonEmptyString value(std::string(static_cast<uint32_t>(max_disk_usage_ + 1), 'a'));
-//  Identity key(crypto::Hash<crypto::SHA512>(value));
-//  EXPECT_THROW(data_buffer_->Store(key, value), std::exception);
-//}
-//
-//TEST_F(DataBufferTest, BEH_DeleteOnDiskBufferOverfill) {
-//  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
-//  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
-//  std::vector<std::pair<Identity, NonEmptyString>> key_value_pairs(
-//      PopulateKVB(num_entries, num_memory_entries, num_disk_entries, test_path, pop_functor_));
-//  NonEmptyString value, recovered;
-//  Identity key;
-//
-//  Identity first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-//  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
-//  key = Identity(crypto::Hash<crypto::SHA512>(value));
-//  auto async = std::async(std::launch::async, [this, key, value] {
-//                                                  data_buffer_->Store(key, value);
-//                                              });
-//  EXPECT_THROW(recovered = data_buffer_->Get(key), std::exception);
-//  EXPECT_NO_THROW(data_buffer_->Delete(first_key));
-//  EXPECT_NO_THROW(data_buffer_->Delete(second_key));
-//  async.wait();
-//  EXPECT_NO_THROW(recovered = data_buffer_->Get(key));
-//  EXPECT_EQ(recovered, value);
-//
-//  EXPECT_TRUE(DeleteDirectory(kv_buffer_path_));
-//}
-//
-//TEST_F(DataBufferTest, BEH_PopOnDiskBufferOverfill) {
+//TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskBufferOverfill) {
+//  typedef TaggedValue<Identity, passport::detail::MpidTag> StoreKeyType;
+//  typedef DataStore<TypeParam>::KeyType KeyType;
 //  size_t cur_idx(0);
 //  std::mutex pop_mutex;
 //  std::condition_variable pop_cond_var;
-//  std::vector<std::pair<Identity, NonEmptyString>> key_value_pairs;
-//  DataBuffer::PopFunctor pop_functor([this, &key_value_pairs, &cur_idx, &pop_mutex,
-//                                          &pop_cond_var](const Identity& key_popped,
-//                                                         const NonEmptyString& value_popped) {
-//        this->PopFunction(key_popped, value_popped, key_value_pairs,
-//                          cur_idx, pop_mutex, pop_cond_var);
+//  std::vector<std::pair<KeyType, NonEmptyString>> key_value_pairs;
+//  PopFunctor pop_functor([this, &key_value_pairs, &cur_idx, &pop_mutex,
+//                    &pop_cond_var](const KeyType& key_popped, const NonEmptyString& value_popped) {
+//        this->PopFunction<KeyType>(key_popped,
+//                                   value_popped,
+//                                   key_value_pairs,
+//                                   cur_idx,
+//                                   pop_mutex,
+//                                   pop_cond_var);
 //      });
 //  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
 //  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
-//  key_value_pairs = PopulateKVB(num_entries, num_memory_entries, num_disk_entries,
-//                                test_path, pop_functor);
+//  key_value_pairs = PopulateDataStore<KeyType>(num_entries,
+//                                               num_memory_entries,
+//                                               num_disk_entries,
+//                                               test_path,
+//                                               pop_functor);
 //  EXPECT_EQ(0, cur_idx);
 //
 //  NonEmptyString value, recovered;
-//  Identity key;
+//  KeyType key;
 //  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(OneKB))));
-//  key = Identity(crypto::Hash<crypto::SHA512>(value));
+//  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
 //  // Trigger pop...
-//  EXPECT_NO_THROW(data_buffer_->Store(key, value));
-//  EXPECT_NO_THROW(recovered = data_buffer_->Get(key));
+//  EXPECT_NO_THROW(data_store_->Store(key, value));
+//  EXPECT_NO_THROW(recovered = data_store_->Get(key));
 //  EXPECT_EQ(recovered, value);
 //  {
 //    std::unique_lock<std::mutex> pop_lock(pop_mutex);
@@ -438,9 +426,9 @@ INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
 //  EXPECT_EQ(1, cur_idx);
 //
 //  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
-//  key = Identity(crypto::Hash<crypto::SHA512>(value));
+//  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
 //  // Trigger pop...
-//  EXPECT_NO_THROW(data_buffer_->Store(key, value));
+//  EXPECT_NO_THROW(data_store_->Store(key, value));
 //  {
 //    std::unique_lock<std::mutex> pop_lock(pop_mutex);
 //    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
@@ -448,11 +436,24 @@ INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
 //    }));
 //  }
 //  EXPECT_EQ(3, cur_idx);
-//  EXPECT_NO_THROW(recovered = data_buffer_->Get(key));
+//  EXPECT_NO_THROW(recovered = data_store_->Get(key));
 //  EXPECT_EQ(recovered, value);
 //
-//  EXPECT_TRUE(DeleteDirectory(kv_buffer_path_));
+//  EXPECT_TRUE(DeleteDirectory(data_buffer_path_));
 //}
+
+REGISTER_TYPED_TEST_CASE_P(DataStoreTest,
+                           BEH_Constructor,
+                           BEH_SetMaxDiskMemoryUsage,
+                           BEH_RemoveDiskBuffer,
+                           BEH_SuccessfulStore,
+                           BEH_UnsuccessfulStore,
+                           BEH_DeleteOnDiskBufferOverfill);
+
+typedef ::testing::Types<DataBuffer> StoragePolicies;
+INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
+
+
 //
 //TEST_F(DataBufferTest, BEH_AsyncPopOnDiskBufferOverfill) {
 //  size_t cur_idx(0);
