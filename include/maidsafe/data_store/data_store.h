@@ -23,12 +23,21 @@ namespace data_store {
 
 template<typename StoragePolicy>
 class DataStore
-  : StoragePolicy {
+  : public StoragePolicy {
  public:
+
+  typedef typename StoragePolicy::PopFunctor PopFunctor;
+
   DataStore(MemoryUsage max_memory_usage,
             DiskUsage max_disk_usage,
             DataBuffer::PopFunctor pop_functor)
     : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor) {}
+
+  DataStore(MemoryUsage max_memory_usage,
+            DiskUsage max_disk_usage,
+            DataBuffer::PopFunctor pop_functor,
+            const boost::filesystem::path& disk_path)
+    : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor, disk_path) {}
 
   ~DataStore() {}
 

@@ -50,7 +50,8 @@ namespace maidsafe {
 
 namespace data_store {
 
-namespace test { class DataBufferTest; }
+namespace test { class DataBufferTest;
+                 template<typename StoragePolicy> class DataStoreTest; }
 
 class DataBuffer {
  public:
@@ -100,6 +101,7 @@ class DataBuffer {
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
   friend class test::DataBufferTest;
+  template<typename StoragePolicy> friend class test::DataStoreTest;
 
  private:
   DataBuffer(const DataBuffer&);
