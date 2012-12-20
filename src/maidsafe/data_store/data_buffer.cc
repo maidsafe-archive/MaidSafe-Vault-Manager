@@ -72,7 +72,9 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kDiskBuffer_(fs::unique_path(fs::temp_directory_path() / "KVB-%%%%-%%%%-%%%%-%%%%")),
       kShouldRemoveRoot_(true),
       running_(true),
-      worker_() {
+      worker_(),
+      get_identity_(),
+      get_tag_() {
   Init();
 }
 
@@ -86,7 +88,9 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kDiskBuffer_(disk_buffer),
       kShouldRemoveRoot_(false),
       running_(true),
-      worker_() {
+      worker_(),
+      get_identity_(),
+      get_tag_() {
   Init();
 }
 
