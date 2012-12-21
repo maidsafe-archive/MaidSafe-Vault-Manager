@@ -88,7 +88,7 @@ class DataStoreTest : public ::testing::Test {
   }
 
   template<typename KeyType>
-  std::vector<std::pair<KeyType, NonEmptyString>> PopulateDataStore(
+  std::vector<std::pair<KeyType, NonEmptyString> > PopulateDataStore(
       size_t num_entries,
       size_t num_memory_entries,
       size_t num_disk_entries,
@@ -361,32 +361,32 @@ TYPED_TEST_P(DataStoreTest, BEH_UnsuccessfulStore) {
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_DeleteOnDiskBufferOverfill) {
-//  typedef TaggedValue<Identity, passport::detail::SmidTag> KeyType;
-//  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
-//  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
-//  std::vector<std::pair<KeyType, NonEmptyString>> key_value_pairs(
-//      this->PopulateDataStore<KeyType>(num_entries,
-//                                       num_memory_entries,
-//                                       num_disk_entries,
-//                                       test_path,
-//                                       this->pop_functor_));
-//  NonEmptyString value, recovered;
-//  KeyType key;
+  typedef TaggedValue<Identity, passport::detail::SmidTag> KeyType;
+  const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
+  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
+  std::vector<std::pair<KeyType, NonEmptyString>> key_value_pairs(
+      DataStoreTest<TypeParam>::template PopulateDataStore<KeyType>(num_entries,
+                                                                    num_memory_entries,
+                                                                    num_disk_entries,
+                                                                    test_path,
+                                                                    this->pop_functor_));
+  NonEmptyString value, recovered;
+  KeyType key;
 
-//  KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-//  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
-//  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
-//  auto async = std::async(std::launch::async, [this, key, value] {
-//                                                  this->data_store_->Store(key, value);
-//                                              });
-//  EXPECT_THROW(recovered = this->data_store_->Get(key), std::exception);
-//  EXPECT_NO_THROW(this->data_store_->Delete(first_key));
-//  EXPECT_NO_THROW(this->data_store_->Delete(second_key));
-//  EXPECT_NO_THROW(async.wait());
-//  EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-//  EXPECT_EQ(recovered, value);
+  KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
+  value = NonEmptyString(std::string(RandomAlphaNumericString(static_cast<uint32_t>(2 * OneKB))));
+  key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+  auto async = std::async(std::launch::async, [this, key, value] {
+                                                  this->data_store_->Store(key, value);
+                                              });
+  EXPECT_THROW(recovered = this->data_store_->Get(key), std::exception);
+  EXPECT_NO_THROW(this->data_store_->Delete(first_key));
+  EXPECT_NO_THROW(this->data_store_->Delete(second_key));
+  EXPECT_NO_THROW(async.wait());
+  EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
+  EXPECT_EQ(recovered, value);
 
-//  EXPECT_TRUE(DeleteDirectory(this->data_buffer_path_));
+  EXPECT_TRUE(this->DeleteDirectory(this->data_buffer_path_));
 }
 
 //TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskBufferOverfill) {
