@@ -359,7 +359,8 @@ void DataBuffer::CopyQueueToDisk() {
 }
 
 void DataBuffer::CheckWorkerIsStillRunning() {
-  if (worker_.has_exception())
+  if (worker_.wait_for(std::chrono::seconds(0)) == std::future_status::ready &&
+      worker_.valid())
     worker_.get();
   if (!running_) {
     LOG(kError) << "Worker is no longer running.";
