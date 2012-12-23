@@ -130,6 +130,15 @@ DataBuffer::~DataBuffer() {
 }
 
 void DataBuffer::Store(const KeyType& key, const NonEmptyString& value) {
+  try {
+    Delete(key);
+    LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
+               << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+  }
+  catch(const std::exception&) {
+    LOG(kInfo) << "Storing value " << EncodeToBase32(value) << " with key "
+               << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+  }
   CheckWorkerIsStillRunning();
   if (!StoreInMemory(key, value))
     StoreOnDisk(key, value);
