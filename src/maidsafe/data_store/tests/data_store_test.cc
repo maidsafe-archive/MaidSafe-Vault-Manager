@@ -465,24 +465,24 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
-//        return current_index == 1;
-//    }));
-//  }
-//  EXPECT_EQ(1, current_index);
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
+        return current_index == 1;
+    }));
+  }
+  EXPECT_EQ(1, current_index);
 
   value = this->GenerateKeyValueData(key, 2 * OneKB);
   // Trigger pop...
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
-//        return current_index == 3;
-//    }));
-//  }
-//  EXPECT_EQ(3, current_index);
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
+        return current_index == 3;
+    }));
+  }
+  EXPECT_EQ(3, current_index);
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
 
@@ -591,13 +591,13 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
                                               this->data_store_->Store(key, value);
                                           }));
   }
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
-//                                      [&]()->bool {
-//                                          return current_index == num_entries;
-//                                      }));
-//  }
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
+                                      [&]()->bool {
+                                          return current_index == num_entries;
+                                      }));
+  }
   for (auto key_value : new_key_value_pairs) {
     EXPECT_NO_THROW(recovered = this->data_store_->Get(key_value.first));
     EXPECT_EQ(key_value.second, recovered);
@@ -606,10 +606,13 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
+  typedef typename TypeParam::KeyType KeyType;
+  typedef typename DataStoreTest<TypeParam>::GetIdentity GetIdentity;
+
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   this->data_store_path_ = fs::path(*test_path / "data_store");
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-                            typename DataStoreTest<TypeParam>::GetIdentity get_identity;
+                            GetIdentity get_identity;
                             Identity key_id(boost::apply_visitor(get_identity, key));
                             LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
                                        << "with value " << Base32Substr(value.string());
@@ -652,11 +655,12 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
   typedef typename KeyValueContainer::value_type value_type;
   typedef typename TypeParam::KeyType KeyType;
   typedef typename TypeParam::PopFunctor PopFunctor;
+  typedef typename DataStoreTest<TypeParam>::GetIdentity GetIdentity;
 
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   this->data_store_path_ = fs::path(*test_path / "data_store");
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-                            typename DataStoreTest<TypeParam>::GetIdentity get_identity;
+                            GetIdentity get_identity;
                             Identity key_id(boost::apply_visitor(get_identity, key));
                             LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
                                        << "with value " << Base32Substr(value.string());
