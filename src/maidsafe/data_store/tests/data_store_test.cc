@@ -604,6 +604,48 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
   EXPECT_EQ(num_entries, current_index);
 }
 
+TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
+  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
+  this->data_store_path_ = fs::path(*test_path / "data_store");
+  PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
+                            typename DataStoreTest<TypeParam>::GetIdentity get_identity;
+                            Identity key_id(boost::apply_visitor(get_identity, key));
+                            LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
+                                       << "with value " << Base32Substr(value.string());
+                        });
+  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
+                                                   DiskUsage(kDefaultMaxDiskUsage),
+                                                   pop_functor,
+                                                   this->data_store_path_));
+  KeyType key(this->GetRandomKey());
+  NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 30) + 1),
+                 recovered, last_value;
+  auto async = std::async(std::launch::async, [this, key, value] {
+                                                this->data_store_->Store(key, value);
+                                              });
+  EXPECT_NO_THROW(async.wait());
+  EXPECT_EQ(true, async.valid());
+  EXPECT_NO_THROW(async.get());
+  EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
+  EXPECT_EQ(recovered, value);
+
+  uint32_t events(RandomUint32() % 100);
+  for (uint32_t i = 0; i != events; ++i) {
+    last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % 30) + 1));
+    auto async = std::async(std::launch::async, [this, key, last_value] {
+                                                  this->data_store_->Store(key, last_value);
+                                                });
+    EXPECT_NO_THROW(async.wait());
+    EXPECT_EQ(true, async.valid());
+    EXPECT_NO_THROW(async.get());
+  }
+  EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
+  EXPECT_NE(value, recovered);
+  EXPECT_EQ(last_value, recovered);
+  this->data_store_.reset();
+  EXPECT_TRUE(this->DeleteDirectory(this->data_store_path_));
+}
+
 TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
   typedef typename DataStoreTest<TypeParam>::KeyValueContainer KeyValueContainer;
   typedef typename KeyValueContainer::value_type value_type;
@@ -806,6 +848,7 @@ REGISTER_TYPED_TEST_CASE_P(DataStoreTest,
                            BEH_PopOnDiskStoreOverfill,
                            BEH_AsyncDeleteOnDiskStoreOverfill,
                            BEH_AsyncPopOnDiskStoreOverfill,
+                           BEH_RepeatedlyStoreUsingSameKey,
                            BEH_RandomAsync,
                            BEH_Store,
                            BEH_Delete);
