@@ -9,52 +9,30 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
-#define MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
-
-#include <deque>
-
-#include "maidsafe/common/types.h"
-#include "maidsafe/private/chunk_store/data_buffer.h"
+#ifndef MAIDSAFE_DETAIL_DATA_TYPE_VALUES_H_
+#define MAIDSAFE_DETAIL_DATA_TYPE_VALUES_H_
 
 namespace maidsafe {
 
-namespace priv {
+namespace detail {
 
-namespace chunk_store {
-
-class DataStore {
- public:
-  DataStore(MemoryUsage max_memory_usage,
-            DiskUsage max_disk_usage,
-            DataBuffer::PopFunctor pop_functor);
-
-  ~DataStore();
-
-  template <typename DataType>
-  void Store(const DataType& key, const NonEmptyString& value);
-
-  template <typename DataType>
-  NonEmptyString Get(const DataType& key);
-
-  template <typename DataType>
-  void Delete(const DataType& key);
-
-  void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
-  void SetMaxDiskUsage(DiskUsage max_disk_usage);
-
- private:
-  DataStore(const DataStore&);
-  DataStore& operator=(const DataStore&);
-
-  DataBuffer data_buffer_;
-  std::deque<DataBuffer::VariantType> data_index_;
+enum DataTagValues {
+  kAnmidValue = 0,
+  kAnsmidValue,
+  kAntmidValue,
+  kAnmaidValue,
+  kMaidValue,
+  kPmidValue,
+  kMidValue,
+  kSmidValue,
+  kTmidValue,
+  kAnmpidValue,
+  kMpidValue,
+  kImmutableDataValue
 };
 
-}  // namespace chunk_store
-
-}  // namespace priv
+}  // namespace detail
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_CHUNK_STORE_DATA_STORE_H_
+#endif  // MAIDSAFE_DETAIL_DATA_TYPE_VALUES_H_

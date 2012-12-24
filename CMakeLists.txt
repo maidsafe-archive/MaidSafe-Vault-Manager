@@ -119,7 +119,8 @@ source_group("Data Store Header Files" FILES ${HEADER_FILES_DATA_STORE_DIR})
 source_group("Data Store API Files" FILES ${API_FILES_DATA_STORE_DIR})
 
 set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/return_codes.h")
-source_group("Private API Files" FILES ${RETURN_CODES_H})
+set(DATA_TYPE_VALUES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/detail/data_type_values.h")
+source_group("Private API Files" FILES ${RETURN_CODES_H} ${DATA_TYPE_VALUES_H})
 
 
 ####    TESTS    ####
@@ -151,7 +152,7 @@ source_group("Data Store Tests Header Files" FILES ${HEADER_FILES_DATA_STORE_TES
 ms_add_static_library(lifestuff_manager ${ALL_FILES_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR} ${RETURN_CODES_H})
+ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR} ${RETURN_CODES_H} ${DATA_TYPE_VALUES_H})
 
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
@@ -165,7 +166,7 @@ if(MAIDSAFE_TESTING)
   ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
   ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
   ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
-  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR} ${ALL_FILES_DATA_STORE_TESTS_DIR})
+  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR} ${ALL_FILES_DATA_STORE_TESTS_DIR} ${API_FILES_DETAIL_DIR})
 endif()
 
 target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
