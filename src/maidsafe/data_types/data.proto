@@ -6,4 +6,3 @@ message Content {
   optional bytes signature = 2;
   optional bytes version = 3;
 }
-

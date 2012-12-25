@@ -18,7 +18,8 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
-#include "maidsafe/data_types/data.pb.h"
+
+#include "maidsafe/data_types/data_pb.h"
 
 namespace maidsafe {
 

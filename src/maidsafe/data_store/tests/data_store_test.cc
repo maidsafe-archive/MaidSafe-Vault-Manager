@@ -135,7 +135,8 @@ class DataStoreTest : public ::testing::Test {
                                                           << error_code.message();
     EXPECT_EQ(0, error_code.value());
 
-    AddRandomKeyValuePairs(key_value_pairs, num_entries, static_cast<uint32_t>(OneKB));
+    AddRandomKeyValuePairs(key_value_pairs, static_cast<uint32_t>(num_entries),
+                           static_cast<uint32_t>(OneKB));
 
     data_store_.reset(new DataStore<StoragePolicy>(MemoryUsage(num_memory_entries * OneKB),
                                                    DiskUsage(num_disk_entries * OneKB),

@@ -23,19 +23,6 @@ set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
 
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/appendable_by_all.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/appendable_by_all.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/chunk_actions/appendable_by_all.pb.h")
-endif()
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/chunk.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/chunk_actions/chunk.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/chunk_actions/chunk.pb.h")
-endif()
-if(EXISTS "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/data.pb.h")
-  file(RENAME "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/data.pb.h"
-              "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/data.pb.h")
-endif()
-
 include_directories(${common_SOURCE_DIR}/include)
 include_directories(${rudp_SOURCE_DIR}/include)
 include_directories(${routing_SOURCE_DIR}/include)
@@ -93,12 +80,13 @@ set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_
 
 file(GLOB PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.proto")
 file(GLOB SOURCE_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.cc")
-file(GLOB HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*.pb.h")
-file(GLOB MS_HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*_pb.h")
+file(GLOB HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.h")
+file(GLOB MS_HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*_pb.h")
 
 set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${PROTO_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
 list(REMOVE_ITEM SOURCE_FILES_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_DATA_TYPES_DIR})
-list(REMOVE_ITEM API_FILES_DATA_TYPES_DIR ${HEADER_PROTO_FILES_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM HEADER_FILES_DATA_TYPES_DIR ${HEADER_PROTO_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM API_FILES_DATA_TYPES_DIR ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
 set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
 
 source_group("Data Types Source Files" FILES ${SOURCE_FILES_DATA_TYPES_DIR})
@@ -196,9 +184,8 @@ if(MAIDSAFE_TESTING)
   set_target_properties(maidsafe_lifestuff_manager_core_dummy TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
 endif()
 
-file(GLOB_RECURSE PROTO_SOURCE_FILES "${PROTO_SOURCE_DIR}/maidsafe/*.pb.cc")
-file(GLOB_RECURSE PROTO_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/maidsafe/*.pb.h")
-ms_disable_warnings(${PROTO_SOURCE_FILES})
+file(GLOB_RECURSE PROTO_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/*.pb.*")
+ms_disable_warnings(${PROTO_FILES})
 
 if(UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-effc++")
