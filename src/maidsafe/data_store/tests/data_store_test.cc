@@ -64,11 +64,11 @@ class DataStoreTest : public ::testing::Test {
     }
   };
 
- protected:
+
   typedef typename StoragePolicy::KeyType KeyType;
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
   typedef typename StoragePolicy::PopFunctor PopFunctor;
-
+ protected:
   DataStoreTest()
     : max_memory_usage_(kDefaultMaxMemoryUsage),
       max_disk_usage_(kDefaultMaxDiskUsage),
