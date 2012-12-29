@@ -17,30 +17,51 @@
 #ifndef MAIDSAFE_DATA_TYPES_MUTABLE_DATA_H_
 #define MAIDSAFE_DATA_TYPES_MUTABLE_DATA_H_
 
+#include <cstdint>
+
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/tagged_value.h"
 
+#include "maidsafe/detail/data_type_values.h"
+
+
 namespace maidsafe {
+
+struct MutableDataTag {
+  static const int kEnumValue = static_cast<int>(detail::DataTagValues::kMutableDataValue);
+};
 
 class MutableData {
  public:
-  typedef TaggedValue<Identity, struct MutableDataTag> name_type;
+  typedef TaggedValue<Identity, MutableDataTag> name_type;
+  typedef TaggedValue<NonEmptyString, MutableDataTag> serialised_type;
+
+  MutableData(const MutableData& other);
+  MutableData& operator=(const MutableData& other);
+  MutableData(MutableData&& other);
+  MutableData& operator=(MutableData&& other);
+
   MutableData(const name_type& name,
-              const NonEmptyString& content,
+              const NonEmptyString& data,
               const asymm::Signature& signature,
-              const asymm::PublicKey& validation_key);
-  explicit MutableData(const NonEmptyString& serialised_data);
-  NonEmptyString Serialise() const;
-  name_type name() const;
-  int32_t version() const;  // use randomint32 as faster than hash
+              int32_t version);
+  MutableData(const name_type& name, const serialised_type& serialised_mutable_data);
+  serialised_type Serialise() const;
+
+  name_type name() const { return name_; }
+  NonEmptyString data() const { return data_; }
+  asymm::Signature signature() { return signature_; }
+  int32_t version() const { return version_; }
+  static int type_enum_value() { return MutableDataTag::kEnumValue; }
+
  private:
-  void Validate();
-  NonEmptyString data_;
   name_type name_;
+  NonEmptyString data_;
   asymm::Signature signature_;
   int32_t version_;
 };
+
 }  // namespace maidsafe
 
 #endif  // MAIDSAFE_DATA_TYPES_MUTABLE_DATA_H_

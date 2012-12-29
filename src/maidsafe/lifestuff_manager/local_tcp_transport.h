@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_
-#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#ifndef MAIDSAFE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#define MAIDSAFE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_
 
 #include <cstdint>
 #include <memory>
@@ -98,4 +98,4 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#endif  // MAIDSAFE_LIFESTUFF_MANAGER_LOCAL_TCP_TRANSPORT_H_

@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
-#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
+#ifndef MAIDSAFE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
+#define MAIDSAFE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
 
 #include <string>
 
@@ -29,4 +29,4 @@ int GetNumRunningProcesses(const std::string& process_name);
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
+#endif  // MAIDSAFE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_

@@ -18,23 +18,39 @@
 #define MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/common/rsa.h"
 #include "maidsafe/common/tagged_value.h"
+
+#include "maidsafe/detail/data_type_values.h"
+
 
 namespace maidsafe {
 
+struct ImmutableDataTag {
+  static const int kEnumValue = static_cast<int>(detail::DataTagValues::kImmutableDataValue);
+};
+
 class ImmutableData {
  public:
-  typedef TaggedValue<Identity, struct ImmutableDataTag> name_type;
+  typedef TaggedValue<Identity, ImmutableDataTag> name_type;
+  typedef TaggedValue<NonEmptyString, ImmutableDataTag> serialised_type;
+
+  ImmutableData(const ImmutableData& other);
+  ImmutableData& operator=(const ImmutableData& other);
+  ImmutableData(ImmutableData&& other);
+  ImmutableData& operator=(ImmutableData&& other);
 
   ImmutableData(const name_type& name, const NonEmptyString& content);
-  explicit ImmutableData(const NonEmptyString& serialised_data);
-  NonEmptyString Serialise() const;
-  name_type name() const;
+  ImmutableData(const name_type& name, const serialised_type& serialised_immutable_data);
+  serialised_type Serialise() const;
+
+  name_type name() const { return name_; }
+  NonEmptyString data() const { return data_; }
+  static int type_enum_value() { return ImmutableDataTag::kEnumValue; }
+
  private:
-  void Validate();
-  NonEmptyString data_;
+  void Validate() const;
   name_type name_;
+  NonEmptyString data_;
 };
 
 }  // namespace maidsafe

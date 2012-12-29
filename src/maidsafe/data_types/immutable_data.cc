@@ -15,45 +15,50 @@
 */
 #include "maidsafe/data_types/immutable_data.h"
 
-#include "maidsafe/common/types.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
 
-#include "maidsafe/data_types/data_pb.h"
 
 namespace maidsafe {
 
-ImmutableData::ImmutableData(const name_type& name, const NonEmptyString& content)
-  : data_(content), name_(name) {
-    Validate();
+ImmutableData::ImmutableData(const ImmutableData& other) : name_(other.name_), data_(other.data_) {}
+
+ImmutableData& ImmutableData::operator=(const ImmutableData& other) {
+  name_ = other.name_;
+  data_ = other.data_;
+  return *this;
 }
 
-ImmutableData::ImmutableData(const NonEmptyString& serialised_data) : data_(), name_() {
-  data_types::proto::Content data_proto;
-  data_proto.ParseFromString(serialised_data.string());
-  // name_ = Identity(data_proto.name());
-  // data_ = NonEmptyString(data_proto.content().data());
+ImmutableData::ImmutableData(ImmutableData&& other)
+    : name_(std::move(other.name_)),
+      data_(std::move(other.data_)) {}
+
+ImmutableData& ImmutableData::operator=(ImmutableData&& other) {
+  name_ = std::move(other.name_);
+  data_ = std::move(other.data_);
+  return *this;
+}
+
+ImmutableData::ImmutableData(const name_type& name, const NonEmptyString& content)
+    : name_(name),
+      data_(content) {
   Validate();
 }
 
-void ImmutableData::Validate() {
-  // if (name_ != crypto::Hash<crypto::SHA512>(data_))
-  //   ThrowError(CommonErrors::hashing_error);
+ImmutableData::ImmutableData(const name_type& name,
+                             const serialised_type& serialised_immutable_data)
+    : name_(name),
+      data_(serialised_immutable_data.data) {
+  Validate();
 }
 
-ImmutableData::name_type ImmutableData::name() const {
-  return name_;
+void ImmutableData::Validate() const {
+  if (name_.data != crypto::Hash<crypto::SHA512>(data_))
+    ThrowError(CommonErrors::hashing_error);
 }
 
-NonEmptyString ImmutableData::Serialise() const {
-  data_types::proto::Content data_proto;
-//   data_types::proto::Content content_proto;
-//   data_proto.set_type(priv::data_types::proto::kDataType::ImmutableData);
-//   data_proto.set_name(name_.string());
-//   content_proto.set_data(data_.string());
-//   data_proto.mutable_content()->CopyFrom(content_proto);
-  return NonEmptyString(data_proto.SerializeAsString());
-
+ImmutableData::serialised_type ImmutableData::Serialise() const {
+  return serialised_type(data_);
 }
 
 }  // namespace maidsafe

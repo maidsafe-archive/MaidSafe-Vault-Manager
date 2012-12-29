@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_RETURN_CODES_H_
-#define MAIDSAFE_PRIVATE_RETURN_CODES_H_
+#ifndef MAIDSAFE_RETURN_CODES_H_
+#define MAIDSAFE_RETURN_CODES_H_
 
 namespace maidsafe {
 
@@ -48,4 +48,4 @@ enum ReturnCode {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_RETURN_CODES_H_
+#endif  // MAIDSAFE_RETURN_CODES_H_

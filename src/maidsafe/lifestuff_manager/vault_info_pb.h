@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_
-#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_
+#ifndef MAIDSAFE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_
+#define MAIDSAFE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_
 
 #ifdef __MSVC__
 # pragma warning(push)
@@ -21,4 +21,4 @@
 # pragma warning(pop)
 #endif
 
-#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_
+#endif  // MAIDSAFE_LIFESTUFF_MANAGER_VAULT_INFO_PB_H_

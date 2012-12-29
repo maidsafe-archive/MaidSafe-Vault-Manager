@@ -9,16 +9,16 @@
  *  written permission of the board of directors of MaidSafe.net.                                  *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_DATA_TYPES_DATA_PB_H_
-#define MAIDSAFE_DATA_TYPES_DATA_PB_H_
+#ifndef MAIDSAFE_DATA_TYPES_MUTABLE_DATA_PB_H_
+#define MAIDSAFE_DATA_TYPES_MUTABLE_DATA_PB_H_
 
 #ifdef __MSVC__
 #  pragma warning(push)
 #  pragma warning(disable: 4127 4244 4267)
 #endif
-#include "maidsafe/data_types/data.pb.h"
+#include "maidsafe/data_types/mutable_data.pb.h"
 #ifdef __MSVC__
 #  pragma warning(pop)
 #endif
 
-#endif  // MAIDSAFE_DATA_TYPES_DATA_PB_H_
+#endif  // MAIDSAFE_DATA_TYPES_MUTABLE_DATA_PB_H_

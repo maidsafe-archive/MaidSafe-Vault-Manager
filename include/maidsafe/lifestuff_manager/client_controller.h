@@ -9,8 +9,8 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
-#define MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
+#ifndef MAIDSAFE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
+#define MAIDSAFE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
 
 #include <condition_variable>
 #include <cstdint>
@@ -122,4 +122,4 @@ class ClientController {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_PRIVATE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_
+#endif  // MAIDSAFE_LIFESTUFF_MANAGER_CLIENT_CONTROLLER_H_

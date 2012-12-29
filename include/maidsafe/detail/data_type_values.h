@@ -16,7 +16,7 @@ namespace maidsafe {
 
 namespace detail {
 
-enum DataTagValues {
+enum class DataTagValues : int {
   kAnmidValue = 0,
   kAnsmidValue,
   kAntmidValue,
@@ -28,7 +28,8 @@ enum DataTagValues {
   kTmidValue,
   kAnmpidValue,
   kMpidValue,
-  kImmutableDataValue
+  kImmutableDataValue,
+  kMutableDataValue
 };
 
 }  // namespace detail
