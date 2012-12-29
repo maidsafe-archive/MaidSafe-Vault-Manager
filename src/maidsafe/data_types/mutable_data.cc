@@ -23,17 +23,24 @@
 
 namespace maidsafe {
 
-MutableData::MutableData(const ChunkId name,
-                         const NonEmptyString content,
-                         const rsa::Signature signature) {}
+MutableData::MutableData(const name_type& /*name*/,
+                         const NonEmptyString& /*content*/,
+                         const asymm::Signature& /*signature*/,
+                         const asymm::PublicKey& /*validation_key*/) {}
 
-MutableData::MutableData(const NonEmptyString serialised_data) {}
+MutableData::MutableData(const NonEmptyString& /*serialised_data*/) {}
 
-MutableData::NonEmptyString Serialise() {}
+NonEmptyString MutableData::Serialise() const {
+  data_types::proto::Content data_proto;
+  data_proto.set_data(data_.string());
+  data_proto.set_signature(signature_.string());
+  data_proto.set_version(boost::lexical_cast<std::string>(version_));
+  return NonEmptyString(data_proto.SerializeAsString());
+}
 
-MutableData::Identity name() {}
+MutableData::name_type MutableData::name() const { return name_; }
 
-MutableData::NonEmptyString version() {}
+int32_t MutableData::version() const { return version_; }
 
 }  // namespace maidsafe
 

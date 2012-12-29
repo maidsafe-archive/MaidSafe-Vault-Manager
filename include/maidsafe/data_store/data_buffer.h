@@ -43,8 +43,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/tagged_value.h"
 #include "maidsafe/common/types.h"
-#include "maidsafe/passport/detail/config.h"
+#include "maidsafe/passport/types.h"
 
+#include "maidsafe/data_types/immutable_data.h"
 
 namespace maidsafe {
 
@@ -55,17 +56,18 @@ namespace test { class DataBufferTest;
 
 class DataBuffer {
  public:
-  typedef boost::variant<TaggedValue<Identity, passport::detail::AnmidTag>,
-                         TaggedValue<Identity, passport::detail::AnsmidTag>,
-                         TaggedValue<Identity, passport::detail::AntmidTag>,
-                         TaggedValue<Identity, passport::detail::AnmaidTag>,
-                         TaggedValue<Identity, passport::detail::MaidTag>,
-                         TaggedValue<Identity, passport::detail::PmidTag>,
-                         TaggedValue<Identity, passport::detail::MidTag>,
-                         TaggedValue<Identity, passport::detail::SmidTag>,
-                         TaggedValue<Identity, passport::detail::TmidTag>,
-                         TaggedValue<Identity, passport::detail::AnmpidTag>,
-                         TaggedValue<Identity, passport::detail::MpidTag> > KeyType;
+  typedef boost::variant<passport::Anmid::name_type,
+                         passport::Ansmid::name_type,
+                         passport::Antmid::name_type,
+                         passport::Anmaid::name_type,
+                         passport::Maid::name_type,
+                         passport::Pmid::name_type,
+                         passport::Mid::name_type,
+                         passport::Smid::name_type,
+                         passport::Tmid::name_type,
+                         passport::Anmpid::name_type,
+                         passport::Mpid::name_type,
+                         ImmutableData::name_type> KeyType;
 
   typedef std::function<void(const KeyType&, const NonEmptyString&)> PopFunctor;
   // Throws if max_memory_usage >= max_disk_usage.  Throws if a writable folder can't be created in
@@ -116,10 +118,10 @@ class DataBuffer {
      }
   };
 
-  struct GetTag : public boost::static_visitor<int>
+  struct GetTag : public boost::static_visitor<detail::DataTagValue>
   {
      template<typename T, typename Tag>
-     int operator()(const TaggedValue<T, Tag>&)
+     detail::DataTagValue operator()(const TaggedValue<T, Tag>&)
      {
         return TaggedValue<T, Tag>::tag_type::kEnumValue;
      }

@@ -21,15 +21,23 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/tagged_value.h"
 
+#include "maidsafe/detail/data_type_values.h"
+
 namespace maidsafe {
+
+struct ImmutableDataTag  {
+  static const detail::DataTagValue kEnumValue = detail::DataTagValue::kImmutableDataValue;
+};
 
 class ImmutableData {
  public:
-  typedef TaggedValue<Identity, struct ImmutableDataTag> name_type;
+  typedef TaggedValue<Identity, ImmutableDataTag> name_type;
+  typedef NonEmptyString serialised_type;
 
   ImmutableData(const name_type& name, const NonEmptyString& content);
   explicit ImmutableData(const NonEmptyString& serialised_data);
   NonEmptyString Serialise() const;
+  NonEmptyString data() const;
   name_type name() const;
  private:
   void Validate();

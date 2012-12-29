@@ -39,6 +39,10 @@ const uint64_t OneKB(1024);
 template <typename StoragePolicy>
 class DataStoreTest : public ::testing::Test {
  public:
+  typedef typename StoragePolicy::KeyType KeyType;
+  typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
+  typedef typename StoragePolicy::PopFunctor PopFunctor;
+
   struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString>
   {
     GenerateKeyValuePair() : size_(OneKB) {}
@@ -64,10 +68,6 @@ class DataStoreTest : public ::testing::Test {
     }
   };
 
-
-  typedef typename StoragePolicy::KeyType KeyType;
-  typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
-  typedef typename StoragePolicy::PopFunctor PopFunctor;
  protected:
   DataStoreTest()
     : max_memory_usage_(kDefaultMaxMemoryUsage),
@@ -155,7 +155,7 @@ class DataStoreTest : public ::testing::Test {
   }
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
-    // Currently there is 11 types defined, but do the calculation anyway...
+    // Currently there is 12 types defined, but do the calculation anyway...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     NonEmptyString value;
@@ -164,67 +164,73 @@ class DataStoreTest : public ::testing::Test {
       value = NonEmptyString(RandomAlphaNumericString(size));
       switch (type_number) {
         case 0: {
-          TaggedValue<Identity, passport::detail::AnmidTag> key;
+          passport::Anmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 1: {
-          TaggedValue<Identity, passport::detail::AnsmidTag> key;
+          passport::Ansmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 2: {
-          TaggedValue<Identity, passport::detail::AntmidTag> key;
+          passport::Antmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 3: {
-          TaggedValue<Identity, passport::detail::AnmaidTag> key;
+          passport::Anmaid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 4: {
-          TaggedValue<Identity, passport::detail::MaidTag> key;
+          passport::Maid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 5: {
-          TaggedValue<Identity, passport::detail::PmidTag> key;
+          passport::Pmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 6: {
-          TaggedValue<Identity, passport::detail::MidTag> key;
+          passport::Mid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 7: {
-          TaggedValue<Identity, passport::detail::SmidTag> key;
+          passport::Smid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 8: {
-          TaggedValue<Identity, passport::detail::TmidTag> key;
+          passport::Tmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 9: {
-          TaggedValue<Identity, passport::detail::AnmpidTag> key;
+          passport::Anmpid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 10: {
-          TaggedValue<Identity, passport::detail::MpidTag> key;
+          passport::Mpid::name_type key;
+          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          container.push_back(std::make_pair(key, value));
+          break;
+        }
+        case 11: {
+          ImmutableData::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
@@ -235,22 +241,23 @@ class DataStoreTest : public ::testing::Test {
   }
 
   KeyType GetRandomKey() {
-    // Currently 11 types are defined, but...
+    // Currently 12 types are defined, but...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return TaggedValue<Identity, passport::detail::AnmidTag>();
-      case  1: return TaggedValue<Identity, passport::detail::AnsmidTag>();
-      case  2: return TaggedValue<Identity, passport::detail::AntmidTag>();
-      case  3: return TaggedValue<Identity, passport::detail::AnmaidTag>();
-      case  4: return TaggedValue<Identity, passport::detail::MaidTag>();
-      case  5: return TaggedValue<Identity, passport::detail::PmidTag>();
-      case  6: return TaggedValue<Identity, passport::detail::MidTag>();
-      case  7: return TaggedValue<Identity, passport::detail::SmidTag>();
-      case  8: return TaggedValue<Identity, passport::detail::TmidTag>();
-      case  9: return TaggedValue<Identity, passport::detail::AnmpidTag>();
-      case 10: return TaggedValue<Identity, passport::detail::MpidTag>();
+      case  0: return passport::Anmid::name_type();
+      case  1: return passport::Ansmid::name_type();
+      case  2: return passport::Antmid::name_type();
+      case  3: return passport::Anmaid::name_type();
+      case  4: return passport::Maid::name_type();
+      case  5: return passport::Pmid::name_type();
+      case  6: return passport::Mid::name_type();
+      case  7: return passport::Smid::name_type();
+      case  8: return passport::Tmid::name_type();
+      case  9: return passport::Anmpid::name_type();
+      case 10: return passport::Mpid::name_type();
+      case 11: return ImmutableData::name_type();
       // default:
         // Throw something!
       //  ;
@@ -466,24 +473,24 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
-//        return current_index == 1;
-//    }));
-//  }
-//  EXPECT_EQ(1, current_index);
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
+        return current_index == 1;
+    }));
+  }
+  EXPECT_EQ(1, current_index);
 
   value = this->GenerateKeyValueData(key, 2 * OneKB);
   // Trigger pop...
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
-//        return current_index == 3;
-//    }));
-//  }
-//  EXPECT_EQ(3, current_index);
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
+        return current_index == 3;
+    }));
+  }
+  EXPECT_EQ(3, current_index);
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
 
@@ -591,18 +598,18 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
                                               this->data_store_->Store(key, value);
                                           }));
   }
-//  {
-//    std::unique_lock<std::mutex> pop_lock(pop_mutex);
-//    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
-//                                      [&]()->bool {
-//                                          return current_index == num_entries;
-//                                      }));
-//  }
+  {
+    std::unique_lock<std::mutex> pop_lock(pop_mutex);
+    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
+                                      [&]()->bool {
+                                          return current_index == num_entries;
+                                      }));
+  }
   for (auto key_value : new_key_value_pairs) {
     EXPECT_NO_THROW(recovered = this->data_store_->Get(key_value.first));
     EXPECT_EQ(key_value.second, recovered);
   }
-//  EXPECT_EQ(num_entries, current_index);
+  EXPECT_EQ(num_entries, current_index);
 }
 
 TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {

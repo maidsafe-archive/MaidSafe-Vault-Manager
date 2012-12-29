@@ -9,8 +9,6 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/data_types/data_types.h"
-
 #include <string>
 
 #include "maidsafe/common/test.h"

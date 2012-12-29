@@ -30,15 +30,18 @@ ImmutableData::ImmutableData(const name_type& name, const NonEmptyString& conten
 
 ImmutableData::ImmutableData(const NonEmptyString& serialised_data) : data_(), name_() {
   data_types::proto::Content data_proto;
-  data_proto.ParseFromString(serialised_data.string());
-  // name_ = Identity(data_proto.name());
-  // data_ = NonEmptyString(data_proto.content().data());
-  Validate();
+  if (data_proto.ParseFromString(serialised_data.string())) {
+    data_ = NonEmptyString(data_proto.data());
+    name_.data = crypto::Hash<crypto::SHA512>(data_);
+    // Validate();
+  } else {
+    ThrowError(CommonErrors::invalid_parameter);
+  }
 }
 
 void ImmutableData::Validate() {
-  // if (name_ != crypto::Hash<crypto::SHA512>(data_))
-  //   ThrowError(CommonErrors::hashing_error);
+  if (name_.data != crypto::Hash<crypto::SHA512>(data_))
+    ThrowError(CommonErrors::hashing_error);
 }
 
 ImmutableData::name_type ImmutableData::name() const {
@@ -47,13 +50,12 @@ ImmutableData::name_type ImmutableData::name() const {
 
 NonEmptyString ImmutableData::Serialise() const {
   data_types::proto::Content data_proto;
-//   data_types::proto::Content content_proto;
-//   data_proto.set_type(priv::data_types::proto::kDataType::ImmutableData);
-//   data_proto.set_name(name_.string());
-//   content_proto.set_data(data_.string());
-//   data_proto.mutable_content()->CopyFrom(content_proto);
+  data_proto.set_data(data_.string());
   return NonEmptyString(data_proto.SerializeAsString());
+}
 
+NonEmptyString ImmutableData::data() const {
+  return data_;
 }
 
 }  // namespace maidsafe
