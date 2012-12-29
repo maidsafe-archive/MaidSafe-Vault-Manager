@@ -29,7 +29,7 @@
 namespace maidsafe {
 
 struct MutableDataTag {
-  static const int kEnumValue = static_cast<int>(detail::DataTagValues::kMutableDataValue);
+  static const detail::DataTagValue kEnumValue = detail::DataTagValue::kMutableDataValue;
 };
 
 class MutableData {
@@ -53,7 +53,7 @@ class MutableData {
   NonEmptyString data() const { return data_; }
   asymm::Signature signature() { return signature_; }
   int32_t version() const { return version_; }
-  static int type_enum_value() { return MutableDataTag::kEnumValue; }
+  static detail::DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
 
  private:
   name_type name_;

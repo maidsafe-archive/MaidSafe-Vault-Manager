@@ -62,4 +62,3 @@ ImmutableData::serialised_type ImmutableData::Serialise() const {
 }
 
 }  // namespace maidsafe
-

@@ -26,7 +26,7 @@
 namespace maidsafe {
 
 struct ImmutableDataTag {
-  static const int kEnumValue = static_cast<int>(detail::DataTagValues::kImmutableDataValue);
+  static const detail::DataTagValue kEnumValue = detail::DataTagValue::kImmutableDataValue;
 };
 
 class ImmutableData {
@@ -45,7 +45,7 @@ class ImmutableData {
 
   name_type name() const { return name_; }
   NonEmptyString data() const { return data_; }
-  static int type_enum_value() { return ImmutableDataTag::kEnumValue; }
+  static detail::DataTagValue type_enum_value() { return ImmutableDataTag::kEnumValue; }
 
  private:
   void Validate() const;
@@ -56,4 +56,3 @@ class ImmutableData {
 }  // namespace maidsafe
 
 #endif  // MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_
-

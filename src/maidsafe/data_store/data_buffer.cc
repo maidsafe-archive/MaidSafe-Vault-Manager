@@ -412,7 +412,7 @@ void DataBuffer::SetMaxDiskUsage(DiskUsage max_disk_usage) {
 
 fs::path DataBuffer::GetFilename(const KeyType& key) {
   return kDiskBuffer_ / (EncodeToBase32(boost::apply_visitor(get_identity_, key))
-            + boost::lexical_cast<std::string>(boost::apply_visitor(get_tag_, key)));
+        + boost::lexical_cast<std::string>(static_cast<int>(boost::apply_visitor(get_tag_, key))));
 }
 
 template<typename T>

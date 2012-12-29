@@ -87,4 +87,3 @@ MutableData::serialised_type MutableData::Serialise() const {
 }
 
 }  // namespace maidsafe
-
