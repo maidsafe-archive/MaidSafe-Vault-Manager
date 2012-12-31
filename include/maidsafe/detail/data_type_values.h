@@ -32,6 +32,61 @@ enum class DataTagValue {
   kMutableDataValue
 };
 
+
+template <typename Elem, typename Traits>
+std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& ostream,
+                                             const DataTagValue &data_type) {
+  std::string data_type_str;
+  switch (data_type) {
+    case DataTagValue::kAnmidValue:
+      data_type_str = "ANMID";
+      break;
+    case DataTagValue::kAnsmidValue:
+      data_type_str = "ANSMID";
+      break;
+    case DataTagValue::kAntmidValue:
+      data_type_str = "ANTMID";
+      break;
+    case DataTagValue::kAnmaidValue:
+      data_type_str = "ANMAID";
+      break;
+    case DataTagValue::kMaidValue:
+      data_type_str = "MAID";
+      break;
+    case DataTagValue::kPmidValue:
+      data_type_str = "PMID";
+      break;
+    case DataTagValue::kMidValue:
+      data_type_str = "MID";
+      break;
+    case DataTagValue::kSmidValue:
+      data_type_str = "SMID";
+      break;
+    case DataTagValue::kTmidValue:
+      data_type_str = "TMID";
+      break;
+    case DataTagValue::kAnmpidValue:
+      data_type_str = "ANMPID";
+      break;
+    case DataTagValue::kMpidValue:
+      data_type_str = "MPID";
+      break;
+    case DataTagValue::kImmutableDataValue:
+      data_type_str = "Immutable Data";
+      break;
+    case DataTagValue::kMutableDataValue:
+      data_type_str = "Mutable Data";
+      break;
+    default:
+      data_type_str = "Invalid data type";
+      break;
+  }
+
+  for (std::string::iterator itr(data_type_str.begin()); itr != data_type_str.end(); ++itr)
+    ostream << ostream.widen(*itr);
+  return ostream;
+}
+
 }  // namespace detail
 
 }  // namespace maidsafe
