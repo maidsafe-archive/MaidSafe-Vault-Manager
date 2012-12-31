@@ -16,14 +16,13 @@ namespace maidsafe {
 
 namespace detail {
 
-enum class DataTagValue : int {
-  kAnmidValue = 0,
+enum class DataTagValue {
+  kAnmidValue,
   kAnsmidValue,
   kAntmidValue,
   kAnmaidValue,
   kMaidValue,
   kPmidValue,
-  kAnpmidValue,
   kMidValue,
   kSmidValue,
   kTmidValue,
