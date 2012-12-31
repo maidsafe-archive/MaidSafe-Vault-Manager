@@ -53,6 +53,9 @@ class ImmutableData {
   NonEmptyString data_;
 };
 
+template<>
+struct is_long_term_cacheable<ImmutableData> : public std::true_type {};
+
 }  // namespace maidsafe
 
 #endif  // MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_

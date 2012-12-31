@@ -62,6 +62,9 @@ class MutableData {
   int32_t version_;
 };
 
+template<>
+struct is_short_term_cacheable<MutableData> : public std::true_type {};
+
 }  // namespace maidsafe
 
 #endif  // MAIDSAFE_DATA_TYPES_MUTABLE_DATA_H_

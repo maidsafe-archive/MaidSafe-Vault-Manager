@@ -24,6 +24,10 @@ namespace test {
 
 TEST(DataTypesTest, BEH_ConstructType) {
   // EXPECT_NO_THROW(DataHolder data_holder);
+  static_assert(is_short_term_cacheable<MutableData>::value, "");
+  static_assert(!is_short_term_cacheable<ImmutableData>::value, "");
+  static_assert(!is_long_term_cacheable<MutableData>::value, "");
+  static_assert(is_long_term_cacheable<ImmutableData>::value, "");
 }
 
 }  // namespace test
