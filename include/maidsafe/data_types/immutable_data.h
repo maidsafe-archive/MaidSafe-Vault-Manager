@@ -56,6 +56,9 @@ class ImmutableData {
 template<>
 struct is_long_term_cacheable<ImmutableData> : public std::true_type {};
 
+template<>
+struct is_payable<ImmutableData> : public std::true_type {};
+
 }  // namespace maidsafe
 
 #endif  // MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_
