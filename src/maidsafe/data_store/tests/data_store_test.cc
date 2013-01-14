@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "boost/filesystem/path.hpp"
+#include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/test.h"
