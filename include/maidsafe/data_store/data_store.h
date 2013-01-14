@@ -80,9 +80,6 @@ class DataStore
     StoragePolicy::Delete(key);
   }
 
-  // void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
-  // void SetMaxDiskUsage(DiskUsage max_disk_usage);
-
  private:
   DataStore(const DataStore&);
   DataStore& operator=(const DataStore&);

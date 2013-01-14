@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "boost/filesystem/path.hpp"
+#include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/test.h"
@@ -156,7 +157,7 @@ class DataStoreTest : public ::testing::Test {
   }
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
-    // Currently there is 12 types defined, but do the calculation anyway...
+    // Currently there is 13 types defined, but do the calculation anyway...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     NonEmptyString value;
@@ -236,13 +237,19 @@ class DataStoreTest : public ::testing::Test {
           container.push_back(std::make_pair(key, value));
           break;
         }
+        case 12: {
+          MutableData::name_type key;
+          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          container.push_back(std::make_pair(key, value));
+          break;
+        }
       }
     }
     return;
   }
 
   KeyType GetRandomKey() {
-    // Currently 12 types are defined, but...
+    // Currently 13 types are defined, but...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     type_number = RandomUint32() % number_of_types;
@@ -259,6 +266,7 @@ class DataStoreTest : public ::testing::Test {
       case  9: return passport::Anmpid::name_type();
       case 10: return passport::Mpid::name_type();
       case 11: return ImmutableData::name_type();
+      case 12: return MutableData::name_type();
       // default:
         // Throw something!
       //  ;
