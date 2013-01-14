@@ -24,9 +24,9 @@ file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
 
 include_directories(${common_SOURCE_DIR}/include)
+include_directories(${passport_SOURCE_DIR}/include)
 include_directories(${rudp_SOURCE_DIR}/include)
 include_directories(${routing_SOURCE_DIR}/include)
-include_directories(${passport_SOURCE_DIR}/include)
 
 
 ###################################################################################################
