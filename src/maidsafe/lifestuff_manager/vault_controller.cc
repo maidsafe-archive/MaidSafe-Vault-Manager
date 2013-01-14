@@ -15,6 +15,7 @@
 #include <iterator>
 
 #include "boost/algorithm/string.hpp"
+#include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/config.h"
 #include "maidsafe/common/error.h"
