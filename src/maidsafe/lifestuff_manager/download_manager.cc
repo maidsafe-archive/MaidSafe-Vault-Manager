@@ -24,6 +24,7 @@
 #include "boost/asio/read_until.hpp"
 #include "boost/asio/write.hpp"
 #include "boost/filesystem/fstream.hpp"
+#include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"

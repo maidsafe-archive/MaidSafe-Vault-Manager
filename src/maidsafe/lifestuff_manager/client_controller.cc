@@ -14,6 +14,8 @@
 #include <chrono>
 #include <limits>
 
+#include "boost/filesystem/operations.hpp"
+
 #include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
