@@ -67,9 +67,8 @@ MutableData::MutableData(const name_type& name, const serialised_type& serialise
       signature_(),
       version_(0) {
   protobuf::MutableData proto_mutable_data;
-  // TODO(Fraser#5#): 2012-12-29 - Add PrivateErrors to Common and use here
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data.data.string()))
-    ThrowError(CommonErrors::invalid_parameter);
+    ThrowError(CommonErrors::parsing_error);
   data_ = NonEmptyString(proto_mutable_data.data());
   if (proto_mutable_data.has_signature())
     signature_ = asymm::Signature(proto_mutable_data.signature());
