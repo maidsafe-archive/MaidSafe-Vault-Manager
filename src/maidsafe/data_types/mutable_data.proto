@@ -6,6 +6,6 @@ message MutableData {
     required bytes data = 1;
     optional int32 version = 2;
   }
-  required bytes serialised_data = 1;
+  required bytes serialised_content = 1;
   optional bytes signature = 2;
 }
