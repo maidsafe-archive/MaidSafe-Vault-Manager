@@ -69,7 +69,7 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
     : memory_store_(max_memory_usage),
       disk_store_(max_disk_usage),
       kPopFunctor_(pop_functor),
-      kDiskBuffer_(fs::unique_path(fs::temp_directory_path() / "KVB-%%%%-%%%%-%%%%-%%%%")),
+      kDiskBuffer_(fs::unique_path(fs::temp_directory_path() / "DB-%%%%-%%%%-%%%%-%%%%")),
       kShouldRemoveRoot_(true),
       running_(true),
       worker_(),
@@ -100,6 +100,17 @@ void DataBuffer::Init() {
     ThrowError(CommonErrors::invalid_parameter);
   }
   InitialiseDiskRoot(kDiskBuffer_);
+  try {
+    fs::directory_iterator it(kDiskBuffer_), end;
+    for (; it != end; ++it) {
+      disk_store_.index.push_back(DiskElement(GetType(it->path().filename().string())));
+      disk_store_.current.data += fs::file_size(*it);
+    }
+  }
+  catch(const std::exception &e) {
+    LOG(kError) << e.what();
+    ThrowError(CommonErrors::invalid_parameter);
+  }
   worker_ = std::async(std::launch::async, &DataBuffer::CopyQueueToDisk, this);
 }
 
@@ -131,14 +142,23 @@ DataBuffer::~DataBuffer() {
 
 void DataBuffer::Store(const KeyType& key, const NonEmptyString& value) {
   try {
-    Delete(key);
-    LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
-               << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+    bool on_disk(false);
+    {
+      std::unique_lock<std::mutex> disk_store_lock(disk_store_.mutex);
+      auto it = Find<Storage<DiskUsage, DiskIndex> >(disk_store_, key);
+      on_disk = it != disk_store_.index.end();
+    }
+    if (on_disk) {
+      Delete(key);
+      LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
+                 << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+    }
   }
   catch(const std::exception&) {
     LOG(kInfo) << "Storing value " << EncodeToBase32(value) << " with key "
                << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
   }
+
   CheckWorkerIsStillRunning();
   if (!StoreInMemory(key, value))
     StoreOnDisk(key, value);
@@ -413,6 +433,30 @@ void DataBuffer::SetMaxDiskUsage(DiskUsage max_disk_usage) {
 fs::path DataBuffer::GetFilename(const KeyType& key) {
   return kDiskBuffer_ / (EncodeToBase32(boost::apply_visitor(get_identity_, key))
         + boost::lexical_cast<std::string>(static_cast<int>(boost::apply_visitor(get_tag_, key))));
+}
+
+DataBuffer::KeyType DataBuffer::GetType(const std::string& key) const {
+  uint32_t id(boost::lexical_cast<uint32_t>(key.back()));
+  Identity key_id(Identity(std::string(key.begin(), --key.end())));
+  switch (id) {
+    case  0: return passport::PublicAnmid::name_type(key_id);
+    case  1: return passport::PublicAnsmid::name_type(key_id);
+    case  2: return passport::PublicAntmid::name_type(key_id);
+    case  3: return passport::PublicAnmaid::name_type(key_id);
+    case  4: return passport::PublicMaid::name_type(key_id);
+    case  5: return passport::PublicPmid::name_type(key_id);
+    case  6: return passport::Mid::name_type(key_id);
+    case  7: return passport::Smid::name_type(key_id);
+    case  8: return passport::Tmid::name_type(key_id);
+    case  9: return passport::PublicAnmpid::name_type(key_id);
+    case 10: return passport::PublicMpid::name_type(key_id);
+    case 11: return ImmutableData::name_type(key_id);
+    case 12: return MutableData::name_type(key_id);
+    default: {
+      ThrowError(CommonErrors::invalid_parameter);
+      return KeyType();
+    }
+  }
 }
 
 template<typename T>
