@@ -39,11 +39,9 @@ ImmutableData& ImmutableData::operator=(ImmutableData&& other) {
   return *this;
 }
 
-ImmutableData::ImmutableData(const name_type& name, const NonEmptyString& content)
-    : name_(name),
-      data_(content) {
-  Validate();
-}
+ImmutableData::ImmutableData(const NonEmptyString& content)
+    : name_(name_type(crypto::Hash<crypto::SHA512>(content))),
+      data_(content) {}
 
 ImmutableData::ImmutableData(const name_type& name,
                              const serialised_type& serialised_immutable_data)

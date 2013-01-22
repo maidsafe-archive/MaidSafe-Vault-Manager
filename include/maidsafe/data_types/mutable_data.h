@@ -42,31 +42,27 @@ class MutableData {
   MutableData(MutableData&& other);
   MutableData& operator=(MutableData&& other);
 
-  MutableData(const name_type& name,
-              const NonEmptyString& data,
-              int32_t version,
-              const asymm::PrivateKey& signing_key);
+  explicit MutableData(const NonEmptyString& data);
+  MutableData(const NonEmptyString& data, const asymm::PrivateKey& signing_key);
   MutableData(const name_type& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
   name_type name() const { return name_; }
   NonEmptyString data() const { return data_; }
-  int32_t version() const { return version_; }
   asymm::Signature signature() { return signature_; }
   static detail::DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
 
  private:
+  void Validate(const serialised_type& serialised_mutable_data) const;
+  name_type CalculateName();
+
   name_type name_;
   NonEmptyString data_;
-  int32_t version_;
   asymm::Signature signature_;
 };
 
 template<>
 struct is_short_term_cacheable<MutableData> : public std::true_type {};
-
-template<>
-struct is_mutable<MutableData> : public std::true_type {};
 
 }  // namespace maidsafe
 

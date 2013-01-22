@@ -39,7 +39,7 @@ class ImmutableData {
   ImmutableData(ImmutableData&& other);
   ImmutableData& operator=(ImmutableData&& other);
 
-  ImmutableData(const name_type& name, const NonEmptyString& content);
+  explicit ImmutableData(const NonEmptyString& content);
   ImmutableData(const name_type& name, const serialised_type& serialised_immutable_data);
   serialised_type Serialise() const;
 

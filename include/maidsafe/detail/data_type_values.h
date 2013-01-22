@@ -12,6 +12,9 @@
 #ifndef MAIDSAFE_DETAIL_DATA_TYPE_VALUES_H_
 #define MAIDSAFE_DETAIL_DATA_TYPE_VALUES_H_
 
+#include <string>
+
+
 namespace maidsafe {
 
 namespace detail {

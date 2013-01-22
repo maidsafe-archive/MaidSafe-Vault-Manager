@@ -2,10 +2,6 @@ package maidsafe.protobuf;
 option optimize_for = LITE_RUNTIME;
 
 message MutableData {
-  message Content {
-    required bytes data = 1;
-    optional int32 version = 2;
-  }
-  required bytes serialised_content = 1;
+  required bytes data = 1;
   optional bytes signature = 2;
 }
