@@ -41,23 +41,61 @@ namespace data_store {
 
 namespace {
 
-void InitialiseDiskRoot(const fs::path& disk_root) {
+struct UsedSpace {
+  UsedSpace() {}
+  UsedSpace(UsedSpace&& other)
+    : disk_usage_(std::move(other.disk_usage_))
+  {}
+
+  DiskUsage disk_usage_;
+};
+
+UsedSpace GetUsedSpace(fs::path&& directory) {
+  UsedSpace used_space;
+  for (fs::directory_iterator it(directory); it != fs::directory_iterator(); ++it) {
+    if (fs::is_regular_file(*it))
+      used_space.disk_usage_.data += fs::file_size(*it);
+  }
+  return used_space;
+}
+
+DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
   boost::system::error_code error_code;
+  DiskUsage disk_usage(0);
   if (!fs::exists(disk_root, error_code)) {
     if (!fs::create_directories(disk_root, error_code)) {
       LOG(kError) << "Can't create disk root at " << disk_root << ": " << error_code.message();
       ThrowError(CommonErrors::uninitialised);
-      return;
+      return disk_usage;
+    }
+  } else {
+    std::vector<fs::path> dirs_to_do;
+    dirs_to_do.push_back(disk_root);
+    while (!dirs_to_do.empty()) {
+      std::vector<std::future<UsedSpace> > futures;
+      for (uint32_t i = 0; i < 16 && !dirs_to_do.empty(); ++i) {
+        auto future = std::async(&GetUsedSpace, std::move(dirs_to_do.back()));
+        dirs_to_do.pop_back();
+        futures.push_back(std::move(future));
+      }
+      try {
+        while (!futures.empty()) {
+          auto future = std::move(futures.back());
+          futures.pop_back();
+          auto result = future.get();
+          disk_usage.data += result.disk_usage_.data;
+        }
+      }
+      catch(std::system_error& exception) {
+        LOG(kError) << exception.what();
+        ThrowError(CommonErrors::filesystem_io_error);
+      }
+      catch(...) {
+        ThrowError(CommonErrors::invalid_parameter);
+      }
     }
   }
-  // Check disk_root is writable...
-  fs::path test_file(disk_root / "TestFile");
-  if (!WriteFile(test_file, "Test")) {
-    LOG(kError) << "Can't write file " << test_file;
-    ThrowError(CommonErrors::uninitialised);
-    return;
-  }
-  fs::remove(test_file);
+  return disk_usage;
 }
 
 }  // unnamed namespace
@@ -65,21 +103,26 @@ void InitialiseDiskRoot(const fs::path& disk_root) {
 PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_disk_usage)
     : kDiskPath_(disk_path),
       max_disk_usage_(max_disk_usage),
-      current_disk_usage_(0),
+      current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
       kDepth_(5),
       get_identity_(),
       get_tag_() {
-  InitialiseDiskRoot(kDiskPath_);
-  try {
-    fs::directory_iterator it(kDiskPath_), end;
+  if (current_disk_usage_ > max_disk_usage_)
+    ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
+
+  // InitialiseDiskRoot(kDiskPath_);
+  /*try {
+    fs::recursive_directory_iterator it(kDiskPath_), end;
     for (; it != end; ++it) {
       boost::system::error_code error_code;
-      uint64_t file_size(fs::file_size(*it, error_code));
-      if (error_code) {
-        LOG(kError) << "Error getting file size of " << *it << ": " << error_code.message();
-        ThrowError(CommonErrors::filesystem_io_error);
+      if (fs::is_regular_file(*it)) {
+        uint64_t file_size(fs::file_size(*it, error_code));
+        if (error_code) {
+          LOG(kError) << "Error getting file size of " << *it << ": " << error_code.message();
+          ThrowError(CommonErrors::filesystem_io_error);
+        }
+        current_disk_usage_.data += file_size;
       }
-      current_disk_usage_.data += file_size;
     }
     if (current_disk_usage_ > max_disk_usage_)
       ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
@@ -87,13 +130,16 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
   catch(const std::exception& exception) {
     LOG(kError) << exception.what();
     ThrowError(CommonErrors::invalid_parameter);
-  }
+  }*/
 }
 
 PermanentStore::~PermanentStore() {}
 
 void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
+  if (!fs::exists(kDiskPath_))
+    ThrowError(CommonErrors::filesystem_io_error);
+
   if (!HasDiskSpace(value.string().size())) {
     LOG(kError) << "Cannot store "
                 << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " since its "
@@ -106,7 +152,7 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
                 << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " to disk.";
     ThrowError(CommonErrors::filesystem_io_error);
   }
-  current_disk_usage_.data += value.string().size();
+   current_disk_usage_.data += value.string().size();
 }
 
 void PermanentStore::Delete(const KeyType& key) {
@@ -146,7 +192,7 @@ bool PermanentStore::HasDiskSpace(const uint64_t& required_space) const {
 }
 
 fs::path PermanentStore::KeyToFilePath(const KeyType& key) {
-  Identity file_name(EncodeToBase32(GetFilePath(key).filename().string()));
+  NonEmptyString file_name(GetFilePath(key).filename().string());
 
   uint32_t directory_depth = kDepth_;
   if (file_name.string().length() < directory_depth)
