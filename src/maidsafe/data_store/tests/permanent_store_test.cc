@@ -328,236 +328,31 @@ TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, 2 * OneKB), recovered;
   KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-  /*auto async = std::async(std::launch::async, [this, key, value] {
-                                                  permanent_store_->Put(key, value);
-                                              });*/
   EXPECT_THROW(permanent_store_->Put(key, value), std::exception);
   EXPECT_THROW(recovered = permanent_store_->Get(key), std::exception);
   EXPECT_NO_THROW(permanent_store_->Delete(first_key));
   EXPECT_NO_THROW(permanent_store_->Delete(second_key));
-  //EXPECT_NO_THROW(async.wait());
   EXPECT_NO_THROW(permanent_store_->Put(key, value));
   EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
   EXPECT_EQ(recovered, value);
-  EXPECT_TRUE(DeleteDirectory(permanent_store_path_));
-}
-
-TEST_F(PermanentStoreTest, BEH_PopOnDiskStoreOverfill) {
-  //typedef typename PermanentStoreTest<TypeParam>::KeyValueContainer KeyValueContainer;
-  //typedef typename TypeParam::KeyType KeyType;
-  //typedef typename TypeParam::PopFunctor PopFunctor;
-
-  //size_t current_index(0);
-  //std::mutex pop_mutex;
-  //std::condition_variable pop_cond_var;
-  //KeyValueContainer key_value_pairs;
-  //PopFunctor pop_functor([this, &key_value_pairs, &current_index, &pop_mutex,
-  //                  &pop_cond_var](const KeyType& key, const NonEmptyString& value) {
-  //                      this->PopFunction(key,
-  //                                        value,
-  //                                        key_value_pairs,
-  //                                        current_index,
-  //                                        pop_mutex,
-  //                                        pop_cond_var);
-  //    });
-  //const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
-  //maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  //key_value_pairs = this->PopulateDataStore(num_entries,
-  //                                          num_memory_entries,
-  //                                          num_disk_entries,
-  //                                          test_path,
-  //                                          pop_functor);
-  //EXPECT_EQ(0, current_index);
-
-  //KeyType key(this->GetRandomKey());
-  //NonEmptyString value = this->GenerateKeyValueData(key, OneKB), recovered;
-  //// Trigger pop...
-  //EXPECT_NO_THROW(this->data_store_->Store(key, value));
-  //EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-  //EXPECT_EQ(recovered, value);
-  //{
-  //  std::unique_lock<std::mutex> pop_lock(pop_mutex);
-  //  EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
-  //      return current_index == 1;
-  //  }));
-  //}
-  //EXPECT_EQ(1, current_index);
-
-  //value = this->GenerateKeyValueData(key, 2 * OneKB);
-  //// Trigger pop...
-  //EXPECT_NO_THROW(this->data_store_->Store(key, value));
-  //{
-  //  std::unique_lock<std::mutex> pop_lock(pop_mutex);
-  //  EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
-  //      return current_index == 3;
-  //  }));
-  //}
-  //EXPECT_EQ(3, current_index);
-  //EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-  //EXPECT_EQ(recovered, value);
-
-  //EXPECT_TRUE(this->DeleteDirectory(this->data_store_path_));
-}
-
-TEST_F(PermanentStoreTest, BEH_AsyncDeleteOnDiskStoreOverfill) {
-  //typedef typename PermanentStoreTest<TypeParam>::KeyValueContainer KeyValueContainer;
-  //typedef typename TypeParam::KeyType KeyType;
-
-  //KeyValueContainer old_key_value_pairs, new_key_value_pairs;
-  //const size_t num_entries(6), num_memory_entries(0), num_disk_entries(6);
-  //maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  //old_key_value_pairs = this->PopulateDataStore(num_entries,
-  //                                              num_memory_entries,
-  //                                              num_disk_entries,
-  //                                              test_path,
-  //                                              this->pop_functor_);
-  //this->AddRandomKeyValuePairs(new_key_value_pairs, num_entries, OneKB);
-
-  //NonEmptyString value, recovered;
-  //KeyType key;
-  //std::vector<std::future<void>> async_stores;
-  //for (auto key_value : new_key_value_pairs) {
-  //  value = key_value.second;
-  //  key = key_value.first;
-  //  async_stores.push_back(std::async(std::launch::async,
-  //                                    [this, key, value] {
-  //                                        this->data_store_->Store(key, value);
-  //                                    }));
-  //}
-  //// Check the new Store attempts all block pending some Deletes
-  //for (auto& async_store : async_stores) {
-  //  auto status(async_store.wait_for(std::chrono::milliseconds(250)));
-  //  EXPECT_EQ(std::future_status::timeout, status);
-  //}
-
-  //std::vector<std::future<NonEmptyString>> async_gets;
-  //for (auto key_value : new_key_value_pairs) {
-  //  async_gets.push_back(std::async(std::launch::async,
-  //                                  [this, key_value] {
-  //                                      return this->data_store_->Get(key_value.first);
-  //                                  }));
-  //}
-  //// Check Get attempts for the new Store values all block pending the Store attempts completing
-  //for (auto& async_get : async_gets) {
-  //  auto status(async_get.wait_for(std::chrono::milliseconds(100)));
-  //  EXPECT_EQ(std::future_status::timeout, status);
-  //}
-  //// Delete the last new Store attempt before it has completed
-  //EXPECT_NO_THROW(this->data_store_->Delete(new_key_value_pairs.back().first));
-  //// Delete the old values to allow the new Store attempts to complete
-  //for (auto key_value : old_key_value_pairs)
-  //  EXPECT_NO_THROW(this->data_store_->Delete(key_value.first));
-
-  //for (size_t i(0); i != num_entries - 1; ++i) {
-  //  auto status(async_gets[i].wait_for(std::chrono::milliseconds(100)));
-  //  ASSERT_EQ(std::future_status::ready, status);
-  //  recovered = async_gets[i].get();
-  //  EXPECT_EQ(new_key_value_pairs[i].second, recovered);
-  //}
-
-  //auto status(async_gets.back().wait_for(std::chrono::milliseconds(100)));
-  //EXPECT_EQ(std::future_status::ready, status);
-  //EXPECT_THROW(async_gets.back().get(), std::exception);
-}
-
-TEST_F(PermanentStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
-  //typedef typename PermanentStoreTest<TypeParam>::KeyValueContainer KeyValueContainer;
-  //typedef typename TypeParam::KeyType KeyType;
-  //typedef typename TypeParam::PopFunctor PopFunctor;
-
-  //size_t current_index(0);
-  //std::mutex pop_mutex;
-  //std::condition_variable pop_cond_var;
-  //KeyValueContainer old_key_value_pairs, new_key_value_pairs;
-  //PopFunctor pop_functor([this, &old_key_value_pairs, &current_index, &pop_mutex,
-  //                  &pop_cond_var](const KeyType& key, const NonEmptyString& value) {
-  //                      this->PopFunction(key,
-  //                                        value,
-  //                                        old_key_value_pairs,
-  //                                        current_index,
-  //                                        pop_mutex,
-  //                                        pop_cond_var);
-  //    });
-  //const size_t num_entries(6), num_memory_entries(1), num_disk_entries(6);
-  //maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  //old_key_value_pairs = this->PopulateDataStore(num_entries,
-  //                                              num_memory_entries,
-  //                                              num_disk_entries,
-  //                                              test_path,
-  //                                              pop_functor);
-  //EXPECT_EQ(0, current_index);
-
-  //this->AddRandomKeyValuePairs(new_key_value_pairs, num_entries, OneKB);
-
-  //NonEmptyString value, recovered;
-  //KeyType key;
-  //std::vector<std::future<void> > async_operations;
-  //for (auto key_value : new_key_value_pairs) {
-  //  value = key_value.second;
-  //  key = key_value.first;
-  //  async_operations.push_back(std::async(std::launch::async,
-  //                                        [this, key, value] {
-  //                                            this->data_store_->Store(key, value);
-  //                                        }));
-  //}
-  //{
-  //  std::unique_lock<std::mutex> pop_lock(pop_mutex);
-  //  EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
-  //                                    [&]()->bool {
-  //                                        return current_index == num_entries;
-  //                                    }));
-  //}
-  //for (auto key_value : new_key_value_pairs) {
-  //  EXPECT_NO_THROW(recovered = this->data_store_->Get(key_value.first));
-  //  EXPECT_EQ(key_value.second, recovered);
-  //}
-  //EXPECT_EQ(num_entries, current_index);
 }
 
 TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
-  //typedef typename TypeParam::KeyType KeyType;
-  //typedef typename PermanentStoreTest<TypeParam>::GetIdentity GetIdentity;
-  //typedef typename TypeParam::PopFunctor PopFunctor;
+  KeyType key(GetRandomKey());
+  NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % 30) + 1),
+                 recovered, last_value;
+  EXPECT_NO_THROW(permanent_store_->Put(key, value));
+  EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
+  EXPECT_EQ(recovered, value);
 
-  //maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  //this->data_store_path_ = fs::path(*test_path / "data_store");
-  //PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-  //                          GetIdentity get_identity;
-  //                          Identity key_id(boost::apply_visitor(get_identity, key));
-  //                          LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
-  //                                     << "with value " << Base32Substr(value.string());
-  //                      });
-  //this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
-  //                                                 DiskUsage(kDefaultMaxDiskUsage),
-  //                                                 pop_functor,
-  //                                                 this->data_store_path_));
-  //KeyType key(this->GetRandomKey());
-  //NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 30) + 1),
-  //               recovered, last_value;
-  //auto async = std::async(std::launch::async, [this, key, value] {
-  //                                              this->data_store_->Store(key, value);
-  //                                            });
-  //EXPECT_NO_THROW(async.wait());
-  //EXPECT_EQ(true, async.valid());
-  //EXPECT_NO_THROW(async.get());
-  //EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-  //EXPECT_EQ(recovered, value);
-
-  //uint32_t events(RandomUint32() % 100);
-  //for (uint32_t i = 0; i != events; ++i) {
-  //  last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % 30) + 1));
-  //  auto async = std::async(std::launch::async, [this, key, last_value] {
-  //                                                this->data_store_->Store(key, last_value);
-  //                                              });
-  //  EXPECT_NO_THROW(async.wait());
-  //  EXPECT_EQ(true, async.valid());
-  //  EXPECT_NO_THROW(async.get());
-  //}
-  //EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-  //EXPECT_NE(value, recovered);
-  //EXPECT_EQ(last_value, recovered);
-  //this->data_store_.reset();
-  //EXPECT_TRUE(this->DeleteDirectory(this->data_store_path_));
+  uint32_t events(RandomUint32() % 100);
+  for (uint32_t i = 0; i != events; ++i) {
+    last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % 30) + 1));
+    EXPECT_NO_THROW(permanent_store_->Put(key, last_value));
+  }
+  EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
+  EXPECT_NE(value, recovered);
+  EXPECT_EQ(last_value, recovered);
 }
 
 TEST_F(PermanentStoreTest, BEH_RandomAsync) {

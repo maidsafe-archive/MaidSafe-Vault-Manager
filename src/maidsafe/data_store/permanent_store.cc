@@ -147,19 +147,55 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   if (!fs::exists(kDiskPath_))
     ThrowError(CommonErrors::filesystem_io_error);
 
-  if (!HasDiskSpace(value.string().size())) {
-    LOG(kError) << "Cannot store "
-                << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " since its "
-                << value.string().size() << " bytes exceeds max of " << max_disk_usage_
-                << " bytes.";
-    ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
+  fs::path file_path(KeyToFilePath(key));
+  uint32_t value_size(value.string().size());
+  uint64_t file_size(0), size(0);
+  bool increment(true);
+  boost::system::error_code error_code;
+
+  if (fs::exists(file_path, error_code)) {
+    if (error_code) {
+      LOG(kError) << "Unable to determine file status for " << file_path << ": "
+                  << error_code.message();
+      ThrowError(CommonErrors::filesystem_io_error);
+    }
+    file_size = fs::file_size(file_path, error_code);
+    if (error_code) {
+      LOG(kError) << "Error getting file size of " << file_path << ": " << error_code.message();
+      ThrowError(CommonErrors::filesystem_io_error);
+    }
   }
-  if (!WriteFile(KeyToFilePath(key), value.string())) {
+  if (file_size != 0) {
+    if (file_size <= value_size) {
+      size = value_size - file_size;
+    } else {
+      size = file_size - value_size;
+      increment = false;
+    }
+  } else {
+    size = value_size;
+  }
+
+  if (increment) {
+    if (!HasDiskSpace(size)) {
+      LOG(kError) << "Cannot store "
+                  << HexSubstr(boost::apply_visitor(get_identity_, key).string())
+                  << " since the addition of " << size << " bytes exceeds max of "
+                  << max_disk_usage_ << " bytes.";
+      ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
+    }
+  }
+  if (!WriteFile(file_path, value.string())) {
     LOG(kError) << "Failed to write "
                 << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " to disk.";
     ThrowError(CommonErrors::filesystem_io_error);
   }
-   current_disk_usage_.data += value.string().size();
+
+  if (increment) {
+    current_disk_usage_.data += size;
+  } else {
+    current_disk_usage_.data -= size;
+  }
 }
 
 void PermanentStore::Delete(const KeyType& key) {
