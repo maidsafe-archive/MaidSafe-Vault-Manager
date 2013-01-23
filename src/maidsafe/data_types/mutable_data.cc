@@ -49,19 +49,17 @@ MutableData& MutableData::operator=(MutableData&& other) {
 }
 
 
-MutableData::MutableData(const NonEmptyString& data)
-    : name_(),
+MutableData::MutableData(const name_type& name, const NonEmptyString& data)
+    : name_(name),
       data_(data),
-      signature_() {
-  CalculateName();
-}
+      signature_() {}
 
-MutableData::MutableData(const NonEmptyString& data, const asymm::PrivateKey& signing_key)
-    : name_(),
+MutableData::MutableData(const name_type& name,
+                         const NonEmptyString& data,
+                         const asymm::PrivateKey& signing_key)
+    : name_(name),
       data_(data),
-      signature_(asymm::Sign(data, signing_key)) {
-  CalculateName();
-}
+      signature_(asymm::Sign(data, signing_key)) {}
 
 MutableData::MutableData(const name_type& name, const serialised_type& serialised_mutable_data)
     : name_(name),
@@ -73,17 +71,6 @@ MutableData::MutableData(const name_type& name, const serialised_type& serialise
   data_ = NonEmptyString(proto_mutable_data.data());
   if (proto_mutable_data.has_signature())
     signature_ = asymm::Signature(proto_mutable_data.signature());
-  Validate(serialised_mutable_data);
-}
-
-void MutableData::Validate(const serialised_type& serialised_mutable_data) const {
-  if (name_.data != crypto::Hash<crypto::SHA512>(serialised_mutable_data.data))
-    ThrowError(CommonErrors::hashing_error);
-}
-
-MutableData::name_type MutableData::CalculateName() {
-  auto serialised_mutable_data(Serialise());
-  name_ = name_type(crypto::Hash<crypto::SHA512>(serialised_mutable_data.data));
 }
 
 MutableData::serialised_type MutableData::Serialise() const {

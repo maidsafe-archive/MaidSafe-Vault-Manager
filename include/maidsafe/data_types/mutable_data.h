@@ -42,8 +42,10 @@ class MutableData {
   MutableData(MutableData&& other);
   MutableData& operator=(MutableData&& other);
 
-  explicit MutableData(const NonEmptyString& data);
-  MutableData(const NonEmptyString& data, const asymm::PrivateKey& signing_key);
+  MutableData(const name_type& name, const NonEmptyString& data);
+  MutableData(const name_type& name,
+              const NonEmptyString& data,
+              const asymm::PrivateKey& signing_key);
   MutableData(const name_type& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
@@ -53,8 +55,6 @@ class MutableData {
   static detail::DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
 
  private:
-  void Validate(const serialised_type& serialised_mutable_data) const;
-  name_type CalculateName();
 
   name_type name_;
   NonEmptyString data_;
