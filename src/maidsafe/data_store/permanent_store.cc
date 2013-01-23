@@ -44,17 +44,21 @@ namespace {
 struct UsedSpace {
   UsedSpace() {}
   UsedSpace(UsedSpace&& other)
-    : disk_usage_(std::move(other.disk_usage_))
+    : directories(std::move(other.directories)),
+      disk_usage(std::move(other.disk_usage))
   {}
 
-  DiskUsage disk_usage_;
+  std::vector<fs::path> directories;
+  DiskUsage disk_usage;
 };
 
 UsedSpace GetUsedSpace(fs::path&& directory) {
   UsedSpace used_space;
   for (fs::directory_iterator it(directory); it != fs::directory_iterator(); ++it) {
-    if (fs::is_regular_file(*it))
-      used_space.disk_usage_.data += fs::file_size(*it);
+    if (fs::is_directory(*it))
+      used_space.directories.push_back(it->path());
+    else
+      used_space.disk_usage.data += fs::file_size(*it);
   }
   return used_space;
 }
@@ -68,11 +72,11 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       ThrowError(CommonErrors::uninitialised);
       return disk_usage;
     }
-  } else {
+  }/* else {
     std::vector<fs::path> dirs_to_do;
     dirs_to_do.push_back(disk_root);
     while (!dirs_to_do.empty()) {
-      std::vector<std::future<UsedSpace> > futures;
+      std::vector<std::future<UsedSpace>> futures;
       for (uint32_t i = 0; i < 16 && !dirs_to_do.empty(); ++i) {
         auto future = std::async(&GetUsedSpace, std::move(dirs_to_do.back()));
         dirs_to_do.pop_back();
@@ -82,8 +86,11 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
         while (!futures.empty()) {
           auto future = std::move(futures.back());
           futures.pop_back();
-          auto result = future.get();
-          disk_usage.data += result.disk_usage_.data;
+          UsedSpace result = future.get();
+          disk_usage.data += result.disk_usage.data;
+          std::copy(result.directories.begin(),
+                    result.directories.end(),
+                    std::back_inserter(dirs_to_do));
         }
       }
       catch(std::system_error& exception) {
@@ -94,7 +101,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
         ThrowError(CommonErrors::invalid_parameter);
       }
     }
-  }
+  }*/
   return disk_usage;
 }
 
@@ -111,7 +118,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
     ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
 
   // InitialiseDiskRoot(kDiskPath_);
-  /*try {
+  try {
     fs::recursive_directory_iterator it(kDiskPath_), end;
     for (; it != end; ++it) {
       boost::system::error_code error_code;
@@ -130,7 +137,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
   catch(const std::exception& exception) {
     LOG(kError) << exception.what();
     ThrowError(CommonErrors::invalid_parameter);
-  }*/
+  }
 }
 
 PermanentStore::~PermanentStore() {}
