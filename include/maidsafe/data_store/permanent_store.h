@@ -81,6 +81,9 @@ class PermanentStore {
 
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
+  DiskUsage GetMaxDiskUsage();
+  DiskUsage GetCurrentDiskUsage();
+
   friend class test::PermanentStoreTest;
 
  private:

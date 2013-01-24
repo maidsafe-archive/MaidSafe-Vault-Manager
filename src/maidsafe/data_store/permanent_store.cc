@@ -72,7 +72,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       ThrowError(CommonErrors::uninitialised);
       return disk_usage;
     }
-  }/* else {
+  } else {
     std::vector<fs::path> dirs_to_do;
     dirs_to_do.push_back(disk_root);
     while (!dirs_to_do.empty()) {
@@ -101,7 +101,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
         ThrowError(CommonErrors::invalid_parameter);
       }
     }
-  }*/
+  }
   return disk_usage;
 }
 
@@ -116,28 +116,6 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
       get_tag_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
-
-  // InitialiseDiskRoot(kDiskPath_);
-  try {
-    fs::recursive_directory_iterator it(kDiskPath_), end;
-    for (; it != end; ++it) {
-      boost::system::error_code error_code;
-      if (fs::is_regular_file(*it)) {
-        uint64_t file_size(fs::file_size(*it, error_code));
-        if (error_code) {
-          LOG(kError) << "Error getting file size of " << *it << ": " << error_code.message();
-          ThrowError(CommonErrors::filesystem_io_error);
-        }
-        current_disk_usage_.data += file_size;
-      }
-    }
-    if (current_disk_usage_ > max_disk_usage_)
-      ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
-  }
-  catch(const std::exception& exception) {
-    LOG(kError) << exception.what();
-    ThrowError(CommonErrors::invalid_parameter);
-  }
 }
 
 PermanentStore::~PermanentStore() {}
@@ -223,6 +201,14 @@ void PermanentStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   if (current_disk_usage_ > max_disk_usage)
     ThrowError(CommonErrors::invalid_parameter);
   max_disk_usage_ = max_disk_usage;
+}
+
+DiskUsage PermanentStore::GetMaxDiskUsage() {
+  return max_disk_usage_;
+}
+
+DiskUsage PermanentStore::GetCurrentDiskUsage() {
+  return current_disk_usage_;
 }
 
 fs::path PermanentStore::GetFilePath(const KeyType& key) {

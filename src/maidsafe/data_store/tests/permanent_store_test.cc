@@ -99,14 +99,14 @@ class PermanentStoreTest : public ::testing::Test {
 
   KeyValueContainer PopulatePermanentStore(uint32_t num_entries,
                                            uint32_t disk_entries,
-                                           maidsafe::test::TestPath test_path) {
+                                           const fs::path& test_path) {
     boost::system::error_code error_code;
-    permanent_store_path_ = fs::path(*test_path / "permanent_store");
+    permanent_store_path_ = test_path;
     KeyValueContainer key_value_pairs;
     NonEmptyString value, recovered;
     KeyType key;
 
-    if (!fs::exists(*test_path))
+    if (!fs::exists(test_path))
       EXPECT_TRUE(fs::create_directories(permanent_store_path_, error_code))
                   << permanent_store_path_ << ": " << error_code.message();
     EXPECT_EQ(0, error_code.value()) << permanent_store_path_ << ": " << error_code.message();
@@ -123,7 +123,7 @@ class PermanentStoreTest : public ::testing::Test {
       EXPECT_NO_THROW(recovered = permanent_store_->Get(key_value.first));
       EXPECT_EQ(key_value.second, recovered);
     }
-    return key_value_pairs; 
+    return key_value_pairs;
   }
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
@@ -136,37 +136,37 @@ class PermanentStoreTest : public ::testing::Test {
       value = NonEmptyString(RandomAlphaNumericString(size));
       switch (type_number) {
         case 0: {
-          passport::Anmid::name_type key;
+          passport::PublicAnmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 1: {
-          passport::Ansmid::name_type key;
+          passport::PublicAnsmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 2: {
-          passport::Antmid::name_type key;
+          passport::PublicAntmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 3: {
-          passport::Anmaid::name_type key;
+          passport::PublicAnmaid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 4: {
-          passport::Maid::name_type key;
+          passport::PublicMaid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 5: {
-          passport::Pmid::name_type key;
+          passport::PublicPmid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
@@ -190,13 +190,13 @@ class PermanentStoreTest : public ::testing::Test {
           break;
         }
         case 9: {
-          passport::Anmpid::name_type key;
+          passport::PublicAnmpid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 10: {
-          passport::Mpid::name_type key;
+          passport::PublicMpid::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
@@ -224,17 +224,17 @@ class PermanentStoreTest : public ::testing::Test {
              type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return passport::Anmid::name_type();
-      case  1: return passport::Ansmid::name_type();
-      case  2: return passport::Antmid::name_type();
-      case  3: return passport::Anmaid::name_type();
-      case  4: return passport::Maid::name_type();
-      case  5: return passport::Pmid::name_type();
+      case  0: return passport::PublicAnmid::name_type();
+      case  1: return passport::PublicAnsmid::name_type();
+      case  2: return passport::PublicAntmid::name_type();
+      case  3: return passport::PublicAnmaid::name_type();
+      case  4: return passport::PublicMaid::name_type();
+      case  5: return passport::PublicPmid::name_type();
       case  6: return passport::Mid::name_type();
       case  7: return passport::Smid::name_type();
       case  8: return passport::Tmid::name_type();
-      case  9: return passport::Anmpid::name_type();
-      case 10: return passport::Mpid::name_type();
+      case  9: return passport::PublicAnmpid::name_type();
+      case 10: return passport::PublicMpid::name_type();
       case 11: return ImmutableData::name_type();
       case 12: return MutableData::name_type();
       // default:
@@ -328,10 +328,9 @@ TEST_F(PermanentStoreTest, BEH_UnsuccessfulStore) {
 
 TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
   const size_t num_entries(4), num_disk_entries(4);
-  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore"));
   KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
                                                            num_disk_entries,
-                                                           test_path));
+                                                           permanent_store_path_));
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, 2 * OneKB), recovered;
   KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
@@ -342,18 +341,6 @@ TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
   EXPECT_NO_THROW(permanent_store_->Put(key, value));
   EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
   EXPECT_EQ(recovered, value);
-}
-
-TEST_F(PermanentStoreTest, BEH_Restart) {
-  const size_t num_entries(10 * OneKB), disk_entries(1000 * OneKB);
-  KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
-                                                           disk_entries,
-                                                           test_path));
-  DiskUsage disk_usage(1000 * OneKB * OneKB);
-  pt::ptime start_time(pt::microsec_clock::universal_time());
-  permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
-  pt::ptime stop_time(pt::microsec_clock::universal_time());
-  PrintResult(start_time, stop_time);
 }
 
 TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
@@ -372,96 +359,21 @@ TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
   EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
   EXPECT_NE(value, recovered);
   EXPECT_EQ(last_value, recovered);
+  EXPECT_EQ(last_value.string().size(), permanent_store_->GetCurrentDiskUsage().data);
 }
 
-TEST_F(PermanentStoreTest, BEH_Store) {
-  /*typedef typename TypeParam::KeyType KeyType;
-
-  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  std::vector<std::pair<uint32_t, uint32_t>> values;
-  values.push_back(std::make_pair(1, 2));
-  values.push_back(std::make_pair(1, 1024));
-  values.push_back(std::make_pair(8, 1024));
-  values.push_back(std::make_pair(1024, 2048));
-  values.push_back(std::make_pair(1024, 1024));
-  values.push_back(std::make_pair(16, 16 * 1024));
-  values.push_back(std::make_pair(32, 32));
-  values.push_back(std::make_pair(1000, 10000));
-  values.push_back(std::make_pair(10000, 1000000));
-
-  for (uint32_t i = 0; i != values.size(); ++i) {
-    fs::path data_store_path(*test_path / "data_store");
-    this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(values[i].first),
-                                                     DiskUsage(values[i].second),
-                                                     this->pop_functor_,
-                                                     data_store_path));
-    uint32_t disk_usage(values[i].second), memory_usage(values[i].first),
-             total_usage(disk_usage + memory_usage);
-    while (total_usage != 0) {
-      KeyType key(this->GetRandomKey());
-      NonEmptyString value = this->GenerateKeyValueData(key, memory_usage), recovered;
-      EXPECT_NO_THROW(this->data_store_->Store(key, value));
-      EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-      EXPECT_EQ(value, recovered);
-      if (disk_usage != 0) {
-        disk_usage -= memory_usage;
-        total_usage -= memory_usage;
-      } else {
-        total_usage -= memory_usage;
-      }
-    }
-    this->data_store_.reset();
-    EXPECT_TRUE(this->DeleteDirectory(data_store_path));
-  }*/
-}
-
-TEST_F(PermanentStoreTest, BEH_Delete) {
-  /*typedef typename TypeParam::KeyType KeyType;
-
-  maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  std::vector<std::pair<uint32_t, uint32_t>> values;
-  values.push_back(std::make_pair(1, 2));
-  values.push_back(std::make_pair(1, 1024));
-  values.push_back(std::make_pair(8, 1024));
-  values.push_back(std::make_pair(1024, 2048));
-  values.push_back(std::make_pair(1024, 1024));
-  values.push_back(std::make_pair(16, 16 * 1024));
-  values.push_back(std::make_pair(32, 32));
-  values.push_back(std::make_pair(1000, 10000));
-  values.push_back(std::make_pair(10000, 1000000));
-
-  for (uint32_t i = 0; i != values.size(); ++i) {
-    fs::path data_store_path(*test_path / "data_store");
-    this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(values[i].first),
-                                                     DiskUsage(values[i].second),
-                                                     this->pop_functor_,
-                                                     data_store_path));
-    uint32_t disk_usage(values[i].second), memory_usage(values[i].first),
-             total_usage(disk_usage + memory_usage);
-    std::map<KeyType, NonEmptyString> key_value_pairs;
-    while (total_usage != 0) {
-      KeyType key(this->GetRandomKey());
-      NonEmptyString value = this->GenerateKeyValueData(key, memory_usage);
-      key_value_pairs[key] = value;
-      EXPECT_NO_THROW(this->data_store_->Store(key, value));
-      if (disk_usage != 0) {
-        disk_usage -= memory_usage;
-        total_usage -= memory_usage;
-      } else {
-        total_usage -= memory_usage;
-      }
-    }
-    NonEmptyString recovered;
-    for (auto key_value : key_value_pairs) {
-      KeyType key(key_value.first);
-      EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
-      EXPECT_EQ(key_value.second, recovered);
-      EXPECT_NO_THROW(this->data_store_->Delete(key));
-      EXPECT_THROW(recovered = this->data_store_->Get(key), std::exception);
-    }
-    this->data_store_.reset();
-    EXPECT_TRUE(this->DeleteDirectory(data_store_path));
-  }*/
+TEST_F(PermanentStoreTest, BEH_Restart) {
+  const size_t num_entries(100 * OneKB), disk_entries(1000 * OneKB);
+  KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
+                                                           disk_entries,
+                                                           permanent_store_path_));
+  DiskUsage disk_usage(1000 * OneKB * OneKB);
+  std::cout << "Resetting permanent store..." << std::endl;
+  pt::ptime start_time(pt::microsec_clock::universal_time());
+  permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
+  pt::ptime stop_time(pt::microsec_clock::universal_time());
+  PrintResult(start_time, stop_time);
+  EXPECT_EQ(num_entries * OneKB, permanent_store_->GetCurrentDiskUsage().data);
 }
 
 }  // namespace test
