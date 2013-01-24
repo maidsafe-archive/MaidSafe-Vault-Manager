@@ -37,6 +37,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include <utility>
 #include <deque>
+#include <string>
 
 #include "boost/filesystem/path.hpp"
 #include "boost/variant.hpp"
@@ -176,6 +177,7 @@ class DataBuffer {
   void CheckWorkerIsStillRunning();
   void StopRunning();
   boost::filesystem::path GetFilename(const KeyType& key);
+  KeyType GetType(const std::string& key) const;
 
   template<typename T>
   bool HasSpace(const T& store, const uint64_t& required_space);
