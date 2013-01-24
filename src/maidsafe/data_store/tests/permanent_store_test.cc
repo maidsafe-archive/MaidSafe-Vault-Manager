@@ -17,6 +17,8 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
 
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
@@ -24,6 +26,7 @@
 #include "boost/mpl/size.hpp"
 
 namespace fs = boost::filesystem;
+namespace pt = boost::posix_time;
 namespace args = std::placeholders;
 
 namespace maidsafe {
@@ -94,29 +97,27 @@ class PermanentStoreTest : public ::testing::Test {
     return true;
   }
 
-  KeyValueContainer PopulateDataStore(size_t num_entries,
-                                      size_t num_disk_entries,
-                                      maidsafe::test::TestPath test_path) {
+  KeyValueContainer PopulatePermanentStore(uint32_t num_entries,
+                                           uint32_t disk_entries,
+                                           maidsafe::test::TestPath test_path) {
     boost::system::error_code error_code;
     permanent_store_path_ = fs::path(*test_path / "permanent_store");
     KeyValueContainer key_value_pairs;
     NonEmptyString value, recovered;
     KeyType key;
 
-    EXPECT_TRUE(fs::create_directories(permanent_store_path_, error_code)) << permanent_store_path_
-                                                                           << ": "
-                                                                           << error_code.message();
+    if (!fs::exists(*test_path))
+      EXPECT_TRUE(fs::create_directories(permanent_store_path_, error_code))
+                  << permanent_store_path_ << ": " << error_code.message();
     EXPECT_EQ(0, error_code.value()) << permanent_store_path_ << ": " << error_code.message();
     EXPECT_TRUE(fs::exists(permanent_store_path_, error_code)) << permanent_store_path_ << ": "
                                                                << error_code.message();
     EXPECT_EQ(0, error_code.value());
 
-    AddRandomKeyValuePairs(key_value_pairs,
-                           static_cast<uint32_t>(num_entries),
-                           static_cast<uint32_t>(OneKB));
+    AddRandomKeyValuePairs(key_value_pairs, num_entries, OneKB);
 
-    permanent_store_.reset(new PermanentStore(permanent_store_path_,
-                                              DiskUsage(num_disk_entries * OneKB)));
+    DiskUsage disk_usage(disk_entries * OneKB);
+    permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
     for (auto key_value : key_value_pairs) {
       EXPECT_NO_THROW(permanent_store_->Put(key_value.first, key_value.second));
       EXPECT_NO_THROW(recovered = permanent_store_->Get(key_value.first));
@@ -248,6 +249,12 @@ class PermanentStoreTest : public ::testing::Test {
     return boost::apply_visitor(generate_key_value_pair_, key);
   }
 
+  void PrintResult(const pt::ptime& start_time, const pt::ptime& stop_time) {
+    uint64_t duration = (stop_time - start_time).total_microseconds();
+    if (duration == 0) duration = 1;
+    std::cout << "Operation completed in " << duration / 1000000.0 << " secs." << std::endl;
+  }
+
   maidsafe::test::TestPath test_path;
   fs::path permanent_store_path_;
   DiskUsage max_disk_usage_;
@@ -322,9 +329,9 @@ TEST_F(PermanentStoreTest, BEH_UnsuccessfulStore) {
 TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
   const size_t num_entries(4), num_disk_entries(4);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore"));
-  KeyValueContainer key_value_pairs(PopulateDataStore(num_entries,
-                                                      num_disk_entries,
-                                                      test_path));
+  KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
+                                                           num_disk_entries,
+                                                           test_path));
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, 2 * OneKB), recovered;
   KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
@@ -335,6 +342,18 @@ TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
   EXPECT_NO_THROW(permanent_store_->Put(key, value));
   EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
   EXPECT_EQ(recovered, value);
+}
+
+TEST_F(PermanentStoreTest, BEH_Restart) {
+  const size_t num_entries(10 * OneKB), disk_entries(1000 * OneKB);
+  KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
+                                                           disk_entries,
+                                                           test_path));
+  DiskUsage disk_usage(1000 * OneKB * OneKB);
+  pt::ptime start_time(pt::microsec_clock::universal_time());
+  permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
+  pt::ptime stop_time(pt::microsec_clock::universal_time());
+  PrintResult(start_time, stop_time);
 }
 
 TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
@@ -353,108 +372,6 @@ TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
   EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
   EXPECT_NE(value, recovered);
   EXPECT_EQ(last_value, recovered);
-}
-
-TEST_F(PermanentStoreTest, BEH_RandomAsync) {
-  //typedef typename PermanentStoreTest<TypeParam>::KeyValueContainer KeyValueContainer;
-  //typedef typename KeyValueContainer::value_type value_type;
-  //typedef typename TypeParam::KeyType KeyType;
-  //typedef typename TypeParam::PopFunctor PopFunctor;
-  //typedef typename PermanentStoreTest<TypeParam>::GetIdentity GetIdentity;
-
-  //maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  //this->data_store_path_ = fs::path(*test_path / "data_store");
-  //PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-  //                          GetIdentity get_identity;
-  //                          Identity key_id(boost::apply_visitor(get_identity, key));
-  //                          LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
-  //                                     << "with value " << Base32Substr(value.string());
-  //                      });
-  //this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
-  //                                                 DiskUsage(kDefaultMaxDiskUsage),
-  //                                                 pop_functor,
-  //                                                 this->data_store_path_));
-  //KeyValueContainer key_value_pairs;
-  //uint32_t events(RandomUint32() % 500);
-  //std::vector<std::future<void>> future_stores, future_deletes;
-  //std::vector<std::future<NonEmptyString>> future_gets;
-
-  //for (uint32_t i = 0; i != events; ++i) {
-  //  KeyType key(this->GetRandomKey());
-  //  NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 300) + 1);
-  //  key_value_pairs.push_back(std::make_pair(key, value));
-
-  //  uint32_t event(RandomUint32() % 3);
-  //  switch (event) {
-  //    case 0: {
-  //      if (!key_value_pairs.empty()) {
-  //        KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-  //        future_deletes.push_back(std::async([this, event_key] {
-  //                                              this->data_store_->Delete(event_key);
-  //                                           }));
-  //      } else {
-  //        future_deletes.push_back(std::async([this, key] {
-  //                                                this->data_store_->Delete(key);
-  //                                            }));
-  //      }
-  //      break;
-  //    }
-  //    case 1: {
-  //      // uint32_t index(RandomUint32() % key_value_pairs.size());
-  //      uint32_t index(i);
-  //      KeyType event_key(key_value_pairs[index].first);
-  //      NonEmptyString event_value(key_value_pairs[index].second);
-  //      future_stores.push_back(std::async([this, event_key, event_value] {
-  //                                this->data_store_->Store(event_key, event_value);
-  //                              }));
-  //      break;
-  //    }
-  //    case 2: {
-  //      if (!key_value_pairs.empty()) {
-  //        KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-  //        future_gets.push_back(std::async([this, event_key] {
-  //                                            return this->data_store_->Get(event_key);
-  //                                        }));
-  //      } else {
-  //        future_gets.push_back(std::async([this, key] {
-  //                                            return this->data_store_->Get(key);
-  //                                        }));
-  //      }
-  //      break;
-  //    }
-  //  }
-  //}
-
-  //for (auto& future_store : future_stores)
-  //  EXPECT_NO_THROW(future_store.get());
-
-  //for (auto& future_delete : future_deletes) {
-  //  try {
-  //    future_delete.get();
-  //  }
-  //  catch(const std::exception& e) {
-  //    std::string msg(e.what());
-  //    LOG(kError) << msg;
-  //  }
-  //}
-
-  //for (auto& future_get : future_gets) {
-  //  try {
-  //    NonEmptyString value(future_get.get());
-  //    auto it = std::find_if(key_value_pairs.begin(),
-  //                           key_value_pairs.end(),
-  //                           [this, &value](const value_type& key_value_pair) {
-  //                              return key_value_pair.second == value;
-  //                           });
-  //    EXPECT_NE(key_value_pairs.end(), it);
-  //  }
-  //  catch(const std::exception& e) {
-  //    std::string msg(e.what());
-  //    LOG(kError) << msg;
-  //  }
-  //}
-  //// Need to destroy data_store_ so that test_path will be able to be deleted
-  //this->data_store_.reset();
 }
 
 TEST_F(PermanentStoreTest, BEH_Store) {
