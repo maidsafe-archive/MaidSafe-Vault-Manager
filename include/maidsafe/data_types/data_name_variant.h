@@ -23,9 +23,9 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
+#include "maidsafe/data_types/data_type_values.h"
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/mutable_data.h"
-#include "maidsafe/data_types/detail/data_type_values.h"
 
 
 namespace maidsafe {
@@ -44,8 +44,6 @@ typedef boost::variant<passport::PublicAnmid::name_type,
                        ImmutableData::name_type,
                        MutableData::name_type> DataNameVariant;
 
-
-namespace detail {
 
 inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name) {
   switch (type) {
@@ -70,28 +68,27 @@ inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& nam
   }
 }
 
-struct GetTagValue : public boost::static_visitor<DataTagValue> {
+struct GetTagValueVisitor : public boost::static_visitor<DataTagValue> {
   template<typename T, typename Tag>
   result_type operator()(const TaggedValue<T, Tag>&) const {
     return TaggedValue<T, Tag>::tag_type::kEnumValue;
   }
 };
 
-struct GetIdentity : public boost::static_visitor<Identity> {
+struct GetIdentityVisitor : public boost::static_visitor<Identity> {
   template<typename T, typename Tag>
   result_type operator()(const TaggedValue<T, Tag>& t) const {
     return t.data;
   }
 };
 
-struct GetTagValueAndIdentity : public boost::static_visitor<std::pair<DataTagValue, Identity>> {
+struct GetTagValueAndIdentityVisitor
+    : public boost::static_visitor<std::pair<DataTagValue, Identity>> {
   template<typename T, typename Tag>
   result_type operator()(const TaggedValue<T, Tag>& t) const {
     return std::make_pair(TaggedValue<T, Tag>::tag_type::kEnumValue, t.data);
   }
 };
-
-}  // namespace detail
 
 }  // namespace maidsafe
 

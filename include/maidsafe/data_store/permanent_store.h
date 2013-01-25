@@ -88,7 +88,7 @@ class PermanentStore {
   DiskUsage max_disk_usage_, current_disk_usage_;
   const uint32_t kDepth_;
   std::mutex mutex_;
-  maidsafe::detail::GetIdentity get_identity_;
+  GetIdentityVisitor get_identity_visitor_;
 };
 
 }  // namespace data_store

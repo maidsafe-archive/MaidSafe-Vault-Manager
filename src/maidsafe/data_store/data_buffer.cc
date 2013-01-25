@@ -74,7 +74,7 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kShouldRemoveRoot_(true),
       running_(true),
       worker_(),
-      get_identity_() {
+      get_identity_visitor_() {
   Init();
 }
 
@@ -89,7 +89,7 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kShouldRemoveRoot_(false),
       running_(true),
       worker_(),
-      get_identity_() {
+      get_identity_visitor_() {
   Init();
 }
 
@@ -150,12 +150,12 @@ void DataBuffer::Store(const KeyType& key, const NonEmptyString& value) {
     if (on_disk) {
       Delete(key);
       LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
-                 << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+                 << EncodeToBase32(boost::apply_visitor(get_identity_visitor_, key).string());
     }
   }
   catch(const std::exception&) {
     LOG(kInfo) << "Storing value " << EncodeToBase32(value) << " with key "
-               << EncodeToBase32(boost::apply_visitor(get_identity_, key).string());
+               << EncodeToBase32(boost::apply_visitor(get_identity_visitor_, key).string());
   }
 
   CheckWorkerIsStillRunning();
@@ -203,9 +203,9 @@ void DataBuffer::StoreOnDisk(const KeyType& key, const NonEmptyString& value) {
     std::unique_lock<std::mutex> disk_store_lock(disk_store_.mutex);
     if (value.string().size() > disk_store_.max) {
       LOG(kError) << "Cannot store "
-                  << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " since its "
-                  << value.string().size() << " bytes exceeds max of " << disk_store_.max
-                  << " bytes.";
+                  << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
+                  << " since its " << value.string().size() << " bytes exceeds max of "
+                  << disk_store_.max << " bytes.";
       StopRunning();
       ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
     }
@@ -220,7 +220,8 @@ void DataBuffer::StoreOnDisk(const KeyType& key, const NonEmptyString& value) {
     if (!cancelled) {
       if (!WriteFile(GetFilePath(key), value.string())) {
         LOG(kError) << "Failed to move "
-                    << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " to disk.";
+                    << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
+                    << " to disk.";
         StopRunning();
         ThrowError(CommonErrors::filesystem_io_error);
       }
@@ -323,7 +324,7 @@ void DataBuffer::DeleteFromDisk(const KeyType& key) {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
     auto itr(Find(disk_store_, key));
     if (itr == disk_store_.index.end()) {
-      LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_, key))
+      LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
                   << " is not in the disk index.";
       ThrowError(CommonErrors::no_such_element);
     }
@@ -492,7 +493,7 @@ DataBuffer::DiskIndex::iterator DataBuffer::FindOldestOnDisk() {
 DataBuffer::DiskIndex::iterator DataBuffer::FindAndThrowIfCancelled(const KeyType& key) {
   auto itr(Find(disk_store_, key));
   if (itr == disk_store_.index.end() || (*itr).state == StoringState::kCancelled) {
-    LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_, key))
+    LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
                 << " is not in the disk index or is cancelled.";
     ThrowError(CommonErrors::no_such_element);
   }

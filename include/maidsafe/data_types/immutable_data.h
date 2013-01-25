@@ -20,13 +20,13 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/tagged_value.h"
 
-#include "maidsafe/data_types/detail/data_type_values.h"
+#include "maidsafe/data_types/data_type_values.h"
 
 
 namespace maidsafe {
 
 struct ImmutableDataTag {
-  static const detail::DataTagValue kEnumValue = detail::DataTagValue::kImmutableDataValue;
+  static const DataTagValue kEnumValue = DataTagValue::kImmutableDataValue;
 };
 
 class ImmutableData {
@@ -45,7 +45,7 @@ class ImmutableData {
 
   name_type name() const { return name_; }
   NonEmptyString data() const { return data_; }
-  static detail::DataTagValue type_enum_value() { return ImmutableDataTag::kEnumValue; }
+  static DataTagValue type_enum_value() { return ImmutableDataTag::kEnumValue; }
 
  private:
   void Validate() const;

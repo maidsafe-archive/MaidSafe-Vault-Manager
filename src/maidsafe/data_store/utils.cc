@@ -26,16 +26,16 @@ namespace data_store {
 namespace detail {
 
 fs::path GetFileName(const DataNameVariant& data_name_variant) {
-  auto result(boost::apply_visitor(maidsafe::detail::GetTagValueAndIdentity(), data_name_variant));
+  auto result(boost::apply_visitor(GetTagValueAndIdentityVisitor(), data_name_variant));
   return (EncodeToBase32(result.second) + '_' + std::to_string(static_cast<int>(result.first)));
 }
 
 DataNameVariant GetDataNameVariant(const fs::path& file_name) {
   std::string file_name_str(file_name.string());
   size_t index(file_name_str.rfind('_'));
-  auto id(static_cast<maidsafe::detail::DataTagValue>(std::stoi(file_name_str.substr(index + 1))));
+  auto id(static_cast<DataTagValue>(std::stoi(file_name_str.substr(index + 1))));
   Identity key_id(DecodeFromBase32(file_name_str.substr(0, index)));
-  return maidsafe::detail::GetDataNameVariant(id, key_id);
+  return GetDataNameVariant(id, key_id);
 }
 
 }  // namespace detail

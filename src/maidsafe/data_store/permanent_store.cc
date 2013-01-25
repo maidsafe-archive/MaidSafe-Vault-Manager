@@ -115,7 +115,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
       max_disk_usage_(max_disk_usage),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
       kDepth_(5),
-      get_identity_() {
+      get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
 }
@@ -159,7 +159,7 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   if (increment) {
     if (!HasDiskSpace(size)) {
       LOG(kError) << "Cannot store "
-                  << HexSubstr(boost::apply_visitor(get_identity_, key).string())
+                  << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
                   << " since the addition of " << size << " bytes exceeds max of "
                   << max_disk_usage_ << " bytes.";
       ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
@@ -167,7 +167,8 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   }
   if (!WriteFile(file_path, value.string())) {
     LOG(kError) << "Failed to write "
-                << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " to disk.";
+                << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
+                << " to disk.";
     ThrowError(CommonErrors::filesystem_io_error);
   }
 

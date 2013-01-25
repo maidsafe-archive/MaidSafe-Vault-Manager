@@ -9,15 +9,14 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_DATA_TYPES_DETAIL_DATA_TYPE_VALUES_H_
-#define MAIDSAFE_DATA_TYPES_DETAIL_DATA_TYPE_VALUES_H_
+#ifndef MAIDSAFE_DATA_TYPES_DATA_TYPE_VALUES_H_
+#define MAIDSAFE_DATA_TYPES_DATA_TYPE_VALUES_H_
 
+#include <ostream>
 #include <string>
 
 
 namespace maidsafe {
-
-namespace detail {
 
 enum class DataTagValue {
   kAnmidValue,
@@ -90,8 +89,6 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
   return ostream;
 }
 
-}  // namespace detail
-
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_DATA_TYPES_DETAIL_DATA_TYPE_VALUES_H_
+#endif  // MAIDSAFE_DATA_TYPES_DATA_TYPE_VALUES_H_

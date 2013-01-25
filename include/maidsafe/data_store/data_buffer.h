@@ -47,9 +47,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/passport/types.h"
 
 #include "maidsafe/data_types/data_name_variant.h"
+#include "maidsafe/data_types/data_type_values.h"
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/mutable_data.h"
-#include "maidsafe/data_types/detail/data_type_values.h"
 
 
 namespace maidsafe {
@@ -180,7 +180,7 @@ class DataBuffer {
   const bool kShouldRemoveRoot_;
   std::atomic<bool> running_;
   std::future<void> worker_;
-  maidsafe::detail::GetIdentity get_identity_;
+  GetIdentityVisitor get_identity_visitor_;
 };
 
 }  // namespace data_store

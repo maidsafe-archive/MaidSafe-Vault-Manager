@@ -23,13 +23,13 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/tagged_value.h"
 
-#include "maidsafe/data_types/detail/data_type_values.h"
+#include "maidsafe/data_types/data_type_values.h"
 
 
 namespace maidsafe {
 
 struct MutableDataTag {
-  static const detail::DataTagValue kEnumValue = detail::DataTagValue::kMutableDataValue;
+  static const DataTagValue kEnumValue = DataTagValue::kMutableDataValue;
 };
 
 class MutableData {
@@ -52,7 +52,7 @@ class MutableData {
   name_type name() const { return name_; }
   NonEmptyString data() const { return data_; }
   asymm::Signature signature() { return signature_; }
-  static detail::DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
+  static DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
 
  private:
   name_type name_;
