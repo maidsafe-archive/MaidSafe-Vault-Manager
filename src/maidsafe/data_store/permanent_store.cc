@@ -126,7 +126,7 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
     ThrowError(CommonErrors::filesystem_io_error);
 
   fs::path file_path(KeyToFilePath(key));
-  uint32_t value_size(value.string().size());
+  uint32_t value_size(static_cast<uint32_t>(value.string().size()));
   uint64_t file_size(0), size(0);
   bool increment(true);
   boost::system::error_code error_code;
@@ -225,7 +225,7 @@ fs::path PermanentStore::KeyToFilePath(const KeyType& key) {
 
   uint32_t directory_depth = kDepth_;
   if (file_name.string().length() < directory_depth)
-    directory_depth = file_name.string().length() - 1;
+    directory_depth = static_cast<uint32_t>(file_name.string().length() - 1);
 
   fs::path disk_path(kDiskPath_);
   for (uint32_t i = 0; i < directory_depth; ++i)
