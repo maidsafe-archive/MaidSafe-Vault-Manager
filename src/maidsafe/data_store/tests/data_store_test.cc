@@ -484,9 +484,10 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_EQ(recovered, value);
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
-        return current_index == 1;
-    }));
+    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
+                                        return current_index == 1;
+                                      }));
+    EXPECT_TRUE(result);
   }
   EXPECT_EQ(1, current_index);
 
@@ -495,9 +496,10 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
-        return current_index == 3;
-    }));
+    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
+                                        return current_index == 3;
+                                      }));
+    EXPECT_TRUE(result);
   }
   EXPECT_EQ(3, current_index);
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
@@ -609,10 +611,11 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
   }
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
+    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
                                       [&]()->bool {
-                                          return current_index == num_entries;
+                                        return current_index == num_entries;
                                       }));
+    EXPECT_TRUE(result);
   }
   for (auto key_value : new_key_value_pairs) {
     EXPECT_NO_THROW(recovered = this->data_store_->Get(key_value.first));
