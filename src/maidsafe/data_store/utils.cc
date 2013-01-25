@@ -33,41 +33,9 @@ fs::path GetFileName(const DataNameVariant& data_name_variant) {
 DataNameVariant GetDataNameVariant(const fs::path& file_name) {
   std::string file_name_str(file_name.string());
   size_t index(file_name_str.rfind('_'));
-  maidsafe::detail::DataTagValue id(
-      static_cast<maidsafe::detail::DataTagValue>(std::stoi(file_name_str.substr(index + 1))));
+  auto id(static_cast<maidsafe::detail::DataTagValue>(std::stoi(file_name_str.substr(index + 1))));
   Identity key_id(DecodeFromBase32(file_name_str.substr(0, index)));
-  switch (id) {
-    case maidsafe::detail::DataTagValue::kAnmidValue:
-      return passport::PublicAnmid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kAnsmidValue:
-      return passport::PublicAnsmid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kAntmidValue:
-      return passport::PublicAntmid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kAnmaidValue:
-      return passport::PublicAnmaid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kMaidValue:
-      return passport::PublicMaid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kPmidValue:
-      return passport::PublicPmid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kMidValue:
-      return passport::Mid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kSmidValue:
-      return passport::Smid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kTmidValue:
-      return passport::Tmid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kAnmpidValue:
-      return passport::PublicAnmpid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kMpidValue:
-      return passport::PublicMpid::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kImmutableDataValue:
-      return ImmutableData::name_type(key_id);
-    case maidsafe::detail::DataTagValue::kMutableDataValue:
-      return MutableData::name_type(key_id);
-    default: {
-      ThrowError(CommonErrors::invalid_parameter);
-      return DataNameVariant();
-    }
-  }
+  return maidsafe::detail::GetDataNameVariant(id, key_id);
 }
 
 }  // namespace detail

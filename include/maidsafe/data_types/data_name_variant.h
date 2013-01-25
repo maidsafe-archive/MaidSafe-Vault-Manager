@@ -17,6 +17,8 @@
 #include "boost/variant/static_visitor.hpp"
 #include "boost/variant/variant.hpp"
 
+#include "maidsafe/common/error.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/tagged_value.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
@@ -44,6 +46,29 @@ typedef boost::variant<passport::PublicAnmid::name_type,
 
 
 namespace detail {
+
+inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name) {
+  switch (type) {
+    case DataTagValue::kAnmidValue: return passport::PublicAnmid::name_type(name);
+    case DataTagValue::kAnsmidValue: return passport::PublicAnsmid::name_type(name);
+    case DataTagValue::kAntmidValue: return passport::PublicAntmid::name_type(name);
+    case DataTagValue::kAnmaidValue: return passport::PublicAnmaid::name_type(name);
+    case DataTagValue::kMaidValue: return passport::PublicMaid::name_type(name);
+    case DataTagValue::kPmidValue: return passport::PublicPmid::name_type(name);
+    case DataTagValue::kMidValue: return passport::Mid::name_type(name);
+    case DataTagValue::kSmidValue: return passport::Smid::name_type(name);
+    case DataTagValue::kTmidValue: return passport::Tmid::name_type(name);
+    case DataTagValue::kAnmpidValue: return passport::PublicAnmpid::name_type(name);
+    case DataTagValue::kMpidValue: return passport::PublicMpid::name_type(name);
+    case DataTagValue::kImmutableDataValue: return ImmutableData::name_type(name);
+    case DataTagValue::kMutableDataValue: return MutableData::name_type(name);
+    default: {
+      LOG(kError) << "Unhandled data type";
+      ThrowError(CommonErrors::invalid_parameter);
+      return DataNameVariant();
+    }
+  }
+}
 
 struct GetTagValue : public boost::static_visitor<DataTagValue> {
   template<typename T, typename Tag>
