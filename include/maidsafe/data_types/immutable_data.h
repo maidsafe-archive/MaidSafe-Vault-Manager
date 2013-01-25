@@ -20,7 +20,7 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/tagged_value.h"
 
-#include "maidsafe/detail/data_type_values.h"
+#include "maidsafe/data_types/detail/data_type_values.h"
 
 
 namespace maidsafe {

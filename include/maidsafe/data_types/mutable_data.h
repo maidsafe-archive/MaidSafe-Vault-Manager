@@ -23,7 +23,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/tagged_value.h"
 
-#include "maidsafe/detail/data_type_values.h"
+#include "maidsafe/data_types/detail/data_type_values.h"
 
 
 namespace maidsafe {
@@ -55,7 +55,6 @@ class MutableData {
   static detail::DataTagValue type_enum_value() { return MutableDataTag::kEnumValue; }
 
  private:
-
   name_type name_;
   NonEmptyString data_;
   asymm::Signature signature_;

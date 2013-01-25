@@ -74,11 +74,7 @@ class PermanentStoreTest : public ::testing::Test {
     : test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore")),
       permanent_store_path_(*test_path / "permanent_store"),
       max_disk_usage_(kDefaultMaxDiskUsage),
-      permanent_store_(new PermanentStore(permanent_store_path_, max_disk_usage_))
-  {}
-
-  void SetUp() {}
-  void TearDown() {}
+      permanent_store_(new PermanentStore(permanent_store_path_, max_disk_usage_)) {}
 
   bool DeleteDirectory(const fs::path& directory) {
     boost::system::error_code error_code;
@@ -215,7 +211,6 @@ class PermanentStoreTest : public ::testing::Test {
         }
       }
     }
-    return;
   }
 
   KeyType GetRandomKey() {
@@ -362,7 +357,7 @@ TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
   EXPECT_EQ(last_value.string().size(), permanent_store_->GetCurrentDiskUsage().data);
 }
 
-TEST_F(PermanentStoreTest, BEH_Restart) {
+TEST_F(PermanentStoreTest, FUNC_Restart) {
   const size_t num_entries(100 * OneKB), disk_entries(1000 * OneKB);
   KeyValueContainer key_value_pairs(PopulatePermanentStore(num_entries,
                                                            disk_entries,

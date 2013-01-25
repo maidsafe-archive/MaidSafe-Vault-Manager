@@ -46,31 +46,28 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
+#include "maidsafe/data_types/data_name_variant.h"
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/mutable_data.h"
+#include "maidsafe/data_types/detail/data_type_values.h"
+
 
 namespace maidsafe {
 
 namespace data_store {
 
-namespace test { class DataBufferTest;
-                 template<typename StoragePolicy> class DataStoreTest; }
+namespace test {
+
+class DataBufferTest;
+template<typename StoragePolicy>
+class DataStoreTest;
+
+}  // namespace test
+
 
 class DataBuffer {
  public:
-  typedef boost::variant<passport::PublicAnmid::name_type,
-                         passport::PublicAnsmid::name_type,
-                         passport::PublicAntmid::name_type,
-                         passport::PublicAnmaid::name_type,
-                         passport::PublicMaid::name_type,
-                         passport::PublicPmid::name_type,
-                         passport::Mid::name_type,
-                         passport::Smid::name_type,
-                         passport::Tmid::name_type,
-                         passport::PublicAnmpid::name_type,
-                         passport::PublicMpid::name_type,
-                         ImmutableData::name_type,
-                         MutableData::name_type> KeyType;
+  typedef DataNameVariant KeyType;
 
   typedef std::function<void(const KeyType&, const NonEmptyString&)> PopFunctor;
   // Throws if max_memory_usage >= max_disk_usage.  Throws if a writable folder can't be created in
@@ -111,24 +108,6 @@ class DataBuffer {
  private:
   DataBuffer(const DataBuffer&);
   DataBuffer& operator=(const DataBuffer&);
-
-  struct GetIdentity : public boost::static_visitor<Identity>
-  {
-     template<typename T, typename Tag>
-     Identity operator()(const TaggedValue<T, Tag>& t)
-     {
-        return t.data;
-     }
-  };
-
-  struct GetTag : public boost::static_visitor<detail::DataTagValue>
-  {
-     template<typename T, typename Tag>
-     detail::DataTagValue operator()(const TaggedValue<T, Tag>&)
-     {
-        return TaggedValue<T, Tag>::tag_type::kEnumValue;
-     }
-  };
 
   template<typename UsageType, typename IndexType>
   struct Storage {
@@ -176,11 +155,11 @@ class DataBuffer {
   void CopyQueueToDisk();
   void CheckWorkerIsStillRunning();
   void StopRunning();
-  boost::filesystem::path GetFilename(const KeyType& key);
-  KeyType GetType(const std::string& key) const;
+  boost::filesystem::path GetFilePath(const KeyType& key) const;
+  KeyType GetType(const boost::filesystem::path& file_name) const;
 
   template<typename T>
-  bool HasSpace(const T& store, const uint64_t& required_space);
+  bool HasSpace(const T& store, const uint64_t& required_space) const;
 
   template<typename T>
   typename T::index_type::iterator Find(T& store, const KeyType& key);
@@ -201,8 +180,7 @@ class DataBuffer {
   const bool kShouldRemoveRoot_;
   std::atomic<bool> running_;
   std::future<void> worker_;
-  GetIdentity get_identity_;
-  GetTag get_tag_;
+  maidsafe::detail::GetIdentity get_identity_;
 };
 
 }  // namespace data_store

@@ -28,12 +28,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/data_store/permanent_store.h"
 
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/convenience.hpp"
 #include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+
+#include "maidsafe/data_store/utils.h"
+
 
 namespace maidsafe {
 
@@ -44,9 +48,8 @@ namespace {
 struct UsedSpace {
   UsedSpace() {}
   UsedSpace(UsedSpace&& other)
-    : directories(std::move(other.directories)),
-      disk_usage(std::move(other.disk_usage))
-  {}
+      : directories(std::move(other.directories)),
+        disk_usage(std::move(other.disk_usage)) {}
 
   std::vector<fs::path> directories;
   DiskUsage disk_usage;
@@ -112,8 +115,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, const DiskUsage& max_d
       max_disk_usage_(max_disk_usage),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
       kDepth_(5),
-      get_identity_(),
-      get_tag_() {
+      get_identity_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
 }
@@ -211,9 +213,8 @@ DiskUsage PermanentStore::GetCurrentDiskUsage() {
   return current_disk_usage_;
 }
 
-fs::path PermanentStore::GetFilePath(const KeyType& key) {
-  return kDiskPath_ / (EncodeToBase32(boost::apply_visitor(get_identity_, key))
-        + boost::lexical_cast<std::string>(static_cast<int>(boost::apply_visitor(get_tag_, key))));
+fs::path PermanentStore::GetFilePath(const KeyType& key) const {
+  return kDiskPath_ / detail::GetFileName(key);
 }
 
 bool PermanentStore::HasDiskSpace(const uint64_t& required_space) const {

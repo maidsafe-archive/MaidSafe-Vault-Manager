@@ -45,8 +45,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
+#include "maidsafe/data_types/data_name_variant.h"
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/mutable_data.h"
+
 
 namespace fs = boost::filesystem;
 
@@ -58,19 +60,7 @@ namespace test { class PermanentStoreTest; }
 
 class PermanentStore {
  public:
-  typedef boost::variant<passport::PublicAnmid::name_type,
-                         passport::PublicAnsmid::name_type,
-                         passport::PublicAntmid::name_type,
-                         passport::PublicAnmaid::name_type,
-                         passport::PublicMaid::name_type,
-                         passport::PublicPmid::name_type,
-                         passport::Mid::name_type,
-                         passport::Smid::name_type,
-                         passport::Tmid::name_type,
-                         passport::PublicAnmpid::name_type,
-                         passport::PublicMpid::name_type,
-                         ImmutableData::name_type,
-                         MutableData::name_type> KeyType;
+  typedef DataNameVariant KeyType;
 
   PermanentStore(const fs::path& disk_path, const DiskUsage& max_disk_usage);
   ~PermanentStore();
@@ -90,25 +80,7 @@ class PermanentStore {
   PermanentStore(const PermanentStore&);
   PermanentStore& operator=(const PermanentStore&);
 
-  struct GetIdentity : public boost::static_visitor<Identity>
-  {
-     template<typename T, typename Tag>
-     Identity operator()(const TaggedValue<T, Tag>& t)
-     {
-        return t.data;
-     }
-  };
-
-  struct GetTag : public boost::static_visitor<detail::DataTagValue>
-  {
-     template<typename T, typename Tag>
-     detail::DataTagValue operator()(const TaggedValue<T, Tag>&)
-     {
-        return TaggedValue<T, Tag>::tag_type::kEnumValue;
-     }
-  };
-
-  fs::path GetFilePath(const KeyType& key);
+  fs::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(const uint64_t& required_space) const;
   fs::path KeyToFilePath(const KeyType& key);
 
@@ -116,8 +88,7 @@ class PermanentStore {
   DiskUsage max_disk_usage_, current_disk_usage_;
   const uint32_t kDepth_;
   std::mutex mutex_;
-  GetIdentity get_identity_;
-  GetTag get_tag_;
+  maidsafe::detail::GetIdentity get_identity_;
 };
 
 }  // namespace data_store

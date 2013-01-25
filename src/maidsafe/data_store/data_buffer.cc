@@ -28,10 +28,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/data_store/data_buffer.h"
 #include <string>
 #include "boost/filesystem/convenience.hpp"
-#include "boost/lexical_cast.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
+
+#include "maidsafe/data_store/utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -73,8 +74,7 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kShouldRemoveRoot_(true),
       running_(true),
       worker_(),
-      get_identity_(),
-      get_tag_() {
+      get_identity_() {
   Init();
 }
 
@@ -89,8 +89,7 @@ DataBuffer::DataBuffer(MemoryUsage max_memory_usage,
       kShouldRemoveRoot_(false),
       running_(true),
       worker_(),
-      get_identity_(),
-      get_tag_() {
+      get_identity_() {
   Init();
 }
 
@@ -103,7 +102,7 @@ void DataBuffer::Init() {
   try {
     fs::directory_iterator it(kDiskBuffer_), end;
     for (; it != end; ++it) {
-      disk_store_.index.push_back(DiskElement(GetType(it->path().filename().string())));
+      disk_store_.index.push_back(DiskElement(GetType(it->path().filename())));
       disk_store_.current.data += fs::file_size(*it);
     }
   }
@@ -219,7 +218,7 @@ void DataBuffer::StoreOnDisk(const KeyType& key, const NonEmptyString& value) {
       return;
 
     if (!cancelled) {
-      if (!WriteFile(GetFilename(key), value.string())) {
+      if (!WriteFile(GetFilePath(key), value.string())) {
         LOG(kError) << "Failed to move "
                     << HexSubstr(boost::apply_visitor(get_identity_, key).string()) << " to disk.";
         StopRunning();
@@ -287,7 +286,7 @@ NonEmptyString DataBuffer::Get(const KeyType& key) {
     });
     itr = FindAndThrowIfCancelled(key);
   }
-  return ReadFile(GetFilename(key));
+  return ReadFile(GetFilePath(key));
   // TODO(Fraser#5#): 2012-11-23 - There should maybe be another background task moving the item
   //                               from wherever it's found to the back of the memory index.
 }
@@ -341,7 +340,7 @@ void DataBuffer::DeleteFromDisk(const KeyType& key) {
 
 
 void DataBuffer::RemoveFile(const KeyType& key, NonEmptyString* value) {
-  fs::path path(GetFilename(key));
+  fs::path path(GetFilePath(key));
   boost::system::error_code error_code;
   uint64_t size(fs::file_size(path, error_code));
   if (error_code) {
@@ -430,37 +429,16 @@ void DataBuffer::SetMaxDiskUsage(DiskUsage max_disk_usage) {
     disk_store_.cond_var.notify_all();
 }
 
-fs::path DataBuffer::GetFilename(const KeyType& key) {
-  return kDiskBuffer_ / (EncodeToBase32(boost::apply_visitor(get_identity_, key))
-        + boost::lexical_cast<std::string>(static_cast<int>(boost::apply_visitor(get_tag_, key))));
+fs::path DataBuffer::GetFilePath(const KeyType& key) const {
+  return kDiskBuffer_ / detail::GetFileName(key);
 }
 
-DataBuffer::KeyType DataBuffer::GetType(const std::string& key) const {
-  uint32_t id(boost::lexical_cast<uint32_t>(key.back()));
-  Identity key_id(Identity(std::string(key.begin(), --key.end())));
-  switch (id) {
-    case  0: return passport::PublicAnmid::name_type(key_id);
-    case  1: return passport::PublicAnsmid::name_type(key_id);
-    case  2: return passport::PublicAntmid::name_type(key_id);
-    case  3: return passport::PublicAnmaid::name_type(key_id);
-    case  4: return passport::PublicMaid::name_type(key_id);
-    case  5: return passport::PublicPmid::name_type(key_id);
-    case  6: return passport::Mid::name_type(key_id);
-    case  7: return passport::Smid::name_type(key_id);
-    case  8: return passport::Tmid::name_type(key_id);
-    case  9: return passport::PublicAnmpid::name_type(key_id);
-    case 10: return passport::PublicMpid::name_type(key_id);
-    case 11: return ImmutableData::name_type(key_id);
-    case 12: return MutableData::name_type(key_id);
-    default: {
-      ThrowError(CommonErrors::invalid_parameter);
-      return KeyType();
-    }
-  }
+DataBuffer::KeyType DataBuffer::GetType(const fs::path& file_name) const {
+  return detail::GetDataNameVariant(file_name);
 }
 
 template<typename T>
-bool DataBuffer::HasSpace(const T& store, const uint64_t& required_space) {
+bool DataBuffer::HasSpace(const T& store, const uint64_t& required_space) const {
   assert(store.max >= required_space);
   return store.current <= store.max - required_space;
 }

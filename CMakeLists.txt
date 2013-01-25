@@ -76,14 +76,16 @@ source_group("LifeStuff Manager API Files" FILES ${API_FILES_LIFESTUFF_MANAGER_D
 file(GLOB SOURCE_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.cc")
 file(GLOB HEADER_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.h")
 file(GLOB API_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*.h")
-set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
+file(GLOB API_FILES_DATA_TYPES_DETAIL_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/detail/*.h")
 
 file(GLOB PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.proto")
 file(GLOB SOURCE_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.cc")
 file(GLOB HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.h")
 file(GLOB MS_HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*_pb.h")
 
-set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${PROTO_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
+set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR}
+                             ${PROTO_FILES_DATA_TYPES_DIR}
+                             ${API_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DETAIL_DIR})
 list(REMOVE_ITEM SOURCE_FILES_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_DATA_TYPES_DIR})
 list(REMOVE_ITEM HEADER_FILES_DATA_TYPES_DIR ${HEADER_PROTO_FILES_DATA_TYPES_DIR})
 list(REMOVE_ITEM API_FILES_DATA_TYPES_DIR ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
@@ -92,7 +94,7 @@ set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_TYPES_DIR} ${HEAD
 source_group("Data Types Source Files" FILES ${SOURCE_FILES_DATA_TYPES_DIR})
 source_group("Data Types Header Files" FILES ${HEADER_FILES_DATA_TYPES_DIR})
 source_group("Data Types Proto Files" FILES ${PROTO_FILES_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_DATA_TYPES_DIR} ${MS_HEADER_PROTO_FILES_DATA_TYPES_DIR})
-source_group("Data Types API Files" FILES ${API_FILES_DATA_TYPES_DIR})
+source_group("Data Types API Files" FILES ${API_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DETAIL_DIR})
 
 file(GLOB SOURCE_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.cc")
 file(GLOB HEADER_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.h")
@@ -105,10 +107,6 @@ set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_STORE_DIR} ${HEAD
 source_group("Data Store Source Files" FILES ${SOURCE_FILES_DATA_STORE_DIR})
 source_group("Data Store Header Files" FILES ${HEADER_FILES_DATA_STORE_DIR})
 source_group("Data Store API Files" FILES ${API_FILES_DATA_STORE_DIR})
-
-set(RETURN_CODES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/return_codes.h")
-set(DATA_TYPE_VALUES_H "${PROJECT_SOURCE_DIR}/include/maidsafe/detail/data_type_values.h")
-source_group("Private API Files" FILES ${RETURN_CODES_H} ${DATA_TYPE_VALUES_H})
 
 
 ####    TESTS    ####
@@ -134,14 +132,14 @@ set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_STORE_TESTS_DIR})
 source_group("Data Store Tests Source Files" FILES ${SOURCE_FILES_DATA_STORE_TESTS_DIR})
 source_group("Data Store Tests Header Files" FILES ${HEADER_FILES_DATA_STORE_TESTS_DIR})
 
+
 ###################################################################################################
 # Define MaidSafe libraries and executables                                                       #
 ###################################################################################################
 ms_add_static_library(lifestuff_manager ${ALL_FILES_LIFESTUFF_MANAGER_DIR})
 ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
 ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
-ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR} ${RETURN_CODES_H} ${DATA_TYPE_VALUES_H})
-
+ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR})
 
 ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
 ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
@@ -190,6 +188,7 @@ ms_disable_warnings(${PROTO_FILES})
 if(UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-effc++")
 endif()
+
 
 ###################################################################################################
 # Tests                                                                                           #
