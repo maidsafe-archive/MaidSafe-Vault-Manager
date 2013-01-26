@@ -21,6 +21,8 @@
 
 namespace maidsafe {
 
+const DataTagValue ImmutableDataTag::kEnumValue = DataTagValue::kImmutableDataValue;
+
 ImmutableData::ImmutableData(const ImmutableData& other) : name_(other.name_), data_(other.data_) {}
 
 ImmutableData& ImmutableData::operator=(const ImmutableData& other) {

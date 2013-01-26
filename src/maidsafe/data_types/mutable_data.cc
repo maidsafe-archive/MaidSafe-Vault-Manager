@@ -24,6 +24,8 @@
 
 namespace maidsafe {
 
+const DataTagValue MutableDataTag::kEnumValue = DataTagValue::kMutableDataValue;
+
 MutableData::MutableData(const MutableData& other)
     : name_(other.name_),
       data_(other.data_),

@@ -29,7 +29,7 @@
 namespace maidsafe {
 
 struct MutableDataTag {
-  static const DataTagValue kEnumValue = DataTagValue::kMutableDataValue;
+  static const DataTagValue kEnumValue;
 };
 
 class MutableData {
