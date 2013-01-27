@@ -16,18 +16,17 @@
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
+include_directories(${PROJECT_SOURCE_DIR}/src/passport/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/common/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/rudp/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/routing/include)
+
 cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
 project(private)
 
 set(PROTO_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 file(GLOB_RECURSE PROTO_FILES RELATIVE ${PROTO_SOURCE_DIR} "${PROTO_SOURCE_DIR}/maidsafe/*.proto")
 include(../../cmake_modules/maidsafe_standard_setup.cmake)
-
-include_directories(${common_SOURCE_DIR}/include)
-include_directories(${passport_SOURCE_DIR}/include)
-include_directories(${rudp_SOURCE_DIR}/include)
-include_directories(${routing_SOURCE_DIR}/include)
-
 
 ###################################################################################################
 # Set up all files as GLOBs                                                                       #
