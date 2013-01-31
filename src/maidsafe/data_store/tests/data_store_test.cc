@@ -157,7 +157,7 @@ class DataStoreTest : public ::testing::Test {
   }
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
-    // Currently there is 13 types defined, but do the calculation anyway...
+    // Currently there is 15 types defined, but do the calculation anyway...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     NonEmptyString value;
@@ -238,7 +238,19 @@ class DataStoreTest : public ::testing::Test {
           break;
         }
         case 12: {
-          MutableData::name_type key;
+          OwnerDirectory::name_type key;
+          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          container.push_back(std::make_pair(key, value));
+          break;
+        }
+        case 13: {
+          GroupDirectory::name_type key;
+          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          container.push_back(std::make_pair(key, value));
+          break;
+        }
+        case 14: {
+          WorldDirectory::name_type key;
           key.data = Identity(crypto::Hash<crypto::SHA512>(value));
           container.push_back(std::make_pair(key, value));
           break;
@@ -249,7 +261,7 @@ class DataStoreTest : public ::testing::Test {
   }
 
   KeyType GetRandomKey() {
-    // Currently 13 types are defined, but...
+    // Currently 15 types are defined, but...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
              type_number;
     type_number = RandomUint32() % number_of_types;
@@ -266,7 +278,9 @@ class DataStoreTest : public ::testing::Test {
       case  9: return passport::Anmpid::name_type();
       case 10: return passport::Mpid::name_type();
       case 11: return ImmutableData::name_type();
-      case 12: return MutableData::name_type();
+      case 12: return OwnerDirectory::name_type();
+      case 13: return GroupDirectory::name_type();
+      case 14: return WorldDirectory::name_type();
       // default:
         // Throw something!
       //  ;

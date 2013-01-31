@@ -31,7 +31,10 @@ enum class DataTagValue {
   kAnmpidValue,
   kMpidValue,
   kImmutableDataValue,
-  kMutableDataValue
+  kMutableDataValue,
+  kOwnerDirectoryValue,
+  kGroupDirectoryValue,
+  kWorldDirectoryValue
 };
 
 
