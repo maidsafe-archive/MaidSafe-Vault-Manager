@@ -37,6 +37,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include <utility>
 #include <deque>
+#include <set>
 #include <vector>
 
 #include "boost/filesystem/path.hpp"
@@ -71,7 +72,7 @@ class PermanentStore {
   NonEmptyString Get(const KeyType& key);
 
   // Return list of elements that should have but not exists yet
-  std::vector<KeyType> ElementsToStore(std::vector<KeyType> element_list);
+  std::vector<KeyType> ElementsToStore(std::set<KeyType> element_list);
 
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
