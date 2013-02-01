@@ -12,13 +12,14 @@
 #ifndef MAIDSAFE_DATA_TYPES_DATA_TYPE_VALUES_H_
 #define MAIDSAFE_DATA_TYPES_DATA_TYPE_VALUES_H_
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 
 
 namespace maidsafe {
 
-enum class DataTagValue {
+enum class DataTagValue : int32_t {
   kAnmidValue,
   kAnsmidValue,
   kAntmidValue,
