@@ -28,8 +28,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_DATA_STORE_PERMANENT_STORE_H_
 #define MAIDSAFE_DATA_STORE_PERMANENT_STORE_H_
 
-#include <atomic>
-#include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <future>
@@ -52,8 +50,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/data_types/mutable_data.h"
 
 
-namespace fs = boost::filesystem;
-
 namespace maidsafe {
 
 namespace data_store {
@@ -64,7 +60,7 @@ class PermanentStore {
  public:
   typedef DataNameVariant KeyType;
 
-  PermanentStore(const fs::path& disk_path, const DiskUsage& max_disk_usage);
+  PermanentStore(const boost::filesystem::path& disk_path, const DiskUsage& max_disk_usage);
   ~PermanentStore();
 
   void Put(const KeyType& key, const NonEmptyString& value);
@@ -85,11 +81,11 @@ class PermanentStore {
   PermanentStore(const PermanentStore&);
   PermanentStore& operator=(const PermanentStore&);
 
-  fs::path GetFilePath(const KeyType& key) const;
+  boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(const uint64_t& required_space) const;
-  fs::path KeyToFilePath(const KeyType& key);
+  boost::filesystem::path KeyToFilePath(const KeyType& key);
 
-  const fs::path kDiskPath_;
+  const boost::filesystem::path kDiskPath_;
   DiskUsage max_disk_usage_, current_disk_usage_;
   const uint32_t kDepth_;
   std::mutex mutex_;

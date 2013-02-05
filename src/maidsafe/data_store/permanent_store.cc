@@ -39,6 +39,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maidsafe/data_store/utils.h"
 
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace data_store {
