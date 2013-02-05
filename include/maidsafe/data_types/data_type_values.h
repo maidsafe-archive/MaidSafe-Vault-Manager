@@ -32,7 +32,10 @@ enum class DataTagValue : int32_t {
   kAnmpidValue,
   kMpidValue,
   kImmutableDataValue,
-  kMutableDataValue
+  kMutableDataValue,
+  kOwnerDirectoryValue,
+  kGroupDirectoryValue,
+  kWorldDirectoryValue
 };
 
 

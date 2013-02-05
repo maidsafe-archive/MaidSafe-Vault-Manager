@@ -25,8 +25,9 @@
 
 #include "maidsafe/data_types/data_type_values.h"
 #include "maidsafe/data_types/immutable_data.h"
-#include "maidsafe/data_types/mutable_data.h"
-
+#include "maidsafe/data_types/owner_directory.h"
+#include "maidsafe/data_types/group_directory.h"
+#include "maidsafe/data_types/world_directory.h"
 
 namespace maidsafe {
 
@@ -42,7 +43,9 @@ typedef boost::variant<passport::PublicAnmid::name_type,
                        passport::PublicAnmpid::name_type,
                        passport::PublicMpid::name_type,
                        ImmutableData::name_type,
-                       MutableData::name_type> DataNameVariant;
+                       OwnerDirectory::name_type,
+                       GroupDirectory::name_type,
+                       WorldDirectory::name_type> DataNameVariant;
 
 
 inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name) {
@@ -59,7 +62,9 @@ inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& nam
     case DataTagValue::kAnmpidValue: return passport::PublicAnmpid::name_type(name);
     case DataTagValue::kMpidValue: return passport::PublicMpid::name_type(name);
     case DataTagValue::kImmutableDataValue: return ImmutableData::name_type(name);
-    case DataTagValue::kMutableDataValue: return MutableData::name_type(name);
+    case DataTagValue::kOwnerDirectoryValue: return OwnerDirectory::name_type(name);
+    case DataTagValue::kGroupDirectoryValue: return GroupDirectory::name_type(name);
+    case DataTagValue::kWorldDirectoryValue: return WorldDirectory::name_type(name);
     default: {
       LOG(kError) << "Unhandled data type";
       ThrowError(CommonErrors::invalid_parameter);
