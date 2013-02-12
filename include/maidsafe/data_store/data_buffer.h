@@ -48,8 +48,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/data_types/data_name_variant.h"
 #include "maidsafe/data_types/data_type_values.h"
-#include "maidsafe/data_types/immutable_data.h"
-#include "maidsafe/data_types/mutable_data.h"
 
 
 namespace maidsafe {

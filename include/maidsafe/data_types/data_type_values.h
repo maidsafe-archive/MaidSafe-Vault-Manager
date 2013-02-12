@@ -79,8 +79,14 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
     case DataTagValue::kImmutableDataValue:
       data_type_str = "Immutable Data";
       break;
-    case DataTagValue::kMutableDataValue:
-      data_type_str = "Mutable Data";
+    case DataTagValue::kOwnerDirectoryValue:
+      data_type_str = "Owner Directory";
+      break;
+    case DataTagValue::kGroupDirectoryValue:
+      data_type_str = "Group Directory";
+      break;
+    case DataTagValue::kWorldDirectoryValue:
+      data_type_str = "World Directory";
       break;
     default:
       data_type_str = "Invalid data type";
