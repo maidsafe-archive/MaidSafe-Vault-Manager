@@ -1,7 +1,0 @@
-package maidsafe.protobuf;
-option optimize_for = LITE_RUNTIME;
-
-message MutableData {
-  required bytes data = 1;
-  optional bytes signature = 2;
-}

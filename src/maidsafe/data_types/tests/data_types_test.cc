@@ -15,7 +15,9 @@
 #include "maidsafe/common/test.h"
 
 #include "maidsafe/data_types/immutable_data.h"
-#include "maidsafe/data_types/mutable_data.h"
+#include "maidsafe/data_types/owner_directory.h"
+#include "maidsafe/data_types/group_directory.h"
+#include "maidsafe/data_types/world_directory.h"
 
 
 namespace maidsafe {
@@ -24,9 +26,13 @@ namespace test {
 
 TEST(DataTypesTest, BEH_ConstructType) {
   // EXPECT_NO_THROW(DataHolder data_holder);
-  static_assert(is_short_term_cacheable<MutableData>::value, "");
+  static_assert(is_short_term_cacheable<OwnerDirectory>::value, "");
+  static_assert(is_short_term_cacheable<GroupDirectory>::value, "");
+  static_assert(is_short_term_cacheable<WorldDirectory>::value, "");
+  static_assert(!is_long_term_cacheable<OwnerDirectory>::value, "");
+  static_assert(!is_long_term_cacheable<GroupDirectory>::value, "");
+  static_assert(!is_long_term_cacheable<WorldDirectory>::value, "");
   static_assert(!is_short_term_cacheable<ImmutableData>::value, "");
-  static_assert(!is_long_term_cacheable<MutableData>::value, "");
   static_assert(is_long_term_cacheable<ImmutableData>::value, "");
 }
 

@@ -43,11 +43,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maidsafe/common/tagged_value.h"
 #include "maidsafe/common/types.h"
-#include "maidsafe/passport/types.h"
 
 #include "maidsafe/data_types/data_name_variant.h"
-#include "maidsafe/data_types/immutable_data.h"
-#include "maidsafe/data_types/mutable_data.h"
 
 
 namespace maidsafe {
