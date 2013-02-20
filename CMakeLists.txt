@@ -175,6 +175,10 @@ rename_outdated_built_exes()
 include(maidsafe_standard_flags)
 
 if(MAIDSAFE_TESTING)
+  if(MSVC)
+    # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
+    set_target_properties(TESTprivate PROPERTIES COMPILE_FLAGS "/wd4702")
+  endif()
   set_target_properties(maidsafe_lifestuff_manager_core_dummy TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
 endif()
 
