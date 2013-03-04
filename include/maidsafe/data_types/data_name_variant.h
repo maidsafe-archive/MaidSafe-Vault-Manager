@@ -278,7 +278,7 @@ template<DataTagValue tag_value>
 typename std::enable_if<
     is_maidsafe_data<tag_value>::value,
     typename is_maidsafe_data<tag_value>::name_type>::type GetName(const Identity& name) {
-  return is_maidsafe_data<tag_value>::name_type(name);
+  return typename is_maidsafe_data<tag_value>::name_type(name);
 }
 
 }  // namespace maidsafe
