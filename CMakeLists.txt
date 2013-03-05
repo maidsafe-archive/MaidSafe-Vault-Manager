@@ -16,10 +16,8 @@
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-include_directories(${PROJECT_SOURCE_DIR}/src/passport/include)
 include_directories(${PROJECT_SOURCE_DIR}/src/common/include)
-include_directories(${PROJECT_SOURCE_DIR}/src/rudp/include)
-include_directories(${PROJECT_SOURCE_DIR}/src/routing/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/passport/include)
 
 cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
 project(private)
@@ -197,7 +195,7 @@ if(MAIDSAFE_TESTING)
   add_style_test(${STYLE_CHECK_FILES})
   add_gtests(TESTlifestuff_manager)
   add_gtests(TESTprivate)
-  
+
   add_project_experimental()
   test_summary_output()
 endif()
