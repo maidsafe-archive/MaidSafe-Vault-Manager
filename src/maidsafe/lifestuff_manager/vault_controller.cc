@@ -37,6 +37,17 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
+namespace {
+
+boost::asio::ip::udp::endpoint GetEndpoint(const std::string& ip, int port) {
+  boost::asio::ip::udp::endpoint ep;
+  ep.port(port);
+  ep.address(boost::asio::ip::address::from_string(ip));
+  return ep;
+}
+
+}  // namespace
+
 typedef std::function<void()> VoidFunction;
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
@@ -129,7 +140,7 @@ bool VaultController::Start(const std::string& lifestuff_manager_identifier,
 
 bool VaultController::GetIdentity(
     std::unique_ptr<passport::Pmid>& pmid,
-    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
+    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints) {
   if (lifestuff_manager_port_ == 0) {
     LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
@@ -139,13 +150,13 @@ bool VaultController::GetIdentity(
   return true;
 }
 
-void VaultController::ConfirmJoin(bool joined) {
+void VaultController::ConfirmJoin() {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false);
   protobuf::VaultJoinedNetwork vault_joined_network;
   vault_joined_network.set_process_index(process_index_);
-  vault_joined_network.set_joined(joined);
+  vault_joined_network.set_joined(true);
 
   VoidFunction callback = [&] {
     std::lock_guard<std::mutex> lock(local_mutex);
@@ -153,7 +164,7 @@ void VaultController::ConfirmJoin(bool joined) {
     local_cond_var.notify_one();
   };
 
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   request_transport->Connect(lifestuff_manager_port_, result);
   if (result != kSuccess) {
@@ -196,7 +207,7 @@ void VaultController::HandleVaultJoinedAck(const std::string& message, VoidFunct
 }
 
 bool VaultController::GetBootstrapNodes(
-    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
+    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
@@ -239,9 +250,10 @@ bool VaultController::GetBootstrapNodes(
   return success;
 }
 
-void VaultController::HandleBootstrapResponse(const std::string& message,
-                             std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints,
-                             VoidFunctionBoolParam callback) {
+void VaultController::HandleBootstrapResponse(
+    const std::string& message,
+    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints,
+    VoidFunctionBoolParam callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -257,31 +269,31 @@ void VaultController::HandleBootstrapResponse(const std::string& message,
     return;
   }
 
-  std::string address;
-  uint16_t port(0);
-  if (bootstrap_response.bootstrap_endpoint_ip_size()
-        != bootstrap_response.bootstrap_endpoint_port_size()) {
+  if (bootstrap_response.bootstrap_endpoint_ip_size() !=
+      bootstrap_response.bootstrap_endpoint_port_size()) {
     LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
   }
   int size(std::min(bootstrap_response.bootstrap_endpoint_ip_size(),
                     bootstrap_response.bootstrap_endpoint_port_size()));
   for (int i(0); i < size; ++i) {
-    address = bootstrap_response.bootstrap_endpoint_ip(i);
-    port = static_cast<uint16_t>(bootstrap_response.bootstrap_endpoint_port(i));
-    bootstrap_endpoints.push_back(std::pair<std::string, uint16_t>(address, port));
+    try {
+      bootstrap_endpoints.push_back(GetEndpoint(bootstrap_response.bootstrap_endpoint_ip(i),
+                                                bootstrap_response.bootstrap_endpoint_port(i)));
+    }
+    catch(...) { continue; }
   }
   bootstrap_endpoints_ = bootstrap_endpoints;
   callback(true);
 }
 
 bool VaultController::SendEndpointToLifeStuffManager(
-    const std::pair<std::string, uint16_t>& endpoint) {
+    const boost::asio::ip::udp::endpoint& endpoint) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
   protobuf::SendEndpointToLifeStuffManagerRequest request;
-  request.set_bootstrap_endpoint_ip(endpoint.first);
-  request.set_bootstrap_endpoint_port(endpoint.second);
+  request.set_bootstrap_endpoint_ip(endpoint.address().to_string());
+  request.set_bootstrap_endpoint_port(endpoint.port());
 
   VoidFunctionBoolParam callback = [&] (bool result) {
     std::lock_guard<std::mutex> lock(local_mutex);
@@ -401,18 +413,19 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message, st
   pmid_.reset(
       new passport::Pmid(passport::ParsePmid(NonEmptyString(vault_identity_response.pmid()))));
 
-  std::string address;
-  uint16_t port(0);
-  if (vault_identity_response.bootstrap_endpoint_ip_size()
-        != vault_identity_response.bootstrap_endpoint_port_size()) {
+  if (vault_identity_response.bootstrap_endpoint_ip_size() !=
+      vault_identity_response.bootstrap_endpoint_port_size()) {
     LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
   }
   int size(std::min(vault_identity_response.bootstrap_endpoint_ip_size(),
                     vault_identity_response.bootstrap_endpoint_port_size()));
   for (int i(0); i < size; ++i) {
-    address = vault_identity_response.bootstrap_endpoint_ip(i);
-    port = static_cast<uint16_t>(vault_identity_response.bootstrap_endpoint_port(i));
-    bootstrap_endpoints_.push_back(std::pair<std::string, uint16_t>(address, port));
+    try {
+      bootstrap_endpoints_.push_back(
+            GetEndpoint(vault_identity_response.bootstrap_endpoint_ip(i),
+                        vault_identity_response.bootstrap_endpoint_port(i)));
+    }
+    catch(...) { continue; }
   }
 
   LOG(kInfo) << "Received VaultIdentityResponse.";

@@ -42,10 +42,10 @@ class VaultController {
 
   bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
-                   std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints);
-  void ConfirmJoin(bool joined);
-  bool SendEndpointToLifeStuffManager(const std::pair<std::string, uint16_t>& endpoint);
-  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t> >& bootstrap_endpoints);
+                   std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints);
+  void ConfirmJoin();
+  bool SendEndpointToLifeStuffManager(const boost::asio::ip::udp::endpoint& endpoint);
+  bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
@@ -57,14 +57,14 @@ class VaultController {
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToLifeStuffManagerResponse(const std::string& message,
-                                               std::function<void(bool)> callback);  //NOLINT (Philip)
+                                                    std::function<void(bool)> callback);  // NOLINT (Philip)
   void HandleBootstrapResponse(const std::string& message,
-                               std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
-                               std::function<void(bool)> callback);  //NOLINT (Philip)
+                               std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
+                               std::function<void(bool)> callback);  // NOLINT (Philip)
   uint32_t process_index_;
   uint16_t lifestuff_manager_port_, local_port_;
   std::unique_ptr<passport::Pmid> pmid_;
-  std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints_;
+  std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
   bool setuid_succeeded_;
   AsioService asio_service_;
