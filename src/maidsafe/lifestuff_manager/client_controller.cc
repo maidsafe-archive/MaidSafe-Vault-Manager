@@ -230,7 +230,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
 }
 
 bool ClientController::StartVault(const passport::Pmid& pmid,
-                                  const std::string& account_name,
+                                  const passport::Maid::name_type& account_name,
                                   const fs::path& chunkstore) {
   if (state_ != kVerified) {
     LOG(kError) << "Not connected to LifeStuffManager.";
@@ -241,7 +241,7 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
-  start_vault_request.set_account_name(account_name);
+  start_vault_request.set_account_name(account_name.data.string());
   start_vault_request.set_pmid(passport::SerialisePmid(pmid).string());
   asymm::PlainText token(maidsafe::RandomString(16));
   start_vault_request.set_token(token.string());

@@ -57,8 +57,8 @@ GroupDirectory::GroupDirectory(const name_type& name, const NonEmptyString& data
       signature_() {}
 
 GroupDirectory::GroupDirectory(const name_type& name,
-                         const NonEmptyString& data,
-                         const asymm::PrivateKey& signing_key)
+                               const NonEmptyString& data,
+                               const asymm::PrivateKey& signing_key)
     : name_(name),
       data_(data),
       signature_(asymm::Sign(data, signing_key)) {}

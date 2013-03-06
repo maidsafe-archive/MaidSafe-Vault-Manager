@@ -51,7 +51,7 @@ class ClientController {
 
   // Blocking call to start a vault with the specified identity information and account name.
   bool StartVault(const passport::Pmid& pmid,
-                  const std::string& account_name,
+                  const passport::Maid::name_type& account_name,
                   const boost::filesystem::path& chunkstore);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data

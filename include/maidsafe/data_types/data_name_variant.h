@@ -12,6 +12,7 @@
 #ifndef MAIDSAFE_DATA_TYPES_DATA_NAME_VARIANT_H_
 #define MAIDSAFE_DATA_TYPES_DATA_NAME_VARIANT_H_
 
+#include <type_traits>
 #include <utility>
 
 #include "boost/variant/static_visitor.hpp"
@@ -94,6 +95,191 @@ struct GetTagValueAndIdentityVisitor
     return std::make_pair(TaggedValue<T, Tag>::tag_type::kEnumValue, t.data);
   }
 };
+
+
+
+template<DataTagValue tag_value, typename Enable = void>
+struct is_maidsafe_data {
+  static const bool value = false;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kAnmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicAnmid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kAnsmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicAnsmid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kAntmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicAntmid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kAnmaidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicAnmaid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kMaidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicMaid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kPmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicPmid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kMidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::Mid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kSmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::Smid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kTmidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::Tmid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kAnmpidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicAnmpid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue, DataTagValue::kMpidValue>>::value>::type> {
+  static const bool value = true;
+  typedef passport::PublicMpid data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue,
+                                   DataTagValue::kImmutableDataValue>>::value>::type> {
+  static const bool value = true;
+  typedef ImmutableData data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue,
+                                   DataTagValue::kOwnerDirectoryValue>>::value>::type> {
+  static const bool value = true;
+  typedef OwnerDirectory data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue,
+                                   DataTagValue::kGroupDirectoryValue>>::value>::type> {
+  static const bool value = true;
+  typedef GroupDirectory data_type;
+  typedef data_type::name_type name_type;
+};
+
+template<DataTagValue tag_value>
+struct is_maidsafe_data<tag_value,
+    typename std::enable_if<
+        std::is_same<
+            std::integral_constant<DataTagValue, tag_value>,
+            std::integral_constant<DataTagValue,
+                                   DataTagValue::kWorldDirectoryValue>>::value>::type> {
+  static const bool value = true;
+  typedef WorldDirectory data_type;
+  typedef data_type::name_type name_type;
+};
+
+
+
+template<DataTagValue tag_value>
+typename std::enable_if<
+    is_maidsafe_data<tag_value>::value,
+    typename is_maidsafe_data<tag_value>::name_type>::type GetName(const Identity& name) {
+  return typename is_maidsafe_data<tag_value>::name_type(name);
+}
 
 }  // namespace maidsafe
 
