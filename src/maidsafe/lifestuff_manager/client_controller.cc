@@ -17,6 +17,7 @@
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/config.h"
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -50,7 +51,6 @@ ClientController::ClientController(
 #endif
           local_port_(0),
           on_new_version_available_(),
-          state_(kInitialising),
           bootstrap_nodes_(),
           joining_vaults_(),
           joining_vaults_mutex_(),
@@ -58,22 +58,18 @@ ClientController::ClientController(
           asio_service_(3),
           receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   asio_service_.Start();
-  OnMessageReceived::slot_type on_message_slot(
-      [this](const std::string& message, Port lifestuff_manager_port) {
-          HandleReceivedRequest(message, lifestuff_manager_port);
-      });
-  if (!detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_)) {
-    LOG(kError) << "Failed to start listening port. Won't be able to start vaults.";
-    state_ = kFailed;
-  }
-
+  OnMessageReceived::slot_type on_message_slot([this] (const std::string& message,
+                                                       Port lifestuff_manager_port) {
+                                                 HandleReceivedRequest(message,
+                                                                       lifestuff_manager_port);
+                                               });
+  detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
   std::string path_to_new_installer;
   if (!ConnectToLifeStuffManager(path_to_new_installer)) {
     LOG(kError) << "Failed to connect to lifestuff_manager. Object useless.";
-    state_ = kFailed;
-  } else {
-    state_ = kVerified;
+    ThrowError(CommonErrors::uninitialised);
   }
+
   on_new_version_available_.connect(on_new_version_available_slot);
   if (!path_to_new_installer.empty())
     on_new_version_available_(NonEmptyString(path_to_new_installer));
@@ -84,10 +80,11 @@ ClientController::~ClientController() {
 }
 
 #ifdef TESTING
-void ClientController::SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
-                                                   fs::path test_env_root_dir,
-                                                   fs::path path_to_vault,
-                                                   std::vector<std::string> bootstrap_ips) {
+void ClientController::SetTestEnvironmentVariables(
+    uint16_t test_lifestuff_manager_port,
+    fs::path test_env_root_dir,
+    fs::path path_to_vault,
+    std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips) {
   detail::SetTestEnvironmentVariables(test_lifestuff_manager_port,
                                       test_env_root_dir,
                                       path_to_vault,
@@ -95,14 +92,8 @@ void ClientController::SetTestEnvironmentVariables(uint16_t test_lifestuff_manag
 }
 #endif
 
-bool ClientController::BootstrapEndpoints(std::vector<EndPoint>& endpoints) {
-  if (state_ != kVerified) {
-    LOG(kError) << "Not connected to LifeStuffManager.";
-    return false;
-  }
-
-  endpoints = bootstrap_nodes_;
-  return true;
+std::vector<boost::asio::ip::udp::endpoint> ClientController::BootstrapEndpoints() {
+  return bootstrap_nodes_;
 }
 
 bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
@@ -218,8 +209,13 @@ void ClientController::HandleRegisterResponse(const std::string& message,
                     response.bootstrap_endpoint_port_size() :
                     response.bootstrap_endpoint_ip_size());
   for (int n(0); n < max_index; ++n) {
-    bootstrap_nodes_.push_back(std::make_pair(response.bootstrap_endpoint_ip(n),
-                                              response.bootstrap_endpoint_port(n)));
+    try {
+      boost::asio::ip::udp::endpoint endpoint;
+      endpoint.address(boost::asio::ip::address::from_string(response.bootstrap_endpoint_ip(n)));
+      endpoint.port(response.bootstrap_endpoint_port(n));
+      bootstrap_nodes_.push_back(endpoint);
+    }
+    catch(...) { continue; }
   }
 
   LOG(kSuccess) << "Successfully registered with LifeStuffManager on port "
@@ -232,24 +228,22 @@ void ClientController::HandleRegisterResponse(const std::string& message,
 bool ClientController::StartVault(const passport::Pmid& pmid,
                                   const passport::Maid::name_type& account_name,
                                   const fs::path& chunkstore) {
-  if (state_ != kVerified) {
-    LOG(kError) << "Not connected to LifeStuffManager.";
-    return false;
-  }
-
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
   start_vault_request.set_account_name(account_name.data.string());
   start_vault_request.set_pmid(passport::SerialisePmid(pmid).string());
-  asymm::PlainText token(maidsafe::RandomString(16));
+  asymm::PlainText token(RandomString(16));
   start_vault_request.set_token(token.string());
   start_vault_request.set_token_signature(asymm::Sign(token, pmid.private_key()).string());
   start_vault_request.set_credential_change(false);
   start_vault_request.set_client_port(local_port_);
   if (!chunkstore.empty())
     start_vault_request.set_chunkstore_path(chunkstore.string());
+#ifdef TESTING
+  start_vault_request.set_identity_index(detail::IdentityIndex());
+#endif
   std::function<void(bool)> callback =                                            // NOLINT (Fraser)
     [&](bool result) {
       std::lock_guard<std::mutex> lock(local_mutex);
@@ -306,11 +300,6 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
 bool ClientController::StopVault(const asymm::PlainText& data,
                                  const asymm::Signature& signature,
                                  const Identity& identity) {
-  if (state_ != kVerified) {
-    LOG(kError) << "Not connected to LifeStuffManager.";
-    return false;
-  }
-
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
@@ -396,11 +385,6 @@ bptime::time_duration ClientController::GetUpdateInterval() {
 
 bptime::time_duration ClientController::SetOrGetUpdateInterval(
       const bptime::time_duration& update_interval) {
-  if (state_ != kVerified) {
-    LOG(kError) << "Not connected to LifeStuffManager.";
-    return bptime::pos_infin;
-  }
-
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bptime::time_duration returned_result(bptime::neg_infin);
@@ -422,14 +406,15 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
     LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
       return bptime::pos_infin;
   }
-  request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
-        HandleUpdateIntervalResponse(message, callback);
-      });
-  request_transport->on_error().connect([this, callback](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(bptime::pos_infin);
-  });
+  request_transport->on_message_received().connect([this, callback] (const std::string& message,
+                                                                     Port /*lifestuff_manager_port*/) {
+                                                     HandleUpdateIntervalResponse(message,
+                                                                                  callback);
+                                                   });
+  request_transport->on_error().connect([this, callback] (const int& error) {
+                                          LOG(kError) << "Transport reported error code " << error;
+                                          callback(bptime::pos_infin);
+                                        });
 
   std::unique_lock<std::mutex> lock(local_mutex);
   LOG(kVerbose) << "Sending request to " << (update_interval.is_pos_infinity() ? "get" : "set")
@@ -454,7 +439,7 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
 }
 
 bool ClientController::GetBootstrapNodes(
-    std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints) {
+    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
@@ -478,13 +463,13 @@ bool ClientController::GetBootstrapNodes(
   }
   request_transport->on_message_received().connect(
       [this, callback, &bootstrap_endpoints] (const std::string& message,
-                                             Port /*lifestuff_manager_port*/) {
+                                              Port /*lifestuff_manager_port*/) {
         HandleBootstrapResponse(message, bootstrap_endpoints, callback);
       });
-  request_transport->on_error().connect([callback](const int& error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(false);
-  });
+  request_transport->on_error().connect([callback] (const int& error) {
+                                          LOG(kError) << "Transport reported error code " << error;
+                                          callback(false);
+                                        });
   std::unique_lock<std::mutex> lock(local_mutex);
   LOG(kVerbose) << "Requesting bootstrap nodes from port " << lifestuff_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kBootstrapRequest,
@@ -497,9 +482,10 @@ bool ClientController::GetBootstrapNodes(
   return success;
 }
 
-void ClientController::HandleBootstrapResponse(const std::string& message,
-                             std::vector<std::pair<std::string, uint16_t>> &bootstrap_endpoints,
-                             VoidFunctionBoolParam callback) {
+void ClientController::HandleBootstrapResponse(
+    const std::string& message,
+    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints,
+    VoidFunctionBoolParam callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -515,8 +501,6 @@ void ClientController::HandleBootstrapResponse(const std::string& message,
     return;
   }
 
-  std::string address;
-  uint16_t port(0);
   if (bootstrap_response.bootstrap_endpoint_ip_size()
         != bootstrap_response.bootstrap_endpoint_port_size()) {
     LOG(kWarning) << "Number of ports in endpoints does not equal number of addresses";
@@ -524,9 +508,14 @@ void ClientController::HandleBootstrapResponse(const std::string& message,
   int size(std::min(bootstrap_response.bootstrap_endpoint_ip_size(),
                     bootstrap_response.bootstrap_endpoint_port_size()));
   for (int i(0); i < size; ++i) {
-    address = bootstrap_response.bootstrap_endpoint_ip(i);
-    port = static_cast<uint16_t>(bootstrap_response.bootstrap_endpoint_port(i));
-    bootstrap_endpoints.push_back(std::pair<std::string, uint16_t>(address, port));
+    try {
+      boost::asio::ip::udp::endpoint endpoint;
+      endpoint.address(boost::asio::ip::address::from_string(
+                           bootstrap_response.bootstrap_endpoint_ip(i)));
+      endpoint.port(bootstrap_response.bootstrap_endpoint_port(i));
+      bootstrap_endpoints.push_back(endpoint);
+    }
+    catch(...) { continue; }
   }
   bootstrap_nodes_ = bootstrap_endpoints;
   callback(true);

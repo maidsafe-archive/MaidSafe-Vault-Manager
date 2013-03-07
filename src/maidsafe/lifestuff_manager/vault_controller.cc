@@ -53,95 +53,41 @@ typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 namespace bai = boost::asio::ip;
 
-VaultController::VaultController(const std::string &usr_id)
-    : process_index_(),
+VaultController::VaultController(const std::string& lifestuff_manager_identifier,
+                                 VoidFunction stop_callback)
+    : process_index_(-1),
       lifestuff_manager_port_(0),
       local_port_(0),
       pmid_(),
       bootstrap_endpoints_(),
-      stop_callback_(),
-      setuid_succeeded_(),
+      stop_callback_(stop_callback),
       asio_service_(3),
-      receiving_transport_(new LocalTcpTransport(asio_service_.service())) {
-#ifndef MAIDSAFE_WIN32
-  std::string id("id -u " + usr_id + " > ./uid.txt");
-  int result(system(id.data()));
-  if (result) {
-    setuid_succeeded_ = false;
-    LOG(kError) << "Failed to determine uid of lifestuff user";
-    boost::system::error_code error;
-    fs::remove(fs::path(".") / "uid.txt", error);
-    if (error)
-      LOG(kError) << "Failed to remove uid file.";
-  } else {
-    std::string content;
-    ReadFile(fs::path(".") / "uid.txt", &content);
-    boost::trim(content);
-    try {
-      uid_t uid(static_cast<uid_t>(std::stoull(content)));
-      boost::system::error_code error;
-      fs::remove(fs::path(".") / "uid.txt", error);
-      if (error)
-        LOG(kError) << "Failed to remove uid file.";
-      LOG(kInfo) << "UID of lifestuff user: " << uid;
-      if (uid == 0) {
-        LOG(kError) << "UID is 0, but vault may not run as root.";
-        setuid_succeeded_ = false;
-      } else if (setuid(uid) == -1) {
-        LOG(kError) << "failed to set uid";
-        setuid_succeeded_ = false;
-      } else {
-        LOG(kInfo) << "Successfully set UID to: " << getuid();
-        setuid_succeeded_ = true;
-      }
-      LOG(kVerbose) << "Vault is now running as UID: " << getuid();
-    } catch(...) {
-      setuid_succeeded_ = false;
-      LOG(kError) << "Failed to retrieve uid of lifestuff user.";
-    }
+      receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
+  if (!stop_callback_)
+    ThrowError(CommonErrors::invalid_parameter);
+  if (lifestuff_manager_identifier != "test") {
+    detail::ParseVmidParameter(lifestuff_manager_identifier,
+                               process_index_,
+                               lifestuff_manager_port_);
+    asio_service_.Start();
+    OnMessageReceived::slot_type on_message_slot(
+        [this] (const std::string& message, Port lifestuff_manager_port) {
+          HandleReceivedRequest(message, lifestuff_manager_port);
+        });
+    detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
+    RequestVaultIdentity(local_port_);
   }
-#else
-  std::string uid = usr_id;
-  setuid_succeeded_ = true;
-#endif
 }
 
 VaultController::~VaultController() {
   receiving_transport_->StopListening();
 }
 
-bool VaultController::Start(const std::string& lifestuff_manager_identifier,
-                            VoidFunction stop_callback) {
-  if (!setuid_succeeded_) {
-    LOG(kError) << "In constructor, failed to set the user ID to the correct user.";
-    return false;
-  }
-
-  if (!detail::ParseVmidParameter(lifestuff_manager_identifier,
-                                  process_index_,
-                                  lifestuff_manager_port_)) {
-    LOG(kError) << "Invalid --vmid parameter " << lifestuff_manager_identifier;
-    return false;
-  }
-
-  stop_callback_ = stop_callback;
-  asio_service_.Start();
-  OnMessageReceived::slot_type on_message_slot(
-      [this](const std::string& message, Port lifestuff_manager_port) {
-          HandleReceivedRequest(message, lifestuff_manager_port);
-      });
-  if (!detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_)) {
-    LOG(kError) << "Failed to start listening port.";
-    return false;
-  }
-
-  return RequestVaultIdentity(local_port_);
-}
-
 bool VaultController::GetIdentity(
     std::unique_ptr<passport::Pmid>& pmid,
-    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints) {
+    std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints) {
   if (lifestuff_manager_port_ == 0) {
+    std::cout << "Invalid LifeStuffManager port." << std::endl;
     LOG(kError) << "Invalid LifeStuffManager port.";
     return false;
   }
@@ -349,7 +295,7 @@ void VaultController::HandleSendEndpointToLifeStuffManagerResponse(const std::st
   callback(send_endpoint_response.result());
 }
 
-bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
+void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
 
@@ -358,21 +304,19 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
   vault_identity_request.set_listening_port(listening_port);
   vault_identity_request.set_version(VersionToInt(kApplicationVersion));
 
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
+  TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int connect_result(0);
   request_transport->Connect(lifestuff_manager_port_, connect_result);
   if (connect_result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
-    return false;
+    ThrowError(CommonErrors::uninitialised);
   }
 
-  bool result(false);
   auto connection(request_transport->on_message_received().connect(
-      [this, &local_mutex, &local_cond_var, &result] (const std::string& message,
-                                                      Port /*lifestuff_manager_port*/) {
-        result = HandleVaultIdentityResponse(message, local_mutex);
-        if (result)
-          local_cond_var.notify_one();
+      [this, &local_mutex, &local_cond_var] (const std::string& message,
+                                             Port /*lifestuff_manager_port*/) {
+        HandleVaultIdentityResponse(message, local_mutex);
+        local_cond_var.notify_one();
       }));
   auto error_connection(request_transport->on_error().connect([] (const int& error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -386,28 +330,27 @@ bool VaultController::RequestVaultIdentity(uint16_t listening_port) {
 
   if (!local_cond_var.wait_for(lock,
                                std::chrono::seconds(3),
-                               [&]()->bool { return static_cast<bool>(pmid_); })) {  // NOLINT (Fraser)
+                               [this] () { return static_cast<bool>(pmid_); })) {
     connection.disconnect();
     error_connection.disconnect();
     LOG(kError) << "Timed out waiting for reply.";
-    return false;
+    ThrowError(CommonErrors::uninitialised);
   }
-  return result;
 }
 
-bool VaultController::HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex) {
+void VaultController::HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex) {
   MessageType type;
   std::string payload;
   std::lock_guard<std::mutex> lock(mutex);
   if (!detail::UnwrapMessage(message, type, payload)) {
     LOG(kError) << "Failed to handle incoming message.";
-    return false;
+    return;
   }
 
   protobuf::VaultIdentityResponse vault_identity_response;
   if (!vault_identity_response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse VaultIdentityResponse.";
-    return false;
+    return;
   }
 
   pmid_.reset(
@@ -429,7 +372,6 @@ bool VaultController::HandleVaultIdentityResponse(const std::string& message, st
   }
 
   LOG(kInfo) << "Received VaultIdentityResponse.";
-  return true;
 }
 
 void VaultController::HandleReceivedRequest(const std::string& message, Port /*peer_port*/) {

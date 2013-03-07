@@ -82,7 +82,7 @@ class LifeStuffManager {
  public:
   LifeStuffManager();
   ~LifeStuffManager();
-  static uint16_t kDefaultPort() { return 5483; }
+  static uint16_t kDefaultPort() { return kLivePort; }
   static uint16_t kMaxRangeAboveDefaultPort() { return 10; }
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
@@ -105,6 +105,9 @@ class LifeStuffManager {
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
+#ifdef TESTING
+    int identity_index;
+#endif
     int vault_version;
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;

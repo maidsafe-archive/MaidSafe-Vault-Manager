@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "boost/asio/ip/udp.hpp"
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/filesystem/path.hpp"
 #include "boost/signals2/connection.hpp"
@@ -40,14 +41,13 @@ namespace lifestuff_manager {
 class LocalTcpTransport;
 
 typedef boost::signals2::signal<void(const NonEmptyString&)> OnNewVersionAvailable;
-typedef std::pair<std::string, uint16_t> EndPoint;
 
 class ClientController {
  public:
   ClientController(std::function<void(const NonEmptyString&)> on_new_version_available_slot);
   ~ClientController();
 
-  bool BootstrapEndpoints(std::vector<EndPoint>& endpoints);
+  std::vector<boost::asio::ip::udp::endpoint> BootstrapEndpoints();
 
   // Blocking call to start a vault with the specified identity information and account name.
   bool StartVault(const passport::Pmid& pmid,
@@ -69,13 +69,14 @@ class ClientController {
   boost::posix_time::time_duration GetUpdateInterval();
 
   // Blocking call to retrieve the latest bootstrap nodes from the LifeStuffManager.
-  bool GetBootstrapNodes(std::vector<std::pair<std::string, uint16_t>>& bootstrap_endpoints);  // NOLINT (Fraser)
+  bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
 
 #ifdef TESTING
-  static void SetTestEnvironmentVariables(uint16_t test_lifestuff_manager_port,
-                                          boost::filesystem::path test_env_root_dir,
-                                          boost::filesystem::path path_to_vault,
-                                          std::vector<std::string> bootstrap_ips);
+  static void SetTestEnvironmentVariables(
+      uint16_t test_lifestuff_manager_port,
+      boost::filesystem::path test_env_root_dir,
+      boost::filesystem::path path_to_vault,
+      std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
 #endif
 
  private:
@@ -104,13 +105,12 @@ class ClientController {
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
   void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
   void HandleBootstrapResponse(const std::string& message,
-                               std::vector<std::pair<std::string, uint16_t> > &bootstrap_endpoints,
+                               std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints,
                                std::function<void(bool)> callback);  //NOLINT (Philip)
 
   uint16_t lifestuff_manager_port_, local_port_;
   OnNewVersionAvailable on_new_version_available_;
-  State state_;
-  std::vector<EndPoint> bootstrap_nodes_;
+  std::vector<boost::asio::ip::udp::endpoint> bootstrap_nodes_;
   std::map<passport::Pmid::name_type, bool> joining_vaults_;
   std::mutex joining_vaults_mutex_;
   std::condition_variable joining_vaults_conditional_;

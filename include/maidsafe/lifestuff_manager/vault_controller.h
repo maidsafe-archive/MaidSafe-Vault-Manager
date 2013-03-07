@@ -37,10 +37,10 @@ class LocalTcpTransport;
 
 class VaultController {
  public:
-  explicit VaultController(const std::string& usr_id = "lifestuff");
+  VaultController(const std::string& lifestuff_manager_identifier,
+                  std::function<void()> stop_callback);
   ~VaultController();
 
-  bool Start(const std::string& lifestuff_manager_identifier, std::function<void()> stop_callback);
   bool GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
                    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints);
   void ConfirmJoin();
@@ -52,8 +52,8 @@ class VaultController {
   VaultController(const VaultController&);
   VaultController& operator=(const VaultController&);
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
-  bool RequestVaultIdentity(uint16_t listening_port);
-  bool HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
+  void RequestVaultIdentity(uint16_t listening_port);
+  void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToLifeStuffManagerResponse(const std::string& message,
@@ -66,7 +66,6 @@ class VaultController {
   std::unique_ptr<passport::Pmid> pmid_;
   std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
-  bool setuid_succeeded_;
   AsioService asio_service_;
   TransportPtr receiving_transport_;
 };
