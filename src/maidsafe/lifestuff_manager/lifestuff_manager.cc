@@ -30,6 +30,8 @@
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/vault_info_pb.h"
 
+#include "maidsafe/lifestuff_manager/shared_memory_communication.h"
+
 
 namespace bptime = boost::posix_time;
 namespace fs = boost::filesystem;
@@ -93,6 +95,13 @@ LifeStuffManager::LifeStuffManager()
       update_timer_(asio_service_.service()),
       transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
 //  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
+  passport::Anmaid anmaid;
+  passport::Maid maid(anmaid);
+  passport::Pmid pmid(maid);
+  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string) {});
+  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string) {});
+  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
+  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
   asio_service_.Start();
   Initialise();
 }
