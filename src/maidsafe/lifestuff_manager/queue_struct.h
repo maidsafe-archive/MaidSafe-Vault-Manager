@@ -15,16 +15,19 @@
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 
+#include "maidsafe/common/crypto.h"
+#include "maidsafe/common/rsa.h"
+
 namespace maidsafe {
 
 namespace lifestuff_manager {
 
 namespace detail {
 
-// The IpcBidirectionalQueue contains only POD types. Any other type has to be given an
+// IpcBidirectionalQueue and SafeAddress contain only POD types. Any other type has to be given an
 // allocator to use the reserved shared memory as a construction ground.
 struct IpcBidirectionalQueue {
-  enum { kMessageSize = 10000 };
+  enum { kMessageSize = 100000 };
 
   IpcBidirectionalQueue()
       : cwpr_mutex(),
@@ -39,6 +42,11 @@ struct IpcBidirectionalQueue {
   boost::interprocess::interprocess_condition parent_read, parent_write, child_read, child_write;
   char parent_message[kMessageSize], child_message[kMessageSize];
   bool message_from_parent, message_from_child;
+};
+
+struct SafeAddress {
+  boost::interprocess::interprocess_mutex mutex;
+  char address[crypto::SHA512::DIGESTSIZE], signature[asymm::Keys::kSignatureByteSize];
 };
 
 }  // namespace detail

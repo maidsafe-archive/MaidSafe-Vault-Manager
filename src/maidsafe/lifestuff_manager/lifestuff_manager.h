@@ -36,8 +36,10 @@
 
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/process_manager.h"
+#include "maidsafe/lifestuff_manager/shared_memory_communication.h"
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/vault_info_pb.h"
+
 
 namespace maidsafe {
 
@@ -198,6 +200,8 @@ class LifeStuffManager {
   mutable std::mutex update_mutex_;
   boost::asio::deadline_timer update_timer_;
   std::shared_ptr<LocalTcpTransport> transport_;
+  passport::Maid maid_;
+  SafeReadOnlySharedMemory initial_contact_memory_;
 };
 
 }  // namespace lifestuff_manager

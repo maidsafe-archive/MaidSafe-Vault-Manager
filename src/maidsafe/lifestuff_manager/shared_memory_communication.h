@@ -14,6 +14,10 @@
 
 #include "boost/interprocess/mapped_region.hpp"
 
+#include "maidsafe/common/error.h"
+#include "maidsafe/common/rsa.h"
+#include "maidsafe/common/utils.h"
+
 #include "maidsafe/passport/types.h"
 
 #include "maidsafe/lifestuff_manager/queue_operations.h"
@@ -34,6 +38,77 @@ template<>
 struct is_valid_fob<passport::Pmid> : public std::true_type {};
 
 }
+
+class LifeStuffManagerAddressGetter {
+ public:
+  LifeStuffManagerAddressGetter()
+      : shared_memory_name_("lifestuff_manager"),
+        shared_memory_(boost::interprocess::open_only,
+                       shared_memory_name_.c_str(),
+                       boost::interprocess::read_only),
+        mapped_region_(shared_memory_, boost::interprocess::read_only),
+        safe_address_(static_cast<detail::SafeAddress*>(mapped_region_.get_address())) {}
+
+  passport::Maid::name_type GetAddress() {
+    namespace bip = boost::interprocess;
+    bip::scoped_lock<bip::interprocess_mutex> lock(safe_address_->mutex);
+    return passport::Maid::name_type(Identity(safe_address_->address));
+  }
+
+ private:
+  const std::string shared_memory_name_;
+  boost::interprocess::shared_memory_object shared_memory_;
+  boost::interprocess::mapped_region mapped_region_;
+  detail::SafeAddress* safe_address_;
+};
+
+class SafeReadOnlySharedMemory {
+ public:
+  SafeReadOnlySharedMemory(const passport::Maid& maid)
+      : maid_(maid),
+        shared_memory_name_("lifestuff_manager"),
+        shared_memory_(boost::interprocess::create_only,
+                       shared_memory_name_.c_str(),
+                       boost::interprocess::read_write),
+        mapped_region_(nullptr),
+        safe_address_(nullptr) {
+    shared_memory_.truncate(sizeof(detail::SafeAddress));
+    mapped_region_.reset(new boost::interprocess::mapped_region(shared_memory_,
+                                                                boost::interprocess::read_write));
+    safe_address_ = new (mapped_region_->get_address()) detail::SafeAddress;
+
+    asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().data),
+                                                   maid.private_key()));
+    assert(sizeof(safe_address_->address) == maid.name().data.string().size());
+    std::sprintf(safe_address_->address, "%s", maid.name().data.string().c_str());
+    assert(sizeof(safe_address_->signature) == initial_signature.string().size());
+    std::sprintf(safe_address_->signature, "%s", initial_signature.string().c_str());
+  }
+
+  void ChangeAddress(const Identity& new_address, const asymm::Signature& new_signature) {
+    namespace bip = boost::interprocess;
+    bip::scoped_lock<bip::interprocess_mutex> lock(safe_address_->mutex);
+    Identity current_address(safe_address_->address);
+    if (current_address == new_address)
+      return;
+
+    if (asymm::CheckSignature(asymm::PlainText(new_address), new_signature, maid_.public_key())) {
+      assert(sizeof(safe_address_->address) ==  new_address.string().size());
+      std::sprintf(safe_address_->address, "%s", new_address.string().c_str());
+      assert(sizeof(safe_address_->signature) == new_signature.string().size());
+      std::sprintf(safe_address_->signature, "%s", new_signature.string().c_str());
+    } else {
+      ThrowError(AsymmErrors::invalid_signature);
+    }
+  }
+
+ private:
+  passport::Maid maid_;
+  const std::string shared_memory_name_;
+  boost::interprocess::shared_memory_object shared_memory_;
+  std::unique_ptr<boost::interprocess::mapped_region> mapped_region_;
+  detail::SafeAddress* safe_address_;
+};
 
 // This class contains raw pointers that are managed by the boost IPC library. Changing any
 // of them to smart pointers results in a double free. The message queue construction syntax
@@ -63,11 +138,13 @@ class SharedMemoryCommunication {
 
     mapped_region_.reset(new boost::interprocess::mapped_region(*shared_memory_,
                                                                 boost::interprocess::read_write));
-    message_queue_ = new (mapped_region_->get_address()) detail::IpcBidirectionalQueue;
+    detail::CreateQueue<CreationTag>()(message_queue_, *mapped_region_);
     StartCheckingReceivingQueue();
   }
 
   bool PushMessage(const std::string& message) {
+    if (message.size() > size_t(detail::IpcBidirectionalQueue::kMessageSize))
+      return false;
     return detail::PushMessageToQueue<CreationTag>().Push(std::ref(message_queue_), message);
   }
 

@@ -54,6 +54,26 @@ struct DecideTruncate<SharedMemoryOpenOnly> {
   void operator()(bip::shared_memory_object&) {}
 };
 
+// decide whether to allocate the memory of the queue or jsut get a pointer to it
+template<typename CreationTag>
+struct CreateQueue {};
+
+template<>
+struct CreateQueue<SharedMemoryCreateOnly> {
+  void operator()(IpcBidirectionalQueue*& queue,
+                  boost::interprocess::mapped_region& mapped_region) {
+    queue = new (mapped_region.get_address()) IpcBidirectionalQueue;
+  }
+};
+
+template<>
+struct CreateQueue<SharedMemoryOpenOnly> {
+  void operator()(IpcBidirectionalQueue*& queue,
+                  boost::interprocess::mapped_region& mapped_region) {
+    queue = static_cast<IpcBidirectionalQueue*>(mapped_region.get_address());
+  }
+};
+
 // decide whether to delete the shared memory allocated based on who is the owner
 template<typename CreationTag>
 struct DecideDeletion {};
@@ -100,8 +120,7 @@ struct PushMessageToQueue<SharedMemoryCreateOnly> {
 template<>
 struct PushMessageToQueue<SharedMemoryOpenOnly> {
   bool Push(IpcBidirectionalQueue*& queue, const std::string& message) {
-    bip::scoped_lock<bip::interprocess_mutex>
-        lock(queue->cwpr_mutex);
+    bip::scoped_lock<bip::interprocess_mutex> lock(queue->cwpr_mutex);
     if (!queue->child_write.timed_wait(lock,
                                        Until(boost::posix_time::milliseconds(10000)),
                                        [&queue] ()->bool { return !queue->message_from_child; })) {
