@@ -12,6 +12,8 @@
 #ifndef MAIDSAFE_LIFESTUFF_MANAGER_QUEUE_OPERATIONS_H_
 #define MAIDSAFE_LIFESTUFF_MANAGER_QUEUE_OPERATIONS_H_
 
+#include <string>
+
 #include "boost/interprocess/creation_tags.hpp"
 #include "boost/interprocess/shared_memory_object.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
@@ -26,17 +28,14 @@ namespace lifestuff_manager {
 
 namespace detail {
 
-namespace {
+namespace bip = boost::interprocess;
 
-boost::posix_time::ptime Until(const boost::posix_time::time_duration &duration) {
+typedef bip::create_only_t SharedMemoryCreateOnly;
+typedef bip::open_only_t SharedMemoryOpenOnly;
+
+inline boost::posix_time::ptime Until(const boost::posix_time::time_duration &duration) {
   return boost::posix_time::microsec_clock::universal_time() + duration;
 }
-
-}  // namespace
-
-namespace bip = boost::interprocess;
-typedef TaggedValue<bip::create_only_t, struct CreateOnly> SharedMemoryCreateOnly;
-typedef TaggedValue<bip::open_only_t, struct OpenOnly> SharedMemoryOpenOnly;
 
 // decide whether to truncate the memory block based on who is the owner
 template<typename CreationTag>
@@ -62,7 +61,7 @@ template<>
 struct CreateQueue<SharedMemoryCreateOnly> {
   void operator()(IpcBidirectionalQueue*& queue,
                   boost::interprocess::mapped_region& mapped_region) {
-    queue = new (mapped_region.get_address()) IpcBidirectionalQueue;
+    queue = new (mapped_region.get_address()) IpcBidirectionalQueue;  // NOLINT (Dan)
   }
 };
 
@@ -108,7 +107,7 @@ struct PushMessageToQueue<SharedMemoryCreateOnly> {
     }
 
     // Add the message to the char array
-    std::sprintf(queue->parent_message, "%s", message.c_str());
+    std::snprintf(queue->parent_message, message.size(), "%s", message.c_str());
 
     // Notify the other process that the buffer is full
     queue->message_from_parent = true;
@@ -128,7 +127,7 @@ struct PushMessageToQueue<SharedMemoryOpenOnly> {
       return false;
     }
 
-    std::sprintf(queue->child_message, "%s", message.c_str());
+    std::snprintf(queue->child_message, message.size(), "%s", message.c_str());
     // Notify the other process that the buffer is full
     queue->message_from_child = true;
     queue->parent_read.notify_one();

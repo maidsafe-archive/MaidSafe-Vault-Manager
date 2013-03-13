@@ -9,8 +9,10 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#ifndef MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATIONS_H_
-#define MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATIONS_H_
+#ifndef MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
+#define MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
+
+#include <string>
 
 #include "boost/interprocess/mapped_region.hpp"
 
@@ -26,7 +28,7 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
-namespace {
+namespace detail {
 
 template<typename FobType>
 struct is_valid_fob : public std::false_type {};
@@ -37,7 +39,7 @@ struct is_valid_fob<passport::Maid> : public std::true_type {};
 template<>
 struct is_valid_fob<passport::Pmid> : public std::true_type {};
 
-}
+}  // namespace detail
 
 class LifeStuffManagerAddressGetter {
  public:
@@ -56,6 +58,11 @@ class LifeStuffManagerAddressGetter {
   }
 
  private:
+  LifeStuffManagerAddressGetter(const LifeStuffManagerAddressGetter& other);
+  LifeStuffManagerAddressGetter& operator=(const LifeStuffManagerAddressGetter& other);
+  LifeStuffManagerAddressGetter(LifeStuffManagerAddressGetter&& other);
+  LifeStuffManagerAddressGetter& operator=(LifeStuffManagerAddressGetter&& other);
+
   const std::string shared_memory_name_;
   boost::interprocess::shared_memory_object shared_memory_;
   boost::interprocess::mapped_region mapped_region_;
@@ -64,7 +71,7 @@ class LifeStuffManagerAddressGetter {
 
 class SafeReadOnlySharedMemory {
  public:
-  SafeReadOnlySharedMemory(const passport::Maid& maid)
+  explicit SafeReadOnlySharedMemory(const passport::Maid& maid)
       : maid_(maid),
         shared_memory_name_("lifestuff_manager"),
         shared_memory_(boost::interprocess::create_only,
@@ -75,14 +82,20 @@ class SafeReadOnlySharedMemory {
     shared_memory_.truncate(sizeof(detail::SafeAddress));
     mapped_region_.reset(new boost::interprocess::mapped_region(shared_memory_,
                                                                 boost::interprocess::read_write));
-    safe_address_ = new (mapped_region_->get_address()) detail::SafeAddress;
+    safe_address_ = new (mapped_region_->get_address()) detail::SafeAddress;  // NOLINT (Dan)
 
     asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().data),
                                                    maid.private_key()));
     assert(sizeof(safe_address_->address) == maid.name().data.string().size());
-    std::sprintf(safe_address_->address, "%s", maid.name().data.string().c_str());
+    std::snprintf(safe_address_->address,
+                  crypto::SHA512::DIGESTSIZE,
+                  "%s",
+                  maid.name().data.string().c_str());
     assert(sizeof(safe_address_->signature) == initial_signature.string().size());
-    std::sprintf(safe_address_->signature, "%s", initial_signature.string().c_str());
+    std::snprintf(safe_address_->signature,
+                  asymm::Keys::kSignatureByteSize,
+                  "%s",
+                  initial_signature.string().c_str());
   }
 
   void ChangeAddress(const Identity& new_address, const asymm::Signature& new_signature) {
@@ -94,15 +107,26 @@ class SafeReadOnlySharedMemory {
 
     if (asymm::CheckSignature(asymm::PlainText(new_address), new_signature, maid_.public_key())) {
       assert(sizeof(safe_address_->address) ==  new_address.string().size());
-      std::sprintf(safe_address_->address, "%s", new_address.string().c_str());
+      std::snprintf(safe_address_->address,
+                    crypto::SHA512::DIGESTSIZE,
+                    "%s",
+                    new_address.string().c_str());
       assert(sizeof(safe_address_->signature) == new_signature.string().size());
-      std::sprintf(safe_address_->signature, "%s", new_signature.string().c_str());
+      std::snprintf(safe_address_->signature,
+                    asymm::Keys::kSignatureByteSize,
+                    "%s",
+                    new_signature.string().c_str());
     } else {
       ThrowError(AsymmErrors::invalid_signature);
     }
   }
 
  private:
+  SafeReadOnlySharedMemory(const SafeReadOnlySharedMemory& other);
+  SafeReadOnlySharedMemory& operator=(const SafeReadOnlySharedMemory& other);
+  SafeReadOnlySharedMemory(SafeReadOnlySharedMemory&& other);
+  SafeReadOnlySharedMemory& operator=(SafeReadOnlySharedMemory&& other);
+
   passport::Maid maid_;
   const std::string shared_memory_name_;
   boost::interprocess::shared_memory_object shared_memory_;
@@ -126,12 +150,12 @@ class SharedMemoryCommunication {
         message_notifier_(message_notifier),
         receive_flag_(true),
         receive_future_() {
-    static_assert(is_valid_fob<FobType>::value,
+    static_assert(detail::is_valid_fob<FobType>::value,
                   "Type of identifier name must be either MAID or PMID");
     assert(message_notifier_ && "A non-null function must be provided.");
     detail::DecideDeletion<CreationTag>()(shared_memory_name_->string());
     shared_memory_.reset(new boost::interprocess::shared_memory_object(
-                             typename CreationTag::value_type(),
+                             CreationTag(),
                              shared_memory_name_->string().c_str(),
                              boost::interprocess::read_write));
     detail::DecideTruncate<CreationTag>()(*shared_memory_);
@@ -155,6 +179,11 @@ class SharedMemoryCommunication {
   }
 
  private:
+  SharedMemoryCommunication(const SharedMemoryCommunication& other);
+  SharedMemoryCommunication& operator=(const SafeReadOnlySharedMemory& other);
+  SharedMemoryCommunication(SharedMemoryCommunication&& other);
+  SharedMemoryCommunication& operator=(SharedMemoryCommunication&& other);
+
   typename FobType::name_type shared_memory_name_;
   std::unique_ptr<boost::interprocess::shared_memory_object> shared_memory_;
   std::unique_ptr<boost::interprocess::mapped_region> mapped_region_;
@@ -184,4 +213,4 @@ typedef SharedMemoryCommunication<passport::Pmid, detail::SharedMemoryOpenOnly>
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATIONS_H_
+#endif  // MAIDSAFE_LIFESTUFF_MANAGER_SHARED_MEMORY_COMMUNICATION_H_

@@ -9,6 +9,8 @@
  *  written permission of the board of directors of MaidSafe.net.                                  *
  **************************************************************************************************/
 
+#include <string>
+
 #include "maidsafe/data_store/utils.h"
 
 #include "boost/variant/apply_visitor.hpp"
