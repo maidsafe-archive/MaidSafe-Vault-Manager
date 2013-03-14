@@ -45,6 +45,7 @@ struct IpcBidirectionalQueue {
 };
 
 struct SafeAddress {
+  SafeAddress() : mutex() {}
   boost::interprocess::interprocess_mutex mutex;
   char address[crypto::SHA512::DIGESTSIZE], signature[asymm::Keys::kSignatureByteSize];
 };

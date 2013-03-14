@@ -47,13 +47,15 @@ class LifeStuffManagerAddressGetter {
       : shared_memory_name_("lifestuff_manager"),
         shared_memory_(boost::interprocess::open_only,
                        shared_memory_name_.c_str(),
-                       boost::interprocess::read_only),
-        mapped_region_(shared_memory_, boost::interprocess::read_only),
+                       boost::interprocess::read_write),
+        mapped_region_(shared_memory_, boost::interprocess::read_write),
         safe_address_(static_cast<detail::SafeAddress*>(mapped_region_.get_address())) {}
 
   passport::Maid::name_type GetAddress() {
     namespace bip = boost::interprocess;
     bip::scoped_lock<bip::interprocess_mutex> lock(safe_address_->mutex);
+    std::string s(safe_address_->address);
+    std::cout << "s: " << s.size() << std::endl;
     return passport::Maid::name_type(Identity(safe_address_->address));
   }
 
@@ -87,15 +89,21 @@ class SafeReadOnlySharedMemory {
     asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().data),
                                                    maid.private_key()));
     assert(sizeof(safe_address_->address) == maid.name().data.string().size());
-    std::snprintf(safe_address_->address,
-                  crypto::SHA512::DIGESTSIZE,
+    std::sprintf(safe_address_->address,
+//                  crypto::SHA512::DIGESTSIZE,
                   "%s",
                   maid.name().data.string().c_str());
     assert(sizeof(safe_address_->signature) == initial_signature.string().size());
-    std::snprintf(safe_address_->signature,
-                  asymm::Keys::kSignatureByteSize,
+    std::sprintf(safe_address_->signature,
+//                  asymm::Keys::kSignatureByteSize,
                   "%s",
                   initial_signature.string().c_str());
+    std::cout << "SafeReadOnlySharedMemory instance address: "
+              << EncodeToBase32(std::string(safe_address_->address)) << std::endl;
+  }
+
+  ~SafeReadOnlySharedMemory() {
+    boost::interprocess::shared_memory_object::remove(shared_memory_name_.c_str());
   }
 
   void ChangeAddress(const Identity& new_address, const asymm::Signature& new_signature) {
@@ -107,13 +115,13 @@ class SafeReadOnlySharedMemory {
 
     if (asymm::CheckSignature(asymm::PlainText(new_address), new_signature, maid_.public_key())) {
       assert(sizeof(safe_address_->address) ==  new_address.string().size());
-      std::snprintf(safe_address_->address,
-                    crypto::SHA512::DIGESTSIZE,
+      std::sprintf(safe_address_->address,
+//                    crypto::SHA512::DIGESTSIZE,
                     "%s",
                     new_address.string().c_str());
       assert(sizeof(safe_address_->signature) == new_signature.string().size());
-      std::snprintf(safe_address_->signature,
-                    asymm::Keys::kSignatureByteSize,
+      std::sprintf(safe_address_->signature,
+//                    asymm::Keys::kSignatureByteSize,
                     "%s",
                     new_signature.string().c_str());
     } else {

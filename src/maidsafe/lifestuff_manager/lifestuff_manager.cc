@@ -91,19 +91,19 @@ LifeStuffManager::LifeStuffManager()
       update_interval_(kMinUpdateInterval()),
       update_mutex_(),
       update_timer_(asio_service_.service()),
-      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())),
+      transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/nullptr),
       maid_(passport::Anmaid()),
       initial_contact_memory_(maid_) {
 //  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
-  passport::Anmaid anmaid;
-  passport::Maid maid(anmaid);
-  passport::Pmid pmid(maid);
-  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string) {});
-  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string) {});
-  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
-  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
-  asio_service_.Start();
-  Initialise();
+//  passport::Anmaid anmaid;
+//  passport::Maid maid(anmaid);
+//  passport::Pmid pmid(maid);
+//  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string) {});
+//  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string) {});
+//  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
+//  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
+//  asio_service_.Start();
+//  Initialise();
 }
 
 void LifeStuffManager::Initialise() {
@@ -145,24 +145,24 @@ void LifeStuffManager::Initialise() {
 }
 
 LifeStuffManager::~LifeStuffManager() {
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
-  need_to_stop_ = true;
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
-  process_manager_.LetAllProcessesDie();
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
-  StopAllVaults();
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
-    update_timer_.cancel();
-    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
-  }
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
-  transport_->StopListening();
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
-  asio_service_.Stop();
-  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
+//  need_to_stop_ = true;
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
+//  process_manager_.LetAllProcessesDie();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
+//  StopAllVaults();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
+//  {
+//    std::lock_guard<std::mutex> lock(update_mutex_);
+//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
+//    update_timer_.cancel();
+//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
+//  }
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
+//  transport_->StopListening();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
+//  asio_service_.Stop();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
 }
 
 void LifeStuffManager::RestartLifeStuffManager(const std::string& /*latest_file*/,
