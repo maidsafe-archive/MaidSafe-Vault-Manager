@@ -19,7 +19,7 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
 
-#include "maidsafe/data_types/directory_types_pb.h"
+#include "maidsafe/data_types/directory_types.pb.h"
 
 
 namespace maidsafe {

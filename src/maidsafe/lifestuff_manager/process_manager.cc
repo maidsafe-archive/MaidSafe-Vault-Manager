@@ -29,7 +29,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/rsa.h"
 
-#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/controller_messages.pb.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/utils.h"
 

@@ -24,11 +24,11 @@
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/lifestuff_manager/config.h"
-#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/controller_messages.pb.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
 #include "maidsafe/lifestuff_manager/utils.h"
-#include "maidsafe/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
 
 namespace bptime = boost::posix_time;

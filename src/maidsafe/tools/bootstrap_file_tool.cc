@@ -25,7 +25,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
 
 namespace fs = boost::filesystem;
