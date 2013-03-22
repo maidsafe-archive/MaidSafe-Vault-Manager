@@ -23,7 +23,7 @@
 
 #include "maidsafe/passport/passport.h"
 
-#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/controller_messages.pb.h"
 #include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
@@ -407,7 +407,7 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
       return bptime::pos_infin;
   }
   request_transport->on_message_received().connect([this, callback] (const std::string& message,
-                                                                     Port /*lifestuff_manager_port*/) {
+                                                                     Port /*lifestuff_manager_port*/) { // NOLINT
                                                      HandleUpdateIntervalResponse(message,
                                                                                   callback);
                                                    });

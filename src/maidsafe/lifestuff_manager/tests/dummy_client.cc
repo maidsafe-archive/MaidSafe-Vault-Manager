@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   maidsafe::passport::Maid maid(anmaid);
   maidsafe::passport::Pmid pmid(maid);
   try {
-    if (!client.StartVault(pmid, account_name, "")) {
+    if (!client.StartVault(pmid, maid.name(), "")) {
       LOG(kError) << "dummy_client: Failed to start vault " << pmid.name().data.string();
     }
   } catch(...) {
@@ -40,6 +40,6 @@ int main(int argc, char** argv) {
              << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid.public_key()));
   LOG(kInfo) << "Private Key: "
              << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid.private_key()));
-  LOG(kInfo) << "Account name: " << account_name;
+  LOG(kInfo) << "Account name: " << maidsafe::Base64Substr(maid.name()->string());
   return 0;
 }

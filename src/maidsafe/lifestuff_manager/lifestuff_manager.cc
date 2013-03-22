@@ -24,11 +24,11 @@
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/lifestuff_manager/config.h"
-#include "maidsafe/lifestuff_manager/controller_messages_pb.h"
+#include "maidsafe/lifestuff_manager/controller_messages.pb.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
 #include "maidsafe/lifestuff_manager/utils.h"
-#include "maidsafe/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
 
 namespace bptime = boost::posix_time;
@@ -393,7 +393,8 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
 
   VaultInfoPtr vault_info(std::make_shared<VaultInfo>());
 #ifdef TESTING
-  std::cout << "Vault index to pass to vault: " << start_vault_request.identity_index() << std::endl;
+  std::cout << "Vault index to pass to vault: "
+            << start_vault_request.identity_index() << std::endl;
   vault_info->identity_index = start_vault_request.identity_index();
 #endif
   passport::Pmid request_pmid(passport::detail::ParsePmid(
