@@ -37,7 +37,7 @@
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/process_manager.h"
 #include "maidsafe/lifestuff_manager/utils.h"
-#include "maidsafe/lifestuff_manager/vault_info_pb.h"
+#include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
 namespace maidsafe {
 
