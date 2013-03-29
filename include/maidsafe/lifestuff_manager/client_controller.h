@@ -40,11 +40,12 @@ namespace lifestuff_manager {
 
 class LocalTcpTransport;
 
-typedef boost::signals2::signal<void(const NonEmptyString&)> OnNewVersionAvailable;
+typedef boost::signals2::signal<void(const std::string&)> OnNewVersionAvailable;
+typedef std::pair<std::string, uint16_t> EndPoint;
 
 class ClientController {
  public:
-  ClientController(std::function<void(const NonEmptyString&)> on_new_version_available_slot);
+  ClientController(std::function<void(const std::string&)>& on_new_version_available_slot);
   ~ClientController();
 
   std::vector<boost::asio::ip::udp::endpoint> BootstrapEndpoints();
