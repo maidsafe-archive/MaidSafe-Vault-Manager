@@ -21,8 +21,7 @@
 
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
-  maidsafe::lifestuff_manager::ClientController client(
-      [](const maidsafe::NonEmptyString&){});  // NOLINT (Fraser)
+  maidsafe::lifestuff_manager::ClientController client([](const std::string&) {});
   std::string account_name(maidsafe::RandomAlphaNumericString(16));
   maidsafe::passport::Anmaid anmaid;
   maidsafe::passport::Maid maid(anmaid);
