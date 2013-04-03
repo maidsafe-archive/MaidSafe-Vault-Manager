@@ -46,6 +46,9 @@ LifeStuffManager::VaultInfo::VaultInfo()
       client_port(0),
       requested_to_run(false),
       joined_network(false),
+#ifdef TESTING
+      identity_index(-1),
+#endif
       vault_version(kInvalidVersion) {}
 
 void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
@@ -88,10 +91,19 @@ LifeStuffManager::LifeStuffManager()
       update_interval_(kMinUpdateInterval()),
       update_mutex_(),
       update_timer_(asio_service_.service()),
-      transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
+      transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/nullptr),
+      maid_(passport::Anmaid()),
+      initial_contact_memory_(maid_) {
 //  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
-  asio_service_.Start();
-  Initialise();
+//  passport::Anmaid anmaid;
+//  passport::Maid maid(anmaid);
+//  passport::Pmid pmid(maid);
+//  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string) {});
+//  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string) {});
+//  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
+//  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
+//  asio_service_.Start();
+//  Initialise();
 }
 
 void LifeStuffManager::Initialise() {
@@ -133,14 +145,24 @@ void LifeStuffManager::Initialise() {
 }
 
 LifeStuffManager::~LifeStuffManager() {
-  need_to_stop_ = true;
-  process_manager_.LetAllProcessesDie();
-  StopAllVaults();
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    update_timer_.cancel();
-  }
-  transport_->StopListening();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
+//  need_to_stop_ = true;
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
+//  process_manager_.LetAllProcessesDie();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
+//  StopAllVaults();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
+//  {
+//    std::lock_guard<std::mutex> lock(update_mutex_);
+//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
+//    update_timer_.cancel();
+//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
+//  }
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
+//  transport_->StopListening();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
+//  asio_service_.Stop();
+//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
 }
 
 void LifeStuffManager::RestartLifeStuffManager(const std::string& /*latest_file*/,
@@ -369,10 +391,17 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
     }
   }
 
-  VaultInfoPtr vault_info(new VaultInfo);
+  VaultInfoPtr vault_info(std::make_shared<VaultInfo>());
+#ifdef TESTING
+  std::cout << "Vault index to pass to vault: "
+            << start_vault_request.identity_index() << std::endl;
+  vault_info->identity_index = start_vault_request.identity_index();
+#endif
+  passport::Pmid request_pmid(passport::detail::ParsePmid(
+                                  NonEmptyString(start_vault_request.pmid())));
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    auto itr(FindFromPmidName(vault_info->pmid->name()));
+    auto itr(FindFromPmidName(request_pmid.name()));
     bool existing_vault(false);
     if (itr != vault_infos_.end()) {
       existing_vault = true;
@@ -403,8 +432,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       }
     } else {
       // The vault is not already registered.
-      vault_info->pmid.reset(new passport::Pmid(passport::ParsePmid(
-                                                  NonEmptyString(start_vault_request.pmid()))));
+      vault_info->pmid.reset(new passport::Pmid(request_pmid));
       vault_info->account_name = start_vault_request.account_name();
       bool exists(true);
       while (exists) {
@@ -1035,12 +1063,12 @@ bool LifeStuffManager::ObtainBootstrapInformation(protobuf::LifeStuffManagerConf
       if (detail::GetBootstrapIps().empty()) {
         protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
         local_endpoint->set_ip(GetLocalIp().to_string());
-        local_endpoint->set_port(5483);
+        local_endpoint->set_port(kLivePort);
       } else {
-        for (auto& ip : detail::GetBootstrapIps()) {
+        for (auto& ep : detail::GetBootstrapIps()) {
           protobuf::Endpoint* local_endpoint(end_points.add_bootstrap_contacts());
-          local_endpoint->set_ip(ip);
-          local_endpoint->set_port(5483);
+          local_endpoint->set_ip(ep.address().to_string());
+          local_endpoint->set_port(ep.port());
         }
       }
     }
@@ -1089,11 +1117,12 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
 
   process.AddArgument("--start");
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
-#if defined TESTING && !defined MAIDSAFE_WIN32
+#if defined TESTING
+  process.AddArgument("--identity_index " + std::to_string(vault_info->identity_index));
   // process.AddArgument("--log_folder ./dummy_vault_logfiles");
-  // process.AddArgument("--log_private Info");
-  if (!user_id.empty())
-    process.AddArgument("--usr_id " + user_id);
+//   process.AddArgument("--log_routing I");
+//  if (!user_id.empty())
+//    process.AddArgument("--usr_id " + user_id);
 #endif
 
   LOG(kInfo) << "Process Name: " << process.name();

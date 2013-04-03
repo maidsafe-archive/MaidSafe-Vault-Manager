@@ -24,52 +24,122 @@ include_directories(${common_SOURCE_DIR}/include)
 include_directories(${passport_SOURCE_DIR}/include)
 
 
-#==================================================================================================#
-# Set up all files as GLOBs                                                                        #
-#==================================================================================================#
-set(LifestuffManagerSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager)
-glob_dir(LifestuffManager ${LifestuffManagerSourcesDir} "LifeStuff Manager")
-set(LifestuffManagerMain ${LifestuffManagerSourcesDir}/lifestuff_manager_main.cc)
-set(LifestuffManagerCC ${LifestuffManagerSourcesDir}/lifestuff_manager.cc)
-set(LifestuffManagerH ${LifestuffManagerSourcesDir}/lifestuff_manager.h)
-set(LifestuffManagerConfig ${LifestuffManagerSourcesDir}/config.h)
-set(LifestuffManagerCoreFiles ${LifestuffManagerCC} ${LifestuffManagerH} ${LifestuffManagerConfig})
-list(REMOVE_ITEM LifestuffManagerAllFiles ${LifestuffManagerMain} ${LifestuffManagerCoreFiles})
-source_group("LifeStuff Manager Core Source Files" FILES ${LifestuffManagerCC})
-source_group("LifeStuff Manager Core Header Files" FILES ${LifestuffManagerH} ${LifestuffManagerConfig})
+###################################################################################################
+# Set up all files as GLOBs                                                                       #
+###################################################################################################
+####    CODE    ####
+file(GLOB SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.cc")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc")
+file(GLOB HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.h")
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h")
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+file(GLOB API_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/lifestuff_manager/*.h")
 
-glob_dir(DataTypes ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types "Data Types\\\\")
+file(GLOB PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.proto")
+file(GLOB SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/*.pb.h")
 
-glob_dir(DataStore ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store "Data Store\\\\")
+set(ALL_FILES_LIFESTUFF_MANAGER_DIR ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${HEADER_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                             ${API_FILES_LIFESTUFF_MANAGER_DIR})
+set(ALL_FILES_LIFESTUFF_MANAGER_CORE "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h"
+                                             "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+list(REMOVE_ITEM SOURCE_FILES_LIFESTUFF_MANAGER_DIR ${SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM HEADER_FILES_LIFESTUFF_MANAGER_DIR ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+set(STYLE_CHECK_FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR}
+                      ${HEADER_FILES_LIFESTUFF_MANAGER_DIR}
+                      ${API_FILES_LIFESTUFF_MANAGER_DIR})
+list(REMOVE_ITEM STYLE_CHECK_FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/controller_messages.pb.h"
+                                   "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.h")
 
-glob_dir(LifestuffManagerTests ${LifestuffManagerSourcesDir}/tests "LifeStuff Manager Tests")
-list(REMOVE_ITEM LifestuffManagerTestsAllFiles ${LifestuffManagerSourcesDir}/tests/dummy_client.cc)
-list(REMOVE_ITEM LifestuffManagerTestsAllFiles ${LifestuffManagerSourcesDir}/tests/dummy_vault.cc)
+source_group("LifeStuff Manager Source Files" FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Header Files" FILES ${HEADER_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager Core Source Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.cc"})
+source_group("LifeStuff Manager Core Header Files" FILES "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager.h"
+                                                         "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/config.h")
+source_group("LifeStuff Manager Proto Files" FILES ${PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                   ${SOURCE_PROTO_FILES_LIFESTUFF_MANAGER_DIR}
+                                                   ${HEADER_PROTO_FILES_LIFESTUFF_MANAGER_DIR})
+source_group("LifeStuff Manager API Files" FILES ${API_FILES_LIFESTUFF_MANAGER_DIR})
 
-glob_dir(DataTypesTests ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests "Data Types Tests")
+file(GLOB SOURCE_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.cc")
+file(GLOB HEADER_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.h")
+file(GLOB API_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_types/*.h")
 
-glob_dir(DataStoreTests ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests "Data Store Tests")
+file(GLOB PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.proto")
+file(GLOB SOURCE_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.cc")
+file(GLOB HEADER_PROTO_FILES_DATA_TYPES_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/*.pb.h")
+
+set(ALL_FILES_DATA_TYPES_DIR ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${PROTO_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM SOURCE_FILES_DATA_TYPES_DIR ${SOURCE_PROTO_FILES_DATA_TYPES_DIR})
+list(REMOVE_ITEM HEADER_FILES_DATA_TYPES_DIR ${HEADER_PROTO_FILES_DATA_TYPES_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_TYPES_DIR} ${HEADER_FILES_DATA_TYPES_DIR} ${API_FILES_DATA_TYPES_DIR})
+
+source_group("Data Types Source Files" FILES ${SOURCE_FILES_DATA_TYPES_DIR})
+source_group("Data Types Header Files" FILES ${HEADER_FILES_DATA_TYPES_DIR})
+source_group("Data Types Proto Files" FILES ${PROTO_FILES_DATA_TYPES_DIR} ${SOURCE_PROTO_FILES_DATA_TYPES_DIR} ${HEADER_PROTO_FILES_DATA_TYPES_DIR})
+source_group("Data Types API Files" FILES ${API_FILES_DATA_TYPES_DIR})
+
+file(GLOB SOURCE_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.cc")
+file(GLOB HEADER_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/*.h")
+file(GLOB API_FILES_DATA_STORE_DIR "${PROJECT_SOURCE_DIR}/include/maidsafe/data_store/*.h")
+set(ALL_FILES_DATA_STORE_DIR ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+
+set(ALL_FILES_DATA_STORE_DIR ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${SOURCE_FILES_DATA_STORE_DIR} ${HEADER_FILES_DATA_STORE_DIR} ${API_FILES_DATA_STORE_DIR})
+
+source_group("Data Store Source Files" FILES ${SOURCE_FILES_DATA_STORE_DIR})
+source_group("Data Store Header Files" FILES ${HEADER_FILES_DATA_STORE_DIR})
+source_group("Data Store API Files" FILES ${API_FILES_DATA_STORE_DIR})
 
 
-#==================================================================================================#
-# Define MaidSafe libraries and executables                                                        #
-#==================================================================================================#
-ms_add_static_library(lifestuff_manager ${LifestuffManagerAllFiles})
-ms_add_static_library(lifestuff_manager_core ${LifestuffManagerCoreFiles})
-ms_add_static_library(lifestuff_manager_core_dummy ${LifestuffManagerCoreFiles})
-ms_add_static_library(private ${DataTypesAllFiles} ${DataStoreAllFiles})
+####    TESTS    ####
+file(GLOB SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/*.cc")
+file(GLOB HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/*.h")
+set(ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR ${SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR} ${HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Source Files" FILES ${SOURCE_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+source_group("LifeStuff Manager Tests Header Files" FILES ${HEADER_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+list(REMOVE_ITEM ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
+list(REMOVE_ITEM ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
+file(GLOB SOURCE_FILES_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.cc")
+file(GLOB HEADER_FILES_DATA_TYPES_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.h")
+set(ALL_FILES_DATA_TYPES_TESTS_DIR ${SOURCE_FILES_DATA_TYPES_TESTS_DIR} ${HEADER_FILES_DATA_TYPES_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Source Files" FILES ${SOURCE_FILES_DATA_TYPES_TESTS_DIR})
+source_group("Data Types Tests Header Files" FILES ${HEADER_FILES_DATA_TYPES_TESTS_DIR})
 
-ms_add_executable(lifestuff_mgr "Production" ${LifestuffManagerSourcesDir}/lifestuff_manager_main.cc)
-ms_add_executable(signing_tool "Tools" ${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc)
-ms_add_executable(bootstrap_file_tool "Tools" ${PROJECT_SOURCE_DIR}/src/maidsafe/tools/bootstrap_file_tool.cc
-                                              ${LifestuffManagerSourcesDir}/vault_info.pb.cc
-                                              ${LifestuffManagerSourcesDir}/vault_info.pb.h
-                                              ${LifestuffManagerSourcesDir}/vault_info.proto)
+file(GLOB SOURCE_FILES_DATA_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.cc")
+file(GLOB HEADER_FILES_DATA_STORE_TESTS_DIR "${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.h")
+set(ALL_FILES_DATA_STORE_TESTS_DIR ${SOURCE_FILES_DATA_STORE_TESTS_DIR} ${HEADER_FILES_DATA_STORE_TESTS_DIR})
+set(STYLE_CHECK_FILES ${STYLE_CHECK_FILES} ${ALL_FILES_DATA_STORE_TESTS_DIR})
+source_group("Data Store Tests Source Files" FILES ${SOURCE_FILES_DATA_STORE_TESTS_DIR})
+source_group("Data Store Tests Header Files" FILES ${HEADER_FILES_DATA_STORE_TESTS_DIR})
+
+
+###################################################################################################
+# Define MaidSafe libraries and executables                                                       #
+###################################################################################################
+ms_add_static_library(lifestuff_manager ${ALL_FILES_LIFESTUFF_MANAGER_DIR})
+ms_add_static_library(lifestuff_manager_core ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
+ms_add_static_library(lifestuff_manager_core_dummy ${ALL_FILES_LIFESTUFF_MANAGER_CORE})
+ms_add_static_library(private ${ALL_FILES_DATA_STORE_DIR} ${ALL_FILES_DATA_TYPES_DIR})
+
+ms_add_executable(lifestuff_mgr "Production" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/lifestuff_manager_main.cc")
+ms_add_executable(signing_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
+ms_add_executable(bootstrap_file_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/bootstrap_file_tool.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.cc"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.pb.h"
+                                              "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.proto")
 if(MaidsafeTesting)
-  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${LifestuffManagerTestsAllFiles})
-  ms_add_executable(dummy_client "Tests/Private" ${LifestuffManagerSourcesDir}/tests/dummy_client.cc)
-  ms_add_executable(dummy_vault "Tests/Private" ${LifestuffManagerSourcesDir}/tests/dummy_vault.cc)
-  ms_add_executable(TESTprivate "Tests/Private" ${DataTypesTestsAllFiles} ${DataStoreTestsAllFiles})
+  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${ALL_FILES_LIFESTUFF_MANAGER_TESTS_DIR})
+  ms_add_executable(dummy_client "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_client.cc")
+  ms_add_executable(dummy_vault "Tests/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/tests/dummy_vault.cc")
+  ms_add_executable(TESTprivate "Tests/Private" ${ALL_FILES_DATA_TYPES_TESTS_DIR} ${ALL_FILES_DATA_STORE_TESTS_DIR} ${API_FILES_DETAIL_DIR})
+  ms_add_executable(client_controller_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/client_controller_tool.cc")
 endif()
 
 target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
@@ -82,9 +152,11 @@ if(MaidsafeTesting)
   target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
   target_link_libraries(dummy_client maidsafe_lifestuff_manager)
   target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
+  target_link_libraries(client_controller_tool maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
 
   add_dependencies(TESTlifestuff_manager dummy_vault)
 endif()
+
 
 rename_outdated_built_exes()
 

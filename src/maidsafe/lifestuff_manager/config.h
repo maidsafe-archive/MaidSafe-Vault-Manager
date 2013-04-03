@@ -47,6 +47,7 @@ const std::string kInstallerExtension([]()->std::string {
       return ".exe";
     if (kTargetPlatform == "OSX10.8")
       return ".dmg";
+    // TODO(Team): Distinguish between the supported Linux distros.
     if (kTargetPlatform == "Linux")
       return ".rpm";
     return ".unknown";

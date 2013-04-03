@@ -389,9 +389,9 @@ TEST_F(ProcessManagerTest, BEH_StartThreeProcesses) {
   EXPECT_EQ(0, process_manager_.NumberOfProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
-  ProcessIndex process_index = process_manager_.AddProcess(test, 5483);
-  ProcessIndex process_index1 = process_manager_.AddProcess(test1, 5483);
-  ProcessIndex process_index2 = process_manager_.AddProcess(test2, 5483);
+  ProcessIndex process_index = process_manager_.AddProcess(test, kLivePort);
+  ProcessIndex process_index1 = process_manager_.AddProcess(test1, kLivePort);
+  ProcessIndex process_index2 = process_manager_.AddProcess(test2, kLivePort);
   auto start(boost::posix_time::microsec_clock::universal_time());
   process_manager_.StartProcess(process_index);
   process_manager_.StartProcess(process_index1);

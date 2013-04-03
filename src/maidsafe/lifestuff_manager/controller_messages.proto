@@ -30,6 +30,7 @@ message StartVaultRequest {
   required bool credential_change = 5;
   required uint32 client_port = 6;
   optional bytes chunkstore_path = 7;
+  optional int32 identity_index = 8;
 }
 
 // LifeStuffManager sends this in response to a StartVaultRequest. It details whether or not the

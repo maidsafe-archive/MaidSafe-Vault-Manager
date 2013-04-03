@@ -22,14 +22,14 @@
 #include <thread>
 #include <vector>
 
-#include "boost/array.hpp"
 #include "boost/filesystem/path.hpp"
 #include "boost/program_options.hpp"
 #include "boost/regex.hpp"
 #include "boost/tokenizer.hpp"
 
-#include "maidsafe/common/utils.h"
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/lifestuff_manager/utils.h"
@@ -45,7 +45,7 @@ std::condition_variable g_cond_var;
 bool g_shutdown_service(false);
 
 void ShutDownLifeStuffManager(int /*signal*/) {
-  LOG(kInfo) << "Stopping lifestuff_manager.";
+  std::cout << "Stopping lifestuff_manager." << std::endl;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_shutdown_service = true;
@@ -140,70 +140,73 @@ BOOL CtrlHandler(DWORD control_type) {
 
 #endif
 
-std::vector<std::string> ParseIps(const std::string& parameter_ips) {
-  std::vector<std::string> ips;
+std::vector<boost::asio::ip::udp::endpoint> ParseIps(const std::string& parameter_ips) {
+  std::vector<boost::asio::ip::udp::endpoint> endpoints;
   boost::regex re(",");
   boost::sregex_token_iterator it(parameter_ips.begin(), parameter_ips.end(), re, -1), end;
-  while (it != end)
-    ips.push_back(*it++);
-
-#ifndef NDEBUG
-  if (!ips.empty()) {
-    for (auto& ip : ips)
-      LOG(kInfo) << "IP candidate: " << ip;
+  while (it != end) {
+    try {
+      boost::asio::ip::udp::endpoint endpoint;
+      endpoint.address(boost::asio::ip::address::from_string(*it));
+      endpoint.port(maidsafe::kLivePort);
+      endpoints.push_back(endpoint);
+    }
+    catch(...) {}
+    ++it;
   }
+#ifndef NDEBUG
+  for (auto& ep : endpoints)
+    LOG(kInfo) << "IP candidate: " << ep;
 #endif
-  return ips;
+  return endpoints;
 }
 
-int HandleProgramOptions(int argc, char** argv) {
+void HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
   options_description.add_options()
-      ("help", "produce help message")
+#ifdef TESTING
       ("port", po::value<int>(), "Listening port")
       ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
       ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore")
-      ("bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.");
+      ("bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.")
+#endif
+      ("help", "produce help message");
   po::variables_map variables_map;
   po::store(po::command_line_parser(argc, argv).options(options_description).
                 allow_unregistered().run(),
             variables_map);
   po::notify(variables_map);
 
-  if (variables_map.count("help")) {
+  if (variables_map.count("help") != 0) {
     std::cout << options_description;
-    return -1;
+    maidsafe::ThrowError(maidsafe::CommonErrors::uninitialised);
   }
 
+#ifdef TESTING
   uint16_t port(maidsafe::lifestuff_manager::LifeStuffManager::kDefaultPort() + 100);
-  bool has_port(variables_map.count("port") != 0);
-  if (has_port) {
-    if (variables_map["port"].as<int>() < 1025 ||
-        variables_map["port"].as<int>() > std::numeric_limits<uint16_t>::max()) {
+  if (variables_map.count("port") != 0) {
+    if (variables_map.at("port").as<int>() < 1025 ||
+        variables_map.at("port").as<int>() > std::numeric_limits<uint16_t>::max()) {
       LOG(kError) << "port must lie in range [1025, 65535]";
-      return -2;
+      maidsafe::ThrowError(maidsafe::CommonErrors::invalid_parameter);
     }
     port = static_cast<uint16_t>(variables_map["port"].as<int>());
   }
 
   fs::path root_dir, path_to_vault;
-  bool has_root_dir(variables_map.count("root_dir") != 0);
-  if (has_root_dir)
+  std::vector<boost::asio::ip::udp::endpoint> booststrap_ips;
+  if (variables_map.count("root_dir") != 0)
     root_dir = variables_map["root_dir"].as<std::string>();
-  bool has_path_to_vault(variables_map.count("vault_path") != 0);
-  if (has_path_to_vault)
+  if (variables_map.count("vault_path") != 0)
     path_to_vault = variables_map["vault_path"].as<std::string>();
-
-  std::vector<std::string> booststrap_ips;
-  bool has_bootstrap_ips(variables_map.count("bootstrap_ips") != 0);
-  if (has_bootstrap_ips)
+  if (variables_map.count("bootstrap_ips") != 0)
     booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
   maidsafe::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
                                                                    root_dir,
                                                                    path_to_vault,
                                                                    booststrap_ips);
-  return 0;
+#endif
 }
 
 }  // unnamed namespace
@@ -215,10 +218,7 @@ int main(int argc, char** argv) {
 #ifdef MAIDSAFE_WIN32
 #  ifdef TESTING
   try {
-    int result(HandleProgramOptions(argc, argv));
-    if (result != 0)
-      return result;
-
+    HandleProgramOptions(argc, argv);
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
       maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
       std::unique_lock<std::mutex> lock(g_mutex);
@@ -242,21 +242,21 @@ int main(int argc, char** argv) {
   StartServiceCtrlDispatcher(service_table);
 #  endif
 #else
-  try {
-    int result(HandleProgramOptions(argc, argv));
-    if (result != 0)
-      return result;
-
+//  try {
+    HandleProgramOptions(argc, argv);
     maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
+    std::cout << "Successfully started lifestuff_mgr" << std::endl;
     signal(SIGINT, ShutDownLifeStuffManager);
     signal(SIGTERM, ShutDownLifeStuffManager);
     std::unique_lock<std::mutex> lock(g_mutex);
     g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
-  }
-  catch(const std::exception& e) {
-    LOG(kError) << "Error: " << e.what();
-    return -5;
-  }
+    std::cout << "Successfully stopped lifestuff_mgr" << std::endl;
+//  }
+//  catch(const std::exception& e) {
+//    LOG(kError) << "Error: " << e.what();
+//    return -5;
+//  }
+  std::cout << "After try/catch, only return pending." << std::endl;
 #endif
   return 0;
 }

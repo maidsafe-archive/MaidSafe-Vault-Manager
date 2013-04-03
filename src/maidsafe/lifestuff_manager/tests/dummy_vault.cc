@@ -13,6 +13,7 @@
 #include <mutex>
 #include <condition_variable>
 
+#include "boost/asio/ip/udp.hpp"
 #include "boost/program_options.hpp"
 
 #include "maidsafe/common/log.h"
@@ -79,11 +80,8 @@ int main(int argc, char* argv[]) {
         return -3;
       }
 
-      maidsafe::passport::Anmaid anmaid;
-      maidsafe::passport::Maid maid(anmaid);
-      std::unique_ptr<maidsafe::passport::Pmid> pmid(new maidsafe::passport::Pmid(maid));
-
-      std::vector<std::pair<std::string, uint16_t>> bootstrap_endpoints;
+      std::unique_ptr<maidsafe::passport::Pmid> pmid;
+      std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
       vault_controller.GetIdentity(pmid, bootstrap_endpoints);
       LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().data);
       LOG(kInfo) << "Validation Token: "
@@ -92,9 +90,11 @@ int main(int argc, char* argv[]) {
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
       LOG(kInfo) << "Private Key: "
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
-      vault_controller.ConfirmJoin(true);
+      vault_controller.ConfirmJoin();
 
-      std::pair<std::string, uint16_t> endpoint("127.0.0.46", 3658);
+      boost::asio::ip::udp::endpoint endpoint;
+      endpoint.address(boost::asio::ip::address::from_string("127.0.0.46"));
+      endpoint.port(3658);
       vault_controller.SendEndpointToLifeStuffManager(endpoint);
       std::unique_lock<std::mutex> lock(mutex);
       cond_var.wait(lock, [] { return g_check_finished; });  // NOLINT (Fraser)

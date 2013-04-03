@@ -36,8 +36,10 @@
 
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/process_manager.h"
+#include "maidsafe/lifestuff_manager/shared_memory_communication.h"
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/vault_info.pb.h"
+
 
 namespace maidsafe {
 
@@ -82,7 +84,7 @@ class LifeStuffManager {
  public:
   LifeStuffManager();
   ~LifeStuffManager();
-  static uint16_t kDefaultPort() { return 5483; }
+  static uint16_t kDefaultPort() { return kLivePort; }
   static uint16_t kMaxRangeAboveDefaultPort() { return 10; }
 
   // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
@@ -105,6 +107,9 @@ class LifeStuffManager {
     std::string chunkstore_path;
     uint16_t vault_port, client_port;
     bool requested_to_run, joined_network;
+#ifdef TESTING
+    int identity_index;
+#endif
     int vault_version;
   };
   typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
@@ -195,6 +200,8 @@ class LifeStuffManager {
   mutable std::mutex update_mutex_;
   boost::asio::deadline_timer update_timer_;
   std::shared_ptr<LocalTcpTransport> transport_;
+  passport::Maid maid_;
+  SafeReadOnlySharedMemory initial_contact_memory_;
 };
 
 }  // namespace lifestuff_manager

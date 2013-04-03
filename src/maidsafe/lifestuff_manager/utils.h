@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "boost/asio/ip/udp.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
@@ -41,11 +42,11 @@ std::string GenerateVmidParameter(const uint32_t& process_index,
                                   const uint16_t& lifestuff_manager_port);
 
 // Parses a --vmid argument of the PD vault into its constituent parts.
-bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
+void ParseVmidParameter(const std::string& lifestuff_manager_identifier,
                         uint32_t& process_index,
                         uint16_t& lifestuff_manager_port);
 
-bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
+void StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
                                   OnMessageReceived::slot_type on_message_received_slot,
                                   Port& local_port);
 
@@ -53,11 +54,13 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
                                  boost::filesystem::path test_env_root_dir,
                                  boost::filesystem::path path_to_vault,
-                                 std::vector<std::string> bootstrap_ips);
+                                 std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
 Port GetTestLifeStuffManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
-std::vector<std::string> GetBootstrapIps();
+std::vector<boost::asio::ip::udp::endpoint> GetBootstrapIps();
+void SetIdentityIndex(int identity_index);
+int IdentityIndex();
 bool UsingDefaultEnvironment();
 #endif
 

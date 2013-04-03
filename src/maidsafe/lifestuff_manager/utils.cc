@@ -17,7 +17,10 @@
 #include <set>
 #include <vector>
 
+#include "boost/asio/ip/udp.hpp"
 #include "boost/tokenizer.hpp"
+
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -45,7 +48,8 @@ std::once_flag test_env_flag;
 Port g_test_lifestuff_manager_port(0);
 fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
-std::vector<std::string> g_bootstrap_ips;
+std::vector<boost::asio::ip::udp::endpoint> g_bootstrap_ips;
+int g_identity_index(0);
 #endif
 
 }  // unnamed namespace
@@ -79,35 +83,34 @@ std::string GenerateVmidParameter(const ProcessIndex& process_index,
   return std::to_string(process_index) + kSeparator + std::to_string(lifestuff_manager_port);
 }
 
-bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
+void ParseVmidParameter(const std::string& lifestuff_manager_identifier,
                         ProcessIndex& process_index,
                         Port& lifestuff_manager_port) {
-  auto do_fail([&]()->bool {
-    process_index = lifestuff_manager_port = 0;
-    return false;
-  });
+  on_scope_exit strong_guarantee([&lifestuff_manager_port, &process_index] {
+                                   process_index = lifestuff_manager_port = 0;
+                                 });
 
   size_t separator_position(lifestuff_manager_identifier.find(kSeparator));
   if (separator_position == std::string::npos) {
     LOG(kError) << "lifestuff_manager_identifier " << lifestuff_manager_identifier
                 << " has wrong format";
-    return do_fail();
+    ThrowError(CommonErrors::invalid_parameter);
   }
   try {
     process_index = static_cast<ProcessIndex>(std::stoul(
-        lifestuff_manager_identifier.substr(0, separator_position)));
+                        lifestuff_manager_identifier.substr(0, separator_position)));
     lifestuff_manager_port =
         static_cast<Port>(std::stoi(lifestuff_manager_identifier.substr(separator_position + 1)));
   }
   catch(const std::logic_error& exception) {
     LOG(kError) << "lifestuff_manager_identifier " << lifestuff_manager_identifier
                 << " has wrong format: " << exception.what();
-    return do_fail();
+    ThrowError(CommonErrors::invalid_parameter);
   }
 
   if (process_index == 0) {
     LOG(kError) << "Invalid process index of 0";
-    return do_fail();
+    ThrowError(CommonErrors::invalid_parameter);
   }
 
 #ifndef TESTING
@@ -115,14 +118,12 @@ bool ParseVmidParameter(const std::string& lifestuff_manager_identifier,
       lifestuff_manager_port >
           LifeStuffManager::kDefaultPort() + LifeStuffManager::kMaxRangeAboveDefaultPort()) {
     LOG(kError) << "Invalid Vaults Manager port " << lifestuff_manager_port;
-    return do_fail();
   }
 #endif
-
-  return true;
+  strong_guarantee.Release();
 }
 
-bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
+void StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
                                   OnMessageReceived::slot_type on_message_received_slot,
                                   Port& local_port) {
   int count(0), result(1);
@@ -132,20 +133,18 @@ bool StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 
   if (result != kSuccess) {
     LOG(kError) << "Failed to start listening port.";
-    return false;
+    ThrowError(CommonErrors::invalid_parameter);
   }
 
   transport->on_message_received().connect(on_message_received_slot);
   transport->on_error().connect([](const int& err) { LOG(kError) << "Transport error: " << err; });  // NOLINT (Fraser)
-
-  return true;
 }
 
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
                                  fs::path test_env_root_dir,
                                  fs::path path_to_vault,
-                                 std::vector<std::string> bootstrap_ips) {
+                                 std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips) {
   std::call_once(test_env_flag,
                  [test_lifestuff_manager_port, test_env_root_dir, path_to_vault, bootstrap_ips] {
                    g_test_lifestuff_manager_port = test_lifestuff_manager_port;
@@ -156,25 +155,13 @@ void SetTestEnvironmentVariables(Port test_lifestuff_manager_port,
                  });
 }
 
-Port GetTestLifeStuffManagerPort() {
-  return g_test_lifestuff_manager_port;
-}
-
-fs::path GetTestEnvironmentRootDir() {
-  return g_test_env_root_dir;
-}
-
-fs::path GetPathToVault() {
-  return g_path_to_vault;
-}
-
-std::vector<std::string> GetBootstrapIps() {
-  return g_bootstrap_ips;
-}
-
-bool UsingDefaultEnvironment() {
-  return g_using_default_environment;
-}
+Port GetTestLifeStuffManagerPort() { return g_test_lifestuff_manager_port; }
+fs::path GetTestEnvironmentRootDir() { return g_test_env_root_dir; }
+fs::path GetPathToVault() { return g_path_to_vault; }
+std::vector<boost::asio::ip::udp::endpoint> GetBootstrapIps() { return g_bootstrap_ips; }
+void SetIdentityIndex(int identity_index) { g_identity_index = identity_index; }
+int IdentityIndex() { return g_identity_index; }
+bool UsingDefaultEnvironment() { return g_using_default_environment; }
 #endif  // TESTING
 
 
