@@ -212,7 +212,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
     try {
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(boost::asio::ip::address::from_string(response.bootstrap_endpoint_ip(n)));
-      endpoint.port(response.bootstrap_endpoint_port(n));
+      endpoint.port(static_cast<unsigned short>(response.bootstrap_endpoint_port(n)));  // NOLINT (FRASER)
       bootstrap_nodes_.push_back(endpoint);
     }
     catch(...) { continue; }
@@ -512,7 +512,7 @@ void ClientController::HandleBootstrapResponse(
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(boost::asio::ip::address::from_string(
                            bootstrap_response.bootstrap_endpoint_ip(i)));
-      endpoint.port(bootstrap_response.bootstrap_endpoint_port(i));
+      endpoint.port(static_cast<unsigned short>(bootstrap_response.bootstrap_endpoint_port(i)));  // NOLINT (Fraser)
       bootstrap_endpoints.push_back(endpoint);
     }
     catch(...) { continue; }

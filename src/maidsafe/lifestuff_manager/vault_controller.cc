@@ -39,7 +39,7 @@ namespace lifestuff_manager {
 
 namespace {
 
-boost::asio::ip::udp::endpoint GetEndpoint(const std::string& ip, int port) {
+boost::asio::ip::udp::endpoint GetEndpoint(const std::string& ip, Port port) {
   boost::asio::ip::udp::endpoint ep;
   ep.port(port);
   ep.address(boost::asio::ip::address::from_string(ip));
@@ -55,7 +55,7 @@ namespace bai = boost::asio::ip;
 
 VaultController::VaultController(const std::string& lifestuff_manager_identifier,
                                  VoidFunction stop_callback)
-    : process_index_(-1),
+    : process_index_(std::numeric_limits<uint32_t>::max()),
       lifestuff_manager_port_(0),
       local_port_(0),
       pmid_(),
@@ -223,8 +223,9 @@ void VaultController::HandleBootstrapResponse(
                     bootstrap_response.bootstrap_endpoint_port_size()));
   for (int i(0); i < size; ++i) {
     try {
-      bootstrap_endpoints.push_back(GetEndpoint(bootstrap_response.bootstrap_endpoint_ip(i),
-                                                bootstrap_response.bootstrap_endpoint_port(i)));
+      bootstrap_endpoints.push_back(
+          GetEndpoint(bootstrap_response.bootstrap_endpoint_ip(i),
+                      static_cast<Port>(bootstrap_response.bootstrap_endpoint_port(i))));
     }
     catch(...) { continue; }
   }
@@ -366,7 +367,7 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message, st
     try {
       bootstrap_endpoints_.push_back(
             GetEndpoint(vault_identity_response.bootstrap_endpoint_ip(i),
-                        vault_identity_response.bootstrap_endpoint_port(i)));
+                        static_cast<Port>(vault_identity_response.bootstrap_endpoint_port(i))));
     }
     catch(...) { continue; }
   }

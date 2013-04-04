@@ -89,15 +89,11 @@ class SafeReadOnlySharedMemory {
     asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().data),
                                                    maid.private_key()));
     assert(sizeof(safe_address_->address) == maid.name().data.string().size());
-    std::sprintf(safe_address_->address,
-//                  crypto::SHA512::DIGESTSIZE,
-                  "%s",
-                  maid.name().data.string().c_str());
+    memcpy(safe_address_->address, maid.name().data.string().c_str(),
+           maid.name().data.string().size());
     assert(sizeof(safe_address_->signature) == initial_signature.string().size());
-    std::sprintf(safe_address_->signature,
-//                  asymm::Keys::kSignatureByteSize,
-                  "%s",
-                  initial_signature.string().c_str());
+    memcpy(safe_address_->signature, initial_signature.string().c_str(),
+           initial_signature.string().size());
     std::cout << "SafeReadOnlySharedMemory instance address: "
               << EncodeToBase32(std::string(safe_address_->address)) << std::endl;
   }
@@ -115,15 +111,10 @@ class SafeReadOnlySharedMemory {
 
     if (asymm::CheckSignature(asymm::PlainText(new_address), new_signature, maid_.public_key())) {
       assert(sizeof(safe_address_->address) ==  new_address.string().size());
-      std::sprintf(safe_address_->address,
-//                    crypto::SHA512::DIGESTSIZE,
-                    "%s",
-                    new_address.string().c_str());
+      memcpy(safe_address_->address, new_address.string().c_str(), new_address.string().size());
       assert(sizeof(safe_address_->signature) == new_signature.string().size());
-      std::sprintf(safe_address_->signature,
-//                    asymm::Keys::kSignatureByteSize,
-                    "%s",
-                    new_signature.string().c_str());
+      memcpy(safe_address_->signature, new_signature.string().c_str(),
+             new_signature.string().size());
     } else {
       ThrowError(AsymmErrors::invalid_signature);
     }

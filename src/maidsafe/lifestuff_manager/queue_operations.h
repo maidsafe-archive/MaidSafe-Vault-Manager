@@ -107,7 +107,7 @@ struct PushMessageToQueue<SharedMemoryCreateOnly> {
     }
 
     // Add the message to the char array
-    std::snprintf(queue->parent_message, message.size(), "%s", message.c_str());
+    memcpy(queue->parent_message, message.c_str(), message.size());
 
     // Notify the other process that the buffer is full
     queue->message_from_parent = true;
@@ -127,7 +127,7 @@ struct PushMessageToQueue<SharedMemoryOpenOnly> {
       return false;
     }
 
-    std::snprintf(queue->child_message, message.size(), "%s", message.c_str());
+    memcpy(queue->child_message, message.c_str(), message.size());
     // Notify the other process that the buffer is full
     queue->message_from_child = true;
     queue->parent_read.notify_one();

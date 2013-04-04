@@ -74,12 +74,7 @@ int main(int argc, char* argv[]) {
     std::string lifestuff_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "dummy_vault: Starting VaultController: " << usr_id;
-      maidsafe::lifestuff_manager::VaultController vault_controller(usr_id);
-      if (!vault_controller.Start(lifestuff_manager_id.c_str(), [&] { StopHandler(); })) {  // NOLINT
-        LOG(kError) << "dummy_vault: Vault controller failed to start. Aborting...";
-        return -3;
-      }
-
+      maidsafe::lifestuff_manager::VaultController vault_controller(usr_id, [&] { StopHandler(); });
       std::unique_ptr<maidsafe::passport::Pmid> pmid;
       std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
       vault_controller.GetIdentity(pmid, bootstrap_endpoints);
