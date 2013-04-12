@@ -66,7 +66,7 @@ ClientController::ClientController(
   detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
   std::string path_to_new_installer;
   if (!ConnectToLifeStuffManager(path_to_new_installer)) {
-    LOG(kError) << "Failed to connect to lifestuff_manager. Object useless.";
+    receiving_transport_->StopListening();
     ThrowError(CommonErrors::uninitialised);
   }
 
