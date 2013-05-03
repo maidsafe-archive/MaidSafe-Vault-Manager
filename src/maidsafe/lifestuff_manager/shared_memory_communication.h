@@ -188,7 +188,7 @@ class SharedMemoryCommunication {
   std::unique_ptr<boost::interprocess::mapped_region> mapped_region_;
   detail::IpcBidirectionalQueue* message_queue_;
   std::function<void(std::string)> message_notifier_;
-  std::atomic_bool receive_flag_;
+  std::atomic<bool> receive_flag_;
   std::future<void> receive_future_;
 
   void StartCheckingReceivingQueue() {

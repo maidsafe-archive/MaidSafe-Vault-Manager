@@ -143,7 +143,7 @@ struct RunRecevingThread {};
 template<>
 struct RunRecevingThread<SharedMemoryCreateOnly> {
   std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue,
-                                    std::atomic_bool& receive_flag,
+                                    std::atomic<bool>& receive_flag,
                                     const std::function<void(std::string)>& message_notifier) {
     return std::async(std::launch::async,
                       [&queue, &receive_flag, &message_notifier] () {
@@ -169,7 +169,7 @@ struct RunRecevingThread<SharedMemoryCreateOnly> {
 template<>
 struct RunRecevingThread<SharedMemoryOpenOnly> {
   std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue,
-                                    std::atomic_bool& receive_flag,
+                                    std::atomic<bool>& receive_flag,
                                     const std::function<void(std::string)>& message_notifier) {
     return std::async(std::launch::async,
                       [&queue, &receive_flag, &message_notifier] () {
