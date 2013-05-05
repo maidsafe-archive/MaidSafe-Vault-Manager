@@ -28,27 +28,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAIDSAFE_DATA_STORE_MEMORY_BUFFER_H_
 #define MAIDSAFE_DATA_STORE_MEMORY_BUFFER_H_
 
-#include <atomic>
-#include <condition_variable>
-#include <cstdint>
-#include <functional>
-#include <future>
-#include <map>
 #include <mutex>
-#include <utility>
-#include <deque>
-#include <string>
 
-#include "boost/variant.hpp"
 #include "boost/circular_buffer.hpp"
 
-#include "maidsafe/common/tagged_value.h"
 #include "maidsafe/common/types.h"
-#include "maidsafe/passport/types.h"
 
 #include "maidsafe/data_types/data_name_variant.h"
-#include "maidsafe/data_types/data_type_values.h"
-
 
 namespace maidsafe {
 namespace data_store {
@@ -73,8 +59,6 @@ class MemoryBuffer {
   NonEmptyString Get(const KeyType& key);
   void Delete(const KeyType& key);
 
-  friend class test::MemoryBufferTest;
-
  private:
   MemoryBuffer(const MemoryBuffer&);
   MemoryBuffer& operator=(const MemoryBuffer&);
@@ -83,9 +67,6 @@ class MemoryBuffer {
 
   MemoryBufferType memory_buffer_;
   mutable std::mutex mutex_;
-  std::atomic<bool> running_;
-  std::future<void> worker_;
-  GetIdentityVisitor get_identity_visitor_;
 };
 
 }  // namespace data_store

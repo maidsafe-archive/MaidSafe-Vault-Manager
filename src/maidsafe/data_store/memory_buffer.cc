@@ -26,28 +26,21 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "maidsafe/data_store/memory_buffer.h"
-#include <string>
-
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/data_store/utils.h"
 
 namespace maidsafe {
 namespace data_store {
 
 MemoryBuffer::MemoryBuffer(MemoryUsage max_memory_usage)
     : memory_buffer_(static_cast<uint32_t>(max_memory_usage.data)),
-      mutex_(),
-      running_(true),
-      worker_(),
-      get_identity_visitor_() {
-}
+      mutex_() {}
 
 MemoryBuffer::~MemoryBuffer() {}
 
 void MemoryBuffer::Store(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
+  auto itr(Find(key));
+  if (itr != memory_buffer_.end())
+    memory_buffer_.erase(itr);
   memory_buffer_.push_back(std::make_pair(key, value));
 }
 
