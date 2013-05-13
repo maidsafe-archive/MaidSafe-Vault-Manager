@@ -572,13 +572,13 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncDeleteOnDiskStoreOverfill) {
     EXPECT_NO_THROW(this->data_store_->Delete(key_value.first));
 
   for (size_t i(0); i != num_entries - 1; ++i) {
-    auto status(async_gets[i].wait_for(std::chrono::milliseconds(100)));
+    auto status(async_gets[i].wait_for(std::chrono::milliseconds(500)));
     ASSERT_EQ(std::future_status::ready, status);
     recovered = async_gets[i].get();
     EXPECT_EQ(new_key_value_pairs[i].second, recovered);
   }
 
-  auto status(async_gets.back().wait_for(std::chrono::milliseconds(100)));
+  auto status(async_gets.back().wait_for(std::chrono::milliseconds(500)));
   EXPECT_EQ(std::future_status::ready, status);
   EXPECT_THROW(async_gets.back().get(), std::exception);
 }
