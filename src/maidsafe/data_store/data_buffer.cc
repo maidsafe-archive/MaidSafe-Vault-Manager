@@ -191,7 +191,7 @@ void DataBuffer::StoreOnDisk(const KeyType& key, const NonEmptyString& value) {
                   << " since its " << value.string().size() << " bytes exceeds max of "
                   << disk_store_.max << " bytes.";
       StopRunning();
-      ThrowError(CommonErrors::cannot_exceed_max_disk_usage);
+      ThrowError(CommonErrors::cannot_exceed_limit);
     }
     disk_store_.index.emplace_back(key);
 
