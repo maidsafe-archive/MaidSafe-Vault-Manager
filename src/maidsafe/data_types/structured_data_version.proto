@@ -1,0 +1,11 @@
+package maidsafe.protobuf;
+option optimize_for = LITE_RUNTIME;
+
+message StructuredDataVersions {
+  message Branch {
+    repeated bytes name = 1;
+  }
+  required uint32 max_versions = 1;
+  required uint32 max_branches = 2;
+  repeated Branch branch = 3;
+}
