@@ -12,39 +12,31 @@
 #include "maidsafe/data_types/structured_data_version.h"
 
 #include "maidsafe/common/error.h"
+#include "maidsafe/common/on_scope_exit.h"
 
 #include "maidsafe/data_types/structured_data_version.pb.h"
 
 
 namespace maidsafe {
 
-StructuredDataVersions::Version::Version(const VersionName& name_in)
-    : name(name_in),
-      parent(),
-      child_count(0) {
-  if (!name->IsInitialised())
-    ThrowError(CommonErrors::invalid_parameter);
-}
+StructuredDataVersions::Details::Details() : parent(), child_count(0) {}
 
-StructuredDataVersions::Version::Version(const Version& other)
-    : name(other.name),
-      parent(other.parent),
+StructuredDataVersions::Details::Details(const Details& other)
+    : parent(other.parent),
       child_count(other.child_count) {}
 
-StructuredDataVersions::Version::Version(Version&& other)
-    : name(std::move(other.name)),
-      parent(std::move(other.parent)),
+StructuredDataVersions::Details::Details(Details&& other)
+    : parent(std::move(other.parent)),
       child_count(std::move(other.child_count)) {}
 
-StructuredDataVersions::Version& StructuredDataVersions::Version::operator=(Version other) {
+StructuredDataVersions::Details& StructuredDataVersions::Details::operator=(Details other) {
   swap(*this, other);
   return *this;
 }
 
-void swap(StructuredDataVersions::Version& lhs,
-          StructuredDataVersions::Version& rhs) MAIDSAFE_NOEXCEPT {
+void swap(StructuredDataVersions::Details& lhs,
+          StructuredDataVersions::Details& rhs) MAIDSAFE_NOEXCEPT {
   using std::swap;
-  swap(lhs.name, rhs.name);
   swap(lhs.parent, rhs.parent);
   swap(lhs.child_count, rhs.child_count);
 }
@@ -57,7 +49,10 @@ StructuredDataVersions::StructuredDataVersions(uint32_t max_versions, uint32_t m
       versions_(),
       root_(std::end(versions_)),
       tips_of_trees_(),
-      orphans_() {}
+      orphans_() {
+  if (max_versions_ < 1U || max_branches_ < 1U)
+    ThrowError(CommonErrors::invalid_parameter);
+}
 
 StructuredDataVersions::StructuredDataVersions(const StructuredDataVersions& other)
     : max_versions_(other.max_versions_),
@@ -85,6 +80,7 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
     : max_versions_(),
       max_branches_(),
       versions_(),
+      root_(),
       tips_of_trees_(),
       orphans_() {
   protobuf::StructuredDataVersions proto_versions;
@@ -101,23 +97,33 @@ StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() cons
 }
 
 void StructuredDataVersions::Put(const VersionName& old_version, const VersionName& new_version) {
-  Version version(new_version);
-  if (!old_version->IsInitialised()) {
-    if (!versions_.empty())
+  // Check 'new_version' doesn't already exist.
+  auto existing_itr(versions_.find(new_version));
+  if (existing_itr != std::end(versions_)) {
+    if (existing_itr->second.parent->first == old_version)
+      return;
+    else
       ThrowError(CommonErrors::invalid_parameter);
-    version.parent = std::end(versions_);
-    versions_.insert(version);
-    root_ = std::begin(versions_);
-    tips_of_trees_.push_back(std::begin(versions_));
   }
 
+  // Handle inserting root version.
+  if (!old_version->IsInitialised())
+    return InsertRoot(new_version);
 
+  // Find parent and insert as child or as orphan if not found
+  auto parent_itr(versions_.find(old_version));
+  if (parent_itr == std::end(versions_))
+    InsertOrphan(new_version);
+  else
+    InsertChild(new_version, parent_itr);
 }
 
 std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::Get() const {
   std::vector<StructuredDataVersions::VersionName> result;
+  tips_of_trees_
 
 
+  assert each tot has child count == 0
   return result;
 }
 
@@ -129,12 +135,113 @@ std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::GetBran
   return result;
 }
 
-void StructuredDataVersions::DeleteBranch(const VersionName& /*branch_tip*/) {
+void StructuredDataVersions::DeleteBranchUntilFork(const VersionName& /*branch_tip*/) {
 }
 
-void StructuredDataVersions::Validate() const {
-  //if (max_versions_ < versions_.size() || max_branches_ < tips_of_trees_.size())
-  //  ThrowError(CommonErrors::invalid_parameter);
+void StructuredDataVersions::Erase(VersionsItr itr) {
+  if (itr == root_)
+    root_ = std::end(versions_);
+  tips_of_trees_.erase(std::remove(std::begin(tips_of_trees_),
+                                   std::end(tips_of_trees_),
+                                   itr),
+                       std::end(tips_of_trees_));
+  orphans_.erase(std::remove_if(std::begin(orphans_),
+                                std::end(orphans_),
+                                [itr](const Orphan& orphan) { return orphan.second == itr; }),
+                 std::end(orphans_));
+  versions_.erase(itr);
+}
+
+void StructuredDataVersions::InsertRoot(const VersionName& root_name) {
+  // Construct temp object before modifying members in case make_pair throws.
+  Version root_version(std::make_pair(root_name, Details()));
+  root_version.second.parent = std::end(versions_);
+
+  if (versions_.size() == 1U && max_versions_ == 1U)
+    versions_.clear();
+
+  if (versions_.empty()) {
+    versions_.insert(root_version);
+    root_ = std::begin(versions_);
+    tips_of_trees_.push_back(std::begin(versions_));
+    return;
+  }
+
+  // This is only valid if root_ == end().
+  if (root_ != std::end(versions_))
+    ThrowError(CommonErrors::invalid_parameter);
+
+  auto orphan_itr(FindOrphanOf(root_name));
+  bool will_create_new_branch(orphan_itr == std::end(orphans_));
+  if (will_create_new_branch && AtBranchesLimit())
+    ThrowError(CommonErrors::cannot_exceed_limit);
+
+  if (AtVersionsLimit()) {
+    // If the new root was inserted, we'd exceed max_versions_, and then we'd remove the root as
+    // normal to bring the count within the limit again.  Skip the insert and if the new root is the
+    // parent of an orphan, mark the orphan as the root.
+    if (orphan_itr == std::end(orphans_))
+      return;
+    orphan_itr->second->second.parent = std::end(versions_);
+    root_ = orphan_itr->second;
+    orphans_.erase(orphan_itr);
+  } else {
+    // This should always succeed since we've already checked the new version doesn't exist.
+    auto result(versions_.insert(root_version));
+    assert(result.second);
+    root_ = result.first;
+    if (orphan_itr != std::end(orphans_)) {
+      orphan_itr->second->second.parent = root_;
+      orphans_.erase(orphan_itr);
+    }
+  }
+}
+
+void StructuredDataVersions::InsertChild(const VersionName& child_name, VersionsItr parent_itr) {
+  // Construct temp object before modifying members in case make_pair throws.
+  Version child_version(std::make_pair(child_name, Details()));
+  child_version.second.parent = parent_itr;
+
+  check we aren't going to exceed the limits
+
+  see if we've un-orphaned any orphans
+
+}
+
+void StructuredDataVersions::InsertOrphan(const VersionName& child_name) {
+  // Check we aren't going to exceed the limits
+  if (AtBranchesLimit())
+    ThrowError(CommonErrors::cannot_exceed_limit);
+  if (AtVersionsLimit())
+    ThrowError(CommonErrors::unable_to_handle_request);
+
+  // Construct temp object before modifying members in case make_pair throws.
+  Version child_version(std::make_pair(child_name, Details()));
+  child_version.second.parent = std::end(versions_);
+
+  see if we've un-orphaned any orphans
+}
+
+std::vector<StructuredDataVersions::Orphan>::iterator StructuredDataVersions::FindOrphanOf(
+    const VersionName& name) {
+  return std::find_if(std::begin(orphans_), std::end(orphans_),
+                      [&name](const Orphan& orphan) { return orphan.first == name; });
+}
+
+std::vector<StructuredDataVersions::Orphan>::const_iterator StructuredDataVersions::FindOrphanOf(
+    const VersionName& name) const {
+  return std::find_if(std::begin(orphans_), std::end(orphans_),
+                      [&name](const Orphan& orphan) { return orphan.first == name; });
+}
+
+bool StructuredDataVersions::AtVersionsLimit() const {
+  assert(versions_.size() <= max_versions_);
+  return versions_.size() == max_versions_;
+}
+
+bool StructuredDataVersions::AtBranchesLimit() const {
+  assert(tips_of_trees_.size() <= max_branches_);
+  return tips_of_trees_.size() == max_branches_;
 }
 
 void swap(StructuredDataVersions& lhs, StructuredDataVersions& rhs) MAIDSAFE_NOEXCEPT {
