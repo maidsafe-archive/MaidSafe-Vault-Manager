@@ -28,7 +28,7 @@
 
 The tree above represents the map of Versions with each number representing a different VersionName.
 In the diagram, '0' is the first version (root) and has no parent (parent == end()), but is not an
-orphan.
+orphan.  '3' is an orphan.
 
 '0' is the parent of '1' and has a child count of 1.  '1' is the parent of '2', '5' and '6' and has
 a child count of 3.
@@ -93,14 +93,19 @@ class StructuredDataVersions {
   std::vector<VersionName> Get() const;
   // Returns all the versions comprising a branch, index 0 being the tip, through to (including) the
   // root or the orphan at the start of that branch.  e.g., in the diagram above, GetBranch(11)
-  // would return <11,9,6,1,0>.  GetBranch(15) would return <15,10,9,6,1,0>.
+  // would return <11,9,6,1,0>.  GetBranch(15) would return <15,10,9,6,1,0>.  GetBranch(4) would
+  // return <4,3>.
   // • If 'branch_tip' is not a "tip of tree" but does exist, CommonErrors::invalid_parameter is
   //   thrown.
   // • If 'branch_tip' doesn't exist, CommonErrors::no_such_element is thrown.
   std::vector<VersionName> GetBranch(const VersionName& branch_tip) const;
   // Similar to GetBranch except Versions are erased through to (excluding) the first version which
-  // doesn't have exactly 1 child.  e.g. in the diagram above, DeleteBranchUntilFork(11) would erase
-  // 11 only.  DeleteBranchUntilFork(15) would erase <15,10>.
+  // has > 1 child, or through to (including) the first version which has 0 children.  e.g. in the
+  // diagram above, DeleteBranchUntilFork(11) would erase 11 only.  DeleteBranchUntilFork(15) would
+  // erase <15,10>.  DeleteBranchUntilFork(4) would erase <4,3>.
+  // • If 'branch_tip' is not a "tip of tree" but does exist, CommonErrors::invalid_parameter is
+  //   thrown.
+  // • If 'branch_tip' doesn't exist, CommonErrors::no_such_element is thrown.
   void DeleteBranchUntilFork(const VersionName& branch_tip);
 
   uint32_t max_versions() const { return max_versions_; }
@@ -133,10 +138,14 @@ class StructuredDataVersions {
   };
   friend void swap(Details& lhs, Details& rhs) MAIDSAFE_NOEXCEPT;
 
-  void Erase(VersionsItr itr);
+  void EraseRootOrOrphanOfBranch(VersionsItr itr);
   void InsertRoot(const VersionName& root_name);
   void InsertChild(const VersionName& child_name, VersionsItr parent_itr);
   void InsertOrphan(const VersionName& child_name);
+  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
+  std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
+  void CheckBranchTipIterator(const VersionName& name,
+                              std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
   std::vector<Orphan>::iterator FindOrphanOf(const VersionName& name);
   std::vector<Orphan>::const_iterator FindOrphanOf(const VersionName& name) const;
   bool AtVersionsLimit() const;
