@@ -104,9 +104,10 @@ class StructuredDataVersions {
   //   and an initialised ID.
   // * If adding the version causes 'max_versions_' to be exceeded, the root will be erased and one
   //   of its immediate children assigned as the new root.  If the current root has > 1 children,
-  //   the child chosen as new root is the one whose ID is lexicographically least.
+  //   the child with the lowest VersionName will be chosen.  If the root has no children, the
+  //   orphan with the lowest VersionName will be chosen.
   // * If 'old_version.id' is uninitialised and the existing root's parent is uninitialised (i.e.
-  // two roots have deliberately been passed), CommonErrors::invalid_parameter is thrown.
+  //   two roots have deliberately been passed), CommonErrors::invalid_parameter is thrown.
   // * If adding the version causes 'max_branches_' to be exceeded, the root is considered for
   //   deletion.  If deletion avoids exceeding 'max_branches_', it's done, otherwise the root is
   //   left as is, and CommonErrors::cannot_exceed_limit is thrown.
@@ -154,9 +155,11 @@ class StructuredDataVersions {
   // The expectation is that the missing parent will soon be added, allowing the second value of the
   // pair to become "un-orphaned".
   typedef std::multimap<VersionName, VersionsItr> Orphans;
+  typedef std::pair<Orphans::const_iterator, Orphans::const_iterator> OrphansRange;
 
   struct Details {
     Details();
+    explicit Details(VersionsItr parent_in);
     Details(const Details& other);
     Details(Details&& other);
     Details& operator=(Details other);
@@ -170,21 +173,37 @@ class StructuredDataVersions {
   VersionName ParentName(Orphans::iterator itr) const;
   VersionName RootParentName() const;
   bool NewVersionPreExists(const VersionName& old_version, const VersionName& new_version) const;
-  std::pair<Orphans::const_iterator, Orphans::const_iterator> GetUnorphanGroup(
-      const Version& version) const;
+  void CheckForUnorphaning(const VersionName& old_version,
+                           Version& version,
+                           OrphansRange& orphans_range,
+                           bool& unorphans_existing_root) const;
   void CheckVersionNotInBranch(VersionsItr itr, const VersionName& version) const;
+  void CheckBranchCount(const Version& version,
+                        bool is_orphan,
+                        size_t unorphaned_count,
+                        bool& erase_existing_root) const;
+  void Insert(const Version& version,
+              bool is_root,
+              bool is_orphan,
+              const VersionName& old_version,
+              bool unorphans_existing_root,
+              OrphansRange orphans_range,
+              bool erase_existing_root);
+  void SetVersionAsChildOfItsParent(VersionsItr versions_itr);
+  void Unorphan(VersionsItr parent, OrphansRange orphans_range);
+  void ReplaceRoot();
+  void ReplaceRootFromOrphans();
+  void ReplaceRootFromChildren();
+  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
 
 
 
 
-//  void EraseRootOrOrphanOfBranch(VersionsItr itr);
 //  Orphans::iterator FindReplacementRootFromCurrentOrphans();
 //  void InsertChild(const VersionName& child_name, VersionsItr parent_itr);
 //  void InsertOrphan(const VersionName& child_name, const VersionName& parent_name);
 //  void CanRemoveRootIfRequired(bool new_root_creates_branch) const;
 ////  void CheckCanInsertOrphan() const;
-//  void Unorphan(VersionsItr parent, std::pair<Orphans::iterator, Orphans::iterator> orphans_range);
-//  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
 //  std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
 //  void CheckBranchTipIterator(const VersionName& name,
 //                              std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
