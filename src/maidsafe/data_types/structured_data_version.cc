@@ -209,8 +209,8 @@ StructuredDataVersions::VersionName StructuredDataVersions::ParentName(VersionsI
 }
 
 StructuredDataVersions::VersionName StructuredDataVersions::ParentName(
-    Orphans::iterator itr) const {
-  return itr->first;
+    Versions::const_iterator itr) const {
+  return itr->second->parent->first;
 }
 
 StructuredDataVersions::VersionName StructuredDataVersions::RootParentName() const {
@@ -221,7 +221,7 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
                                                  const VersionName& new_version) const {
   auto existing_itr(versions_.find(new_version));
   if (existing_itr != std::end(versions_)) {
-    if (existing_itr->second->parent->first == old_version)
+    if (ParentName(existing_itr) == old_version)
       return true;
     else
       ThrowError(CommonErrors::invalid_parameter);
@@ -369,18 +369,11 @@ void StructuredDataVersions::ReplaceRootFromChildren() {
   root_ = replacement_candidate;
 }
 
-std::vector<StructuredDataVersions::VersionsItr>::iterator StructuredDataVersions::FindBranchTip(
-    const VersionName& name) {
+std::vector<StructuredDataVersions::VersionsItr>::const_iterator
+    StructuredDataVersions::FindBranchTip(const VersionName& name) const {
   return std::find_if(std::begin(tips_of_trees_), std::end(tips_of_trees_),
                       [&name](VersionsItr branch_tip) { return branch_tip->first == name; });
 }
-
-
-
-
-
-
-
 
 std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::Get() const {
   std::vector<StructuredDataVersions::VersionName> result;
@@ -392,169 +385,16 @@ std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::Get() c
 }
 
 std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::GetBranch(
-    const VersionName& /*branch_tip*/) const {
-  //auto branch_tip_itr(FindBranchTip(branch_tip));
-  //CheckBranchTipIterator(branch_tip, branch_tip_itr);
-  //auto itr(*branch_tip_itr);
+    const VersionName& branch_tip) const {
+  auto branch_tip_itr(FindBranchTip(branch_tip));
+  CheckBranchTipIterator(branch_tip, branch_tip_itr);
+  auto itr(*branch_tip_itr);
   std::vector<StructuredDataVersions::VersionName> result;
-  //while (itr != std::end(versions_)) {
-  //  result.push_back(itr->first);
-  //  itr = itr->second->parent;
-  //}
+  while (itr != std::end(versions_)) {
+    result.push_back(itr->first);
+    itr = itr->second->parent;
+  }
   return result;
-}
-
-void StructuredDataVersions::DeleteBranchUntilFork(const VersionName& /*branch_tip*/) {
-  //auto branch_tip_itr(FindBranchTip(branch_tip));
-  //CheckBranchTipIterator(branch_tip, branch_tip_itr);
-  //auto itr(*branch_tip_itr);
-  //tips_of_trees_.erase(branch_tip_itr);
-
-  //for (;;) {
-  //  auto parent_itr = itr->second->parent;
-  //  if (parent_itr == std::end(versions_)) {
-  //    // Found root or orphan.  Either way, we're at the end of the branch.
-  //    EraseRootOrOrphanOfBranch(itr);
-  //    versions_.erase(itr);
-  //    return;
-  //  }
-
-  //  versions_.erase(itr);
-  //  if (--parent_itr->second->child_count > 0U)
-  //    return;  // Found fork.
-
-  //  itr = parent_itr;
-  //}
-}
-
-void StructuredDataVersions::clear() {
-  versions_.clear();
-  root_ = std::make_pair(VersionName(), std::end(versions_));
-  tips_of_trees_.clear();
-  orphans_.clear();
-}
-/*
-StructuredDataVersions::Orphans::iterator
-    StructuredDataVersions::FindReplacementRootFromCurrentOrphans() {
-  auto lower_itr(std::begin(orphans_));
-  auto upper_itr(orphans_.upper_bound(lower_itr->first));
-  for (;;) {
-    // If this key in the multimap has only one value, return this.
-    if (std::distance(lower_itr, upper_itr) == 1)
-      return lower_itr;
-    // If we failed to find a unique key, just return the first element.
-    if (upper_itr == std::end(orphans_))
-      return std::begin(orphans_);
-    // Advance to the next key.
-    lower_itr = upper_itr;
-    upper_itr = orphans_.upper_bound(lower_itr->first);
-  }
-}
-
-void StructuredDataVersions::InsertRoot(const VersionName& root_name) {
-  // Construct temp object before modifying members in case make_pair throws.
-  Version root_version(std::make_pair(root_name, Details()));
-  root_version.second.parent = std::end(versions_);
-
-  if (versions_.size() == 1U && max_versions_ == 1U)
-    versions_.clear();
-
-  if (versions_.empty()) {
-    versions_.insert(root_version);
-    root_ = std::begin(versions_);
-    tips_of_trees_.push_back(std::begin(versions_));
-    return;
-  }
-
-  // This is only valid if root_ == end().
-  if (root_ != std::end(versions_))
-    ThrowError(CommonErrors::invalid_parameter);
-
-  auto orphan_itr(FindOrphanOf(root_name));
-  bool will_create_new_branch(orphan_itr == std::end(orphans_));
-  if (will_create_new_branch && AtBranchesLimit())
-    ThrowError(CommonErrors::cannot_exceed_limit);
-
-  if (AtVersionsLimit()) {
-    // If the new root was inserted, we'd exceed max_versions_, and then we'd remove the root as
-    // normal to bring the count within the limit again.  Skip the insert and if the new root is the
-    // parent of an orphan, mark the orphan as the root.
-    if (orphan_itr == std::end(orphans_))
-      return;
-    orphan_itr->second->second.parent = std::end(versions_);
-    root_ = orphan_itr->second;
-    orphans_.erase(orphan_itr);
-  } else {
-    // This should always succeed since we've already checked the new version doesn't exist.
-    auto result(versions_.insert(root_version));
-    assert(result.second);
-    root_ = result.first;
-    if (orphan_itr != std::end(orphans_)) {
-      orphan_itr->second->second.parent = root_;
-      orphans_.erase(orphan_itr);
-    }
-  }
-}
-
-void StructuredDataVersions::InsertChild(const VersionName& child_name, VersionsItr parent_itr) {
-  // Construct temp object before modifying members in case make_pair throws.
-  Version child_version(std::make_pair(child_name, Details()));
-  child_version.second.parent = parent_itr;
-
-  //check we aren't going to exceed the limits
-
-  //see if we've un-orphaned any orphans
-
-}
-
-void StructuredDataVersions::InsertOrphan(const VersionName& child_name,
-                                          const VersionName& parent_name) {
-  // See if we're going to "un-orphan" any orphans or 'root_'.
-  auto orphans_range(orphans_.equal_range(child_name));
-  auto unorphaned_count(std::distance(orphans_range.first, orphans_range.second));
-  bool unorphans_root(unorphaned_count == 0 ?
-                      root_.first->IsInitialised() && root_.first == child_name : false);
-
-  bool is_new_root(!parent_name->IsInitialised() || unorphans_root);
-  if (is_new_root)
-    CheckCanInsertRoot();
-  else
-    CheckCanInsertOrphan();
-
-  // Construct temp objects before modifying members in case make_pair throws.
-  Version child_version(std::make_pair(child_name, Details()));
-  child_version.second.parent = std::end(versions_);
-
-  auto inserted_itr(versions_.insert(child_version).first);
-
-  // See if we've un-orphaned any orphans
-  Unorphan(inserted_itr, orphans_range);
-
-  // Remove root if necessary
-
-}
-
-void StructuredDataVersions::CanRemoveRootIfRequired(bool new_root_creates_branch) const {
-  bool existing_root_can_be_replaced(root_.second == std::end(versions_) ?
-                                     true :
-                                     root_.second->second.child_count < 2U);
-  if (AtBranchesLimit() && !existing_root_can_be_replaced)
-    ThrowError(CommonErrors::cannot_exceed_limit);
-  if (AtVersionsLimit() && !existing_root_can_be_replaced)
-    ThrowError(CommonErrors::unable_to_handle_request);
-}
-
-void StructuredDataVersions::CheckCanInsertOrphan() const {
-  if (AtBranchesLimit())
-    ThrowError(CommonErrors::cannot_exceed_limit);
-  if (AtVersionsLimit())
-    ThrowError(CommonErrors::unable_to_handle_request);
-}
-
-std::vector<StructuredDataVersions::VersionsItr>::const_iterator
-    StructuredDataVersions::FindBranchTip(const VersionName& name) const {
-  return std::find_if(std::begin(tips_of_trees_), std::end(tips_of_trees_),
-                      [&name](VersionsItr branch_tip) { return branch_tip->first == name; });
 }
 
 void StructuredDataVersions::CheckBranchTipIterator(
@@ -568,18 +408,59 @@ void StructuredDataVersions::CheckBranchTipIterator(
   }
 }
 
-std::vector<StructuredDataVersions::Orphan>::iterator StructuredDataVersions::FindOrphanOf(
-    const VersionName& name) {
-  return std::find_if(std::begin(orphans_), std::end(orphans_),
-                      [&name](const Orphan& orphan) { return orphan.first == name; });
+void StructuredDataVersions::DeleteBranchUntilFork(const VersionName& branch_tip) {
+  auto branch_tip_itr(FindBranchTip(branch_tip));
+  CheckBranchTipIterator(branch_tip, branch_tip_itr);
+  auto itr(*branch_tip_itr);
+  tips_of_trees_.erase(branch_tip_itr);
+
+  for (;;) {
+    auto parent_itr = itr->second->parent;
+    if (parent_itr == std::end(versions_))  // Found root or orphan.
+      return EraseFrontOfBranch(itr);
+
+    auto parents_child_itr(std::find_if(std::begin(parent_itr->second->children),
+                                        std::end(parent_itr->second->children),
+                                        [itr](VersionsItr child_itr) {
+                                            return itr->first == child_itr->first;
+                                        }));
+    assert(parents_child_itr != std::end(parent_itr->second->children));
+    versions_.erase(itr);
+    if (!parent_itr->second->children.empty())  // Found fork.
+      return;
+
+    itr = parent_itr;
+  }
 }
 
-std::vector<StructuredDataVersions::Orphan>::const_iterator StructuredDataVersions::FindOrphanOf(
-    const VersionName& name) const {
-  return std::find_if(std::begin(orphans_), std::end(orphans_),
-                      [&name](const Orphan& orphan) { return orphan.first == name; });
+void StructuredDataVersions::EraseFrontOfBranch(VersionsItr front_of_branch) {
+  if (root_.second == front_of_branch) {  // Front of branch is 'root_'.
+    if (orphans_.empty()) {
+      versions_.erase(front_of_branch);
+      root_ = std::make_pair(VersionName(), std::end(versions_));
+      assert(versions_.empty() && tips_of_trees_.empty());
+    } else {
+      ReplaceRootFromOrphans();
+    }
+  } else {  // Front of branch is an orphan.
+    auto orphan_itr(std::find_if(std::begin(orphans_),
+                                 std::end(orphans_),
+                                 [front_of_branch](const Orphans::value_type& orphan) {
+                                   return orphan.second == front_of_branch;
+                                 }));
+    assert(orphan_itr != std::end(orphans_));
+    orphans_.erase(orphan_itr);
+    versions_.erase(front_of_branch);
+  }
 }
-*/
+
+void StructuredDataVersions::clear() {
+  versions_.clear();
+  root_ = std::make_pair(VersionName(), std::end(versions_));
+  tips_of_trees_.clear();
+  orphans_.clear();
+}
+
 bool StructuredDataVersions::AtVersionsLimit() const {
   assert(versions_.size() <= max_versions_);
   return versions_.size() == max_versions_;

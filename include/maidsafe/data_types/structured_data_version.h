@@ -118,7 +118,7 @@ class StructuredDataVersions {
   void Put(const VersionName& old_version, const VersionName& new_version);
   // Returns all the "tips of trees" in unspecified order.
   std::vector<VersionName> Get() const;
-  // Returns all the versions comprising a branch, index 0 being the tip, through to (including) the
+  // Returns all the versions comprising a branch, starting at the tip, through to (including) the
   // root or the orphan at the start of that branch.  e.g., in the diagram above, GetBranch(4-jjj)
   // would return <4-jjj, 3-ggg, 2-ddd, 1-bbb, 0-aaa>.  GetBranch(5-nnn) would return
   // <5-nnn, 4-kkk, 3-ggg, 2-ddd, 1-bbb, 0-aaa>.  GetBranch(8-zzz) would return <8-zzz, 7-yyy>.
@@ -170,7 +170,7 @@ class StructuredDataVersions {
   friend void swap(Details& lhs, Details& rhs) MAIDSAFE_NOEXCEPT;
 
   VersionName ParentName(VersionsItr itr) const;
-  VersionName ParentName(Orphans::iterator itr) const;
+  VersionName ParentName(Versions::const_iterator itr) const;
   VersionName RootParentName() const;
   bool NewVersionPreExists(const VersionName& old_version, const VersionName& new_version) const;
   void CheckForUnorphaning(const VersionName& old_version,
@@ -194,19 +194,10 @@ class StructuredDataVersions {
   void ReplaceRoot();
   void ReplaceRootFromOrphans();
   void ReplaceRootFromChildren();
-  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
-
-
-
-
-//  Orphans::iterator FindReplacementRootFromCurrentOrphans();
-//  void InsertChild(const VersionName& child_name, VersionsItr parent_itr);
-//  void InsertOrphan(const VersionName& child_name, const VersionName& parent_name);
-//  void CanRemoveRootIfRequired(bool new_root_creates_branch) const;
-////  void CheckCanInsertOrphan() const;
-//  std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
-//  void CheckBranchTipIterator(const VersionName& name,
-//                              std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
+  std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
+  void CheckBranchTipIterator(const VersionName& name,
+                              std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
+  void EraseFrontOfBranch(VersionsItr front_of_branch);
   bool AtVersionsLimit() const;
   bool AtBranchesLimit() const;
 
