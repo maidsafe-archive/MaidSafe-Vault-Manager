@@ -9,7 +9,7 @@
  *  permission of the board of directors of MaidSafe.net.                                          *
  **************************************************************************************************/
 
-#include "maidsafe/data_types/structured_data_version.h"
+#include "maidsafe/data_types/structured_data_versions.h"
 
 #include <algorithm>
 #include <limits>
@@ -17,7 +17,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/on_scope_exit.h"
 
-#include "maidsafe/data_types/structured_data_version.pb.h"
+#include "maidsafe/data_types/structured_data_versions.pb.h"
 
 
 namespace maidsafe {
@@ -117,8 +117,7 @@ StructuredDataVersions::StructuredDataVersions(uint32_t max_versions, uint32_t m
       root_(std::make_pair(VersionName(), std::end(versions_))),
       tips_of_trees_(),
       orphans_() {
-  if (max_versions_ < 1U || max_branches_ < 1U)
-    ThrowError(CommonErrors::invalid_parameter);
+  ValidateLimits();
 }
 
 StructuredDataVersions::StructuredDataVersions(const StructuredDataVersions& other)
@@ -154,14 +153,30 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
   if (!proto_versions.ParseFromString(serialised_data_versions->string()))
     ThrowError(CommonErrors::parsing_error);
 
+  max_versions_ = proto_versions.max_versions();
+  max_branches_ = proto_versions.max_branches();
+  ValidateLimits();
+
+
 }
 
 StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() const {
   protobuf::StructuredDataVersions proto_versions;
+  proto_versions.set_max_versions(max_versions_);
+  proto_versions.set_max_branches(max_branches_);
 
+  BranchToProtobuf(root_.second, proto_versions.add_branch());
+  for (const auto& orphan : orphans_)
+    BranchToProtobuf(orphan.second, proto_versions.add_branch());
 
   return serialised_type(NonEmptyString(proto_versions.SerializeAsString()));
 }
+
+void StructuredDataVersions::BranchToProtobuf(
+    VersionsItr itr,
+    protobuf::StructuredDataVersions_Branch* /*proto_branch*/) const {
+}
+
 
 void StructuredDataVersions::ApplySerialised(const serialised_type& serialised_data_versions) {
   StructuredDataVersions new_info(serialised_data_versions);
@@ -204,6 +219,11 @@ void StructuredDataVersions::Put(const VersionName& old_version, const VersionNa
          erase_existing_root);
 }
 
+void StructuredDataVersions::ValidateLimits() const {
+  if (max_versions_ < 1U || max_branches_ < 1U)
+    ThrowError(CommonErrors::invalid_parameter);
+}
+
 StructuredDataVersions::VersionName StructuredDataVersions::ParentName(VersionsItr itr) const {
   return itr->second->parent->first;
 }
@@ -221,10 +241,12 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
                                                  const VersionName& new_version) const {
   auto existing_itr(versions_.find(new_version));
   if (existing_itr != std::end(versions_)) {
-    if (ParentName(existing_itr) == old_version)
+    if (existing_itr->second->parent != std::end(versions_) &&
+        ParentName(existing_itr) == old_version) {
       return true;
-    else
+    } else {
       ThrowError(CommonErrors::invalid_parameter);
+    }
   }
   return false;
 }
@@ -234,24 +256,38 @@ void StructuredDataVersions::CheckForUnorphaning(const VersionName& old_version,
                                                  OrphansRange& orphans_range,
                                                  bool& unorphans_existing_root) const {
   orphans_range = orphans_.equal_range(version.first);
+  std::vector<std::future<void>> check_futures;
   for (auto orphan_itr(orphans_range.first); orphan_itr != orphans_range.second; ++orphan_itr) {
     // Check we can't iterate back to ourself (avoid circular parent-child chain)
-    CheckVersionNotInBranch(orphan_itr->second, version.first);
-    version.second->children.push_back(orphan_itr->second);
+    check_futures.push_back(CheckVersionNotInBranch(orphan_itr->second, version.first));
+    version.second->children.emplace_back(orphan_itr->second);
   }
   unorphans_existing_root = (root_.first.id->IsInitialised() && RootParentName() == old_version);
   assert(!(std::distance(orphans_range.first, orphans_range.second) != 0 &&
            unorphans_existing_root));
+  for (auto& check_future : check_futures)
+    check_future.get();
 }
 
-void StructuredDataVersions::CheckVersionNotInBranch(VersionsItr itr,
-                                                     const VersionName& version) const {
-  // TODO(Fraser#5#): 2013-05-23 - This is probably a good candidate for parallelisation (futures)
-  for (auto child_itr : itr->second->children) {
-    if (child_itr->first == version)
-      ThrowError(CommonErrors::invalid_parameter);
-    CheckVersionNotInBranch(child_itr, version);
-  }
+std::future<void> StructuredDataVersions::CheckVersionNotInBranch(
+    VersionsItr itr,
+    const VersionName& version) const {
+  return std::async([this, itr, &version]() {
+      VersionsItr versions_itr(itr);
+      while (versions_itr != std::end(versions_)) {
+        auto child_itr(std::begin(versions_itr->second->children));
+        if (child_itr == std::end(versions_itr->second->children))
+          return;
+        if ((*child_itr)->first == version)
+          ThrowError(CommonErrors::invalid_parameter);
+        std::vector<std::future<void>> check_futures;
+        while (++child_itr != std::end(versions_itr->second->children))
+          check_futures.emplace_back(CheckVersionNotInBranch(*child_itr, version));
+        versions_itr = *std::begin(versions_itr->second->children);
+        for (auto& check_future : check_futures)
+          check_future.get();
+      }
+  });
 }
 
 void StructuredDataVersions::CheckBranchCount(const Version& version,
@@ -286,7 +322,10 @@ void StructuredDataVersions::Insert(const Version& version,
   if (is_orphan)
     orphans_.insert(std::make_pair(old_version, inserted_itr));
 
-  if (unorphans_existing_root || is_root) {
+  if (is_root) {
+    assert(!erase_existing_root);
+    root_ = std::make_pair(old_version, inserted_itr);
+  } else if (unorphans_existing_root) {
     assert(!erase_existing_root);
     root_.second->second->parent = inserted_itr;
     root_ = std::make_pair(old_version, inserted_itr);
@@ -357,11 +396,13 @@ void StructuredDataVersions::ReplaceRootFromChildren() {
   auto current_root_name(root_.second->first);
   auto replacement_candidate(std::make_pair(current_root_name,
                                             root_.second->second->children.front()));
+  replacement_candidate.second->second->parent = std::end(versions_);
   for (auto child : root_.second->second->children) {
+    child->second->parent = std::end(versions_);
     if (child->first < replacement_candidate.second->first) {
       orphans_.insert(replacement_candidate);
       replacement_candidate.second = child;
-    } else {
+    } else if (child->first > replacement_candidate.second->first) {
       orphans_.insert(std::make_pair(current_root_name, child));
     }
   }

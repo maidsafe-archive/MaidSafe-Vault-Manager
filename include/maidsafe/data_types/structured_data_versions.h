@@ -46,6 +46,7 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 #define MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSION_H_
 
 #include <cstdint>
+#include <future>
 #include <map>
 #include <memory>
 #include <tuple>
@@ -59,6 +60,8 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 
 
 namespace maidsafe {
+
+namespace protobuf { class StructuredDataVersions_Branch; }
 
 // All public functions in this class provide the strong exception guarantee.
 class StructuredDataVersions {
@@ -98,10 +101,10 @@ class StructuredDataVersions {
   void ApplySerialised(const serialised_type& serialised_data_versions);
 
   // Inserts the 'new_version' into the map with 'old_version' as the parent.
-  // * If 'old_version' doesn't exist, the version is added as an orphan.  For the root entry,
-  //   'old_version.id' should be uninitialised (a default-constructed Version will do).  A root
-  //   should only be provided once for a given SDV.  All non-root versions should have index > 0
-  //   and an initialised ID.
+  // * If 'old_version' doesn't exist in the tree, the version is added as an orphan.  For the root
+  //   entry, 'old_version.id' should be uninitialised (a default-constructed VersionName will do).
+  //   A root should only be provided once for a given SDV.  All non-root versions should have
+  //   index > 0 and an initialised ID.
   // * If adding the version causes 'max_versions_' to be exceeded, the root will be erased and one
   //   of its immediate children assigned as the new root.  If the current root has > 1 children,
   //   the child with the lowest VersionName will be chosen.  If the root has no children, the
@@ -169,6 +172,9 @@ class StructuredDataVersions {
   };
   friend void swap(Details& lhs, Details& rhs) MAIDSAFE_NOEXCEPT;
 
+  void ValidateLimits() const;
+  void BranchToProtobuf(VersionsItr itr,
+                        protobuf::StructuredDataVersions_Branch* proto_branch) const;
   VersionName ParentName(VersionsItr itr) const;
   VersionName ParentName(Versions::const_iterator itr) const;
   VersionName RootParentName() const;
@@ -177,7 +183,7 @@ class StructuredDataVersions {
                            Version& version,
                            OrphansRange& orphans_range,
                            bool& unorphans_existing_root) const;
-  void CheckVersionNotInBranch(VersionsItr itr, const VersionName& version) const;
+  std::future<void> CheckVersionNotInBranch(VersionsItr itr, const VersionName& version) const;
   void CheckBranchCount(const Version& version,
                         bool is_orphan,
                         size_t unorphaned_count,
@@ -209,8 +215,8 @@ class StructuredDataVersions {
 };
 
 
-void swap(const StructuredDataVersions::VersionName& lhs,
-          const StructuredDataVersions::VersionName& rhs) MAIDSAFE_NOEXCEPT;
+void swap(StructuredDataVersions::VersionName& lhs,
+          StructuredDataVersions::VersionName& rhs) MAIDSAFE_NOEXCEPT;
 
 bool operator==(const StructuredDataVersions::VersionName& lhs,
                 const StructuredDataVersions::VersionName& rhs);
