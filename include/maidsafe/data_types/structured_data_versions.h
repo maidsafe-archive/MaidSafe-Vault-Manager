@@ -201,6 +201,9 @@ class StructuredDataVersions {
   void ReplaceRootFromOrphans();
   void ReplaceRootFromChildren();
   std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
+  // Workaround for libstdc++ missing vector.erase(const_iterator)
+  // http://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
+  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
   void CheckBranchTipIterator(const VersionName& name,
                               std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
   void EraseFrontOfBranch(VersionsItr front_of_branch);

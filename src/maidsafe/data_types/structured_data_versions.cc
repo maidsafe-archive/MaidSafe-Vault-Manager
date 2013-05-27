@@ -173,7 +173,7 @@ StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() cons
 }
 
 void StructuredDataVersions::BranchToProtobuf(
-    VersionsItr itr,
+    VersionsItr /*itr*/,
     protobuf::StructuredDataVersions_Branch* /*proto_branch*/) const {
 }
 
@@ -412,6 +412,12 @@ void StructuredDataVersions::ReplaceRootFromChildren() {
 
 std::vector<StructuredDataVersions::VersionsItr>::const_iterator
     StructuredDataVersions::FindBranchTip(const VersionName& name) const {
+  return std::find_if(std::begin(tips_of_trees_), std::end(tips_of_trees_),
+                      [&name](VersionsItr branch_tip) { return branch_tip->first == name; });
+}
+
+std::vector<StructuredDataVersions::VersionsItr>::iterator
+    StructuredDataVersions::FindBranchTip(const VersionName& name) {
   return std::find_if(std::begin(tips_of_trees_), std::end(tips_of_trees_),
                       [&name](VersionsItr branch_tip) { return branch_tip->first == name; });
 }
