@@ -61,7 +61,14 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 
 namespace maidsafe {
 
-namespace protobuf { class StructuredDataVersions_Branch; }
+namespace protobuf {
+
+class StructuredDataVersions;
+class StructuredDataVersions_Branch;
+class StructuredDataVersions_Version;
+
+}  // namespace protobuf
+
 
 // All public functions in this class provide the strong exception guarantee.
 class StructuredDataVersions {
@@ -71,7 +78,7 @@ class StructuredDataVersions {
  public:
   struct VersionName {
     VersionName();
-    VersionName(uint32_t index_in, const ImmutableData::name_type& id_in);
+    VersionName(uint64_t index_in, const ImmutableData::name_type& id_in);
     VersionName(const VersionName& other);
     VersionName(VersionName&& other);
     VersionName& operator=(VersionName other);
@@ -173,7 +180,15 @@ class StructuredDataVersions {
   friend void swap(Details& lhs, Details& rhs) MAIDSAFE_NOEXCEPT;
 
   void ValidateLimits() const;
+  void BranchFromProtobuf(VersionsItr parent_itr,
+                          const protobuf::StructuredDataVersions& proto_versions,
+                          int branch_index);
+  VersionsItr CheckedInsert(const protobuf::StructuredDataVersions_Version& proto_version);
   void BranchToProtobuf(VersionsItr itr,
+                        protobuf::StructuredDataVersions& proto_versions,
+                        const VersionName& absent_parent) const;
+  void BranchToProtobuf(VersionsItr itr,
+                        protobuf::StructuredDataVersions& proto_versions,
                         protobuf::StructuredDataVersions_Branch* proto_branch) const;
   VersionName ParentName(VersionsItr itr) const;
   VersionName ParentName(Versions::const_iterator itr) const;
@@ -202,7 +217,8 @@ class StructuredDataVersions {
   void ReplaceRootFromChildren();
   std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
   // Workaround for libstdc++ missing vector.erase(const_iterator)
-  // http://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
+  // Can be removed once status of item 23.3.6 at
+  // http://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html shows as "Y".
   std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
   void CheckBranchTipIterator(const VersionName& name,
                               std::vector<VersionsItr>::const_iterator branch_tip_itr) const;

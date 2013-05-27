@@ -15,7 +15,6 @@
 #include <limits>
 
 #include "maidsafe/common/error.h"
-#include "maidsafe/common/on_scope_exit.h"
 
 #include "maidsafe/data_types/structured_data_versions.pb.h"
 
@@ -26,7 +25,7 @@ StructuredDataVersions::VersionName::VersionName()
     : index(std::numeric_limits<uint64_t>::max()),
       id() {}
 
-StructuredDataVersions::VersionName::VersionName(uint32_t index_in,
+StructuredDataVersions::VersionName::VersionName(uint64_t index_in,
                                                  const ImmutableData::name_type& id_in)
     : index(index_in),
       id(id_in) {}
@@ -69,17 +68,17 @@ bool operator<(const StructuredDataVersions::VersionName& lhs,
 
 bool operator>(const StructuredDataVersions::VersionName& lhs,
                const StructuredDataVersions::VersionName& rhs) {
-  return operator< (rhs, lhs);
+  return operator<(rhs, lhs);
 }
 
 bool operator<=(const StructuredDataVersions::VersionName& lhs,
                 const StructuredDataVersions::VersionName& rhs) {
-  return !operator> (lhs, rhs);
+  return !operator>(lhs, rhs);
 }
 
 bool operator>=(const StructuredDataVersions::VersionName& lhs,
                 const StructuredDataVersions::VersionName& rhs) {
-  return !operator< (lhs, rhs);
+  return !operator<(lhs, rhs);
 }
 
 
@@ -157,7 +156,10 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
   max_branches_ = proto_versions.max_branches();
   ValidateLimits();
 
+  BranchFromProtobuf(std::end(versions_), proto_versions, 0);
 
+  if (versions_.size() > max_versions_ || tips_of_trees_.size() == max_branches_)
+    ThrowError(CommonErrors::parsing_error);
 }
 
 StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() const {
@@ -165,18 +167,71 @@ StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() cons
   proto_versions.set_max_versions(max_versions_);
   proto_versions.set_max_branches(max_branches_);
 
-  BranchToProtobuf(root_.second, proto_versions.add_branch());
+  BranchToProtobuf(root_.second, proto_versions, root_.first);
   for (const auto& orphan : orphans_)
-    BranchToProtobuf(orphan.second, proto_versions.add_branch());
+    BranchToProtobuf(orphan.second, proto_versions, orphan.first);
 
   return serialised_type(NonEmptyString(proto_versions.SerializeAsString()));
 }
 
-void StructuredDataVersions::BranchToProtobuf(
-    VersionsItr /*itr*/,
-    protobuf::StructuredDataVersions_Branch* /*proto_branch*/) const {
+void StructuredDataVersions::ValidateLimits() const {
+  if (max_versions_ < 1U || max_branches_ < 1U)
+    ThrowError(CommonErrors::invalid_parameter);
 }
 
+void StructuredDataVersions::BranchFromProtobuf(
+    VersionsItr /*parent_itr*/,
+    const protobuf::StructuredDataVersions& /*proto_versions*/,
+    int /*branch_index*/) {
+  //while () {
+  //  auto itr(CheckedInsert(proto_versions.branch(branch_index).name(i)));
+  //  handle tot
+  //}
+}
+
+StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
+    const protobuf::StructuredDataVersions_Version& proto_version) {
+  VersionName version_name(proto_version.index(),
+                           ImmutableData::name_type(Identity(proto_version.id())));
+  auto result(versions_.insert(std::make_pair(version_name, std::make_shared<Details>())));
+  if (!result.second)
+    ThrowError(CommonErrors::parsing_error);
+  return result.first;
+}
+
+void StructuredDataVersions::BranchToProtobuf(VersionsItr itr,
+                                              protobuf::StructuredDataVersions& proto_versions,
+                                              const VersionName& absent_parent) const {
+  auto proto_branch(proto_versions.add_branch());
+  if (absent_parent.id->IsInitialised()) {
+    proto_branch->mutable_absent_parent()->set_index(absent_parent.index);
+    proto_branch->mutable_absent_parent()->set_id(absent_parent.id->string());
+  }
+  BranchToProtobuf(itr, proto_versions, proto_branch);
+}
+
+void StructuredDataVersions::BranchToProtobuf(
+    VersionsItr itr,
+    protobuf::StructuredDataVersions& proto_versions,
+    protobuf::StructuredDataVersions_Branch* proto_branch) const {
+  for (;;) {
+    auto proto_version(proto_branch->add_name());
+    proto_version->set_index(itr->first.index);
+    proto_version->set_id(itr->first.id->string());
+    if (itr->second->children.empty())
+      return;
+    if (itr->second->children.size() == 1U) {
+      itr = itr->second->children.front();
+    } else {
+      proto_version->set_forking_child_count(static_cast<uint32_t>(itr->second->children.size()));
+      for (auto child : itr->second->children) {
+        auto proto_branch(proto_versions.add_branch());
+        BranchToProtobuf(child, proto_versions, proto_branch);
+      }
+      return;
+    }
+  }
+}
 
 void StructuredDataVersions::ApplySerialised(const serialised_type& serialised_data_versions) {
   StructuredDataVersions new_info(serialised_data_versions);
@@ -217,11 +272,6 @@ void StructuredDataVersions::Put(const VersionName& old_version, const VersionNa
   // Finally, safe to now add details
   Insert(version, is_root, is_orphan, old_version, unorphans_existing_root, orphans_range,
          erase_existing_root);
-}
-
-void StructuredDataVersions::ValidateLimits() const {
-  if (max_versions_ < 1U || max_branches_ < 1U)
-    ThrowError(CommonErrors::invalid_parameter);
 }
 
 StructuredDataVersions::VersionName StructuredDataVersions::ParentName(VersionsItr itr) const {
