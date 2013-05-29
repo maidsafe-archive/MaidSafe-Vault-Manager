@@ -42,9 +42,10 @@ orphan will be chosen.
 The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 */
 
-#ifndef MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSION_H_
-#define MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSION_H_
+#ifndef MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSIONS_H_
+#define MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSIONS_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <future>
 #include <map>
@@ -182,7 +183,10 @@ class StructuredDataVersions {
   void ValidateLimits() const;
   void BranchFromProtobuf(VersionsItr parent_itr,
                           const protobuf::StructuredDataVersions& proto_versions,
-                          int branch_index);
+                          int& proto_branch_index);
+  VersionsItr HandleFirstVersionInBranchFromProtobuf(
+      VersionsItr parent_itr,
+      const protobuf::StructuredDataVersions_Branch& proto_branch);
   VersionsItr CheckedInsert(const protobuf::StructuredDataVersions_Version& proto_version);
   void BranchToProtobuf(VersionsItr itr,
                         protobuf::StructuredDataVersions& proto_versions,
@@ -257,4 +261,4 @@ bool operator>=(const StructuredDataVersions::VersionName& lhs,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSION_H_
+#endif  // MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSIONS_H_

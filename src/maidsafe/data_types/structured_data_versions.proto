@@ -1,5 +1,4 @@
 package maidsafe.protobuf;
-option optimize_for = LITE_RUNTIME;
 
 message StructuredDataVersions {
   message Version {

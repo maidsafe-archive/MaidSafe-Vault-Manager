@@ -11,7 +11,6 @@
 
 #include "maidsafe/data_types/structured_data_versions.h"
 
-#include <algorithm>
 #include <limits>
 
 #include "maidsafe/common/error.h"
@@ -145,7 +144,7 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
     : max_versions_(),
       max_branches_(),
       versions_(),
-      root_(),
+      root_(std::make_pair(VersionName(), std::end(versions_))),
       tips_of_trees_(),
       orphans_() {
   protobuf::StructuredDataVersions proto_versions;
@@ -156,7 +155,9 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
   max_branches_ = proto_versions.max_branches();
   ValidateLimits();
 
-  BranchFromProtobuf(std::end(versions_), proto_versions, 0);
+  int proto_branch_index(0);
+  while (proto_branch_index < proto_versions.branch_size())
+    BranchFromProtobuf(std::end(versions_), proto_versions, proto_branch_index);
 
   if (versions_.size() > max_versions_ || tips_of_trees_.size() == max_branches_)
     ThrowError(CommonErrors::parsing_error);
@@ -171,6 +172,7 @@ StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() cons
   for (const auto& orphan : orphans_)
     BranchToProtobuf(orphan.second, proto_versions, orphan.first);
 
+//  LOG(kInfo) << proto_versions.DebugString() << '\n';
   return serialised_type(NonEmptyString(proto_versions.SerializeAsString()));
 }
 
@@ -180,13 +182,66 @@ void StructuredDataVersions::ValidateLimits() const {
 }
 
 void StructuredDataVersions::BranchFromProtobuf(
-    VersionsItr /*parent_itr*/,
-    const protobuf::StructuredDataVersions& /*proto_versions*/,
-    int /*branch_index*/) {
-  //while () {
-  //  auto itr(CheckedInsert(proto_versions.branch(branch_index).name(i)));
-  //  handle tot
-  //}
+    VersionsItr parent_itr,
+    const protobuf::StructuredDataVersions& proto_versions,
+    int& proto_branch_index) {
+  if (proto_branch_index >= proto_versions.branch_size())
+    ThrowError(CommonErrors::parsing_error);
+
+  // Handle first version in branch
+  const auto& proto_branch(proto_versions.branch(proto_branch_index));
+  auto itr(HandleFirstVersionInBranchFromProtobuf(parent_itr, proto_branch));
+
+  // Handle other versions in branch
+  int proto_version_index(1);
+  for (; proto_version_index < proto_branch.name_size(); ++proto_version_index) {
+    VersionsItr previous_itr(itr);
+    itr = CheckedInsert(proto_branch.name(proto_version_index));
+    previous_itr->second->children.push_back(itr);
+    itr->second->parent = previous_itr;
+  }
+  --proto_version_index;
+  ++proto_branch_index;
+
+  // Handle continuation forks or mark as tip of tree.
+  if (proto_branch.name(proto_version_index).has_forking_child_count()) {
+    if (proto_branch.name(proto_version_index).forking_child_count() < 2U)
+      ThrowError(CommonErrors::parsing_error);
+    for (uint32_t i(0); i != proto_branch.name(proto_version_index).forking_child_count(); ++i)
+      BranchFromProtobuf(itr, proto_versions, proto_branch_index);
+  } else {
+    tips_of_trees_.push_back(itr);
+  }
+}
+
+StructuredDataVersions::VersionsItr StructuredDataVersions::HandleFirstVersionInBranchFromProtobuf(
+    VersionsItr parent_itr,
+    const protobuf::StructuredDataVersions_Branch& proto_branch) {
+  auto itr(CheckedInsert(proto_branch.name(0)));
+  if (parent_itr == std::end(versions_)) {
+    // This is a new branch, so the first element is either root_ or an orphan.
+    itr->second->parent = std::end(versions_);
+    VersionName absent_parent;
+    if (proto_branch.has_absent_parent()) {
+      absent_parent.index = proto_branch.absent_parent().index();
+      absent_parent.id = ImmutableData::name_type(Identity(proto_branch.absent_parent().id()));
+    }
+    if (root_.second == std::end(versions_)) {
+      // Mark as root
+      root_.first = absent_parent;
+      root_.second = itr;
+    } else {
+      // Mark as orphan
+      if (!absent_parent.id->IsInitialised())
+        ThrowError(CommonErrors::parsing_error);
+      orphans_.insert(std::make_pair(absent_parent, itr));
+    }
+  } else {
+    // This is a continuation fork of an existing branch.
+    parent_itr->second->children.push_back(itr);
+    itr->second->parent = parent_itr;
+  }
+  return itr;
 }
 
 StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
@@ -375,6 +430,7 @@ void StructuredDataVersions::Insert(const Version& version,
   if (is_root) {
     assert(!erase_existing_root);
     root_ = std::make_pair(old_version, inserted_itr);
+    Unorphan(inserted_itr, orphans_range);
   } else if (unorphans_existing_root) {
     assert(!erase_existing_root);
     root_.second->second->parent = inserted_itr;
