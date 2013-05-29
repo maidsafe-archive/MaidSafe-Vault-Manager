@@ -194,6 +194,7 @@ class StructuredDataVersions {
   void BranchToProtobuf(VersionsItr itr,
                         protobuf::StructuredDataVersions& proto_versions,
                         protobuf::StructuredDataVersions_Branch* proto_branch) const;
+  void ApplyBranch(VersionName parent, VersionsItr itr, StructuredDataVersions& new_versions) const;
   VersionName ParentName(VersionsItr itr) const;
   VersionName ParentName(Versions::const_iterator itr) const;
   VersionName RootParentName() const;

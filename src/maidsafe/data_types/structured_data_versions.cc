@@ -290,7 +290,28 @@ void StructuredDataVersions::BranchToProtobuf(
 
 void StructuredDataVersions::ApplySerialised(const serialised_type& serialised_data_versions) {
   StructuredDataVersions new_info(serialised_data_versions);
+  ApplyBranch(root_.first, root_.second, new_info);
+  for (const auto& orphan : orphans_)
+    ApplyBranch(orphan.first, orphan.second, new_info);
+  swap(*this, new_info);
+}
 
+void StructuredDataVersions::ApplyBranch(VersionName parent,
+                                         VersionsItr itr,
+                                         StructuredDataVersions& new_versions) const {
+  for (;;) {
+    new_versions.Put(parent, itr->first);
+    if (itr->second->children.empty())
+      return;
+    parent = itr->first;
+    if (itr->second->children.size() == 1U) {
+      itr = itr->second->children.front();
+    } else {
+      for (auto child : itr->second->children)
+        ApplyBranch(parent, child, new_versions);
+      return;
+    }
+  }
 }
 
 void StructuredDataVersions::Put(const VersionName& old_version, const VersionName& new_version) {
@@ -298,7 +319,7 @@ void StructuredDataVersions::Put(const VersionName& old_version, const VersionNa
     return;
 
   // Check we've not been asked to store two roots.
-  bool is_root(!old_version.id->IsInitialised());
+  bool is_root(!old_version.id->IsInitialised() || versions_.empty());
   if (is_root && root_.second != std::end(versions_) && !RootParentName().id->IsInitialised())
     ThrowError(CommonErrors::invalid_parameter);
 
@@ -346,11 +367,28 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
                                                  const VersionName& new_version) const {
   auto existing_itr(versions_.find(new_version));
   if (existing_itr != std::end(versions_)) {
-    if (existing_itr->second->parent != std::end(versions_) &&
-        ParentName(existing_itr) == old_version) {
-      return true;
-    } else {
+    if (existing_itr->second->parent == std::end(versions_)) {
+      // This is root or an orphan
+      if (new_version == root_.second->first) {
+        if (root_.first == old_version)
+          return true;
+        ThrowError(CommonErrors::invalid_parameter);
+      }
+
+      auto orphan_itr(std::find_if(std::begin(orphans_),
+                                   std::end(orphans_),
+                                   [existing_itr](Orphans::value_type orphan) {
+                                      return orphan.second == existing_itr;
+                                   }));
+      assert(orphan_itr != std::end(orphans_));
+      if (orphan_itr != std::end(orphans_) && orphan_itr->first == old_version)
+        return true;
       ThrowError(CommonErrors::invalid_parameter);
+    } else {
+      if (ParentName(existing_itr) == old_version)
+        return true;
+      else
+        ThrowError(CommonErrors::invalid_parameter);
     }
   }
   return false;

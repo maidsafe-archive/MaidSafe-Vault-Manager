@@ -100,7 +100,25 @@ void ConstructAsDiagram(StructuredDataVersions& versions) {
     versions.Put(put.first, put.second);
 }
 
+bool Equal(const StructuredDataVersions& lhs, const StructuredDataVersions& rhs) {
+  if (lhs.max_versions() != rhs.max_versions())
+    return false;
+  if (lhs.max_branches() != rhs.max_branches())
+    return false;
+  auto lhs_tots(lhs.Get());
+  auto rhs_tots(rhs.Get());
+  std::sort(std::begin(lhs_tots), std::end(lhs_tots));
+  std::sort(std::begin(rhs_tots), std::end(rhs_tots));
+  std::vector<std::vector<VersionName>> lhs_branches, rhs_branches;
+  for (const auto& lhs_tot : lhs_tots)
+    lhs_branches.push_back(lhs.GetBranch(lhs_tot));
+  for (const auto& rhs_tot : rhs_tots)
+    rhs_branches.push_back(rhs.GetBranch(rhs_tot));
+  return lhs_branches == rhs_branches;
+}
+
 }  // unnamed namespace
+
 
 TEST(StructuredDataVersionsTest, BEH_Put) {
   StructuredDataVersions versions(100, 10);
@@ -154,7 +172,6 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
   for (const auto& tot2 : got_before2)
     branches_before2.push_back(versions2.GetBranch(tot2));
 
-
   auto serialised1(versions1.Serialise());
   auto serialised2(versions2.Serialise());
   StructuredDataVersions parsed1(serialised1);
@@ -178,6 +195,28 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
   EXPECT_THAT(got_after1, testing::ContainerEq(got_after2));
   EXPECT_THAT(branches_before1, testing::ContainerEq(branches_after1));
   EXPECT_THAT(branches_after1, testing::ContainerEq(branches_after2));
+}
+
+TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
+  StructuredDataVersions versions1(100, 10);
+  ConstructAsDiagram(versions1);
+  auto serialised1(versions1.Serialise());
+  // Check applying all included versions doesn't modify the SDV.
+  versions1.ApplySerialised(serialised1);
+  auto temp_serialised(versions1.Serialise());
+  EXPECT_EQ(serialised1, temp_serialised);
+
+  // Construct SDV with only "absent" version from diagram included.
+  VersionName v5_nnn(5, ImmutableData::name_type(Identity(std::string(64, 'n'))));
+  VersionName absent(6, ImmutableData::name_type(Identity(std::string(64, 'x'))));
+  StructuredDataVersions versions2(100, 10);
+  versions2.Put(v5_nnn, absent);
+  auto serialised2(versions2.Serialise());
+
+  // Apply each serialised SDV to the other and check they produce the same resultant SDV.
+  versions1.ApplySerialised(serialised2);
+  versions2.ApplySerialised(serialised1);
+  EXPECT_TRUE(Equal(versions1, versions2));
 }
 
 }  // namespace test
