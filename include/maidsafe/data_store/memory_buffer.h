@@ -13,6 +13,7 @@
 #define MAIDSAFE_DATA_STORE_MEMORY_BUFFER_H_
 
 #include <mutex>
+#include <utility>
 
 #include "boost/circular_buffer.hpp"
 
@@ -35,10 +36,10 @@ class MemoryBuffer {
   typedef DataNameVariant KeyType;
   typedef boost::circular_buffer<std::pair<KeyType, NonEmptyString>> MemoryBufferType;
 
-  MemoryBuffer(MemoryUsage max_memory_usage);
+  explicit MemoryBuffer(MemoryUsage max_memory_usage);
 
   ~MemoryBuffer();
-  
+
   void Store(const KeyType& key, const NonEmptyString& value);
   NonEmptyString Get(const KeyType& key);
   void Delete(const KeyType& key);

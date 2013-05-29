@@ -108,7 +108,7 @@ TEST_F(MemoryBufferTest, BEH_Store) {
     EXPECT_NO_THROW(recovered = memory_buffer_->Get(temp_key));
     EXPECT_EQ(recovered, temp_value);
   }
-    
+
   // get first value again...
   EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
   EXPECT_EQ(recovered, value);
