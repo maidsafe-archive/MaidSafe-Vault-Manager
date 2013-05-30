@@ -10,6 +10,8 @@
  **************************************************************************************************/
 
 
+#include <algorithm>
+#include <random>
 #include <string>
 
 #include "maidsafe/common/test.h"
@@ -95,7 +97,10 @@ void ConstructAsDiagram(StructuredDataVersions& versions) {
   puts.push_back(std::make_pair(v3_hhh, v4_mmm));
   puts.push_back(std::make_pair(absent, v7_yyy));
   puts.push_back(std::make_pair(v7_yyy, v8_zzz));
-  std::random_shuffle(std::begin(puts), std::end(puts));
+
+  std::random_device random_device;
+  std::mt19937 generator(random_device());
+  std::shuffle(std::begin(puts), std::end(puts), generator);
   for (const auto& put : puts)
     versions.Put(put.first, put.second);
 }
@@ -158,7 +163,7 @@ TEST(StructuredDataVersionsTest, BEH_PutOrphans) {
 }
 
 TEST(StructuredDataVersionsTest, BEH_Serialise) {
-  StructuredDataVersions versions1(100, 10), versions2(100, 10);
+  StructuredDataVersions versions1(100, 20), versions2(100, 20);
   ConstructAsDiagram(versions1);
   ConstructAsDiagram(versions2);
 
@@ -198,7 +203,7 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
 }
 
 TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
-  StructuredDataVersions versions1(100, 10);
+  StructuredDataVersions versions1(100, 20);
   ConstructAsDiagram(versions1);
   auto serialised1(versions1.Serialise());
   // Check applying all included versions doesn't modify the SDV.
@@ -209,7 +214,7 @@ TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
   // Construct SDV with only "absent" version from diagram included.
   VersionName v5_nnn(5, ImmutableData::name_type(Identity(std::string(64, 'n'))));
   VersionName absent(6, ImmutableData::name_type(Identity(std::string(64, 'x'))));
-  StructuredDataVersions versions2(100, 10);
+  StructuredDataVersions versions2(100, 20);
   versions2.Put(v5_nnn, absent);
   auto serialised2(versions2.Serialise());
 
