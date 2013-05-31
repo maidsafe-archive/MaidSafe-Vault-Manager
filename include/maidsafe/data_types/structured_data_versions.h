@@ -47,9 +47,11 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <future>
 #include <map>
 #include <memory>
+#include <set>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -127,7 +129,7 @@ class StructuredDataVersions {
   // * If inserting the new version causes a circular chain parent->child->parent,
   //   CommonErrors::invalid_parameter is thrown.
   void Put(const VersionName& old_version, const VersionName& new_version);
-  // Returns all the "tips of trees" in unspecified order.
+  // Returns all the "tips of trees" in order starting from least.
   std::vector<VersionName> Get() const;
   // Returns all the versions comprising a branch, starting at the tip, through to (including) the
   // root or the orphan at the start of that branch.  e.g., in the diagram above, GetBranch(4-jjj)
@@ -162,11 +164,12 @@ class StructuredDataVersions {
   typedef std::map<VersionName, std::shared_ptr<Details>> Versions;
   typedef Versions::value_type Version;
   typedef Versions::iterator VersionsItr;
+  typedef std::set<VersionsItr, std::function<bool(VersionsItr, VersionsItr)>> SortedVersionsItrs;
   // The first value of the pair is the "old version" or parent ID which the orphan was added under.
-  // The expectation is that the missing parent will soon be added, allowing the second value of the
-  // pair to become "un-orphaned".
-  typedef std::multimap<VersionName, VersionsItr> Orphans;
-  typedef std::pair<Orphans::const_iterator, Orphans::const_iterator> OrphansRange;
+  // The expectation is that the missing parent will soon be added, allowing the second value(s) of
+  // the pair to become "un-orphaned".
+  typedef std::map<VersionName, SortedVersionsItrs> Orphans;
+  typedef std::pair<Orphans::const_iterator, SortedVersionsItrs::const_iterator> OrphanItr;
 
   struct Details {
     Details();
@@ -176,7 +179,7 @@ class StructuredDataVersions {
     Details& operator=(Details other);
 
     VersionsItr parent;
-    std::vector<VersionsItr> children;
+    SortedVersionsItrs children;
   };
   friend void swap(Details& lhs, Details& rhs) MAIDSAFE_NOEXCEPT;
 
@@ -200,8 +203,8 @@ class StructuredDataVersions {
   VersionName RootParentName() const;
   bool NewVersionPreExists(const VersionName& old_version, const VersionName& new_version) const;
   void CheckForUnorphaning(Version& version,
-                           OrphansRange& orphans_range,
-                           bool& unorphans_existing_root) const;
+                           bool& unorphans_existing_root,
+                           size_t& unorphan_count) const;
   std::future<void> CheckVersionNotInBranch(VersionsItr itr, const VersionName& version) const;
   void CheckBranchCount(const Version& version,
                         bool is_orphan,
@@ -212,29 +215,28 @@ class StructuredDataVersions {
               bool is_orphan,
               const VersionName& old_version,
               bool unorphans_existing_root,
-              OrphansRange orphans_range,
+              size_t unorphan_count,
               bool erase_existing_root);
   void SetVersionAsChildOfItsParent(VersionsItr versions_itr);
   void UnorphanRoot(VersionsItr parent, bool is_root_or_orphan, const VersionName& old_version);
-  void Unorphan(VersionsItr parent, OrphansRange orphans_range);
+  void Unorphan(VersionsItr parent);
   void ReplaceRoot();
   void ReplaceRootFromOrphans();
   void ReplaceRootFromChildren();
-  std::vector<VersionsItr>::const_iterator FindBranchTip(const VersionName& name) const;
-  // Workaround for libstdc++ missing vector.erase(const_iterator)
-  // Can be removed once status of item 23.3.6 at
-  // http://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html shows as "Y".
-  std::vector<VersionsItr>::iterator FindBranchTip(const VersionName& name);
+  SortedVersionsItrs::const_iterator FindBranchTip(const VersionName& name) const;
+  OrphanItr FindOrphan(const VersionName& name) const;
+  void InsertOrphan(const VersionName& absent_parent_name, VersionsItr orphan);
   void CheckBranchTipIterator(const VersionName& name,
-                              std::vector<VersionsItr>::const_iterator branch_tip_itr) const;
+                              SortedVersionsItrs::const_iterator branch_tip_itr) const;
   void EraseFrontOfBranch(VersionsItr front_of_branch);
   bool AtVersionsLimit() const;
   bool AtBranchesLimit() const;
+  void CheckedInsert(SortedVersionsItrs& container, VersionsItr element) const;
 
   uint32_t max_versions_, max_branches_;
   Versions versions_;
   std::pair<VersionName, VersionsItr> root_;
-  std::vector<VersionsItr> tips_of_trees_;
+  SortedVersionsItrs tips_of_trees_;
   Orphans orphans_;
 };
 
