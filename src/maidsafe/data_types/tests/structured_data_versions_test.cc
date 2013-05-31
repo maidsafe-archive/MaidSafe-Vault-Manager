@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <random>
 #include <string>
+#include <vector>
 
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
@@ -44,6 +45,20 @@ std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
     old_version = new_version;
   }
   return branch;
+}
+
+std::string DisplayVersion(const VersionName& version, bool to_hex) {
+  return std::to_string(version.index) + "-" +
+      (version.id->IsInitialised() ?
+         (to_hex ? EncodeToHex(version.id.data) : version.id->string()).substr(0, 3) :
+         ("Uninitialised"));
+}
+
+std::string DisplayVersions(const std::vector<VersionName>& versions, bool to_hex) {
+  std::string result;
+  for (const auto& version : versions)
+    result += DisplayVersion(version, to_hex) + "  ";
+  return result;
 }
 
 void ConstructAsDiagram(StructuredDataVersions& versions) {
@@ -101,25 +116,47 @@ void ConstructAsDiagram(StructuredDataVersions& versions) {
   std::random_device random_device;
   std::mt19937 generator(random_device());
   std::shuffle(std::begin(puts), std::end(puts), generator);
-  for (const auto& put : puts)
+  for (const auto& put : puts) {
+    LOG(kInfo) << "Putting - old: " << DisplayVersion(put.first, false)
+               << "  new: " << DisplayVersion(put.second, false);
     versions.Put(put.first, put.second);
+  }
 }
 
-bool Equal(const StructuredDataVersions& lhs, const StructuredDataVersions& rhs) {
+testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
+                                    const StructuredDataVersions& rhs) {
   if (lhs.max_versions() != rhs.max_versions())
-    return false;
+    return testing::AssertionFailure() << "lhs.max_versions (" << lhs.max_versions()
+        << ") != rhs.max_versions(" << rhs.max_versions() << ")";
+
   if (lhs.max_branches() != rhs.max_branches())
-    return false;
+    return testing::AssertionFailure() << "lhs.max_branches (" << lhs.max_branches()
+        << ") != rhs.max_branches(" << rhs.max_branches() << ")";
+
   auto lhs_tots(lhs.Get());
   auto rhs_tots(rhs.Get());
   std::sort(std::begin(lhs_tots), std::end(lhs_tots));
   std::sort(std::begin(rhs_tots), std::end(rhs_tots));
+  if (lhs_tots != rhs_tots) {
+    return testing::AssertionFailure() << "lhs.tips_of_trees != rhs.tips_of_trees:\n"
+        << "lhs: " << DisplayVersions(lhs_tots, false) << "\n rhs: "
+        << DisplayVersions(rhs_tots, false) << '\n';
+  }
+
   std::vector<std::vector<VersionName>> lhs_branches, rhs_branches;
   for (const auto& lhs_tot : lhs_tots)
     lhs_branches.push_back(lhs.GetBranch(lhs_tot));
   for (const auto& rhs_tot : rhs_tots)
     rhs_branches.push_back(rhs.GetBranch(rhs_tot));
-  return lhs_branches == rhs_branches;
+  if (lhs_branches != rhs_branches) {
+    std::string output("lhs.branches != rhs.branches:\n");
+    for (size_t i(0); i != lhs_branches.size(); ++i) {
+      output += "lhs " + std::to_string(i) + ": " + DisplayVersions(lhs_branches[i], false) +
+          "\n rhs " + std::to_string(i) + ": " + DisplayVersions(rhs_branches[i], false) + '\n';
+    }
+    return testing::AssertionFailure() << output;
+  }
+  return testing::AssertionSuccess();
 }
 
 }  // unnamed namespace
@@ -167,39 +204,21 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
   ConstructAsDiagram(versions1);
   ConstructAsDiagram(versions2);
 
-  auto got_before1(versions1.Get());
-  auto got_before2(versions2.Get());
-  std::sort(std::begin(got_before1), std::end(got_before1));
-  std::sort(std::begin(got_before2), std::end(got_before2));
-  std::vector<std::vector<VersionName>> branches_before1, branches_before2;
-  for (const auto& tot1 : got_before1)
-    branches_before1.push_back(versions1.GetBranch(tot1));
-  for (const auto& tot2 : got_before2)
-    branches_before2.push_back(versions2.GetBranch(tot2));
+  EXPECT_TRUE(Equivalent(versions1, versions2));
 
   auto serialised1(versions1.Serialise());
   auto serialised2(versions2.Serialise());
   StructuredDataVersions parsed1(serialised1);
   StructuredDataVersions parsed2(serialised2);
+
+  EXPECT_TRUE(Equivalent(versions1, parsed1));
+  EXPECT_TRUE(Equivalent(versions2, parsed2));
+  EXPECT_TRUE(Equivalent(parsed1, parsed2));
+
   auto reserialised1(parsed1.Serialise());
   auto reserialised2(parsed2.Serialise());
   EXPECT_EQ(serialised1, reserialised1);
   EXPECT_EQ(serialised2, reserialised2);
-
-  auto got_after1(parsed1.Get());
-  auto got_after2(parsed2.Get());
-  std::sort(std::begin(got_after1), std::end(got_after1));
-  std::sort(std::begin(got_after2), std::end(got_after2));
-  std::vector<std::vector<VersionName>> branches_after1, branches_after2;
-  for (const auto& tot1 : got_after1)
-    branches_after1.push_back(parsed1.GetBranch(tot1));
-  for (const auto& tot2 : got_after2)
-    branches_after2.push_back(parsed2.GetBranch(tot2));
-
-  EXPECT_THAT(got_before1, testing::ContainerEq(got_after1));
-  EXPECT_THAT(got_after1, testing::ContainerEq(got_after2));
-  EXPECT_THAT(branches_before1, testing::ContainerEq(branches_after1));
-  EXPECT_THAT(branches_after1, testing::ContainerEq(branches_after2));
 }
 
 TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
@@ -221,7 +240,7 @@ TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
   // Apply each serialised SDV to the other and check they produce the same resultant SDV.
   versions1.ApplySerialised(serialised2);
   versions2.ApplySerialised(serialised1);
-  EXPECT_TRUE(Equal(versions1, versions2));
+  EXPECT_TRUE(Equivalent(versions1, versions2));
 }
 
 }  // namespace test

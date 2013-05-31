@@ -215,7 +215,7 @@ class StructuredDataVersions {
               OrphansRange orphans_range,
               bool erase_existing_root);
   void SetVersionAsChildOfItsParent(VersionsItr versions_itr);
-  void UnorphanRoot(VersionsItr parent, bool is_orphan, const VersionName& old_version);
+  void UnorphanRoot(VersionsItr parent, bool is_root_or_orphan, const VersionName& old_version);
   void Unorphan(VersionsItr parent, OrphansRange orphans_range);
   void ReplaceRoot();
   void ReplaceRootFromOrphans();
