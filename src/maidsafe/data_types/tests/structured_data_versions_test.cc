@@ -208,6 +208,9 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
 
   auto serialised1(versions1.Serialise());
   auto serialised2(versions2.Serialise());
+
+  EXPECT_EQ(serialised1, serialised2);
+
   StructuredDataVersions parsed1(serialised1);
   StructuredDataVersions parsed2(serialised2);
 
@@ -219,6 +222,7 @@ TEST(StructuredDataVersionsTest, BEH_Serialise) {
   auto reserialised2(parsed2.Serialise());
   EXPECT_EQ(serialised1, reserialised1);
   EXPECT_EQ(serialised2, reserialised2);
+  EXPECT_EQ(reserialised1, reserialised2);
 }
 
 TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {

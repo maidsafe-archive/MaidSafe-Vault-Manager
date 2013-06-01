@@ -385,7 +385,7 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
       auto orphan_itr(FindOrphan(new_version));
       assert(orphan_itr.first != std::end(orphans_) &&
              orphan_itr.second != std::end(orphan_itr.first->second));
-      if (orphan_itr.first != std::end(orphans_) && (*orphan_itr.second)->first == old_version)
+      if (orphan_itr.first != std::end(orphans_) && orphan_itr.first->first == old_version)
         return true;
       ThrowError(CommonErrors::invalid_parameter);
     } else {
@@ -404,12 +404,14 @@ void StructuredDataVersions::CheckForUnorphaning(Version& version,
   auto orphans_itr(orphans_.find(version.first));
   unorphan_count = (orphans_itr == std::end(orphans_) ? 0 : orphans_itr->second.size());
   std::vector<std::future<void>> check_futures;
-  for (auto orphan_itr(std::begin(orphans_itr->second));
-       orphan_itr != std::end(orphans_itr->second);
-       ++orphan_itr) {
-    // Check we can't iterate back to ourself (avoid circular parent-child chain)
-    check_futures.push_back(CheckVersionNotInBranch(*orphan_itr, version.first));
-    CheckedInsert(version.second->children, *orphan_itr);
+  if (unorphan_count) {
+    for (auto orphan_itr(std::begin(orphans_itr->second));
+         orphan_itr != std::end(orphans_itr->second);
+         ++orphan_itr) {
+      // Check we can't iterate back to ourself (avoid circular parent-child chain)
+      check_futures.push_back(CheckVersionNotInBranch(*orphan_itr, version.first));
+      CheckedInsert(version.second->children, *orphan_itr);
+    }
   }
   unorphans_existing_root = (root_.first.id->IsInitialised() && RootParentName() == version.first);
   if (unorphans_existing_root) {
@@ -530,8 +532,9 @@ void StructuredDataVersions::UnorphanRoot(VersionsItr parent,
     if (orphan_itr.first == std::end(orphans_))
       ThrowError(CommonErrors::unknown);
     // Move from orphans to root_
-    root_ = *(orphan_itr.first);
-    orphans_.erase(orphan_itr.first);
+    root_.first = orphan_itr.first->first;
+    root_.second = *orphan_itr.second;
+    EraseOrphan(orphan_itr);
   }
 }
 
@@ -561,12 +564,12 @@ void StructuredDataVersions::ReplaceRoot() {
 
 void StructuredDataVersions::ReplaceRootFromOrphans() {
   assert(!orphans_.empty());
+  OrphanItr orphan_itr(std::make_pair(std::begin(orphans_),
+                                      std::begin(std::begin(orphans_)->second)));
   versions_.erase(root_.second);
-  root_.first = std::begin(orphans_)->first;
-  root_.second = *std::begin(std::begin(orphans_)->second);
-  std::begin(orphans_)->second.erase(std::begin(std::begin(orphans_)->second));
-  if (std::begin(orphans_)->second.empty())
-    orphans_.erase(std::begin(orphans_));
+  root_.first = orphan_itr.first->first;
+  root_.second = *orphan_itr.second;
+  EraseOrphan(orphan_itr);
 }
 
 void StructuredDataVersions::ReplaceRootFromChildren() {
@@ -592,7 +595,7 @@ StructuredDataVersions::SortedVersionsItrs::const_iterator
 }
 
 StructuredDataVersions::OrphanItr StructuredDataVersions::FindOrphan(
-    const VersionName& name) const {
+    const VersionName& name) {
   OrphanItr orphan_itr;
   orphan_itr.first = std::begin(orphans_);
   while (orphan_itr.first != std::end(orphans_)) {
@@ -602,9 +605,27 @@ StructuredDataVersions::OrphanItr StructuredDataVersions::FindOrphan(
                                          return version->first == name;
                                      });
     if (orphan_itr.second != std::end(orphan_itr.first->second))
-      return orphan_itr;
+      break;
     ++orphan_itr.first;
   }
+  return orphan_itr;
+}
+
+StructuredDataVersions::OrphanConstItr StructuredDataVersions::FindOrphan(
+    const VersionName& name) const {
+  OrphanConstItr orphan_itr;
+  orphan_itr.first = std::begin(orphans_);
+  while (orphan_itr.first != std::end(orphans_)) {
+    orphan_itr.second = std::find_if(std::begin(orphan_itr.first->second),
+                                     std::end(orphan_itr.first->second),
+                                     [&name](SortedVersionsItrs::value_type version) {
+                                         return version->first == name;
+                                     });
+    if (orphan_itr.second != std::end(orphan_itr.first->second))
+      break;
+    ++orphan_itr.first;
+  }
+  return orphan_itr;
 }
 
 void StructuredDataVersions::InsertOrphan(const VersionName& absent_parent_name,
@@ -614,6 +635,14 @@ void StructuredDataVersions::InsertOrphan(const VersionName& absent_parent_name,
       std::make_pair(absent_parent_name,
           SortedVersionsItrs([](VersionsItr lhs, VersionsItr rhs) { return *lhs < *rhs; }))).first);
   orphans_itr->second.insert(orphan);
+}
+
+void StructuredDataVersions::EraseOrphan(OrphanItr orphan_itr) {
+  assert(orphan_itr.first != std::end(orphans_) &&
+         orphan_itr.second != std::end(orphan_itr.first->second));
+  orphan_itr.first->second.erase(orphan_itr.second);
+  if (orphan_itr.first->second.empty())
+    orphans_.erase(orphan_itr.first);
 }
 
 std::vector<StructuredDataVersions::VersionName> StructuredDataVersions::Get() const {
@@ -684,14 +713,7 @@ void StructuredDataVersions::EraseFrontOfBranch(VersionsItr front_of_branch) {
       ReplaceRootFromOrphans();
     }
   } else {  // Front of branch is an orphan.
-    auto orphan_itr(std::find_if(std::begin(orphans_),
-                                 std::end(orphans_),
-                                 [front_of_branch](const Orphans::value_type& orphan) {
-                                   return orphan.second == front_of_branch;
-                                 }));
-    assert(orphan_itr != std::end(orphans_));
-    orphans_.erase(orphan_itr);
-    versions_.erase(front_of_branch);
+    EraseOrphan(FindOrphan(front_of_branch->first));
   }
 }
 

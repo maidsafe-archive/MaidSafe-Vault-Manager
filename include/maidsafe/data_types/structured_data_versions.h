@@ -169,7 +169,8 @@ class StructuredDataVersions {
   // The expectation is that the missing parent will soon be added, allowing the second value(s) of
   // the pair to become "un-orphaned".
   typedef std::map<VersionName, SortedVersionsItrs> Orphans;
-  typedef std::pair<Orphans::const_iterator, SortedVersionsItrs::const_iterator> OrphanItr;
+  typedef std::pair<Orphans::iterator, SortedVersionsItrs::iterator> OrphanItr;
+  typedef std::pair<Orphans::const_iterator, SortedVersionsItrs::const_iterator> OrphanConstItr;
 
   struct Details {
     Details();
@@ -224,8 +225,10 @@ class StructuredDataVersions {
   void ReplaceRootFromOrphans();
   void ReplaceRootFromChildren();
   SortedVersionsItrs::const_iterator FindBranchTip(const VersionName& name) const;
-  OrphanItr FindOrphan(const VersionName& name) const;
+  OrphanItr FindOrphan(const VersionName& name);
+  OrphanConstItr FindOrphan(const VersionName& name) const;
   void InsertOrphan(const VersionName& absent_parent_name, VersionsItr orphan);
+  void EraseOrphan(OrphanItr orphan_itr);
   void CheckBranchTipIterator(const VersionName& name,
                               SortedVersionsItrs::const_iterator branch_tip_itr) const;
   void EraseFrontOfBranch(VersionsItr front_of_branch);
