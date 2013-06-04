@@ -1,5 +1,4 @@
 package maidsafe.protobuf;
-option optimize_for = LITE_RUNTIME;
 
 message OwnerDirectory {
   required bytes data = 1;
