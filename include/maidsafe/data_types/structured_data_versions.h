@@ -56,6 +56,8 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 #include <utility>
 #include <vector>
 
+#include "boost/optional/optional.hpp"
+
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/tagged_value.h"
 
@@ -110,7 +112,8 @@ class StructuredDataVersions {
   // overwritten with those in 'serialised_data_versions'.
   void ApplySerialised(const serialised_type& serialised_data_versions);
 
-  // Inserts the 'new_version' into the map with 'old_version' as the parent.
+  // Inserts the 'new_version' into the map with 'old_version' as the parent.  Returns the version
+  // which was removed if any.
   // * If 'old_version' doesn't exist in the tree, the version is added as an orphan.  For the root
   //   entry, 'old_version.id' should be uninitialised (a default-constructed VersionName will do).
   //   A root should only be provided once for a given SDV.  All non-root versions should have
@@ -128,7 +131,7 @@ class StructuredDataVersions {
   //   CommonErrors::invalid_parameter is thrown.
   // * If inserting the new version causes a circular chain parent->child->parent,
   //   CommonErrors::invalid_parameter is thrown.
-  void Put(const VersionName& old_version, const VersionName& new_version);
+  boost::optional<VersionName> Put(const VersionName& old_version, const VersionName& new_version);
   // Returns all the "tips of trees" in order starting from least.
   std::vector<VersionName> Get() const;
   // Returns all the versions comprising a branch, starting at the tip, through to (including) the
@@ -211,13 +214,13 @@ class StructuredDataVersions {
                         bool is_orphan,
                         size_t unorphaned_count,
                         bool& erase_existing_root) const;
-  void Insert(const Version& version,
-              bool is_root,
-              bool is_orphan,
-              const VersionName& old_version,
-              bool unorphans_existing_root,
-              size_t unorphan_count,
-              bool erase_existing_root);
+  boost::optional<VersionName> Insert(const Version& version,
+                                      bool is_root,
+                                      bool is_orphan,
+                                      const VersionName& old_version,
+                                      bool unorphans_existing_root,
+                                      size_t unorphan_count,
+                                      bool erase_existing_root);
   void SetVersionAsChildOfItsParent(VersionsItr versions_itr);
   void UnorphanRoot(VersionsItr parent, bool is_root_or_orphan, const VersionName& old_version);
   void Unorphan(VersionsItr parent);

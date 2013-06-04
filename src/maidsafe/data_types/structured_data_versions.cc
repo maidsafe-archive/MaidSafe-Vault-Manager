@@ -322,9 +322,10 @@ void StructuredDataVersions::ApplyBranch(VersionName parent,
   }
 }
 
-void StructuredDataVersions::Put(const VersionName& old_version, const VersionName& new_version) {
+boost::optional<StructuredDataVersions::VersionName> StructuredDataVersions::Put(
+    const VersionName& old_version, const VersionName& new_version) {
   if (NewVersionPreExists(old_version, new_version))
-    return;
+    return boost::optional<VersionName>();
 
   // Check we've not been asked to store two roots.
   bool is_root(!old_version.id->IsInitialised() || versions_.empty());
@@ -345,7 +346,7 @@ void StructuredDataVersions::Put(const VersionName& old_version, const VersionNa
     if (unorphans_existing_root || is_root)
       // This new version would become 'root_', only to be immediately erased to bring version count
       // back down to 'max_versions_'.
-      return;
+      return boost::make_optional(new_version);
     erase_existing_root = true;
   }
 
@@ -353,8 +354,8 @@ void StructuredDataVersions::Put(const VersionName& old_version, const VersionNa
   CheckBranchCount(version, is_orphan, unorphan_count, erase_existing_root);
 
   // Finally, safe to now add details
-  Insert(version, is_root, is_orphan, old_version, unorphans_existing_root, unorphan_count,
-         erase_existing_root);
+  return Insert(version, is_root, is_orphan, old_version, unorphans_existing_root, unorphan_count,
+                erase_existing_root);
 }
 
 StructuredDataVersions::VersionName StructuredDataVersions::ParentName(VersionsItr itr) const {
@@ -460,13 +461,14 @@ void StructuredDataVersions::CheckBranchCount(const Version& version,
   }
 }
 
-void StructuredDataVersions::Insert(const Version& version,
-                                    bool is_root,
-                                    bool is_orphan,
-                                    const VersionName& old_version,
-                                    bool unorphans_existing_root,
-                                    size_t unorphan_count,
-                                    bool erase_existing_root) {
+boost::optional<StructuredDataVersions::VersionName> StructuredDataVersions::Insert(
+    const Version& version,
+    bool is_root,
+    bool is_orphan,
+    const VersionName& old_version,
+    bool unorphans_existing_root,
+    size_t unorphan_count,
+    bool erase_existing_root) {
   assert(!((is_root || unorphans_existing_root) && erase_existing_root));
 
   auto inserted_itr(versions_.insert(version).first);
@@ -485,6 +487,7 @@ void StructuredDataVersions::Insert(const Version& version,
     InsertOrphan(root_.first, root_.second);
   }
 
+  boost::optional<VersionName> removed_version;
   if (is_root) {
     if (unorphans_existing_root)
       UnorphanRoot(inserted_itr, true, old_version);
@@ -493,6 +496,7 @@ void StructuredDataVersions::Insert(const Version& version,
   } else if (unorphans_existing_root) {
     UnorphanRoot(inserted_itr, is_orphan, old_version);
   } else if (erase_existing_root) {
+    removed_version = root_.second->first;
     ReplaceRoot();
   }
 
@@ -500,6 +504,7 @@ void StructuredDataVersions::Insert(const Version& version,
     CheckedInsert(tips_of_trees_, inserted_itr);
 
   assert(versions_.size() <= max_versions_ && tips_of_trees_.size() <= max_branches_);
+  return removed_version;
 }
 
 void StructuredDataVersions::SetVersionAsChildOfItsParent(VersionsItr versions_itr) {
