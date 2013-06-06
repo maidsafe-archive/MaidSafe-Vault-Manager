@@ -19,7 +19,7 @@
 
 namespace maidsafe {
 
-enum class DataTagValue : int32_t {
+enum class DataTagValue : uint32_t {
   kAnmidValue,
   kAnsmidValue,
   kAntmidValue,
