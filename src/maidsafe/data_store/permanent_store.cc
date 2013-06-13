@@ -41,7 +41,7 @@ struct UsedSpace {
   DiskUsage disk_usage;
 };
 
-UsedSpace GetUsedSpace(fs::path&& directory) {
+UsedSpace GetUsedSpace(fs::path directory) {
   UsedSpace used_space;
   for (fs::directory_iterator it(directory); it != fs::directory_iterator(); ++it) {
     if (fs::is_directory(*it))
@@ -67,7 +67,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
     while (!dirs_to_do.empty()) {
       std::vector<std::future<UsedSpace>> futures;
       for (uint32_t i = 0; i < 16 && !dirs_to_do.empty(); ++i) {
-        auto future = std::async(&GetUsedSpace, std::move(dirs_to_do.back()));
+        auto future = std::async(&GetUsedSpace, dirs_to_do.back());
         dirs_to_do.pop_back();
         futures.push_back(std::move(future));
       }

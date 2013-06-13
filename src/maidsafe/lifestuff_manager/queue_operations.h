@@ -12,6 +12,7 @@
 #ifndef MAIDSAFE_LIFESTUFF_MANAGER_QUEUE_OPERATIONS_H_
 #define MAIDSAFE_LIFESTUFF_MANAGER_QUEUE_OPERATIONS_H_
 
+#include <atomic>
 #include <string>
 
 #include "boost/interprocess/creation_tags.hpp"
