@@ -14,7 +14,7 @@
 #include <limits>
 
 #include "maidsafe/common/error.h"
-
+#include "maidsafe/common/log.h"
 #include "maidsafe/data_types/structured_data_versions.pb.h"
 
 
@@ -693,13 +693,16 @@ void StructuredDataVersions::DeleteBranchUntilFork(const VersionName& branch_tip
     auto parent_itr = itr->second->parent;
     if (parent_itr == std::end(versions_))  // Found root or orphan.
       return EraseFrontOfBranch(itr);
-
+#ifndef NDEBUG
     auto parents_child_itr(std::find_if(std::begin(parent_itr->second->children),
                                         std::end(parent_itr->second->children),
                                         [itr](VersionsItr child_itr) {
                                             return itr->first == child_itr->first;
                                         }));
     assert(parents_child_itr != std::end(parent_itr->second->children));
+    if (parents_child_itr != std::end(parent_itr->second->children))
+      LOG(kError) << "not a branch";
+#endif
     versions_.erase(itr);
     if (!parent_itr->second->children.empty())  // Found fork.
       return;
