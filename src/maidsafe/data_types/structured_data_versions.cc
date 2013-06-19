@@ -750,10 +750,34 @@ void swap(StructuredDataVersions& lhs, StructuredDataVersions& rhs) MAIDSAFE_NOE
   using std::swap;
   swap(lhs.max_versions_, rhs.max_versions_);
   swap(lhs.max_branches_, rhs.max_branches_);
+  // std::map::swap invalidates end iterators.  root_ and orphans_ have parents which are
+  // end iterators - these need reset after the call to swap(lhs.versions_, rhs.versions_).  Also,
+  // root_ may not yet have been set, in which case root_.second is an end iterator.
+  bool lhs_root_previously_not_set(lhs.root_.second == std::end(lhs.versions_));
+  bool rhs_root_previously_not_set(rhs.root_.second == std::end(rhs.versions_));
   swap(lhs.versions_, rhs.versions_);
   swap(lhs.root_, rhs.root_);
+
+  if (lhs_root_previously_not_set)
+    rhs.root_.second = std::end(rhs.versions_);
+  else
+    rhs.root_.second->second->parent = std::end(rhs.versions_);
+  if (rhs_root_previously_not_set)
+    lhs.root_.second = std::end(lhs.versions_);
+  else
+    lhs.root_.second->second->parent = std::end(lhs.versions_);
+
   swap(lhs.tips_of_trees_, rhs.tips_of_trees_);
+
   swap(lhs.orphans_, rhs.orphans_);
+  for (const auto& lhs_orphans : lhs.orphans_) {
+    for (auto lhs_orphan : lhs_orphans.second)
+      lhs_orphan->second->parent == std::end(lhs.versions_);
+  }
+  for (const auto& rhs_orphans : rhs.orphans_) {
+    for (auto rhs_orphan : rhs_orphans.second)
+      rhs_orphan->second->parent == std::end(rhs.versions_);
+  }
 }
 
 }  // namespace maidsafe

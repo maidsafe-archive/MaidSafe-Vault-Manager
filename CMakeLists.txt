@@ -174,10 +174,6 @@ if(MaidsafeTesting)
   set_target_properties(maidsafe_lifestuff_manager_core_dummy TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT")
 endif()
 
-if(UNIX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-effc++")
-endif()
-
 
 #==================================================================================================#
 # Tests                                                                                            #
