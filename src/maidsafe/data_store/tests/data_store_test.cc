@@ -658,24 +658,14 @@ TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
   KeyType key(this->GetRandomKey());
   NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 30) + 1),
                  recovered, last_value;
-  auto async = std::async(std::launch::async, [this, key, value] {
-                                                this->data_store_->Store(key, value);
-                                              });
-  EXPECT_NO_THROW(async.wait());
-  EXPECT_EQ(true, async.valid());
-  EXPECT_NO_THROW(async.get());
+  EXPECT_NO_THROW(this->data_store_->Store(key, value));
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
 
-  uint32_t events(RandomUint32() % 100);
+  uint32_t events((RandomUint32() % 100) + 1);
   for (uint32_t i = 0; i != events; ++i) {
     last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % 30) + 1));
-    auto async = std::async(std::launch::async, [this, key, last_value] {
-                                                  this->data_store_->Store(key, last_value);
-                                                });
-    EXPECT_NO_THROW(async.wait());
-    EXPECT_EQ(true, async.valid());
-    EXPECT_NO_THROW(async.get());
+    EXPECT_NO_THROW(this->data_store_->Store(key, last_value));
   }
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_NE(value, recovered);

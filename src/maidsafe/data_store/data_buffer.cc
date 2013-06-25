@@ -125,17 +125,9 @@ DataBuffer::~DataBuffer() {
 
 void DataBuffer::Store(const KeyType& key, const NonEmptyString& value) {
   try {
-    bool on_disk(false);
-    {
-      std::unique_lock<std::mutex> disk_store_lock(disk_store_.mutex);
-      auto it = Find<Storage<DiskUsage, DiskIndex> >(disk_store_, key);
-      on_disk = it != disk_store_.index.end();
-    }
-    if (on_disk) {
-      Delete(key);
-      LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
-                 << EncodeToBase32(boost::apply_visitor(get_identity_visitor_, key).string());
-    }
+    Delete(key);
+    LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key "
+                << EncodeToBase32(boost::apply_visitor(get_identity_visitor_, key).string());
   }
   catch(const std::exception&) {
     LOG(kInfo) << "Storing value " << EncodeToBase32(value) << " with key "
@@ -308,8 +300,8 @@ void DataBuffer::DeleteFromDisk(const KeyType& key) {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
     auto itr(Find(disk_store_, key));
     if (itr == disk_store_.index.end()) {
-      LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
-                  << " is not in the disk index.";
+      LOG(kWarning) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
+                    << " is not in the disk index.";
       ThrowError(CommonErrors::no_such_element);
     }
 
@@ -477,8 +469,8 @@ DataBuffer::DiskIndex::iterator DataBuffer::FindOldestOnDisk() {
 DataBuffer::DiskIndex::iterator DataBuffer::FindAndThrowIfCancelled(const KeyType& key) {
   auto itr(Find(disk_store_, key));
   if (itr == disk_store_.index.end() || (*itr).state == StoringState::kCancelled) {
-    LOG(kError) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
-                << " is not in the disk index or is cancelled.";
+    LOG(kWarning) << HexSubstr(boost::apply_visitor(get_identity_visitor_, key))
+                  << " is not in the disk index or is cancelled.";
     ThrowError(CommonErrors::no_such_element);
   }
   return itr;
