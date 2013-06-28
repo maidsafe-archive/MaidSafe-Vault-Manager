@@ -13,7 +13,6 @@ implied. See the License for the specific language governing permissions and lim
 License.
 */
 
-
 #include <algorithm>
 #include <random>
 #include <string>

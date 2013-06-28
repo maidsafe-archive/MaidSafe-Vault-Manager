@@ -13,8 +13,6 @@ implied. See the License for the specific language governing permissions and lim
 License.
 */
 
-
-
 #ifndef MAIDSAFE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
 #define MAIDSAFE_LIFESTUFF_MANAGER_TESTS_TEST_UTILS_H_
 

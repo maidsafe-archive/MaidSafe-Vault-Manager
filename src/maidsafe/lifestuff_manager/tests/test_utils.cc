@@ -13,8 +13,6 @@ implied. See the License for the specific language governing permissions and lim
 License.
 */
 
-
-
 #include "maidsafe/lifestuff_manager/tests/test_utils.h"
 
 #include <cstdlib>
