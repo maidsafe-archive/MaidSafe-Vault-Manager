@@ -847,10 +847,13 @@ TYPED_TEST_P(DataStoreTest, BEH_Delete) {
     while (total_usage != 0) {
       KeyType key(this->GetRandomKey());
       NonEmptyString value = this->GenerateKeyValueData(key, memory_usage);
-//      key_value_pairs[key] = value; // Fails to compile on gcc 4.7
-      auto ret_val = key_value_pairs.insert(std::make_pair(key, value));
+#if defined(__GNUC__) && !defined(__clang__)
+      auto ret_val = key_value_pairs.insert(std::make_pair(key, value));  // Fails on clang
       if (!ret_val.second)
         ret_val.first->second = value;
+#else
+      key_value_pairs[key] = value;  // Fails to compile on gcc 4.7
+#endif
       EXPECT_NO_THROW(this->data_store_->Store(key, value));
       if (disk_usage != 0) {
         disk_usage -= memory_usage;
