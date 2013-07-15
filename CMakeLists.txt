@@ -87,6 +87,8 @@ endif()
 
 target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
 target_link_libraries(maidsafe_lifestuff_manager maidsafe_passport ${BoostRegexLibs})
+add_dependencies(maidsafe_lifestuff_manager_core boost_process)
+add_dependencies(maidsafe_lifestuff_manager_core_dummy boost_process)
 target_link_libraries(signing_tool maidsafe_passport)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
