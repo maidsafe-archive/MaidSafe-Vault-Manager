@@ -13,7 +13,7 @@ implied. See the License for the specific language governing permissions and lim
 License.
 */
 
-#include "maidsafe/data_store/sure_file_store.h"
+#include "maidsafe/data_store/surefile_store.h"
 
 #include <string>
 #include <vector>
@@ -116,68 +116,28 @@ void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
 
   fs::path file_path(KeyToFilePath(key));
   uint32_t value_size(static_cast<uint32_t>(value.string().size()));
-  uint64_t file_size(0), size(0);
+  uintmax_t file_size(0);
   uint32_t reference_count(GetReferenceCount(file_path));
-  boost::system::error_code error_code;
+  DataTagValue data_tag_value(boost::apply_visitor(GetTagValueVisitor(), key));
 
   if (reference_count == 0) {
-    if (!HasDiskSpace(value_size)) {
-      LOG(kError) << "Cannot store "
-                  << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
-                  << " since the addition of " << size << " bytes exceeds max of "
-                  << max_disk_usage_ << " bytes.";
-      ThrowError(CommonErrors::cannot_exceed_limit);
-    }
     file_path.replace_extension(".1");
-    if (!WriteFile(file_path, value.string())) {
-      LOG(kError) << "Failed to write "
-                  << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
-                  << " to disk.";
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
+    Write(file_path, value, value_size);
     current_disk_usage_.data += value_size;
-  } else {
+  } else if (data_tag_value == DataTagValue::kImmutableDataValue) {
     fs::path old_path(file_path), new_path(file_path);
     old_path.replace_extension("." + std::to_string(reference_count));
     ++reference_count;
     new_path.replace_extension("." + std::to_string(reference_count));
-
-    file_size = fs::file_size(old_path, error_code);
-    if (error_code) {
-      LOG(kError) << "Error getting file size of " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
-    if (!fs::remove(old_path, error_code) || error_code) {
-      LOG(kError) << "Error removing file " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
-
-    if (file_size <= value_size) {
-      size = value_size - file_size;
-      if (!HasDiskSpace(size)) {
-        LOG(kError) << "Cannot store "
-                    << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
-                    << " since the addition of " << size << " bytes exceeds max of "
-                    << max_disk_usage_ << " bytes.";
-        ThrowError(CommonErrors::cannot_exceed_limit);
-      }
-      if (!WriteFile(new_path, value.string())) {
-        LOG(kError) << "Failed to write "
-                    << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
-                    << " to disk.";
-        ThrowError(CommonErrors::filesystem_io_error);
-      }
-      current_disk_usage_.data += size;
-    } else {
-      size = file_size - value_size;
-      if (!WriteFile(new_path, value.string())) {
-        LOG(kError) << "Failed to write "
-                    << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
-                    << " to disk.";
-        ThrowError(CommonErrors::filesystem_io_error);
-      }
-      current_disk_usage_.data -= size;
-    }
+    file_size = Rename(old_path, new_path);
+    assert(file_size == value_size);
+  } else {
+    assert(reference_count == 1);
+    file_path.replace_extension(".1");
+    file_size = Remove(file_path); 
+    current_disk_usage_.data -= file_size;
+    Write(file_path, value, value_size);
+    current_disk_usage_.data += value_size;
   }
   return;
 }
@@ -185,33 +145,24 @@ void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
 void SureFileStore::Delete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key));
+  uintmax_t file_size(0);
   boost::system::error_code error_code;
   uint32_t reference_count(GetReferenceCount(file_path));
 
   if (reference_count == 0)
     return;
 
-  file_path.replace_extension("." + std::to_string(reference_count));
   if (reference_count == 1) {
-    uintmax_t file_size(fs::file_size(file_path, error_code));
-    if (error_code) {
-      LOG(kError) << "Error getting file size of " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
-    if (!fs::remove(file_path, error_code) || error_code) {
-      LOG(kError) << "Error removing " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
+    file_path.replace_extension(".1");
+    file_size = Remove(file_path);
     current_disk_usage_.data -= file_size;
   } else {
     fs::path new_path(file_path);
+    file_path.replace_extension("." + std::to_string(reference_count));
     --reference_count;
     new_path.replace_extension("." + std::to_string(reference_count));
-    fs::rename(file_path, new_path, error_code);
-    if (error_code) {
-      LOG(kError) << "Error renaming file " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
-    }
+    file_size = Rename(file_path, new_path);
+    assert(file_size != 0);
   }
   return;
 }
@@ -242,7 +193,7 @@ fs::path SureFileStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }
 
-bool SureFileStore::HasDiskSpace(const uint64_t& required_space) const {
+bool SureFileStore::HasDiskSpace(const uintmax_t& required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
@@ -283,6 +234,48 @@ uint32_t SureFileStore::GetReferenceCount(const fs::path& path) const {
   }
 
   return 0;
+}
+
+void SureFileStore::Write(const boost::filesystem::path& path,
+                          const NonEmptyString& value,
+                          const uintmax_t& size) {
+  if (!HasDiskSpace(size)) {
+    LOG(kError) << "Out of space.";
+    ThrowError(CommonErrors::cannot_exceed_limit);
+  }
+  if (!WriteFile(path, value.string())) {
+    LOG(kError) << "Write failed.";
+    ThrowError(CommonErrors::filesystem_io_error);
+  }
+}
+
+uintmax_t SureFileStore::Remove(const fs::path& path) {
+  boost::system::error_code error_code;
+  uintmax_t file_size = fs::file_size(path, error_code);
+  if (error_code) {
+    LOG(kError) << "Error getting file size of " << path << ": " << error_code.message();
+    ThrowError(CommonErrors::filesystem_io_error);
+  }
+  if (!fs::remove(path, error_code) || error_code) {
+    LOG(kError) << "Error removing file " << path << ": " << error_code.message();
+    ThrowError(CommonErrors::filesystem_io_error);
+  }
+  return file_size;
+}
+
+uintmax_t SureFileStore::Rename(const fs::path& old_path, const fs::path& new_path) {
+  boost::system::error_code error_code;
+  uintmax_t file_size = fs::file_size(old_path, error_code);
+  if (error_code) {
+    LOG(kError) << "Error getting file size of " << old_path << ": " << error_code.message();
+    ThrowError(CommonErrors::filesystem_io_error);
+  }
+  fs::rename(old_path, new_path, error_code);
+  if (error_code) {
+    LOG(kError) << "Error renaming file " << old_path << ": " << error_code.message();
+    ThrowError(CommonErrors::filesystem_io_error);
+  }
+  return file_size;
 }
 
 }  // namespace data_store
