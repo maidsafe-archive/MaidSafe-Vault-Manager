@@ -60,6 +60,7 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <string>
 
 #include "boost/optional/optional.hpp"
 
@@ -75,7 +76,7 @@ namespace protobuf {
 
 class StructuredDataVersions;
 class StructuredDataVersions_Branch;
-class StructuredDataVersions_Version;
+class Version;
 
 }  // namespace protobuf
 
@@ -89,9 +90,11 @@ class StructuredDataVersions {
   struct VersionName {
     VersionName();
     VersionName(uint64_t index_in, const ImmutableData::name_type& id_in);
+    explicit VersionName(const std::string& serialised_version_name);
     VersionName(const VersionName& other);
     VersionName(VersionName&& other);
     VersionName& operator=(VersionName other);
+    std::string Serialise() const;
 
     uint64_t index;
     ImmutableData::name_type id;
@@ -199,7 +202,7 @@ class StructuredDataVersions {
   VersionsItr HandleFirstVersionInBranchFromProtobuf(
       VersionsItr parent_itr,
       const protobuf::StructuredDataVersions_Branch& proto_branch);
-  VersionsItr CheckedInsert(const protobuf::StructuredDataVersions_Version& proto_version);
+  VersionsItr CheckedInsert(const protobuf::Version& proto_version);
   void BranchToProtobuf(VersionsItr itr,
                         protobuf::StructuredDataVersions& proto_versions,
                         const VersionName& absent_parent) const;

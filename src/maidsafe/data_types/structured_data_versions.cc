@@ -18,6 +18,7 @@ License.
 #include <limits>
 
 #include "maidsafe/common/error.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/data_types/structured_data_versions.pb.h"
 
 
@@ -32,6 +33,18 @@ StructuredDataVersions::VersionName::VersionName(uint64_t index_in,
     : index(index_in),
       id(id_in) {}
 
+StructuredDataVersions::VersionName::VersionName(const std::string& serialised_version_name)
+    : index(0),
+      id() {
+  protobuf::Version version_proto;
+  if (!version_proto.ParseFromString(serialised_version_name)) {
+    LOG(kWarning)  << "Failed to parse serialised version name";
+    ThrowError(CommonErrors::parsing_error);
+  }
+  index = version_proto.index();
+  id = ImmutableData::name_type(Identity(version_proto.id()));
+}
+
 StructuredDataVersions::VersionName::VersionName(const VersionName& other)
     : index(other.index),
       id(other.id) {}
@@ -44,6 +57,13 @@ StructuredDataVersions::VersionName& StructuredDataVersions::VersionName::operat
     VersionName other) {
   swap(*this, other);
   return *this;
+}
+
+std::string StructuredDataVersions::VersionName::Serialise() const {
+  protobuf::Version version_proto;
+  version_proto.set_index(index);
+  version_proto.set_id(id->string());
+  return version_proto.SerializeAsString();
 }
 
 void swap(StructuredDataVersions::VersionName& lhs,
@@ -254,7 +274,7 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::HandleFirstVersionIn
 }
 
 StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
-    const protobuf::StructuredDataVersions_Version& proto_version) {
+    const protobuf::Version& proto_version) {
   VersionName version_name(proto_version.index(),
                            ImmutableData::name_type(Identity(proto_version.id())));
   auto result(versions_.insert(std::make_pair(version_name, std::make_shared<Details>())));
