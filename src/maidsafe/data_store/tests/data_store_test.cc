@@ -56,7 +56,7 @@ class DataStoreTest : public ::testing::Test {
     NonEmptyString operator()(T& key)
     {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
-      key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+      key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;
     }
 
@@ -68,7 +68,7 @@ class DataStoreTest : public ::testing::Test {
     template<typename T>
     Identity operator()(T& key)
     {
-      return key.data;
+      return key.value;
     }
   };
 
@@ -169,92 +169,77 @@ class DataStoreTest : public ::testing::Test {
       value = NonEmptyString(RandomAlphaNumericString(size));
       switch (type_number) {
         case 0: {
-          passport::Anmid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicAnmid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 1: {
-          passport::Ansmid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicAnsmid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 2: {
-          passport::Antmid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicAntmid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 3: {
-          passport::Anmaid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicAnmaid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 4: {
-          passport::Maid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicMaid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 5: {
-          passport::Pmid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicPmid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 6: {
-          passport::Mid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::Mid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 7: {
-          passport::Smid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::Smid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 8: {
-          passport::Tmid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::Tmid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 9: {
-          passport::Anmpid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicAnmpid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 10: {
-          passport::Mpid::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          passport::PublicMpid::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 11: {
-          ImmutableData::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          ImmutableData::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 12: {
-          OwnerDirectory::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          OwnerDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 13: {
-          GroupDirectory::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          GroupDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
         case 14: {
-          WorldDirectory::name_type key;
-          key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+          WorldDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
@@ -269,21 +254,21 @@ class DataStoreTest : public ::testing::Test {
              type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return passport::Anmid::name_type();
-      case  1: return passport::Ansmid::name_type();
-      case  2: return passport::Antmid::name_type();
-      case  3: return passport::Anmaid::name_type();
-      case  4: return passport::Maid::name_type();
-      case  5: return passport::Pmid::name_type();
-      case  6: return passport::Mid::name_type();
-      case  7: return passport::Smid::name_type();
-      case  8: return passport::Tmid::name_type();
-      case  9: return passport::Anmpid::name_type();
-      case 10: return passport::Mpid::name_type();
-      case 11: return ImmutableData::name_type();
-      case 12: return OwnerDirectory::name_type();
-      case 13: return GroupDirectory::name_type();
-      case 14: return WorldDirectory::name_type();
+      case  0: return passport::PublicAnmid::Name();
+      case  1: return passport::PublicAnsmid::Name();
+      case  2: return passport::PublicAntmid::Name();
+      case  3: return passport::PublicAnmaid::Name();
+      case  4: return passport::PublicMaid::Name();
+      case  5: return passport::PublicPmid::Name();
+      case  6: return passport::Mid::Name();
+      case  7: return passport::Smid::Name();
+      case  8: return passport::Tmid::Name();
+      case  9: return passport::PublicAnmpid::Name();
+      case 10: return passport::PublicMpid::Name();
+      case 11: return ImmutableData::Name();
+      case 12: return OwnerDirectory::Name();
+      case 13: return GroupDirectory::Name();
+      case 14: return WorldDirectory::Name();
       // default:
         // Throw something!
       //  ;

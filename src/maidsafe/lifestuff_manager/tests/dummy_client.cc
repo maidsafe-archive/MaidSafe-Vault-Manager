@@ -32,12 +32,12 @@ int main(int argc, char** argv) {
   maidsafe::passport::Pmid pmid(maid);
   try {
     if (!client.StartVault(pmid, maid.name(), "")) {
-      LOG(kError) << "dummy_client: Failed to start vault " << pmid.name().data.string();
+      LOG(kError) << "dummy_client: Failed to start vault " << pmid.name()->string();
     }
   } catch(...) {
-    LOG(kError) << "dummy_client: Problem starting vault " << pmid.name().data.string();
+    LOG(kError) << "dummy_client: Problem starting vault " << pmid.name()->string();
   }
-  LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(pmid.name().data.string());
+  LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(pmid.name()->string());
   LOG(kInfo) << "Validation Token: " << maidsafe::Base64Substr(pmid.validation_token());
   LOG(kInfo) << "Public Key: "
              << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid.public_key()));

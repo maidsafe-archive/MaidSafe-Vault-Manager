@@ -24,21 +24,15 @@ License.
 
 namespace maidsafe {
 
-//struct ImmutableDataTag {
-//  static const DataTagValue kEnumValue;
-//};
-
 class ImmutableData {
  public:
   typedef detail::Name<ImmutableData> Name;
   typedef detail::Tag<DataTagValue::kImmutableDataValue> Tag;
-  //typedef TaggedValue<Identity, ImmutableDataTag> name_type;
   typedef TaggedValue<NonEmptyString, ImmutableData> serialised_type;
 
   ImmutableData(const ImmutableData& other);
-  ImmutableData& operator=(const ImmutableData& other);
   ImmutableData(ImmutableData&& other);
-  ImmutableData& operator=(ImmutableData&& other);
+  ImmutableData& operator=(ImmutableData other);
 
   explicit ImmutableData(const NonEmptyString& content);
   ImmutableData(const Name& name, const serialised_type& serialised_immutable_data);
@@ -47,7 +41,8 @@ class ImmutableData {
 
   Name name() const { return name_; }
   NonEmptyString data() const { return data_; }
-  //static DataTagValue type_enum_value() { return ImmutableDataTag::kEnumValue; }
+
+  friend void swap(ImmutableData& lhs, ImmutableData& rhs);
 
  private:
   void Validate() const;

@@ -15,6 +15,8 @@ License.
 
 #include "maidsafe/data_types/immutable_data.h"
 
+#include <utility>
+
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
 
@@ -23,19 +25,12 @@ namespace maidsafe {
 
 ImmutableData::ImmutableData(const ImmutableData& other) : name_(other.name_), data_(other.data_) {}
 
-ImmutableData& ImmutableData::operator=(const ImmutableData& other) {
-  name_ = other.name_;
-  data_ = other.data_;
-  return *this;
-}
-
 ImmutableData::ImmutableData(ImmutableData&& other)
     : name_(std::move(other.name_)),
       data_(std::move(other.data_)) {}
 
-ImmutableData& ImmutableData::operator=(ImmutableData&& other) {
-  name_ = std::move(other.name_);
-  data_ = std::move(other.data_);
+ImmutableData& ImmutableData::operator=(ImmutableData other) {
+  swap(*this, other);
   return *this;
 }
 
@@ -62,6 +57,12 @@ void ImmutableData::Validate() const {
 
 ImmutableData::serialised_type ImmutableData::Serialise() const {
   return serialised_type(data_);
+}
+
+void swap(ImmutableData& lhs, ImmutableData& rhs) {
+  using std::swap;
+  swap(lhs.name_, rhs.name_);
+  swap(lhs.data_, rhs.data_);
 }
 
 }  // namespace maidsafe

@@ -89,7 +89,7 @@ class StructuredDataVersions {
  public:
   struct VersionName {
     VersionName();
-    VersionName(uint64_t index_in, const ImmutableData::name_type& id_in);
+    VersionName(uint64_t index_in, const ImmutableData::Name& id_in);
     explicit VersionName(const std::string& serialised_version_name);
     VersionName(const VersionName& other);
     VersionName(VersionName&& other);
@@ -97,7 +97,7 @@ class StructuredDataVersions {
     std::string Serialise() const;
 
     uint64_t index;
-    ImmutableData::name_type id;
+    ImmutableData::Name id;
   };
 
   typedef TaggedValue<NonEmptyString, StructuredDataVersionsTag> serialised_type;

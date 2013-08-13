@@ -29,7 +29,7 @@ StructuredDataVersions::VersionName::VersionName()
       id() {}
 
 StructuredDataVersions::VersionName::VersionName(uint64_t index_in,
-                                                 const ImmutableData::name_type& id_in)
+                                                 const ImmutableData::Name& id_in)
     : index(index_in),
       id(id_in) {}
 
@@ -42,7 +42,7 @@ StructuredDataVersions::VersionName::VersionName(const std::string& serialised_v
     ThrowError(CommonErrors::parsing_error);
   }
   index = version_proto.index();
-  id = ImmutableData::name_type(Identity(version_proto.id()));
+  id = ImmutableData::Name(Identity(version_proto.id()));
 }
 
 StructuredDataVersions::VersionName::VersionName(const VersionName& other)
@@ -253,7 +253,7 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::HandleFirstVersionIn
     VersionName absent_parent;
     if (proto_branch.has_absent_parent()) {
       absent_parent.index = proto_branch.absent_parent().index();
-      absent_parent.id = ImmutableData::name_type(Identity(proto_branch.absent_parent().id()));
+      absent_parent.id = ImmutableData::Name(Identity(proto_branch.absent_parent().id()));
     }
     if (root_.second == std::end(versions_)) {
       // Mark as root
@@ -276,7 +276,7 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::HandleFirstVersionIn
 StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
     const protobuf::Version& proto_version) {
   VersionName version_name(proto_version.index(),
-                           ImmutableData::name_type(Identity(proto_version.id())));
+                           ImmutableData::Name(Identity(proto_version.id())));
   auto result(versions_.insert(std::make_pair(version_name, std::make_shared<Details>())));
   if (!result.second)
     ThrowError(CommonErrors::parsing_error);

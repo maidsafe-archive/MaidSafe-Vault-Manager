@@ -56,7 +56,7 @@ class ClientController {
 
   // Blocking call to start a vault with the specified identity information and account name.
   bool StartVault(const passport::Pmid& pmid,
-                  const passport::Maid::name_type& account_name,
+                  const passport::Maid::Name& account_name,
                   const boost::filesystem::path& chunkstore);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
@@ -116,7 +116,7 @@ class ClientController {
   uint16_t lifestuff_manager_port_, local_port_;
   OnNewVersionAvailable on_new_version_available_;
   std::vector<boost::asio::ip::udp::endpoint> bootstrap_nodes_;
-  std::map<passport::Pmid::name_type, bool> joining_vaults_;
+  std::map<passport::Pmid::Name, bool> joining_vaults_;
   std::mutex joining_vaults_mutex_;
   std::condition_variable joining_vaults_conditional_;
   AsioService asio_service_;

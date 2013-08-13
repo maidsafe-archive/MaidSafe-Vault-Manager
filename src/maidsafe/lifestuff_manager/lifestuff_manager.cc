@@ -231,8 +231,7 @@ bool LifeStuffManager::ReadConfigFileAndStartVaults() {
     vault_info->FromProtobuf(config.vault_info(i));
     if (vault_info->requested_to_run) {
       if (!StartVaultProcess(vault_info))
-        LOG(kError) << "Failed to start vault ID"
-                    << Base64Substr(vault_info->pmid->name().data);
+        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->pmid->name().value);
     }
   }
 
@@ -454,13 +453,13 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
       vault_info->client_port = client_port;
       if (!StartVaultProcess(vault_info)) {
         LOG(kError) << "Failed to start a process for vault ID: "
-                    << Base64Substr(vault_info->pmid->name().data);
+                    << Base64Substr(vault_info->pmid->name().value);
         return set_response(false);
       }
     }
     if (!AmendVaultDetailsInConfigFile(vault_info, existing_vault)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr(vault_info->pmid->name().data);
+                  << Base64Substr(vault_info->pmid->name().value);
       return set_response(false);
     }
   }
@@ -571,23 +570,23 @@ void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::s
   }
 
   protobuf::StopVaultResponse stop_vault_response;
-  passport::Pmid::name_type pmid_name(Identity(stop_vault_request.identity()));
+  passport::Pmid::Name pmid_name(Identity(stop_vault_request.identity()));
   asymm::PlainText data(stop_vault_request.data());
   asymm::Signature signature(stop_vault_request.signature());
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value) << " hasn't been added.";
     stop_vault_response.set_result(false);
   } else if (!asymm::CheckSignature(data, signature, (*itr)->pmid->public_key())) {
-    LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(pmid_name.data);
+    LOG(kError) << "Failure to validate request to stop vault ID " << Base64Substr(pmid_name.value);
     stop_vault_response.set_result(false);
   } else {
-    LOG(kInfo) << "Shutting down vault with identity " << Base64Substr(pmid_name.data);
+    LOG(kInfo) << "Shutting down vault with identity " << Base64Substr(pmid_name.value);
     stop_vault_response.set_result(StopVault(pmid_name, data, signature, true));
     if (!AmendVaultDetailsInConfigFile(*itr, true)) {
       LOG(kError) << "Failed to amend details in config file for vault ID: "
-                  << Base64Substr((*itr)->pmid->name().data);
+                  << Base64Substr((*itr)->pmid->name().value);
       stop_vault_response.set_result(false);
     }
   }
@@ -700,12 +699,12 @@ void LifeStuffManager::CheckForUpdates(const boost::system::error_code& ec) {
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
-void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::name_type& pmid_name,
+void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name,
                                                  bool join_result) {
   protobuf::VaultJoinConfirmation vault_join_confirmation;
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data)
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value)
                 << " hasn't been added.";
     return;
   }
@@ -735,7 +734,7 @@ void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::name_type
                                           LOG(kError) << "Transport reported error code " << error;
                                           callback(false);
                                         });
-  vault_join_confirmation.set_identity(pmid_name.data.string());
+  vault_join_confirmation.set_identity(pmid_name->string());
   vault_join_confirmation.set_joined(join_result);
   LOG(kVerbose) << "Sending vault join confirmation to client on port " << (*itr)->client_port;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinConfirmation,
@@ -922,7 +921,7 @@ bool LifeStuffManager::InTestMode() const {
 }
 
 std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromPmidName(
-    const passport::Pmid::name_type& pmid_name) {
+    const passport::Pmid::Name& pmid_name) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(),
                       [pmid_name] (const VaultInfoPtr& vault_info)->bool {
@@ -939,11 +938,11 @@ std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFrom
                       });
 }
 
-void LifeStuffManager::RestartVault(const passport::Pmid::name_type& pmid_name) {
+void LifeStuffManager::RestartVault(const passport::Pmid::Name& pmid_name) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value) << " hasn't been added.";
     return;
   }
   process_manager_.StartProcess((*itr)->process_index);
@@ -952,13 +951,13 @@ void LifeStuffManager::RestartVault(const passport::Pmid::name_type& pmid_name) 
 // NOTE: vault_infos_mutex_ must be locked before calling this function.
 // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
 //                               Try to reduce lock scope eventually.
-bool LifeStuffManager::StopVault(const passport::Pmid::name_type& pmid_name,
+bool LifeStuffManager::StopVault(const passport::Pmid::Name& pmid_name,
                                  const asymm::PlainText& data,
                                  const asymm::Signature& signature,
                                  bool permanent) {
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.data) << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value) << " hasn't been added.";
     return false;
   }
   (*itr)->requested_to_run = !permanent;
@@ -996,7 +995,7 @@ void LifeStuffManager::StopAllVaults() {
                   asymm::Signature signature(asymm::Sign(random_data, info->pmid->private_key()));
                   if (!StopVault(info->pmid->name(), random_data, signature, false)) {
                     LOG(kError) << "StopAllVaults: failed to stop - "
-                                << Base64Substr(info->pmid->name().data);
+                                << Base64Substr(info->pmid->name().value);
                   }
                 });
 }
@@ -1114,7 +1113,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
 #endif
   if (!process.SetExecutablePath(executable_path / detail::kVaultName)) {
     LOG(kError) << "Failed to set executable path for: "
-                << Base64Substr(vault_info->pmid->name().data);
+                << Base64Substr(vault_info->pmid->name().value);
     return false;
   }
   // --vmid argument is added automatically by process_manager_.AddProcess(...)
@@ -1132,7 +1131,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   LOG(kInfo) << "Process Name: " << process.name();
   vault_info->process_index = process_manager_.AddProcess(process, local_port_);
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
-    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->pmid->name().data);
+    LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->pmid->name().value);
     return false;
   }
 
@@ -1209,7 +1208,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
   protobuf::LifeStuffManagerConfig config;
   if (!ReadFileToLifeStuffManagerConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
-                << Base64Substr(vault_info->pmid->name().data);
+                << Base64Substr(vault_info->pmid->name().value);
     return false;
   }
 
@@ -1235,7 +1234,7 @@ bool LifeStuffManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_i
       std::lock_guard<std::mutex> lock(config_file_mutex_);
       if (!WriteFile(config_file_path_, config.SerializeAsString())) {
         LOG(kError) << "Failed to write config file to amend details of vault ID "
-                    << Base64Substr(vault_info->pmid->name().data);
+                    << Base64Substr(vault_info->pmid->name().value);
         return false;
       }
     }

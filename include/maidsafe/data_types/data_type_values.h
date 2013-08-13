@@ -115,6 +115,10 @@ struct Name {
   Name(Name&& other) : value(std::move(other.value)) {}
   Name& operator=(Name other);
 
+  operator Identity() const { return value; }
+  Identity const* operator->() const { return &value; }
+  Identity* operator->() { return &value; }
+
   Identity value;
   typedef Parent data_type;
 };
@@ -126,9 +130,39 @@ void swap(Name<Parent>& lhs, Name<Parent>& rhs) MAIDSAFE_NOEXCEPT {
 }
 
 template<typename Parent>
-Name<Parent>& Name<Parent>::operator=(Name other) {
+Name<Parent>& Name<Parent>::operator=(Name<Parent> other) {
   swap(*this, other);
   return *this;
+}
+
+template<typename Parent>
+inline bool operator==(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return lhs.value == rhs.value;
+}
+
+template<typename Parent>
+inline bool operator!=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+template<typename Parent>
+inline bool operator<(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return lhs.value < rhs.value;
+}
+
+template<typename Parent>
+inline bool operator>(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return operator<(rhs, lhs);
+}
+
+template<typename Parent>
+inline bool operator<=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return return !operator>(lhs, rhs);
+}
+
+template<typename Parent>
+inline bool operator>=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return !operator<(lhs, rhs);
 }
 
 
@@ -137,6 +171,9 @@ template<DataTagValue Value>
 struct Tag {
   static const DataTagValue kValue = Value;
 };
+
+template<DataTagValue Value>
+const DataTagValue Tag<Value>::kValue;
 
 }  // detail
 
