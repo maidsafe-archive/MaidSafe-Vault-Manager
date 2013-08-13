@@ -20,6 +20,8 @@ License.
 #include <ostream>
 #include <string>
 
+#include "maidsafe/common/types.h"
+
 
 namespace maidsafe {
 
@@ -101,6 +103,42 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
     ostream << ostream.widen(*itr);
   return ostream;
 }
+
+namespace detail {
+
+template<typename Parent>
+struct Name {
+  Name() : value() {}
+  explicit Name(const Identity& value_in) : value(value_in) {}
+  explicit Name(Identity&& value_in) : value(std::move(value_in)) {}
+  Name(const Name& other) : value(other.value) {}
+  Name(Name&& other) : value(std::move(other.value)) {}
+  Name& operator=(Name other);
+
+  Identity value;
+  typedef Parent data_type;
+};
+
+template<typename Parent>
+void swap(Name<Parent>& lhs, Name<Parent>& rhs) MAIDSAFE_NOEXCEPT {
+  using std::swap;
+  swap(lhs.value, rhs.value);
+}
+
+template<typename Parent>
+Name<Parent>& Name<Parent>::operator=(Name other) {
+  swap(*this, other);
+  return *this;
+}
+
+
+
+template<DataTagValue Value>
+struct Tag {
+  static const DataTagValue kValue = Value;
+};
+
+}  // detail
 
 }  // namespace maidsafe
 

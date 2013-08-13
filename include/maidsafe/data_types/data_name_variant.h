@@ -47,7 +47,7 @@ typedef boost::variant<passport::PublicAnmid::name_type,
                        passport::Tmid::name_type,
                        passport::PublicAnmpid::name_type,
                        passport::PublicMpid::name_type,
-                       ImmutableData::name_type,
+                       ImmutableData::Name,
                        OwnerDirectory::name_type,
                        GroupDirectory::name_type,
                        WorldDirectory::name_type> DataNameVariant;
@@ -66,7 +66,7 @@ inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& nam
     case DataTagValue::kTmidValue: return passport::Tmid::name_type(name);
     case DataTagValue::kAnmpidValue: return passport::PublicAnmpid::name_type(name);
     case DataTagValue::kMpidValue: return passport::PublicMpid::name_type(name);
-    case DataTagValue::kImmutableDataValue: return ImmutableData::name_type(name);
+    case DataTagValue::kImmutableDataValue: return ImmutableData::Name(name);
     case DataTagValue::kOwnerDirectoryValue: return OwnerDirectory::name_type(name);
     case DataTagValue::kGroupDirectoryValue: return GroupDirectory::name_type(name);
     case DataTagValue::kWorldDirectoryValue: return WorldDirectory::name_type(name);

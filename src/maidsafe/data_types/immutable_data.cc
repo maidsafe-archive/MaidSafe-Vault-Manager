@@ -21,8 +21,6 @@ License.
 
 namespace maidsafe {
 
-const DataTagValue ImmutableDataTag::kEnumValue = DataTagValue::kImmutableDataValue;
-
 ImmutableData::ImmutableData(const ImmutableData& other) : name_(other.name_), data_(other.data_) {}
 
 ImmutableData& ImmutableData::operator=(const ImmutableData& other) {
@@ -42,18 +40,23 @@ ImmutableData& ImmutableData::operator=(ImmutableData&& other) {
 }
 
 ImmutableData::ImmutableData(const NonEmptyString& content)
-    : name_(name_type(crypto::Hash<crypto::SHA512>(content))),
+    : name_(crypto::Hash<crypto::SHA512>(content)),
       data_(content) {}
 
-ImmutableData::ImmutableData(const name_type& name,
-                             const serialised_type& serialised_immutable_data)
+ImmutableData::ImmutableData(const Name& name, const serialised_type& serialised_immutable_data)
     : name_(name),
       data_(serialised_immutable_data.data) {
   Validate();
 }
 
+ImmutableData::ImmutableData(Name&& name, const serialised_type& serialised_immutable_data)
+    : name_(std::move(name)),
+      data_(serialised_immutable_data.data) {
+  Validate();
+}
+
 void ImmutableData::Validate() const {
-  if (name_.data != crypto::Hash<crypto::SHA512>(data_))
+  if (name_.value != crypto::Hash<crypto::SHA512>(data_))
     ThrowError(CommonErrors::hashing_error);
 }
 
