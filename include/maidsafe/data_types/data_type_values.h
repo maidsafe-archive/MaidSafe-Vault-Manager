@@ -157,7 +157,7 @@ inline bool operator>(const Name<Parent>& lhs, const Name<Parent>& rhs) {
 
 template<typename Parent>
 inline bool operator<=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
-  return return !operator>(lhs, rhs);
+  return !operator>(lhs, rhs);
 }
 
 template<typename Parent>
