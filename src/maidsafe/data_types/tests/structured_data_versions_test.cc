@@ -32,8 +32,8 @@ namespace {
 
 typedef StructuredDataVersions::VersionName VersionName;
 
-ImmutableData::name_type RandomId() {
-  return ImmutableData::name_type(Identity(RandomAlphaNumericString(64)));
+ImmutableData::Name RandomId() {
+  return ImmutableData::Name(Identity(RandomAlphaNumericString(64)));
 }
 
 std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
@@ -53,7 +53,7 @@ std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
 std::string DisplayVersion(const VersionName& version, bool to_hex) {
   return std::to_string(version.index) + "-" +
       (version.id->IsInitialised() ?
-         (to_hex ? EncodeToHex(version.id.data) : version.id->string()).substr(0, 3) :
+         (to_hex ? EncodeToHex(version.id.value) : version.id->string()).substr(0, 3) :
          ("Uninitialised"));
 }
 
@@ -81,23 +81,23 @@ void ConstructAsDiagram(StructuredDataVersions& versions) {
                         |
                         |
                       5-nnn                        */
-  VersionName v0_aaa(0, ImmutableData::name_type(Identity(std::string(64, 'a'))));
-  VersionName v1_bbb(1, ImmutableData::name_type(Identity(std::string(64, 'b'))));
-  VersionName v2_ccc(2, ImmutableData::name_type(Identity(std::string(64, 'c'))));
-  VersionName v2_ddd(2, ImmutableData::name_type(Identity(std::string(64, 'd'))));
-  VersionName v2_eee(2, ImmutableData::name_type(Identity(std::string(64, 'e'))));
-  VersionName v3_fff(3, ImmutableData::name_type(Identity(std::string(64, 'f'))));
-  VersionName v3_ggg(3, ImmutableData::name_type(Identity(std::string(64, 'g'))));
-  VersionName v3_hhh(3, ImmutableData::name_type(Identity(std::string(64, 'h'))));
-  VersionName v4_iii(4, ImmutableData::name_type(Identity(std::string(64, 'i'))));
-  VersionName v4_jjj(4, ImmutableData::name_type(Identity(std::string(64, 'j'))));
-  VersionName v4_kkk(4, ImmutableData::name_type(Identity(std::string(64, 'k'))));
-  VersionName v4_lll(4, ImmutableData::name_type(Identity(std::string(64, 'l'))));
-  VersionName v4_mmm(4, ImmutableData::name_type(Identity(std::string(64, 'm'))));
-  VersionName v5_nnn(5, ImmutableData::name_type(Identity(std::string(64, 'n'))));
-  VersionName absent(6, ImmutableData::name_type(Identity(std::string(64, 'x'))));
-  VersionName v7_yyy(7, ImmutableData::name_type(Identity(std::string(64, 'y'))));
-  VersionName v8_zzz(8, ImmutableData::name_type(Identity(std::string(64, 'z'))));
+  VersionName v0_aaa(0, ImmutableData::Name(Identity(std::string(64, 'a'))));
+  VersionName v1_bbb(1, ImmutableData::Name(Identity(std::string(64, 'b'))));
+  VersionName v2_ccc(2, ImmutableData::Name(Identity(std::string(64, 'c'))));
+  VersionName v2_ddd(2, ImmutableData::Name(Identity(std::string(64, 'd'))));
+  VersionName v2_eee(2, ImmutableData::Name(Identity(std::string(64, 'e'))));
+  VersionName v3_fff(3, ImmutableData::Name(Identity(std::string(64, 'f'))));
+  VersionName v3_ggg(3, ImmutableData::Name(Identity(std::string(64, 'g'))));
+  VersionName v3_hhh(3, ImmutableData::Name(Identity(std::string(64, 'h'))));
+  VersionName v4_iii(4, ImmutableData::Name(Identity(std::string(64, 'i'))));
+  VersionName v4_jjj(4, ImmutableData::Name(Identity(std::string(64, 'j'))));
+  VersionName v4_kkk(4, ImmutableData::Name(Identity(std::string(64, 'k'))));
+  VersionName v4_lll(4, ImmutableData::Name(Identity(std::string(64, 'l'))));
+  VersionName v4_mmm(4, ImmutableData::Name(Identity(std::string(64, 'm'))));
+  VersionName v5_nnn(5, ImmutableData::Name(Identity(std::string(64, 'n'))));
+  VersionName absent(6, ImmutableData::Name(Identity(std::string(64, 'x'))));
+  VersionName v7_yyy(7, ImmutableData::Name(Identity(std::string(64, 'y'))));
+  VersionName v8_zzz(8, ImmutableData::Name(Identity(std::string(64, 'z'))));
   std::vector<std::pair<VersionName, VersionName>> puts;
   puts.push_back(std::make_pair(VersionName(), v0_aaa));
   puts.push_back(std::make_pair(v0_aaa, v1_bbb));
@@ -238,8 +238,8 @@ TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
   EXPECT_EQ(serialised1, temp_serialised);
 
   // Construct SDV with only "absent" version from diagram included.
-  VersionName v5_nnn(5, ImmutableData::name_type(Identity(std::string(64, 'n'))));
-  VersionName absent(6, ImmutableData::name_type(Identity(std::string(64, 'x'))));
+  VersionName v5_nnn(5, ImmutableData::Name(Identity(std::string(64, 'n'))));
+  VersionName absent(6, ImmutableData::Name(Identity(std::string(64, 'x'))));
   StructuredDataVersions versions2(100, 20);
   versions2.Put(v5_nnn, absent);
   auto serialised2(versions2.Serialise());

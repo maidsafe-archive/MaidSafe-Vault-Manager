@@ -59,6 +59,7 @@ class PermanentStore {
 
   DiskUsage GetMaxDiskUsage();
   DiskUsage GetCurrentDiskUsage();
+  boost::filesystem::path GetDiskPath() const;
 
   friend class test::PermanentStoreTest;
 

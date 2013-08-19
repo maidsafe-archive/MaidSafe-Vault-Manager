@@ -204,6 +204,10 @@ DiskUsage PermanentStore::GetCurrentDiskUsage() {
   return current_disk_usage_;
 }
 
+boost::filesystem::path PermanentStore::GetDiskPath() const {
+  return kDiskPath_;
+}
+
 fs::path PermanentStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }

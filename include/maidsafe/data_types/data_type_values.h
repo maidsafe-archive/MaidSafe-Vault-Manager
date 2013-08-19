@@ -20,6 +20,8 @@ License.
 #include <ostream>
 #include <string>
 
+#include "maidsafe/common/types.h"
+
 
 namespace maidsafe {
 
@@ -101,6 +103,79 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
     ostream << ostream.widen(*itr);
   return ostream;
 }
+
+namespace detail {
+
+template<typename Parent>
+struct Name {
+  Name() : value() {}
+  explicit Name(const Identity& value_in) : value(value_in) {}
+  explicit Name(Identity&& value_in) : value(std::move(value_in)) {}
+  Name(const Name& other) : value(other.value) {}
+  Name(Name&& other) : value(std::move(other.value)) {}
+  Name& operator=(Name other);
+
+  operator Identity() const { return value; }
+  Identity const* operator->() const { return &value; }
+  Identity* operator->() { return &value; }
+
+  Identity value;
+  typedef Parent data_type;
+};
+
+template<typename Parent>
+void swap(Name<Parent>& lhs, Name<Parent>& rhs) MAIDSAFE_NOEXCEPT {
+  using std::swap;
+  swap(lhs.value, rhs.value);
+}
+
+template<typename Parent>
+Name<Parent>& Name<Parent>::operator=(Name<Parent> other) {
+  swap(*this, other);
+  return *this;
+}
+
+template<typename Parent>
+inline bool operator==(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return lhs.value == rhs.value;
+}
+
+template<typename Parent>
+inline bool operator!=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+template<typename Parent>
+inline bool operator<(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return lhs.value < rhs.value;
+}
+
+template<typename Parent>
+inline bool operator>(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return operator<(rhs, lhs);
+}
+
+template<typename Parent>
+inline bool operator<=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return !operator>(lhs, rhs);
+}
+
+template<typename Parent>
+inline bool operator>=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
+  return !operator<(lhs, rhs);
+}
+
+
+
+template<DataTagValue Value>
+struct Tag {
+  static const DataTagValue kValue = Value;
+};
+
+template<DataTagValue Value>
+const DataTagValue Tag<Value>::kValue;
+
+}  // detail
 
 }  // namespace maidsafe
 

@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
       std::unique_ptr<maidsafe::passport::Pmid> pmid;
       std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
       vault_controller.GetIdentity(pmid, bootstrap_endpoints);
-      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().data);
+      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().value);
       LOG(kInfo) << "Validation Token: "
                  << maidsafe::Base64Substr(pmid->validation_token().string());
       LOG(kInfo) << "Public Key: "

@@ -49,21 +49,21 @@ class MemoryBufferTest : public ::testing::Test {
              type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return passport::Anmid::name_type();
-      case  1: return passport::Ansmid::name_type();
-      case  2: return passport::Antmid::name_type();
-      case  3: return passport::Anmaid::name_type();
-      case  4: return passport::Maid::name_type();
-      case  5: return passport::Pmid::name_type();
-      case  6: return passport::Mid::name_type();
-      case  7: return passport::Smid::name_type();
-      case  8: return passport::Tmid::name_type();
-      case  9: return passport::Anmpid::name_type();
-      case 10: return passport::Mpid::name_type();
-      case 11: return ImmutableData::name_type();
-      case 12: return OwnerDirectory::name_type();
-      case 13: return GroupDirectory::name_type();
-      case 14: return WorldDirectory::name_type();
+      case  0: return passport::PublicAnmid::Name();
+      case  1: return passport::PublicAnsmid::Name();
+      case  2: return passport::PublicAntmid::Name();
+      case  3: return passport::PublicAnmaid::Name();
+      case  4: return passport::PublicMaid::Name();
+      case  5: return passport::PublicPmid::Name();
+      case  6: return passport::Mid::Name();
+      case  7: return passport::Smid::Name();
+      case  8: return passport::Tmid::Name();
+      case  9: return passport::PublicAnmpid::Name();
+      case 10: return passport::PublicMpid::Name();
+      case 11: return ImmutableData::Name();
+      case 12: return OwnerDirectory::Name();
+      case 13: return GroupDirectory::Name();
+      case 14: return WorldDirectory::Name();
       // default:
         // Throw something!
       //  ;
@@ -80,7 +80,7 @@ class MemoryBufferTest : public ::testing::Test {
     NonEmptyString operator()(T& key)
     {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
-      key.data = Identity(crypto::Hash<crypto::SHA512>(value));
+      key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;
     }
 

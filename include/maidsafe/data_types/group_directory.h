@@ -27,34 +27,31 @@ License.
 
 namespace maidsafe {
 
-struct GroupDirectoryTag {
-  static const DataTagValue kEnumValue;
-};
-
 class GroupDirectory {
  public:
-  typedef TaggedValue<Identity, GroupDirectoryTag> name_type;
-  typedef TaggedValue<NonEmptyString, GroupDirectoryTag> serialised_type;
+  typedef detail::Name<GroupDirectory> Name;
+  typedef detail::Tag<DataTagValue::kGroupDirectoryValue> Tag;
+  typedef TaggedValue<NonEmptyString, GroupDirectory> serialised_type;
 
   GroupDirectory(const GroupDirectory& other);
-  GroupDirectory& operator=(const GroupDirectory& other);
   GroupDirectory(GroupDirectory&& other);
-  GroupDirectory& operator=(GroupDirectory&& other);
+  GroupDirectory& operator=(GroupDirectory other);
 
-  GroupDirectory(const name_type& name, const NonEmptyString& data);
-  GroupDirectory(const name_type& name,
+  GroupDirectory(const Name& name, const NonEmptyString& data);
+  GroupDirectory(const Name& name,
                  const NonEmptyString& data,
                  const asymm::PrivateKey& signing_key);
-  GroupDirectory(const name_type& name, const serialised_type& serialised_mutable_data);
+  GroupDirectory(const Name& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
-  name_type name() const { return name_; }
+  Name name() const { return name_; }
   NonEmptyString data() const { return data_; }
   asymm::Signature signature() { return signature_; }
-  static DataTagValue type_enum_value() { return GroupDirectoryTag::kEnumValue; }
+
+  friend void swap(GroupDirectory& lhs, GroupDirectory& rhs);
 
  private:
-  name_type name_;
+  Name name_;
   NonEmptyString data_;
   asymm::Signature signature_;
 };

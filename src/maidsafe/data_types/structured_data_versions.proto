@@ -15,12 +15,14 @@ License.
 
 package maidsafe.protobuf;
 
+message Version {
+  required uint64 index = 1;
+  required bytes id = 2;
+  optional uint32 forking_child_count = 3;
+}
+
+
 message StructuredDataVersions {
-  message Version {
-    required uint64 index = 1;
-    required bytes id = 2;
-    optional uint32 forking_child_count = 3;
-  }
   message Branch {
     optional Version absent_parent = 1;
     repeated Version name = 2;

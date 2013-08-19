@@ -55,12 +55,12 @@ class LifeStuffManagerAddressGetter {
         mapped_region_(shared_memory_, boost::interprocess::read_write),
         safe_address_(static_cast<detail::SafeAddress*>(mapped_region_.get_address())) {}
 
-  passport::Maid::name_type GetAddress() {
+  passport::Maid::Name GetAddress() {
     namespace bip = boost::interprocess;
     bip::scoped_lock<bip::interprocess_mutex> lock(safe_address_->mutex);
     std::string s(safe_address_->address);
     std::cout << "s: " << s.size() << std::endl;
-    return passport::Maid::name_type(Identity(safe_address_->address));
+    return passport::Maid::Name(Identity(safe_address_->address));
   }
 
  private:
@@ -90,11 +90,11 @@ class SafeReadOnlySharedMemory {
                                                                 boost::interprocess::read_write));
     safe_address_ = new (mapped_region_->get_address()) detail::SafeAddress;  // NOLINT (Dan)
 
-    asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().data),
+    asymm::Signature initial_signature(asymm::Sign(asymm::PlainText(maid.name().value),
                                                    maid.private_key()));
-    assert(sizeof(safe_address_->address) == maid.name().data.string().size());
-    memcpy(safe_address_->address, maid.name().data.string().c_str(),
-           maid.name().data.string().size());
+    assert(sizeof(safe_address_->address) == maid.name()->string().size());
+    memcpy(safe_address_->address, maid.name()->string().c_str(),
+           maid.name()->string().size());
     assert(sizeof(safe_address_->signature) == initial_signature.string().size());
     memcpy(safe_address_->signature, initial_signature.string().c_str(),
            initial_signature.string().size());
@@ -144,7 +144,7 @@ class SafeReadOnlySharedMemory {
 template <typename FobType, typename CreationTag>
 class SharedMemoryCommunication {
  public:
-  SharedMemoryCommunication(const typename FobType::name_type& shared_memory_name,
+  SharedMemoryCommunication(const typename FobType::Name& shared_memory_name,
                             std::function<void(std::string)> message_notifier)
       : shared_memory_name_(shared_memory_name),
         shared_memory_(nullptr),
@@ -187,7 +187,7 @@ class SharedMemoryCommunication {
   SharedMemoryCommunication(SharedMemoryCommunication&& other);
   SharedMemoryCommunication& operator=(SharedMemoryCommunication&& other);
 
-  typename FobType::name_type shared_memory_name_;
+  typename FobType::Name shared_memory_name_;
   std::unique_ptr<boost::interprocess::shared_memory_object> shared_memory_;
   std::unique_ptr<boost::interprocess::mapped_region> mapped_region_;
   detail::IpcBidirectionalQueue* message_queue_;

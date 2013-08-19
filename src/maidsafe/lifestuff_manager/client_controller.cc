@@ -230,13 +230,13 @@ void ClientController::HandleRegisterResponse(const std::string& message,
 }
 
 bool ClientController::StartVault(const passport::Pmid& pmid,
-                                  const passport::Maid::name_type& account_name,
+                                  const passport::Maid::Name& account_name,
                                   const fs::path& chunkstore) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   protobuf::StartVaultRequest start_vault_request;
-  start_vault_request.set_account_name(account_name.data.string());
+  start_vault_request.set_account_name(account_name->string());
   start_vault_request.set_pmid(passport::SerialisePmid(pmid).string());
   asymm::PlainText token(RandomString(16));
   start_vault_request.set_token(token.string());
@@ -607,7 +607,7 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
     LOG(kError) << "Failed to parse VaultJoinConfirmation.";
     vault_join_confirmation_ack.set_ack(false);
   } else {
-    passport::Pmid::name_type identity(Identity(vault_join_confirmation.identity()));
+    passport::Pmid::Name identity(Identity(vault_join_confirmation.identity()));
     std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
     if (joining_vaults_.find(identity) == joining_vaults_.end()) {
       LOG(kError) << "Identity is not in list of joining vaults.";

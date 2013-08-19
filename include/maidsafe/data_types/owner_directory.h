@@ -27,34 +27,31 @@ License.
 
 namespace maidsafe {
 
-struct OwnerDirectoryTag {
-  static const DataTagValue kEnumValue;
-};
-
 class OwnerDirectory {
  public:
-  typedef TaggedValue<Identity, OwnerDirectoryTag> name_type;
-  typedef TaggedValue<NonEmptyString, OwnerDirectoryTag> serialised_type;
+  typedef detail::Name<OwnerDirectory> Name;
+  typedef detail::Tag<DataTagValue::kOwnerDirectoryValue> Tag;
+  typedef TaggedValue<NonEmptyString, Tag> serialised_type;
 
   OwnerDirectory(const OwnerDirectory& other);
-  OwnerDirectory& operator=(const OwnerDirectory& other);
   OwnerDirectory(OwnerDirectory&& other);
-  OwnerDirectory& operator=(OwnerDirectory&& other);
+  OwnerDirectory& operator=(OwnerDirectory other);
 
-  OwnerDirectory(const name_type& name, const NonEmptyString& data);
-  OwnerDirectory(const name_type& name,
+  OwnerDirectory(const Name& name, const NonEmptyString& data);
+  OwnerDirectory(const Name& name,
                  const NonEmptyString& data,
                  const asymm::PrivateKey& signing_key);
-  OwnerDirectory(const name_type& name, const serialised_type& serialised_mutable_data);
+  OwnerDirectory(const Name& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
-  name_type name() const { return name_; }
+  Name name() const { return name_; }
   NonEmptyString data() const { return data_; }
   asymm::Signature signature() { return signature_; }
-  static DataTagValue type_enum_value() { return OwnerDirectoryTag::kEnumValue; }
+
+  friend void swap(OwnerDirectory& lhs, OwnerDirectory& rhs);
 
  private:
-  name_type name_;
+  Name name_;
   NonEmptyString data_;
   asymm::Signature signature_;
 };
