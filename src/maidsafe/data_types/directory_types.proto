@@ -17,15 +17,12 @@ package maidsafe.protobuf;
 
 message OwnerDirectory {
   required bytes data = 1;
-  optional bytes signature = 2;
 }
 
 message GroupDirectory {
   required bytes data = 1;
-  optional bytes signature = 2;
 }
 
 message WorldDirectory {
   required bytes data = 1;
-  optional bytes signature = 2;
 }

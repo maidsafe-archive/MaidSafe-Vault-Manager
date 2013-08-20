@@ -28,56 +28,49 @@ namespace maidsafe {
 
 OwnerDirectory::OwnerDirectory(const OwnerDirectory& other)
     : name_(other.name_),
-      data_(other.data_),
-      signature_(other.signature_) {}
+      data_(other.data_) {}
 
 OwnerDirectory::OwnerDirectory(OwnerDirectory&& other)
     : name_(std::move(other.name_)),
-      data_(std::move(other.data_)),
-      signature_(std::move(other.signature_)) {}
+      data_(std::move(other.data_)) {}
 
 OwnerDirectory& OwnerDirectory::operator=(OwnerDirectory other) {
   swap(*this, other);
   return *this;
 }
 
-OwnerDirectory::OwnerDirectory(const Name& name, const NonEmptyString& data)
-    : name_(name),
-      data_(data),
-      signature_() {}
-
 OwnerDirectory::OwnerDirectory(const Name& name,
-                               const NonEmptyString& data,
-                               const asymm::PrivateKey& signing_key)
+                               const NonEmptyString& data)
     : name_(name),
-      data_(data),
-      signature_(asymm::Sign(data, signing_key)) {}
+      data_(data) {}
 
 OwnerDirectory::OwnerDirectory(const Name& name, const serialised_type& serialised_mutable_data)
     : name_(name),
-      data_(),
-      signature_() {
+      data_() {
   protobuf::OwnerDirectory proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
     ThrowError(CommonErrors::parsing_error);
   data_ = NonEmptyString(proto_mutable_data.data());
-  if (proto_mutable_data.has_signature())
-    signature_ = asymm::Signature(proto_mutable_data.signature());
 }
 
 OwnerDirectory::serialised_type OwnerDirectory::Serialise() const {
   protobuf::OwnerDirectory proto_mutable_data;
   proto_mutable_data.set_data(data_.string());
-  if (signature_.IsInitialised())
-    proto_mutable_data.set_signature(signature_.string());
   return serialised_type(NonEmptyString(proto_mutable_data.SerializeAsString()));
+}
+
+OwnerDirectory::Name OwnerDirectory::name() const {
+  return name_;
+}
+
+NonEmptyString OwnerDirectory::data() const {
+  return data_;
 }
 
 void swap(OwnerDirectory& lhs, OwnerDirectory& rhs) {
   using std::swap;
   swap(lhs.name_, rhs.name_);
   swap(lhs.data_, rhs.data_);
-  swap(lhs.signature_, rhs.signature_);
 }
 
 }  // namespace maidsafe

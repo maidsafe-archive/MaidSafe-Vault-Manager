@@ -38,15 +38,11 @@ class WorldDirectory {
   WorldDirectory& operator=(WorldDirectory other);
 
   WorldDirectory(const Name& name, const NonEmptyString& data);
-  WorldDirectory(const Name& name,
-                 const NonEmptyString& data,
-                 const asymm::PrivateKey& signing_key);
   WorldDirectory(const Name& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
-  Name name() const { return name_; }
-  NonEmptyString data() const { return data_; }
-  asymm::Signature signature() { return signature_; }
+  Name name() const;
+  NonEmptyString data() const;
 
   friend void swap(WorldDirectory& lhs, WorldDirectory& rhs);
 

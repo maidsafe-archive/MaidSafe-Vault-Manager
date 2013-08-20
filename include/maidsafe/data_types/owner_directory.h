@@ -38,22 +38,17 @@ class OwnerDirectory {
   OwnerDirectory& operator=(OwnerDirectory other);
 
   OwnerDirectory(const Name& name, const NonEmptyString& data);
-  OwnerDirectory(const Name& name,
-                 const NonEmptyString& data,
-                 const asymm::PrivateKey& signing_key);
   OwnerDirectory(const Name& name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
-  Name name() const { return name_; }
-  NonEmptyString data() const { return data_; }
-  asymm::Signature signature() { return signature_; }
+  Name name() const;
+  NonEmptyString data() const;
 
   friend void swap(OwnerDirectory& lhs, OwnerDirectory& rhs);
 
  private:
   Name name_;
   NonEmptyString data_;
-  asymm::Signature signature_;
 };
 
 template<>
