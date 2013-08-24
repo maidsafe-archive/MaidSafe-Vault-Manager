@@ -127,7 +127,7 @@ void LifeStuffManager::Initialise() {
       if (need_to_stop_)
         return;
       LOG(kError) << "Will retry to create new config file at " << config_file_path_;
-      Sleep(boost::posix_time::seconds(1));
+      Sleep(std::chrono::seconds(1));
     }
   }
 
@@ -135,7 +135,7 @@ void LifeStuffManager::Initialise() {
     if (need_to_stop_)
       return;
     LOG(kError) << "LifeStuffManager failed to create a listening port. Shutting down.";
-    Sleep(boost::posix_time::seconds(1));
+    Sleep(std::chrono::seconds(1));
   }
 
   UpdateExecutor();

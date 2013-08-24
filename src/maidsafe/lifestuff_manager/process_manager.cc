@@ -200,7 +200,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   }
 
   if (restart) {
-    Sleep(boost::posix_time::milliseconds(600));
+    Sleep(std::chrono::milliseconds(600));
     // SetInstruction(id, ProcessInstruction::kRun);
 //    if (logging) {
 //      log::FilterMap filter;
@@ -285,7 +285,7 @@ void ProcessManager::WaitForProcesses() {
       }
     }
     thread.join();
-    Sleep(boost::posix_time::milliseconds(100));
+    Sleep(std::chrono::milliseconds(100));
   }
 }
 

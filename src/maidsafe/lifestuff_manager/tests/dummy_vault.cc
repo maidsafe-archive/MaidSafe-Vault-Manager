@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     if (variables_map.count("runtime")) {
       int runtime = variables_map["runtime"].as<int>();
       LOG(kInfo) << "Running for " << runtime << " seconds.";
-      maidsafe::Sleep(boost::posix_time::seconds(runtime));
+      maidsafe::Sleep(std::chrono::seconds(runtime));
       if (variables_map.count("nocrash")) {
         g_check_finished = true;
         LOG(kInfo) << "dummy_vault: Process finishing normally. ";

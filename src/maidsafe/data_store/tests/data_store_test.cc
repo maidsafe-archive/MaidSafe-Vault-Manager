@@ -376,7 +376,7 @@ TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskStore) {
   // Fits into memory store successfully.  Background thread in future should throw, causing other
   // API functions to throw on next execution.
   EXPECT_NO_THROW(this->data_store_->Store(key, small_value));
-  Sleep(boost::posix_time::seconds(1));
+  Sleep(std::chrono::seconds(1));
   EXPECT_THROW(this->data_store_->Store(key, small_value), std::exception);
   EXPECT_THROW(this->data_store_->Get(key), std::exception);
   EXPECT_THROW(this->data_store_->Delete(key), std::exception);
