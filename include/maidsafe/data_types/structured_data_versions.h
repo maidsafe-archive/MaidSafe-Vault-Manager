@@ -106,8 +106,6 @@ class StructuredDataVersions {
   // branches (or "tips of trees").  Both must be >= 1 otherwise CommonErrors::invalid_parameter is
   // thrown.
   StructuredDataVersions(uint32_t max_versions, uint32_t max_branches);
-  StructuredDataVersions(const StructuredDataVersions& other);
-  StructuredDataVersions(StructuredDataVersions&& other);
   StructuredDataVersions& operator=(StructuredDataVersions other);
   friend void swap(StructuredDataVersions& lhs, StructuredDataVersions& rhs) MAIDSAFE_NOEXCEPT;
 
@@ -171,6 +169,9 @@ class StructuredDataVersions {
   //                  conflicts?
 
  private:
+  StructuredDataVersions(const StructuredDataVersions& other);
+  StructuredDataVersions(StructuredDataVersions&& other);
+
   struct Details;
   typedef std::map<VersionName, std::shared_ptr<Details>> Versions;
   typedef Versions::value_type Version;

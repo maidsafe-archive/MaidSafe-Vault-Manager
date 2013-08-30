@@ -107,7 +107,13 @@ SureFileStore::SureFileStore(const fs::path& disk_path, const DiskUsage& max_dis
     ThrowError(CommonErrors::cannot_exceed_limit);
 }
 
-SureFileStore::~SureFileStore() {}
+NonEmptyString SureFileStore::Get(const KeyType& key) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  fs::path file_path(KeyToFilePath(key, false));
+  uint32_t reference_count(GetReferenceCount(file_path));
+  file_path.replace_extension("." + std::to_string(reference_count));
+  return ReadFile(file_path);
+}
 
 void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
@@ -165,25 +171,17 @@ void SureFileStore::Delete(const KeyType& key) {
   }
 }
 
-NonEmptyString SureFileStore::Get(const KeyType& key) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  fs::path file_path(KeyToFilePath(key, false));
-  uint32_t reference_count(GetReferenceCount(file_path));
-  file_path.replace_extension("." + std::to_string(reference_count));
-  return ReadFile(file_path);
-}
-
 void SureFileStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   if (current_disk_usage_ > max_disk_usage)
     ThrowError(CommonErrors::invalid_parameter);
   max_disk_usage_ = max_disk_usage;
 }
 
-DiskUsage SureFileStore::GetMaxDiskUsage() {
+DiskUsage SureFileStore::GetMaxDiskUsage() const {
   return max_disk_usage_;
 }
 
-DiskUsage SureFileStore::GetCurrentDiskUsage() {
+DiskUsage SureFileStore::GetCurrentDiskUsage() const {
   return current_disk_usage_;
 }
 
@@ -195,7 +193,7 @@ bool SureFileStore::HasDiskSpace(const uintmax_t& required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
-fs::path SureFileStore::KeyToFilePath(const KeyType& key, bool create_if_missing) {
+fs::path SureFileStore::KeyToFilePath(const KeyType& key, bool create_if_missing) const {
   NonEmptyString file_name(GetFilePath(key).filename().string());
 
   uint32_t directory_depth = kDepth_;
@@ -278,5 +276,36 @@ uintmax_t SureFileStore::Rename(const fs::path& old_path, const fs::path& new_pa
   return file_size;
 }
 
+std::unique_ptr<StructuredDataVersions> SureFileStore::ReadVersions(const KeyType& key) const {
+  fs::path file_path(KeyToFilePath(key, false));
+  file_path.replace_extension(".ver");
+  boost::system::error_code ec;
+  if (fs::exists(file_path, ec)) {
+    std::unique_ptr<StructuredDataVersions> versions(
+        new StructuredDataVersions(StructuredDataVersions::serialised_type(ReadFile(file_path))));
+    return std::move(versions);
+  } else {
+    return std::move(std::unique_ptr<StructuredDataVersions>());
+  }
+}
+
+void SureFileStore::WriteVersions(const KeyType& key, const StructuredDataVersions& versions) {
+  if (!fs::exists(kDiskPath_))
+    ThrowError(CommonErrors::filesystem_io_error);
+
+  fs::path file_path(KeyToFilePath(key, true));
+  file_path.replace_extension(".ver");
+
+  boost::system::error_code ec;
+  if (fs::exists(file_path, ec))
+    current_disk_usage_.data -= fs::file_size(file_path, ec);
+
+  auto serialised_versions(versions.Serialise().data);
+  uint32_t value_size(static_cast<uint32_t>(serialised_versions.string().size()));
+  Write(file_path, serialised_versions, value_size);
+  current_disk_usage_.data += value_size;
+}
+
 }  // namespace data_store
+
 }  // namespace maidsafe

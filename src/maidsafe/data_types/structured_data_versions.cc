@@ -145,23 +145,6 @@ StructuredDataVersions::StructuredDataVersions(uint32_t max_versions, uint32_t m
   ValidateLimits();
 }
 
-StructuredDataVersions::StructuredDataVersions(const StructuredDataVersions& other)
-    : max_versions_(other.max_versions_),
-      max_branches_(other.max_branches_),
-      versions_(other.versions_),
-      root_(other.root_),
-      tips_of_trees_(other.tips_of_trees_),
-      orphans_(other.orphans_) {}
-
-StructuredDataVersions::StructuredDataVersions(StructuredDataVersions&& other)
-    : max_versions_(std::move(other.max_versions_)),
-      max_branches_(std::move(other.max_branches_)),
-      versions_(std::move(other.versions_)),
-      root_(std::move(other.root_)),
-      tips_of_trees_(std::move(other.tips_of_trees_)),
-      orphans_(std::move(other.orphans_)) {}
-
-
 StructuredDataVersions& StructuredDataVersions::operator=(StructuredDataVersions other) {
   swap(*this, other);
   return *this;
@@ -286,6 +269,8 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
 void StructuredDataVersions::BranchToProtobuf(VersionsItr itr,
                                               protobuf::StructuredDataVersions& proto_versions,
                                               const VersionName& absent_parent) const {
+  if (itr == std::end(versions_))
+    return;
   auto proto_branch(proto_versions.add_branch());
   if (absent_parent.id->IsInitialised()) {
     proto_branch->mutable_absent_parent()->set_index(absent_parent.index);
@@ -299,6 +284,8 @@ void StructuredDataVersions::BranchToProtobuf(
     protobuf::StructuredDataVersions& proto_versions,
     protobuf::StructuredDataVersions_Branch* proto_branch) const {
   for (;;) {
+    if (itr == std::end(versions_))
+      return;
     auto proto_version(proto_branch->add_name());
     proto_version->set_index(itr->first.index);
     proto_version->set_id(itr->first.id->string());
@@ -716,14 +703,13 @@ void StructuredDataVersions::DeleteBranchUntilFork(const VersionName& branch_tip
     auto parent_itr = itr->second->parent;
     if (parent_itr == std::end(versions_))  // Found root or orphan.
       return EraseFrontOfBranch(itr);
-#ifndef NDEBUG
     auto parents_child_itr(std::find_if(std::begin(parent_itr->second->children),
                                         std::end(parent_itr->second->children),
                                         [itr](VersionsItr child_itr) {
                                             return itr->first == child_itr->first;
                                         }));
     assert(parents_child_itr != std::end(parent_itr->second->children));
-#endif
+    parent_itr->second->children.erase(parents_child_itr);
     versions_.erase(itr);
     if (!parent_itr->second->children.empty())  // Found fork.
       return;
