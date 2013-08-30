@@ -107,7 +107,7 @@ SureFileStore::SureFileStore(const fs::path& disk_path, const DiskUsage& max_dis
     ThrowError(CommonErrors::cannot_exceed_limit);
 }
 
-NonEmptyString SureFileStore::Get(const KeyType& key) const {
+NonEmptyString SureFileStore::DoGet(const KeyType& key) const {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key, false));
   uint32_t reference_count(GetReferenceCount(file_path));
@@ -115,7 +115,7 @@ NonEmptyString SureFileStore::Get(const KeyType& key) const {
   return ReadFile(file_path);
 }
 
-void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
+void SureFileStore::DoPut(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!fs::exists(kDiskPath_))
     ThrowError(CommonErrors::filesystem_io_error);
@@ -147,7 +147,7 @@ void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
   }
 }
 
-void SureFileStore::Delete(const KeyType& key) {
+void SureFileStore::DoDelete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key, false));
   uintmax_t file_size(0);

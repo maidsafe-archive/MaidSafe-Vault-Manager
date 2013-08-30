@@ -23,7 +23,14 @@ License.
 #include <vector>
 
 #include "boost/filesystem/path.hpp"
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable: 4702)
+#endif
 #include "boost/thread/future.hpp"
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/types.h"
@@ -86,9 +93,9 @@ class SureFileStore {
   SureFileStore(SureFileStore&&);
   SureFileStore& operator=(SureFileStore);
 
-  NonEmptyString Get(const KeyType& key) const;
-  void Put(const KeyType& key, const NonEmptyString& value);
-  void Delete(const KeyType& key);
+  NonEmptyString DoGet(const KeyType& key) const;
+  void DoPut(const KeyType& key, const NonEmptyString& value);
+  void DoDelete(const KeyType& key);
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(const uint64_t& required_space) const;
@@ -120,7 +127,7 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
   auto promise(std::make_shared<boost::promise<Data>>());
   auto async_future(boost::async(boost::launch::async, [=] {
       try {
-        auto result(this->Get(KeyType(data_name)));
+        auto result(this->DoGet(KeyType(data_name)));
         Data data(data_name, typename Data::serialised_type(result));
         promise->set_value(data);
       }
@@ -135,12 +142,12 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
 
 template<typename Data>
 void SureFileStore::Put(const Data& data) {
-  Put(KeyType(data.name()), data.data());
+  DoPut(KeyType(data.name()), data.data());
 }
 
 template<typename Data>
 void SureFileStore::Delete(const typename Data::Name& data_name) {
-  Delete(KeyType(data_name));
+  DoDelete(KeyType(data_name));
 }
 
 template<typename Data>
