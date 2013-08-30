@@ -124,11 +124,13 @@ class SureFileStore {
 template<typename Data>
 boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
                                        const std::chrono::steady_clock::duration& /*timeout*/) {
+  LOG(kVerbose) << "Getting: " << Base32Substr(data_name.value);
   auto promise(std::make_shared<boost::promise<Data>>());
   auto async_future(boost::async(boost::launch::async, [=] {
       try {
         auto result(this->DoGet(KeyType(data_name)));
         Data data(data_name, typename Data::serialised_type(result));
+        LOG(kVerbose) << "Got: " << Base32Substr(data_name.value) << "  " << EncodeToBase32(result);
         promise->set_value(data);
       }
       catch(const std::exception& e) {
@@ -142,11 +144,14 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
 
 template<typename Data>
 void SureFileStore::Put(const Data& data) {
-  DoPut(KeyType(data.name()), data.data());
+  LOG(kVerbose) << "Putting: " << Base32Substr(data.name().value) << "  "
+                << EncodeToBase32(data.Serialise().data);
+  DoPut(KeyType(data.name()), data.Serialise());
 }
 
 template<typename Data>
 void SureFileStore::Delete(const typename Data::Name& data_name) {
+  LOG(kVerbose) << "DELETING: " << Base32Substr(data_name.value);
   DoDelete(KeyType(data_name));
 }
 
