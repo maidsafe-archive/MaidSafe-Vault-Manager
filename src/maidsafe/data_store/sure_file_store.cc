@@ -13,7 +13,7 @@ implied. See the License for the specific language governing permissions and lim
 License.
 */
 
-#include "maidsafe/data_store/surefile_store.h"
+#include "maidsafe/data_store/sure_file_store.h"
 
 #include <string>
 #include <vector>
@@ -114,7 +114,7 @@ void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
   if (!fs::exists(kDiskPath_))
     ThrowError(CommonErrors::filesystem_io_error);
 
-  fs::path file_path(KeyToFilePath(key));
+  fs::path file_path(KeyToFilePath(key, true));
   uint32_t value_size(static_cast<uint32_t>(value.string().size()));
   uintmax_t file_size(0);
   uint32_t reference_count(GetReferenceCount(file_path));
@@ -134,17 +134,16 @@ void SureFileStore::Put(const KeyType& key, const NonEmptyString& value) {
   } else {
     assert(reference_count == 1);
     file_path.replace_extension(".1");
-    file_size = Remove(file_path); 
+    file_size = Remove(file_path);
     current_disk_usage_.data -= file_size;
     Write(file_path, value, value_size);
     current_disk_usage_.data += value_size;
   }
-  return;
 }
 
 void SureFileStore::Delete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
-  fs::path file_path(KeyToFilePath(key));
+  fs::path file_path(KeyToFilePath(key, false));
   uintmax_t file_size(0);
   boost::system::error_code error_code;
   uint32_t reference_count(GetReferenceCount(file_path));
@@ -164,12 +163,11 @@ void SureFileStore::Delete(const KeyType& key) {
     file_size = Rename(file_path, new_path);
     assert(file_size != 0);
   }
-  return;
 }
 
 NonEmptyString SureFileStore::Get(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
-  fs::path file_path(KeyToFilePath(key));
+  fs::path file_path(KeyToFilePath(key, false));
   uint32_t reference_count(GetReferenceCount(file_path));
   file_path.replace_extension("." + std::to_string(reference_count));
   return ReadFile(file_path);
@@ -197,7 +195,7 @@ bool SureFileStore::HasDiskSpace(const uintmax_t& required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
-fs::path SureFileStore::KeyToFilePath(const KeyType& key) {
+fs::path SureFileStore::KeyToFilePath(const KeyType& key, bool create_if_missing) {
   NonEmptyString file_name(GetFilePath(key).filename().string());
 
   uint32_t directory_depth = kDepth_;
@@ -208,8 +206,10 @@ fs::path SureFileStore::KeyToFilePath(const KeyType& key) {
   for (uint32_t i = 0; i < directory_depth; ++i)
     disk_path /= file_name.string().substr(i, 1);
 
-  boost::system::error_code ec;
-  fs::create_directories(disk_path, ec);
+  if (create_if_missing) {
+    boost::system::error_code ec;
+    fs::create_directories(disk_path, ec);
+  }
 
   return fs::path(disk_path / file_name.string().substr(directory_depth));
 }

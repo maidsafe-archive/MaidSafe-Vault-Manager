@@ -51,11 +51,14 @@ class SureFileStore {
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(const uint64_t& required_space) const;
-  boost::filesystem::path KeyToFilePath(const KeyType& key);
+  boost::filesystem::path KeyToFilePath(const KeyType& key, bool create_if_missing);
   uint32_t GetReferenceCount(const boost::filesystem::path& path) const;
-  void Write(const boost::filesystem::path& path, const NonEmptyString& value, const uintmax_t& size);
+  void Write(const boost::filesystem::path& path,
+             const NonEmptyString& value,
+             const uintmax_t& size);
   uintmax_t Remove(const boost::filesystem::path& path);
-  uintmax_t Rename(const boost::filesystem::path& old_path, const boost::filesystem::path& new_path);
+  uintmax_t Rename(const boost::filesystem::path& old_path,
+                   const boost::filesystem::path& new_path);
 
   const boost::filesystem::path kDiskPath_;
   DiskUsage max_disk_usage_, current_disk_usage_;

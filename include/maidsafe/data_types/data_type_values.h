@@ -175,7 +175,7 @@ struct Tag {
 template<DataTagValue Value>
 const DataTagValue Tag<Value>::kValue;
 
-}  // detail
+}  // namespace detail
 
 }  // namespace maidsafe
 
