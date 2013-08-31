@@ -41,15 +41,7 @@ typedef boost::signals2::signal<void(const std::string&, Port)> OnMessageReceive
 typedef boost::signals2::signal<void(const int&)> OnError;
 
 
-#ifdef __GNUC__
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Weffc++"
-#endif
 class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport> {
-#ifdef __GNUC__
-#  pragma GCC diagnostic pop
-#endif
-
  public:
   typedef int32_t DataSize;
 

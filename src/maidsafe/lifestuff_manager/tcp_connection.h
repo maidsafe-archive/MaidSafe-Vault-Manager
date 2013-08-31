@@ -33,15 +33,7 @@ namespace lifestuff_manager {
 
 class LocalTcpTransport;
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
-#endif
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
  public:
   explicit TcpConnection(const std::shared_ptr<LocalTcpTransport>& local_tcp_transport);
   ~TcpConnection() {}
