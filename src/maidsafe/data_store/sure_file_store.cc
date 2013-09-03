@@ -189,7 +189,7 @@ fs::path SureFileStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }
 
-bool SureFileStore::HasDiskSpace(const uintmax_t& required_space) const {
+bool SureFileStore::HasDiskSpace(const uint64_t& required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
