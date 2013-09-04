@@ -140,7 +140,7 @@ bool ClientController::ConnectToLifeStuffManager(std::string& path_to_new_instal
   while (FindNextAcceptingPort(request_transport)) {
     protobuf::ClientRegistrationRequest request;
     request.set_listening_port(local_port_);
-    request.set_version(VersionToInt(kApplicationVersion));
+    request.set_version(VersionToInt(kApplicationVersion()));
     request_transport->Send(detail::WrapMessage(MessageType::kClientRegistrationRequest,
                                                 request.SerializeAsString()),
                             lifestuff_manager_port_);

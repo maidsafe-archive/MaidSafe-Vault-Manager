@@ -98,7 +98,7 @@ LifeStuffManager::LifeStuffManager()
       transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/nullptr),
       maid_(passport::Anmaid()),
       initial_contact_memory_(maid_) {
-//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion);
+//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion());
 //  passport::Anmaid anmaid;
 //  passport::Maid maid(anmaid);
 //  passport::Pmid pmid(maid);

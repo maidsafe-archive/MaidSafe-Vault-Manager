@@ -307,7 +307,7 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   protobuf::VaultIdentityRequest vault_identity_request;
   vault_identity_request.set_process_index(process_index_);
   vault_identity_request.set_listening_port(listening_port);
-  vault_identity_request.set_version(VersionToInt(kApplicationVersion));
+  vault_identity_request.set_version(VersionToInt(kApplicationVersion()));
 
   TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int connect_result(0);
