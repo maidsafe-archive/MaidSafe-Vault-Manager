@@ -32,6 +32,7 @@ License.
 #  pragma warning(pop)
 #endif
 
+#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/types.h"
 
@@ -48,6 +49,7 @@ class SureFileStore {
   typedef boost::future<std::vector<StructuredDataVersions::VersionName>> VersionNamesFuture;
 
   SureFileStore(const boost::filesystem::path& disk_path, const DiskUsage& max_disk_usage);
+  ~SureFileStore();
 
   template<typename Data>
   boost::future<Data> Get(
@@ -111,6 +113,7 @@ class SureFileStore {
   std::unique_ptr<StructuredDataVersions> ReadVersions(const KeyType& key) const;
   void WriteVersions(const KeyType& key, const StructuredDataVersions& versions);
 
+  AsioService asio_service_;
   const boost::filesystem::path kDiskPath_;
   DiskUsage max_disk_usage_, current_disk_usage_;
   const uint32_t kDepth_;
@@ -146,13 +149,27 @@ template<typename Data>
 void SureFileStore::Put(const Data& data) {
   LOG(kVerbose) << "Putting: " << Base32Substr(data.name().value) << "  "
                 << EncodeToBase32(data.Serialise().data);
-  DoPut(KeyType(data.name()), data.Serialise());
+  asio_service_.service().post([this, data] {
+    try {
+      DoPut(KeyType(data.name()), data.Serialise());
+    }
+    catch(const std::exception& e) {
+      LOG(kWarning) << "Put failed: " << e.what();
+    }
+  });
 }
 
 template<typename Data>
 void SureFileStore::Delete(const typename Data::Name& data_name) {
   LOG(kVerbose) << "DELETING: " << Base32Substr(data_name.value);
-  DoDelete(KeyType(data_name));
+  asio_service_.service().post([this, data_name] {
+    try {
+      DoDelete(KeyType(data_name));
+    }
+    catch(const std::exception& e) {
+      LOG(kWarning) << "Delete failed: " << e.what();
+    }
+  });
 }
 
 template<typename Data>

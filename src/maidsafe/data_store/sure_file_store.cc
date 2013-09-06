@@ -98,13 +98,19 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
 }  // unnamed namespace
 
 SureFileStore::SureFileStore(const fs::path& disk_path, const DiskUsage& max_disk_usage)
-    : kDiskPath_(disk_path),
+    : asio_service_(Concurrency()),  // TODO(Fraser#5#): 2013-09-06 - determine best value.
+      kDiskPath_(disk_path),
       max_disk_usage_(max_disk_usage),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
       kDepth_(5),
       get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_limit);
+  asio_service_.Start();
+}
+
+SureFileStore::~SureFileStore() {
+  asio_service_.Stop();
 }
 
 NonEmptyString SureFileStore::DoGet(const KeyType& key) const {
