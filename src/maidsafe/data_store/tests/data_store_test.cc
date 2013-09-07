@@ -875,7 +875,7 @@ REGISTER_TYPED_TEST_CASE_P(DataStoreTest,
                            BEH_Store,
                            BEH_Delete);
 
-typedef ::testing::Types<DataBuffer> StoragePolicies;
+typedef testing::Types<DataBuffer<DataNameVariant>> StoragePolicies;
 INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);
 
 }  // namespace test

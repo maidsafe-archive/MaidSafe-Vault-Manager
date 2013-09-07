@@ -122,7 +122,7 @@ set_target_properties(signing_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NA
 if(MaidsafeTesting)
   if(MSVC)
     # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
-    set_target_properties(TESTprivate PROPERTIES COMPILE_FLAGS "/wd4702")
+    set_target_properties(TESTprivate PROPERTIES COMPILE_FLAGS "/bigobj /wd4702")
   endif()
   set_target_properties(TESTprivate
                         dummy_client
