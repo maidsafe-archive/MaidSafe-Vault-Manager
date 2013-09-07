@@ -48,7 +48,7 @@ namespace data_store {
 
 namespace test {
 
-template<typename KeyType>
+template<typename Key>
 class DataBufferTest;
 template<typename StoragePolicy>
 class DataStoreTest;
@@ -56,10 +56,10 @@ class DataStoreTest;
 }  // namespace test
 
 
-template<typename KeyType>
+template<typename Key>
 class DataBuffer {
  public:
-  typedef KeyType KeyType;
+  typedef Key KeyType;
   typedef std::function<void(const KeyType&, const NonEmptyString&)> PopFunctor;
   // Throws if max_memory_usage >= max_disk_usage.  Throws if a writable folder can't be created in
   // temp_directory_path().  Starts a background worker thread which copies values from memory to
@@ -184,8 +184,8 @@ class DataBuffer {
 
 
 // ==================== Implementation =============================================================
-template<typename KeyType>
-DataBuffer<KeyType>::DataBuffer(MemoryUsage max_memory_usage,
+template<typename Key>
+DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage,
                                 DiskUsage max_disk_usage,
                                 PopFunctor pop_functor)
     : memory_store_(max_memory_usage),
@@ -200,8 +200,8 @@ DataBuffer<KeyType>::DataBuffer(MemoryUsage max_memory_usage,
   Init();
 }
 
-template<typename KeyType>
-DataBuffer<KeyType>::DataBuffer(MemoryUsage max_memory_usage,
+template<typename Key>
+DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage,
                                 DiskUsage max_disk_usage,
                                 PopFunctor pop_functor,
                                 const boost::filesystem::path& disk_buffer)
@@ -216,8 +216,8 @@ DataBuffer<KeyType>::DataBuffer(MemoryUsage max_memory_usage,
   Init();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::Init() {
+template<typename Key>
+void DataBuffer<Key>::Init() {
   if (memory_store_.max > disk_store_.max) {
     LOG(kError) << "Max memory usage must be < max disk usage.";
     ThrowError(CommonErrors::invalid_parameter);
@@ -241,8 +241,8 @@ void DataBuffer<KeyType>::Init() {
   worker_ = std::async(std::launch::async, &DataBuffer<KeyType>::CopyQueueToDisk, this);
 }
 
-template<typename KeyType>
-DataBuffer<KeyType>::~DataBuffer() {
+template<typename Key>
+DataBuffer<Key>::~DataBuffer() {
   {
     std::lock(memory_store_.mutex, disk_store_.mutex);
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex, std::adopt_lock);
@@ -277,8 +277,8 @@ DataBuffer<KeyType>::~DataBuffer() {
   }
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::Store(const KeyType& key, const NonEmptyString& value) {
+template<typename Key>
+void DataBuffer<Key>::Store(const KeyType& key, const NonEmptyString& value) {
   try {
     Delete(key);
     LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key " << DebugKeyName(key);
@@ -293,9 +293,9 @@ void DataBuffer<KeyType>::Store(const KeyType& key, const NonEmptyString& value)
     StoreOnDisk(key, value, std::move(disk_store_lock));
 }
 
-template<typename KeyType>
-std::unique_lock<std::mutex> DataBuffer<KeyType>::StoreInMemory(const KeyType& key,
-                                                                const NonEmptyString& value) {
+template<typename Key>
+std::unique_lock<std::mutex> DataBuffer<Key>::StoreInMemory(const KeyType& key,
+                                                            const NonEmptyString& value) {
   {
     uint64_t required_space(value.string().size());
     std::unique_lock<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -320,9 +320,9 @@ std::unique_lock<std::mutex> DataBuffer<KeyType>::StoreInMemory(const KeyType& k
   return std::move(std::unique_lock<std::mutex>());
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::WaitForSpaceInMemory(const uint64_t& required_space,
-                                               std::unique_lock<std::mutex>& memory_store_lock) {
+template<typename Key>
+void DataBuffer<Key>::WaitForSpaceInMemory(const uint64_t& required_space,
+                                           std::unique_lock<std::mutex>& memory_store_lock) {
   while (!HasSpace(memory_store_, required_space)) {
     auto itr(FindMemoryRemovalCandidate(required_space, memory_store_lock));
     if (!running_)
@@ -335,10 +335,10 @@ void DataBuffer<KeyType>::WaitForSpaceInMemory(const uint64_t& required_space,
   }
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::StoreOnDisk(const KeyType& key,
-                                      const NonEmptyString& value,
-                                      std::unique_lock<std::mutex>&& disk_store_lock) {
+template<typename Key>
+void DataBuffer<Key>::StoreOnDisk(const KeyType& key,
+                                  const NonEmptyString& value,
+                                  std::unique_lock<std::mutex>&& disk_store_lock) {
   assert(disk_store_lock);
   if (value.string().size() > disk_store_.max) {
     LOG(kError) << "Cannot store " << DebugKeyName(key) << " since its " << value.string().size()
@@ -369,11 +369,11 @@ void DataBuffer<KeyType>::StoreOnDisk(const KeyType& key,
   disk_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::WaitForSpaceOnDisk(const KeyType& key,
-                                             const uint64_t& required_space,
-                                             std::unique_lock<std::mutex>& disk_store_lock,
-                                             bool& cancelled) {
+template<typename Key>
+void DataBuffer<Key>::WaitForSpaceOnDisk(const KeyType& key,
+                                         const uint64_t& required_space,
+                                         std::unique_lock<std::mutex>& disk_store_lock,
+                                         bool& cancelled) {
   while (!HasSpace(disk_store_, required_space) && running_) {
     auto itr(Find(disk_store_, key));
     if (itr == disk_store_.index.end()) {
@@ -405,8 +405,8 @@ void DataBuffer<KeyType>::WaitForSpaceOnDisk(const KeyType& key,
   }
 }
 
-template<typename KeyType>
-NonEmptyString DataBuffer<KeyType>::Get(const KeyType& key) {
+template<typename Key>
+NonEmptyString DataBuffer<Key>::Get(const KeyType& key) {
   CheckWorkerIsStillRunning();
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -428,8 +428,8 @@ NonEmptyString DataBuffer<KeyType>::Get(const KeyType& key) {
   //                               from wherever it's found to the back of the memory index.
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::Delete(const KeyType& key) {
+template<typename Key>
+void DataBuffer<Key>::Delete(const KeyType& key) {
   CheckWorkerIsStillRunning();
   StoringState also_on_disk(StoringState::kNotStarted);
   DeleteFromMemory(key, also_on_disk);
@@ -437,8 +437,8 @@ void DataBuffer<KeyType>::Delete(const KeyType& key) {
     DeleteFromDisk(key);
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::DeleteFromMemory(const KeyType& key, StoringState& also_on_disk) {
+template<typename Key>
+void DataBuffer<Key>::DeleteFromMemory(const KeyType& key, StoringState& also_on_disk) {
   bool changed(false);
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
@@ -457,8 +457,8 @@ void DataBuffer<KeyType>::DeleteFromMemory(const KeyType& key, StoringState& als
     memory_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::DeleteFromDisk(const KeyType& key) {
+template<typename Key>
+void DataBuffer<Key>::DeleteFromDisk(const KeyType& key) {
   {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
     auto itr(Find(disk_store_, key));
@@ -477,8 +477,8 @@ void DataBuffer<KeyType>::DeleteFromDisk(const KeyType& key) {
   disk_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::RemoveFile(const KeyType& key, NonEmptyString* value) {
+template<typename Key>
+void DataBuffer<Key>::RemoveFile(const KeyType& key, NonEmptyString* value) {
   auto path(GetFilename(key));
   boost::system::error_code error_code;
   uint64_t size(boost::filesystem::file_size(path, error_code));
@@ -495,8 +495,8 @@ void DataBuffer<KeyType>::RemoveFile(const KeyType& key, NonEmptyString* value) 
   disk_store_.current.data -= size;
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::CopyQueueToDisk() {
+template<typename Key>
+void DataBuffer<Key>::CopyQueueToDisk() {
   KeyType key;
   NonEmptyString value;
   for (;;) {
@@ -526,8 +526,8 @@ void DataBuffer<KeyType>::CopyQueueToDisk() {
   }
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::CheckWorkerIsStillRunning() {
+template<typename Key>
+void DataBuffer<Key>::CheckWorkerIsStillRunning() {
   // if this goes ready then we have an exception so get that (throw basically)
   {
     std::lock_guard<std::mutex> worker_lock(worker_mutex_);
@@ -540,15 +540,15 @@ void DataBuffer<KeyType>::CheckWorkerIsStillRunning() {
   }
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::StopRunning() {
+template<typename Key>
+void DataBuffer<Key>::StopRunning() {
   running_ = false;
   memory_store_.cond_var.notify_all();
   disk_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::SetMaxMemoryUsage(MemoryUsage max_memory_usage) {
+template<typename Key>
+void DataBuffer<Key>::SetMaxMemoryUsage(MemoryUsage max_memory_usage) {
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
     if (max_memory_usage > disk_store_.max) {
@@ -560,8 +560,8 @@ void DataBuffer<KeyType>::SetMaxMemoryUsage(MemoryUsage max_memory_usage) {
   memory_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-void DataBuffer<KeyType>::SetMaxDiskUsage(DiskUsage max_disk_usage) {
+template<typename Key>
+void DataBuffer<Key>::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   bool increased(false);
   {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
@@ -576,24 +576,24 @@ void DataBuffer<KeyType>::SetMaxDiskUsage(DiskUsage max_disk_usage) {
     disk_store_.cond_var.notify_all();
 }
 
-template<typename KeyType>
-boost::filesystem::path DataBuffer<KeyType>::GetFilename(const KeyType& key) const {
+template<typename Key>
+boost::filesystem::path DataBuffer<Key>::GetFilename(const KeyType& key) const {
   return kDiskBuffer_ / EncodeToBase32(key);
 }
 
 template<>
 boost::filesystem::path DataBuffer<DataNameVariant>::GetFilename(const DataNameVariant& key) const;
 
-template<typename KeyType>
+template<typename Key>
 template<typename T>
-bool DataBuffer<KeyType>::HasSpace(const T& store, const uint64_t& required_space) const {
+bool DataBuffer<Key>::HasSpace(const T& store, const uint64_t& required_space) const {
   assert(store.max >= required_space);
   return store.current <= store.max - required_space;
 }
 
-template<typename KeyType>
+template<typename Key>
 template<typename T>
-typename T::index_type::iterator DataBuffer<KeyType>::Find(T& store, const KeyType& key) {
+typename T::index_type::iterator DataBuffer<Key>::Find(T& store, const KeyType& key) {
   return std::find_if(store.index.begin(),
                       store.index.end(),
                       [&key](const typename T::index_type::value_type& key_value) {
@@ -601,8 +601,8 @@ typename T::index_type::iterator DataBuffer<KeyType>::Find(T& store, const KeyTy
                       });
 }
 
-template<typename KeyType>
-typename DataBuffer<KeyType>::MemoryIndex::iterator DataBuffer<KeyType>::FindOldestInMemoryOnly() {
+template<typename Key>
+typename DataBuffer<Key>::MemoryIndex::iterator DataBuffer<Key>::FindOldestInMemoryOnly() {
   return std::find_if(memory_store_.index.begin(),
                       memory_store_.index.end(),
                       [](const MemoryElement& key_value) {
@@ -610,8 +610,8 @@ typename DataBuffer<KeyType>::MemoryIndex::iterator DataBuffer<KeyType>::FindOld
                       });
 }
 
-template<typename KeyType>
-typename DataBuffer<KeyType>::MemoryIndex::iterator DataBuffer<KeyType>::FindMemoryRemovalCandidate(
+template<typename Key>
+typename DataBuffer<Key>::MemoryIndex::iterator DataBuffer<Key>::FindMemoryRemovalCandidate(
     const uint64_t& required_space,
     std::unique_lock<std::mutex>& memory_store_lock) {
   auto itr(memory_store_.index.end());
@@ -628,8 +628,8 @@ typename DataBuffer<KeyType>::MemoryIndex::iterator DataBuffer<KeyType>::FindMem
   return itr;
 }
 
-template<typename KeyType>
-typename DataBuffer<KeyType>::DiskIndex::iterator DataBuffer<KeyType>::FindStartedToStoreOnDisk(
+template<typename Key>
+typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindStartedToStoreOnDisk(
     const KeyType& key) {
   return std::find_if(disk_store_.index.begin(),
                       disk_store_.index.end(),
@@ -638,13 +638,13 @@ typename DataBuffer<KeyType>::DiskIndex::iterator DataBuffer<KeyType>::FindStart
                       });
 }
 
-template<typename KeyType>
-typename DataBuffer<KeyType>::DiskIndex::iterator DataBuffer<KeyType>::FindOldestOnDisk() {
+template<typename Key>
+typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindOldestOnDisk() {
   return disk_store_.index.begin();
 }
 
-template<typename KeyType>
-typename DataBuffer<KeyType>::DiskIndex::iterator DataBuffer<KeyType>::FindAndThrowIfCancelled(
+template<typename Key>
+typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindAndThrowIfCancelled(
     const KeyType& key) {
   auto itr(Find(disk_store_, key));
   if (itr == disk_store_.index.end() || (*itr).state == StoringState::kCancelled) {
@@ -654,8 +654,8 @@ typename DataBuffer<KeyType>::DiskIndex::iterator DataBuffer<KeyType>::FindAndTh
   return itr;
 }
 
-template<typename KeyType>
-std::string DataBuffer<KeyType>::DebugKeyName(const KeyType& key) {
+template<typename Key>
+std::string DataBuffer<Key>::DebugKeyName(const KeyType& key) {
   return EncodeToBase32(key);
 }
 
