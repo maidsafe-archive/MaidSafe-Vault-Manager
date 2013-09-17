@@ -32,7 +32,7 @@ namespace detail {
 namespace test {
 
 TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) {
-  FAIL() << "Needs test";
+  GTEST_FAIL() << "Needs test";
 }
 
 TEST(UtilsTest, BEH_GenerateVmidParameter) {
@@ -44,7 +44,7 @@ TEST(UtilsTest, BEH_GenerateVmidParameter) {
 }
 
 TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) {
-  FAIL() << "Needs test";
+  GTEST_FAIL() << "Needs test";
 }
 
 }  // namespace test
