@@ -50,12 +50,12 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
-DownloadManager::DownloadManager(const std::string& location,
-                                 const std::string& site,
-                                 const std::string& protocol)
-    : location_(location),
-      site_(site),
-      protocol_(protocol),
+DownloadManager::DownloadManager(std::string  location,
+                                 std::string  site,
+                                 std::string  protocol)
+    : location_(std::move(location)),
+      site_(std::move(site)),
+      protocol_(std::move(protocol)),
       latest_local_version_(kApplicationVersion()),
       latest_remote_version_("0.0.000"),
       maidsafe_public_key_(detail::kMaidSafePublicKey()),

@@ -445,14 +445,14 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
   std::vector<ProcessIndex> process_indices_5, process_indices_10;
-  for (size_t i(0); i < processes_5.size(); ++i) {
-    ProcessIndex process_index = process_manager_.AddProcess(processes_5.at(i), 0);
+  for (auto & elem : processes_5) {
+    ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
     EXPECT_NE(0, process_index);
     process_indices_5.push_back(process_index);
     process_manager_.StartProcess(process_index);
   }
-  for (size_t i(0); i < processes_10.size(); ++i) {
-    ProcessIndex process_index = process_manager_.AddProcess(processes_10.at(i), 0);
+  for (auto & elem : processes_10) {
+    ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
     EXPECT_NE(0, process_index);
     process_manager_.StartProcess(process_index);
     process_indices_10.push_back(process_index);
@@ -462,16 +462,16 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
             process_manager_.NumberOfLiveProcesses());
 
-  for (auto it(process_indices_5.begin()); it != process_indices_5.end(); ++it)
-    process_manager_.LetProcessDie(*it);
+  for (auto & elem : process_indices_5)
+    process_manager_.LetProcessDie(elem);
   Sleep(std::chrono::seconds(6));
 
   EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
             process_manager_.NumberOfProcesses());
   EXPECT_EQ(process_indices_10.size(), process_manager_.NumberOfLiveProcesses());
 
-  for (auto it(process_indices_10.begin()); it != process_indices_10.end(); ++it)
-    process_manager_.LetProcessDie(*it);
+  for (auto & elem : process_indices_10)
+    process_manager_.LetProcessDie(elem);
   Sleep(std::chrono::seconds(6));
   EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
             process_manager_.NumberOfProcesses());

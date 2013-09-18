@@ -42,12 +42,12 @@ WorldDirectory& WorldDirectory::operator=(WorldDirectory other) {
   return *this;
 }
 
-WorldDirectory::WorldDirectory(const Name& name, const NonEmptyString& data)
-    : name_(name),
-      data_(data) {}
+WorldDirectory::WorldDirectory(Name  name, NonEmptyString  data)
+    : name_(std::move(name)),
+      data_(std::move(data)) {}
 
-WorldDirectory::WorldDirectory(const Name& name, const serialised_type& serialised_mutable_data)
-    : name_(name),
+WorldDirectory::WorldDirectory(Name  name, const serialised_type& serialised_mutable_data)
+    : name_(std::move(name)),
       data_(),
       signature_() {
   protobuf::WorldDirectory proto_mutable_data;

@@ -153,7 +153,7 @@ class SharedMemoryCommunication {
         shared_memory_(nullptr),
         mapped_region_(nullptr),
         message_queue_(nullptr),
-        message_notifier_(message_notifier),
+        message_notifier_(std::move(message_notifier)),
         receive_flag_(true),
         receive_future_() {
     static_assert(detail::is_valid_fob<FobType>::value,

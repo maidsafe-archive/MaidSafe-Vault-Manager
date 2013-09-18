@@ -41,9 +41,9 @@ namespace test { class DownloadManagerTest; }
 
 class DownloadManager {
  public:
-  DownloadManager(const std::string& location = detail::kDownloadManagerLocation,
-                  const std::string& site = detail::kDownloadManagerSite,
-                  const std::string& protocol = detail::kDownloadManagerProtocol);
+  DownloadManager(std::string  location = detail::kDownloadManagerLocation,
+                  std::string  site = detail::kDownloadManagerSite,
+                  std::string  protocol = detail::kDownloadManagerProtocol);
   ~DownloadManager();
   // Retrieves the latest bootstrap file from the server.
   std::string GetBootstrapInfo();

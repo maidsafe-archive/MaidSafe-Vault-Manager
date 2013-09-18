@@ -40,8 +40,8 @@ class GroupDirectory {
   GroupDirectory(GroupDirectory&& other);
   GroupDirectory& operator=(GroupDirectory other);
 
-  GroupDirectory(const Name& name, const NonEmptyString& data);
-  GroupDirectory(const Name& name, const serialised_type& serialised_mutable_data);
+  GroupDirectory(Name  name, NonEmptyString  data);
+  GroupDirectory(Name  name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
   Name name() const;

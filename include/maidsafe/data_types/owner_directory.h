@@ -40,8 +40,8 @@ class OwnerDirectory {
   OwnerDirectory(OwnerDirectory&& other);
   OwnerDirectory& operator=(OwnerDirectory other);
 
-  OwnerDirectory(const Name& name, const NonEmptyString& data);
-  OwnerDirectory(const Name& name, const serialised_type& serialised_mutable_data);
+  OwnerDirectory(Name  name, NonEmptyString  data);
+  OwnerDirectory(Name  name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
   Name name() const;

@@ -85,8 +85,8 @@ class DataStoreTest : public ::testing::Test {
       data_store_(new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_, pop_functor_))
   {}
 
-  void SetUp() {}
-  void TearDown() {}
+  void SetUp() override {}
+  void TearDown() override {}
 
   void PopFunction(const KeyType& key,
                    const NonEmptyString& value,

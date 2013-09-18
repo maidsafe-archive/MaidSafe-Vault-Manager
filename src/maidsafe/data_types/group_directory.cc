@@ -42,12 +42,12 @@ GroupDirectory& GroupDirectory::operator=(GroupDirectory other) {
   return *this;
 }
 
-GroupDirectory::GroupDirectory(const Name& name, const NonEmptyString& data)
-    : name_(name),
-      data_(data) {}
+GroupDirectory::GroupDirectory(Name  name, NonEmptyString  data)
+    : name_(std::move(name)),
+      data_(std::move(data)) {}
 
-GroupDirectory::GroupDirectory(const Name& name, const serialised_type& serialised_mutable_data)
-    : name_(name),
+GroupDirectory::GroupDirectory(Name  name, const serialised_type& serialised_mutable_data)
+    : name_(std::move(name)),
       data_() {
   protobuf::GroupDirectory proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))

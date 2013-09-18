@@ -92,7 +92,7 @@ class StructuredDataVersions {
  public:
   struct VersionName {
     VersionName();
-    VersionName(uint64_t index_in, const ImmutableData::Name& id_in);
+    VersionName(uint64_t index_in, ImmutableData::Name  id_in);
     explicit VersionName(const std::string& serialised_version_name);
     VersionName(const VersionName& other);
     VersionName(VersionName&& other);

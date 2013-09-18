@@ -109,7 +109,7 @@ class DataBuffer {
   template<typename UsageType, typename IndexType>
   struct Storage {
     typedef IndexType index_type;
-    explicit Storage(UsageType max_in) : max(max_in), current(0), index(), mutex(), cond_var() {}  // NOLINT (Fraser)
+    explicit Storage(UsageType max_in) : max(std::move(max_in)), current(0), index(), mutex(), cond_var() {}  // NOLINT (Fraser)
     UsageType max, current;
     IndexType index;
     std::mutex mutex;
@@ -119,8 +119,8 @@ class DataBuffer {
   enum class StoringState { kNotStarted, kStarted, kCancelled, kCompleted };
 
   struct MemoryElement {
-    MemoryElement(const KeyType& key_in, const NonEmptyString& value_in)
-        : key(key_in), value(value_in), also_on_disk(StoringState::kNotStarted) {}
+    MemoryElement(KeyType  key_in, NonEmptyString  value_in)
+        : key(std::move(key_in)), value(std::move(value_in)), also_on_disk(StoringState::kNotStarted) {}
     KeyType key;
     NonEmptyString value;
     StoringState also_on_disk;
@@ -129,7 +129,7 @@ class DataBuffer {
   typedef std::deque<MemoryElement> MemoryIndex;
 
   struct DiskElement {
-    explicit DiskElement(const KeyType& key_in) : key(key_in), state(StoringState::kStarted) {}
+    explicit DiskElement(KeyType  key_in) : key(std::move(key_in)), state(StoringState::kStarted) {}
     KeyType key;
     StoringState state;
   };
@@ -193,7 +193,7 @@ DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage,
                                 PopFunctor pop_functor)
     : memory_store_(max_memory_usage),
       disk_store_(max_disk_usage),
-      kPopFunctor_(pop_functor),
+      kPopFunctor_(std::move(pop_functor)),
       kDiskBuffer_(boost::filesystem::unique_path(boost::filesystem::temp_directory_path() /
                                                   "DB-%%%%-%%%%-%%%%-%%%%")),
       kShouldRemoveRoot_(true),
@@ -210,7 +210,7 @@ DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage,
                                 const boost::filesystem::path& disk_buffer)
     : memory_store_(max_memory_usage),
       disk_store_(max_disk_usage),
-      kPopFunctor_(pop_functor),
+      kPopFunctor_(std::move(pop_functor)),
       kDiskBuffer_(disk_buffer),
       kShouldRemoveRoot_(false),
       running_(true),

@@ -102,8 +102,8 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
       break;
   }
 
-  for (std::string::iterator itr(data_type_str.begin()); itr != data_type_str.end(); ++itr)
-    ostream << ostream.widen(*itr);
+  for (auto & elem : data_type_str)
+    ostream << ostream.widen(elem);
   return ostream;
 }
 
@@ -112,7 +112,7 @@ namespace detail {
 template<typename Parent>
 struct Name {
   Name() : value() {}
-  explicit Name(Identity value_in) : value(value_in) {}
+  explicit Name(Identity value_in) : value(std::move(value_in)) {}
   Name(const Name& other) : value(other.value) {}
   Name(Name&& other) : value(std::move(other.value)) {}
   Name& operator=(Name other);

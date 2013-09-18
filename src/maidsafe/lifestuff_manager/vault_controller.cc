@@ -67,7 +67,7 @@ VaultController::VaultController(const std::string& lifestuff_manager_identifier
       local_port_(0),
       pmid_(),
       bootstrap_endpoints_(),
-      stop_callback_(stop_callback),
+      stop_callback_(std::move(stop_callback)),
       asio_service_(3),
       receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   if (!stop_callback_)

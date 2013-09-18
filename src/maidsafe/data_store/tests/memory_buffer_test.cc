@@ -43,8 +43,8 @@ class MemoryBufferTest : public ::testing::Test {
     : memory_buffer_(new MemoryBuffer(MemoryUsage(kDefaultMaxMemoryUsage)))
   {}
 
-  void SetUp() {}
-  void TearDown() {}
+  void SetUp() override {}
+  void TearDown() override {}
 
   KeyType GetRandomKey() {
     // Currently 15 types are defined, but...

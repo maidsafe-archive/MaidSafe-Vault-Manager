@@ -1189,10 +1189,10 @@ bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_
     eps->Clear();
     protobuf::Endpoint* node;
     lock.lock();
-    for (auto itr(endpoints_.begin()); itr != endpoints_.end(); ++itr) {
+    for (auto & elem : endpoints_) {
       node = eps->add_bootstrap_contacts();
-      node->set_ip((*itr).first);
-      node->set_port((*itr).second);
+      node->set_ip((elem).first);
+      node->set_port((elem).second);
     }
     if (!WriteFile(config_file_path_, config.SerializeAsString())) {
       LOG(kError) << "Failed to write config file after adding endpoint.";

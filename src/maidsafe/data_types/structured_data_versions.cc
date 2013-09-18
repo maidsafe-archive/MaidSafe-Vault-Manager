@@ -32,9 +32,9 @@ StructuredDataVersions::VersionName::VersionName()
       id() {}
 
 StructuredDataVersions::VersionName::VersionName(uint64_t index_in,
-                                                 const ImmutableData::Name& id_in)
+                                                 ImmutableData::Name  id_in)
     : index(index_in),
-      id(id_in) {}
+      id(std::move(id_in)) {}
 
 StructuredDataVersions::VersionName::VersionName(const std::string& serialised_version_name)
     : index(0),
@@ -113,7 +113,7 @@ StructuredDataVersions::Details::Details()
       children([](VersionsItr lhs, VersionsItr rhs) { return *lhs < *rhs; }) {}
 
 StructuredDataVersions::Details::Details(VersionsItr parent_in)
-    : parent(parent_in),
+    : parent(std::move(parent_in)),
       children([](VersionsItr lhs, VersionsItr rhs) { return *lhs < *rhs; }) {}
 
 StructuredDataVersions::Details::Details(const Details& other)
@@ -210,7 +210,7 @@ void StructuredDataVersions::BranchFromProtobuf(
   // Handle other versions in branch
   int proto_version_index(1);
   for (; proto_version_index < proto_branch.name_size(); ++proto_version_index) {
-    VersionsItr previous_itr(itr);
+    auto previous_itr(itr);
     itr = CheckedInsert(proto_branch.name(proto_version_index));
     CheckedInsert(previous_itr->second->children, itr);
     itr->second->parent = previous_itr;
