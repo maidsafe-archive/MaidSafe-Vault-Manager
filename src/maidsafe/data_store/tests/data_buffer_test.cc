@@ -340,9 +340,10 @@ TYPED_TEST_P(DataBufferTest, BEH_PopOnDiskBufferOverfill) {
   EXPECT_EQ(recovered, value);
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
+    auto result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
         return cur_idx == 1;
     }));
+    EXPECT_TRUE(result);
   }
   EXPECT_EQ(1, cur_idx);
 
@@ -352,9 +353,10 @@ TYPED_TEST_P(DataBufferTest, BEH_PopOnDiskBufferOverfill) {
   EXPECT_NO_THROW(this->data_buffer_->Store(key, value));
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
+    auto result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
         return cur_idx == 3;
     }));
+    EXPECT_TRUE(result);
   }
   EXPECT_EQ(3, cur_idx);
   EXPECT_NO_THROW(recovered = this->data_buffer_->Get(key));
@@ -397,9 +399,10 @@ TYPED_TEST_P(DataBufferTest, BEH_AsyncPopOnDiskBufferOverfill) {
   }
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    EXPECT_TRUE(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
+    auto result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
         return cur_idx == num_entries;
     }));
+    EXPECT_TRUE(result);
   }
   for (auto key_value : new_key_value_pairs) {
     EXPECT_NO_THROW(recovered = this->data_buffer_->Get(key_value.first));
