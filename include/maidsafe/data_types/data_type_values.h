@@ -112,8 +112,7 @@ namespace detail {
 template<typename Parent>
 struct Name {
   Name() : value() {}
-  explicit Name(const Identity& value_in) : value(value_in) {}
-  explicit Name(Identity&& value_in) : value(std::move(value_in)) {}
+  explicit Name(Identity value_in) : value(value_in) {}
   Name(const Name& other) : value(other.value) {}
   Name(Name&& other) : value(std::move(other.value)) {}
   Name& operator=(Name other);
