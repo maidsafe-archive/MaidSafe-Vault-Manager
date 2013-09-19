@@ -51,7 +51,7 @@ class SureFileStore {
  public:
   typedef boost::future<std::vector<StructuredDataVersions::VersionName>> VersionNamesFuture;
 
-  SureFileStore(const boost::filesystem::path& disk_path, DiskUsage  max_disk_usage);
+  SureFileStore(const boost::filesystem::path& disk_path, DiskUsage max_disk_usage);
   ~SureFileStore();
 
   template<typename Data>
