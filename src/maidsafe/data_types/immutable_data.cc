@@ -41,15 +41,9 @@ ImmutableData::ImmutableData(const NonEmptyString& content)
     : name_(crypto::Hash<crypto::SHA512>(content)),
       data_(content) {}
 
-ImmutableData::ImmutableData(Name  name, const serialised_type& serialised_immutable_data)
+ImmutableData::ImmutableData(Name  name, serialised_type serialised_immutable_data)
     : name_(std::move(name)),
-      data_(serialised_immutable_data.data) {
-  Validate();
-}
-
-ImmutableData::ImmutableData(Name&& name, const serialised_type& serialised_immutable_data)
-    : name_(std::move(name)),
-      data_(serialised_immutable_data.data) {
+      data_(std::move(serialised_immutable_data.data)) {
   Validate();
 }
 
