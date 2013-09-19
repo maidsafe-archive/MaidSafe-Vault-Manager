@@ -103,7 +103,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
 
 }  // unnamed namespace
 
-PermanentStore::PermanentStore(const fs::path& disk_path, DiskUsage  max_disk_usage)
+PermanentStore::PermanentStore(const fs::path& disk_path, DiskUsage max_disk_usage)
     : kDiskPath_(disk_path),
       max_disk_usage_(std::move(max_disk_usage)),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),

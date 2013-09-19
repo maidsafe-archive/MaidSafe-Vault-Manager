@@ -48,7 +48,7 @@ class PermanentStore {
  public:
   typedef DataNameVariant KeyType;
 
-  PermanentStore(const boost::filesystem::path& disk_path, DiskUsage  max_disk_usage);
+  PermanentStore(const boost::filesystem::path& disk_path, DiskUsage max_disk_usage);
   ~PermanentStore();
 
   void Put(const KeyType& key, const NonEmptyString& value);

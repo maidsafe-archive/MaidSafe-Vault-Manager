@@ -40,8 +40,8 @@ class WorldDirectory {
   WorldDirectory(WorldDirectory&& other);
   WorldDirectory& operator=(WorldDirectory other);
 
-  WorldDirectory(Name  name, NonEmptyString  data);
-  WorldDirectory(Name  name, const serialised_type& serialised_mutable_data);
+  WorldDirectory(Name name, NonEmptyString data);
+  WorldDirectory(Name name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
   Name name() const;

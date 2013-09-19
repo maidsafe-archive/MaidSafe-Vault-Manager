@@ -31,8 +31,7 @@ StructuredDataVersions::VersionName::VersionName()
     : index(std::numeric_limits<uint64_t>::max()),
       id() {}
 
-StructuredDataVersions::VersionName::VersionName(uint64_t index_in,
-                                                 ImmutableData::Name  id_in)
+StructuredDataVersions::VersionName::VersionName(uint64_t index_in, ImmutableData::Name id_in)
     : index(index_in),
       id(std::move(id_in)) {}
 

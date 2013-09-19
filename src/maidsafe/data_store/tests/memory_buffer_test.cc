@@ -39,12 +39,7 @@ class MemoryBufferTest : public ::testing::Test {
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
 
  protected:
-  MemoryBufferTest()
-    : memory_buffer_(new MemoryBuffer(MemoryUsage(kDefaultMaxMemoryUsage)))
-  {}
-
-  void SetUp() override {}
-  void TearDown() override {}
+  MemoryBufferTest() : memory_buffer_(new MemoryBuffer(MemoryUsage(kDefaultMaxMemoryUsage))) {}
 
   KeyType GetRandomKey() {
     // Currently 15 types are defined, but...

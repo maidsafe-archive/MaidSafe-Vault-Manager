@@ -445,13 +445,13 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   EXPECT_EQ(0, process_manager_.NumberOfLiveProcesses());
   EXPECT_EQ(0, process_manager_.NumberOfSleepingProcesses());
   std::vector<ProcessIndex> process_indices_5, process_indices_10;
-  for (auto & elem : processes_5) {
+  for (const auto& elem : processes_5) {
     ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
     EXPECT_NE(0, process_index);
     process_indices_5.push_back(process_index);
     process_manager_.StartProcess(process_index);
   }
-  for (auto & elem : processes_10) {
+  for (const auto& elem : processes_10) {
     ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
     EXPECT_NE(0, process_index);
     process_manager_.StartProcess(process_index);
@@ -462,7 +462,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),
             process_manager_.NumberOfLiveProcesses());
 
-  for (auto & elem : process_indices_5)
+  for (const auto& elem : process_indices_5)
     process_manager_.LetProcessDie(elem);
   Sleep(std::chrono::seconds(6));
 
@@ -470,7 +470,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
             process_manager_.NumberOfProcesses());
   EXPECT_EQ(process_indices_10.size(), process_manager_.NumberOfLiveProcesses());
 
-  for (auto & elem : process_indices_10)
+  for (const auto& elem : process_indices_10)
     process_manager_.LetProcessDie(elem);
   Sleep(std::chrono::seconds(6));
   EXPECT_EQ(process_indices_5.size() + process_indices_10.size(),

@@ -42,11 +42,11 @@ GroupDirectory& GroupDirectory::operator=(GroupDirectory other) {
   return *this;
 }
 
-GroupDirectory::GroupDirectory(Name  name, NonEmptyString  data)
+GroupDirectory::GroupDirectory(Name name, NonEmptyString data)
     : name_(std::move(name)),
       data_(std::move(data)) {}
 
-GroupDirectory::GroupDirectory(Name  name, const serialised_type& serialised_mutable_data)
+GroupDirectory::GroupDirectory(Name name, const serialised_type& serialised_mutable_data)
     : name_(std::move(name)),
       data_() {
   protobuf::GroupDirectory proto_mutable_data;

@@ -78,15 +78,12 @@ class DataStoreTest : public ::testing::Test {
 
  protected:
   DataStoreTest()
-    : max_memory_usage_(kDefaultMaxMemoryUsage),
-      max_disk_usage_(kDefaultMaxDiskUsage),
-      data_store_path_(),
-      pop_functor_(),
-      data_store_(new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_, pop_functor_))
-  {}
-
-  void SetUp() override {}
-  void TearDown() override {}
+      : max_memory_usage_(kDefaultMaxMemoryUsage),
+        max_disk_usage_(kDefaultMaxDiskUsage),
+        data_store_path_(),
+        pop_functor_(),
+        data_store_(new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_,
+                                                 pop_functor_)) {}
 
   void PopFunction(const KeyType& key,
                    const NonEmptyString& value,
