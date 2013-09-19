@@ -50,9 +50,9 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
-DownloadManager::DownloadManager(std::string  location,
-                                 std::string  site,
-                                 std::string  protocol)
+DownloadManager::DownloadManager(std::string location,
+                                 std::string site,
+                                 std::string protocol)
     : location_(std::move(location)),
       site_(std::move(site)),
       protocol_(std::move(protocol)),

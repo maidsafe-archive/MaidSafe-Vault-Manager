@@ -42,11 +42,11 @@ WorldDirectory& WorldDirectory::operator=(WorldDirectory other) {
   return *this;
 }
 
-WorldDirectory::WorldDirectory(Name  name, NonEmptyString  data)
+WorldDirectory::WorldDirectory(Name name, NonEmptyString data)
     : name_(std::move(name)),
       data_(std::move(data)) {}
 
-WorldDirectory::WorldDirectory(Name  name, const serialised_type& serialised_mutable_data)
+WorldDirectory::WorldDirectory(Name name, const serialised_type& serialised_mutable_data)
     : name_(std::move(name)),
       data_(),
       signature_() {

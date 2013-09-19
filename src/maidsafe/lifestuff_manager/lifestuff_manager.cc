@@ -1189,7 +1189,7 @@ bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_
     eps->Clear();
     protobuf::Endpoint* node;
     lock.lock();
-    for (auto & elem : endpoints_) {
+    for (const auto& elem : endpoints_) {
       node = eps->add_bootstrap_contacts();
       node->set_ip((elem).first);
       node->set_port((elem).second);

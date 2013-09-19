@@ -42,12 +42,11 @@ OwnerDirectory& OwnerDirectory::operator=(OwnerDirectory other) {
   return *this;
 }
 
-OwnerDirectory::OwnerDirectory(Name  name,
-                               NonEmptyString  data)
+OwnerDirectory::OwnerDirectory(Name name, NonEmptyString data)
     : name_(std::move(name)),
       data_(std::move(data)) {}
 
-OwnerDirectory::OwnerDirectory(Name  name, const serialised_type& serialised_mutable_data)
+OwnerDirectory::OwnerDirectory(Name name, const serialised_type& serialised_mutable_data)
     : name_(std::move(name)),
       data_() {
   protobuf::OwnerDirectory proto_mutable_data;
