@@ -483,7 +483,7 @@ TYPED_TEST_P(DataBufferTest, BEH_RepeatedlyStoreUsingSameKey) {
   typename DataBuffer<TypeParam>::PopFunctor pop_functor(
       [this](const TypeParam& key, const NonEmptyString& value) {
           LOG(kInfo) << "Pop called on " << this->DebugKeyName(key)
-                     << "with value " << Base32Substr(value.string());
+                     << "with value " << HexSubstr(value.string());
       });
   this->data_buffer_.reset(new DataBuffer<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
                                                      DiskUsage(kDefaultMaxDiskUsage),
@@ -525,7 +525,7 @@ TYPED_TEST_P(DataBufferTest, BEH_RandomAsync) {
   typename DataBuffer<TypeParam>::PopFunctor pop_functor(
       [this](const TypeParam& key, const NonEmptyString& value) {
           LOG(kInfo) << "Pop called on " << this->DebugKeyName(key)
-                     << "with value " << Base32Substr(value.string());
+                     << "with value " << HexSubstr(value.string());
       });
   this->data_buffer_.reset(new DataBuffer<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
                                                      DiskUsage(kDefaultMaxDiskUsage),

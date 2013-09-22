@@ -45,7 +45,7 @@ int main(int argc, char** /*argv[]*/) {
     maidsafe::lifestuff_manager::LifeStuffManagerAddressGetter address_getter;
     try {
       std::cout << "client tool got instance address: "
-                << maidsafe::EncodeToBase32(address_getter.GetAddress().value) << std::endl;
+                << maidsafe::EncodeToHex(address_getter.GetAddress().value) << std::endl;
     }
     catch(const std::exception& e) {
       std::cout << e.what() << std::endl;

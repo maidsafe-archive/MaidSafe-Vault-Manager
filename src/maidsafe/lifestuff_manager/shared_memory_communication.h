@@ -102,7 +102,7 @@ class SafeReadOnlySharedMemory {
     memcpy(safe_address_->signature, initial_signature.string().c_str(),
            initial_signature.string().size());
     std::cout << "SafeReadOnlySharedMemory instance address: "
-              << EncodeToBase32(std::string(safe_address_->address)) << std::endl;
+              << EncodeToHex(std::string(safe_address_->address)) << std::endl;
   }
 
   ~SafeReadOnlySharedMemory() {

@@ -636,8 +636,8 @@ TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
                             GetIdentity get_identity;
                             Identity key_id(boost::apply_visitor(get_identity, key));
-                            LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
-                                       << "with value " << Base32Substr(value.string());
+                            LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string())
+                                       << "with value " << HexSubstr(value.string());
                         });
   this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
                                                    DiskUsage(kDefaultMaxDiskUsage),
@@ -674,8 +674,8 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
                             GetIdentity get_identity;
                             Identity key_id(boost::apply_visitor(get_identity, key));
-                            LOG(kInfo) << "Pop called on " << Base32Substr(key_id.string())
-                                       << "with value " << Base32Substr(value.string());
+                            LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string())
+                                       << "with value " << HexSubstr(value.string());
                         });
   this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
                                                    DiskUsage(kDefaultMaxDiskUsage),

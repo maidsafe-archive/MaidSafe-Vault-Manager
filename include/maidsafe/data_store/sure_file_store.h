@@ -130,13 +130,13 @@ class SureFileStore {
 template<typename Data>
 boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
                                        const std::chrono::steady_clock::duration& /*timeout*/) {
-  LOG(kVerbose) << "Getting: " << Base32Substr(data_name.value);
+  LOG(kVerbose) << "Getting: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<boost::promise<Data>>());
   auto async_future(boost::async(boost::launch::async, [=] {
       try {
         auto result(this->DoGet(KeyType(data_name)));
         Data data(data_name, typename Data::serialised_type(result));
-        LOG(kVerbose) << "Got: " << Base32Substr(data_name.value) << "  " << EncodeToBase32(result);
+        LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << EncodeToHex(result);
         promise->set_value(data);
       }
       catch(const std::exception& e) {
@@ -150,8 +150,8 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
 
 template<typename Data>
 void SureFileStore::Put(const Data& data) {
-  LOG(kVerbose) << "Putting: " << Base32Substr(data.name().value) << "  "
-                << EncodeToBase32(data.Serialise().data);
+  LOG(kVerbose) << "Putting: " << HexSubstr(data.name().value) << "  "
+                << EncodeToHex(data.Serialise().data);
   asio_service_.service().post([this, data] {
     try {
       DoPut(KeyType(data.name()), data.Serialise());
@@ -164,7 +164,7 @@ void SureFileStore::Put(const Data& data) {
 
 template<typename Data>
 void SureFileStore::Delete(const typename Data::Name& data_name) {
-  LOG(kVerbose) << "DELETING: " << Base32Substr(data_name.value);
+  LOG(kVerbose) << "DELETING: " << HexSubstr(data_name.value);
   asio_service_.service().post([this, data_name] {
     try {
       DoDelete(KeyType(data_name));

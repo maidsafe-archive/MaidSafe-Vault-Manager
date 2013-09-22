@@ -291,10 +291,10 @@ template<typename Key>
 void DataBuffer<Key>::Store(const KeyType& key, const NonEmptyString& value) {
   try {
     Delete(key);
-    LOG(kInfo) << "Re-storing value " << EncodeToBase32(value) << " with key " << DebugKeyName(key);
+    LOG(kInfo) << "Re-storing value " << EncodeToHex(value) << " with key " << DebugKeyName(key);
   }
   catch(const std::exception&) {
-    LOG(kInfo) << "Storing value " << EncodeToBase32(value) << " with key " << DebugKeyName(key);
+    LOG(kInfo) << "Storing value " << EncodeToHex(value) << " with key " << DebugKeyName(key);
   }
 
   CheckWorkerIsStillRunning();
@@ -588,7 +588,7 @@ void DataBuffer<Key>::SetMaxDiskUsage(DiskUsage max_disk_usage) {
 
 template<typename Key>
 boost::filesystem::path DataBuffer<Key>::GetFilename(const KeyType& key) const {
-  return kDiskBuffer_ / EncodeToBase32(key);
+  return kDiskBuffer_ / EncodeToHex(key);
 }
 
 template<>
@@ -666,7 +666,7 @@ typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindAndThrowIfCan
 
 template<typename Key>
 std::string DataBuffer<Key>::DebugKeyName(const KeyType& key) {
-  return EncodeToBase32(key);
+  return EncodeToHex(key);
 }
 
 template<>
