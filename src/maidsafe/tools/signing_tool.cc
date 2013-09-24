@@ -157,7 +157,7 @@ void LoadPublicKey() {
       std::cout << "error reading file\n";
       return;
     }
-    std::cout << maidsafe::EncodeToHex(pub_key) << "\n";
+    std::cout << maidsafe::HexEncode(pub_key) << "\n";
     Keys.public_key = maidsafe::asymm::DecodeKey(maidsafe::asymm::EncodedPublicKey(pub_key));
 
     if (maidsafe::asymm::ValidateKey(Keys.public_key))

@@ -136,7 +136,7 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
       try {
         auto result(this->DoGet(KeyType(data_name)));
         Data data(data_name, typename Data::serialised_type(result));
-        LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << EncodeToHex(result);
+        LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
         promise->set_value(data);
       }
       catch(const std::exception& e) {
@@ -151,7 +151,7 @@ boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
 template<typename Data>
 void SureFileStore::Put(const Data& data) {
   LOG(kVerbose) << "Putting: " << HexSubstr(data.name().value) << "  "
-                << EncodeToHex(data.Serialise().data);
+                << HexEncode(data.Serialise().data);
   asio_service_.service().post([this, data] {
     try {
       DoPut(KeyType(data.name()), data.Serialise());

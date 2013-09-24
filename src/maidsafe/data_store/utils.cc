@@ -36,7 +36,7 @@ namespace detail {
 
 fs::path GetFileName(const DataNameVariant& data_name_variant) {
   auto result(boost::apply_visitor(GetTagValueAndIdentityVisitor(), data_name_variant));
-  return (EncodeToHex(result.second) + '_' +
+  return (HexEncode(result.second) + '_' +
           std::to_string(static_cast<uint32_t>(result.first)));
 }
 
@@ -44,7 +44,7 @@ DataNameVariant GetDataNameVariant(const fs::path& file_name) {
   std::string file_name_str(file_name.string());
   size_t index(file_name_str.rfind('_'));
   auto id(static_cast<DataTagValue>(std::stoul(file_name_str.substr(index + 1))));
-  Identity key_id(DecodeFromHex(file_name_str.substr(0, index)));
+  Identity key_id(HexDecode(file_name_str.substr(0, index)));
   return GetDataNameVariant(id, key_id);
 }
 

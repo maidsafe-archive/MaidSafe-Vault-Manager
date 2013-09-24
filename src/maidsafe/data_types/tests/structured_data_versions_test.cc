@@ -56,7 +56,7 @@ std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
 std::string DisplayVersion(const VersionName& version, bool to_hex) {
   return std::to_string(version.index) + "-" +
       (version.id->IsInitialised() ?
-         (to_hex ? EncodeToHex(version.id.value) : version.id->string()).substr(0, 3) :
+         (to_hex ? HexEncode(version.id.value) : version.id->string()).substr(0, 3) :
          ("Uninitialised"));
 }
 

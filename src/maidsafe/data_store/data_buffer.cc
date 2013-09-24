@@ -32,7 +32,7 @@ boost::filesystem::path DataBuffer<DataNameVariant>::GetFilename(const DataNameV
 template<>
 std::string DataBuffer<DataNameVariant>::DebugKeyName(const DataNameVariant& key) {
   static GetIdentityVisitor get_identity_visitor;
-  return EncodeToHex(boost::apply_visitor(get_identity_visitor, key).string());
+  return HexEncode(boost::apply_visitor(get_identity_visitor, key).string());
 }
 
 }  // namespace data_store
