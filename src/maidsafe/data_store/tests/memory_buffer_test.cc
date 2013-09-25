@@ -69,14 +69,12 @@ class MemoryBufferTest : public ::testing::Test {
     return KeyType();
   }
 
-  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString>
-  {
+  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString> {
     GenerateKeyValuePair() : size_(OneKB) {}
     explicit GenerateKeyValuePair(uint32_t size) : size_(size) {}
 
     template<typename T>
-    NonEmptyString operator()(T& key)
-    {
+    NonEmptyString operator()(T& key) {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
       key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;

@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <algorithm>
 
 #include "maidsafe/common/types.h"
 

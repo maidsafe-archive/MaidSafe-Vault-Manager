@@ -50,14 +50,12 @@ class DataStoreTest : public ::testing::Test {
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
   typedef typename StoragePolicy::PopFunctor PopFunctor;
 
-  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString>
-  {
+  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString> {
     GenerateKeyValuePair() : size_(OneKB) {}
     explicit GenerateKeyValuePair(uint32_t size) : size_(size) {}
 
     template<typename T>
-    NonEmptyString operator()(T& key)
-    {
+    NonEmptyString operator()(T& key) {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
       key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;
@@ -66,11 +64,9 @@ class DataStoreTest : public ::testing::Test {
     uint32_t size_;
   };
 
-  struct GetIdentity : public boost::static_visitor<Identity>
-  {
+  struct GetIdentity : public boost::static_visitor<Identity> {
     template<typename T>
-    Identity operator()(T& key)
-    {
+    Identity operator()(T& key) {
       return key.value;
     }
   };

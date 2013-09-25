@@ -48,6 +48,13 @@ TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
   const size_t kDataSize(100);
   ImmutableData data(NonEmptyString(RandomString(kDataSize)));
   sure_file_store_.Put(data);
+  auto put_timeout(std::chrono::system_clock::now() + std::chrono::milliseconds(100));
+  while (std::chrono::system_clock::now() < put_timeout) {
+    if (sure_file_store_.GetCurrentDiskUsage() != DiskUsage(kDataSize))
+      Sleep(std::chrono::milliseconds(1));
+    else
+      break;
+  }
   EXPECT_EQ(DiskUsage(kDataSize), sure_file_store_.GetCurrentDiskUsage());
 
   auto retrieved_data(sure_file_store_.Get<ImmutableData>(data.name()).get());
@@ -56,6 +63,13 @@ TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
   EXPECT_EQ(DiskUsage(kDataSize), sure_file_store_.GetCurrentDiskUsage());
 
   sure_file_store_.Delete<ImmutableData>(data.name());
+  auto delete_timeout(std::chrono::system_clock::now() + std::chrono::milliseconds(100));
+  while (std::chrono::system_clock::now() < delete_timeout) {
+    if (sure_file_store_.GetCurrentDiskUsage() != DiskUsage(0))
+      Sleep(std::chrono::milliseconds(1));
+    else
+      break;
+  }
   EXPECT_EQ(DiskUsage(0), sure_file_store_.GetCurrentDiskUsage());
 
   StructuredDataVersions::VersionName default_version;

@@ -20,6 +20,7 @@
 #define MAIDSAFE_DATA_TYPES_OWNER_DIRECTORY_H_
 
 #include <cstdint>
+#include <algorithm>
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/rsa.h"

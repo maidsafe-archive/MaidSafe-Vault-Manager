@@ -19,6 +19,8 @@
 #ifndef MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_
 #define MAIDSAFE_DATA_TYPES_IMMUTABLE_DATA_H_
 
+#include <algorithm>
+
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/tagged_value.h"
 

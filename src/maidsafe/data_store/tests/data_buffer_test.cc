@@ -464,7 +464,7 @@ TYPED_TEST_P(DataBufferTest, BEH_AsyncNonPopOnDiskBufferOverfill) {
     EXPECT_NO_THROW(this->data_buffer_->Delete(key_value.first));
 
   for (size_t i(0); i != num_entries - 1; ++i) {
-    auto status(async_gets[i].wait_for(std::chrono::milliseconds(100)));
+    auto status(async_gets[i].wait_for(std::chrono::milliseconds(200)));
     ASSERT_EQ(std::future_status::ready, status);
     recovered = async_gets[i].get();
     EXPECT_EQ(new_key_value_pairs[i].second, recovered);

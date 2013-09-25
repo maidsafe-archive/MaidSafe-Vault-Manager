@@ -220,8 +220,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
     bp::initializers::run_exe(process_name),
     bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
     bp::initializers::set_on_error(error_code),
-    bp::initializers::inherit_env()
-  ));
+    bp::initializers::inherit_env()));
   boost::system::error_code error;
   auto exit_code = wait_for_exit(child, error);
   if (error) {
