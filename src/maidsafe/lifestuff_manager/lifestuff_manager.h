@@ -47,12 +47,13 @@
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
 
-namespace detail { class Platform; }
+namespace detail {
+class Platform;
+}
 
 class LocalTcpTransport;
 
@@ -179,13 +180,11 @@ class LifeStuffManager {
       ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const passport::Pmid::Name& pmid_name);
-  bool StopVault(const passport::Pmid::Name& pmid_name,
-                 const asymm::PlainText& data,
-                 const asymm::Signature& signature,
-                 bool permanent);
+  bool StopVault(const passport::Pmid::Name& pmid_name, const asymm::PlainText& data,
+                 const asymm::Signature& signature, bool permanent);
   void StopAllVaults();
-//  void EraseVault(const std::string& identity);
-//  int32_t ListVaults(bool select) const;
+  //  void EraseVault(const std::string& identity);
+  //  int32_t ListVaults(bool select) const;
   bool ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config);
   void LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points);
   bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);

@@ -27,12 +27,12 @@
 
 #include "boost/filesystem/path.hpp"
 #ifdef _MSC_VER
-#  pragma warning(push)
-#  pragma warning(disable: 4702)
+#pragma warning(push)
+#pragma warning(disable : 4702)
 #endif
 #include "boost/thread/future.hpp"
 #ifdef _MSC_VER
-#  pragma warning(pop)
+#pragma warning(pop)
 #endif
 
 #include "maidsafe/common/asio_service.h"
@@ -41,7 +41,6 @@
 
 #include "maidsafe/data_types/data_name_variant.h"
 #include "maidsafe/data_types/structured_data_versions.h"
-
 
 namespace maidsafe {
 
@@ -54,34 +53,34 @@ class SureFileStore {
   SureFileStore(const boost::filesystem::path& disk_path, DiskUsage max_disk_usage);
   ~SureFileStore();
 
-  template<typename Data>
-  boost::future<Data> Get(
-      const typename Data::Name& data_name,
-      const std::chrono::steady_clock::duration& timeout = std::chrono::seconds(10));
+  template <typename Data>
+  boost::future<Data> Get(const typename Data::Name& data_name,
+                          const std::chrono::steady_clock::duration& timeout =
+                              std::chrono::seconds(10));
 
-  template<typename Data>
+  template <typename Data>
   void Put(const Data& data);
 
-  template<typename Data>
+  template <typename Data>
   void Delete(const typename Data::Name& data_name);
 
-  template<typename Data>
-  VersionNamesFuture GetVersions(
-      const typename Data::Name& data_name,
-      const std::chrono::steady_clock::duration& timeout = std::chrono::seconds(10));
+  template <typename Data>
+  VersionNamesFuture GetVersions(const typename Data::Name& data_name,
+                                 const std::chrono::steady_clock::duration& timeout =
+                                     std::chrono::seconds(10));
 
-  template<typename Data>
-  VersionNamesFuture GetBranch(
-      const typename Data::Name& data_name,
-      const StructuredDataVersions::VersionName& branch_tip,
-      const std::chrono::steady_clock::duration& timeout = std::chrono::seconds(10));
+  template <typename Data>
+  VersionNamesFuture GetBranch(const typename Data::Name& data_name,
+                               const StructuredDataVersions::VersionName& branch_tip,
+                               const std::chrono::steady_clock::duration& timeout =
+                                   std::chrono::seconds(10));
 
-  template<typename Data>
+  template <typename Data>
   void PutVersion(const typename Data::Name& data_name,
                   const StructuredDataVersions::VersionName& old_version_name,
                   const StructuredDataVersions::VersionName& new_version_name);
 
-  template<typename Data>
+  template <typename Data>
   void DeleteBranchUntilFork(const typename Data::Name& data_name,
                              const StructuredDataVersions::VersionName& branch_tip);
 
@@ -106,8 +105,7 @@ class SureFileStore {
   bool HasDiskSpace(const uint64_t& required_space) const;
   boost::filesystem::path KeyToFilePath(const KeyType& key, bool create_if_missing) const;
   uint32_t GetReferenceCount(const boost::filesystem::path& path) const;
-  void Write(const boost::filesystem::path& path,
-             const NonEmptyString& value,
+  void Write(const boost::filesystem::path& path, const NonEmptyString& value,
              const uintmax_t& size);
   uintmax_t Remove(const boost::filesystem::path& path);
   uintmax_t Rename(const boost::filesystem::path& old_path,
@@ -124,31 +122,29 @@ class SureFileStore {
   GetIdentityVisitor get_identity_visitor_;
 };
 
-
-
 // ==================== Implementation =============================================================
-template<typename Data>
+template <typename Data>
 boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
                                        const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<boost::promise<Data>>());
   auto async_future(boost::async(boost::launch::async, [=] {
-      try {
-        auto result(this->DoGet(KeyType(data_name)));
-        Data data(data_name, typename Data::serialised_type(result));
-        LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
-        promise->set_value(data);
-      }
-      catch(const std::exception& e) {
-        LOG(kError) << e.what();
-        promise->set_exception(boost::current_exception());
-      }
+    try {
+      auto result(this->DoGet(KeyType(data_name)));
+      Data data(data_name, typename Data::serialised_type(result));
+      LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
+      promise->set_value(data);
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << e.what();
+      promise->set_exception(boost::current_exception());
+    }
   }));
   static_cast<void>(async_future);
   return promise->get_future();
 }
 
-template<typename Data>
+template <typename Data>
 void SureFileStore::Put(const Data& data) {
   LOG(kVerbose) << "Putting: " << HexSubstr(data.name().value) << "  "
                 << HexEncode(data.Serialise().data);
@@ -156,73 +152,71 @@ void SureFileStore::Put(const Data& data) {
     try {
       DoPut(KeyType(data.name()), data.Serialise());
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       LOG(kWarning) << "Put failed: " << e.what();
     }
   });
 }
 
-template<typename Data>
+template <typename Data>
 void SureFileStore::Delete(const typename Data::Name& data_name) {
   LOG(kVerbose) << "DELETING: " << HexSubstr(data_name.value);
   asio_service_.service().post([this, data_name] {
     try {
       DoDelete(KeyType(data_name));
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       LOG(kWarning) << "Delete failed: " << e.what();
     }
   });
 }
 
-template<typename Data>
+template <typename Data>
 SureFileStore::VersionNamesFuture SureFileStore::GetVersions(
-    const typename Data::Name& data_name,
-    const std::chrono::steady_clock::duration& /*timeout*/) {
+    const typename Data::Name& data_name, const std::chrono::steady_clock::duration& /*timeout*/) {
   auto promise(std::make_shared<VersionNamesPromise>());
   auto async_future(boost::async(boost::launch::async, [=] {
-      try {
-        KeyType key(data_name);
-        std::lock_guard<std::mutex> lock(this->mutex_);
-        auto versions(this->ReadVersions(key));
-        if (!versions)
-          ThrowError(CommonErrors::no_such_element);
-        promise->set_value(versions->Get());
-      }
-      catch(const std::exception& e) {
-        LOG(kError) << e.what();
-        promise->set_exception(boost::current_exception());
-      }
+    try {
+      KeyType key(data_name);
+      std::lock_guard<std::mutex> lock(this->mutex_);
+      auto versions(this->ReadVersions(key));
+      if (!versions)
+        ThrowError(CommonErrors::no_such_element);
+      promise->set_value(versions->Get());
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << e.what();
+      promise->set_exception(boost::current_exception());
+    }
   }));
   static_cast<void>(async_future);
   return promise->get_future();
 }
 
-template<typename Data>
+template <typename Data>
 SureFileStore::VersionNamesFuture SureFileStore::GetBranch(
-    const typename Data::Name& data_name,
-    const StructuredDataVersions::VersionName& branch_tip,
+    const typename Data::Name& data_name, const StructuredDataVersions::VersionName& branch_tip,
     const std::chrono::steady_clock::duration& /*timeout*/) {
   auto promise(std::make_shared<VersionNamesPromise>());
   auto async_future(boost::async(boost::launch::async, [=] {
-      try {
-        KeyType key(data_name);
-        std::lock_guard<std::mutex> lock(this->mutex_);
-        auto versions(this->ReadVersions(key));
-        if (!versions)
-          ThrowError(CommonErrors::no_such_element);
-        promise->set_value(versions->GetBranch(branch_tip));
-      }
-      catch(const std::exception& e) {
-        LOG(kError) << e.what();
-        promise->set_exception(boost::current_exception());
-      }
+    try {
+      KeyType key(data_name);
+      std::lock_guard<std::mutex> lock(this->mutex_);
+      auto versions(this->ReadVersions(key));
+      if (!versions)
+        ThrowError(CommonErrors::no_such_element);
+      promise->set_value(versions->GetBranch(branch_tip));
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << e.what();
+      promise->set_exception(boost::current_exception());
+    }
   }));
   static_cast<void>(async_future);
   return promise->get_future();
 }
 
-template<typename Data>
+template <typename Data>
 void SureFileStore::PutVersion(const typename Data::Name& data_name,
                                const StructuredDataVersions::VersionName& old_version_name,
                                const StructuredDataVersions::VersionName& new_version_name) {
@@ -235,12 +229,12 @@ void SureFileStore::PutVersion(const typename Data::Name& data_name,
     versions->Put(old_version_name, new_version_name);
     WriteVersions(key, *versions);
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << e.what();
   }
 }
 
-template<typename Data>
+template <typename Data>
 void SureFileStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
                                           const StructuredDataVersions::VersionName& branch_tip) {
   try {
@@ -252,7 +246,7 @@ void SureFileStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
     versions->DeleteBranchUntilFork(branch_tip);
     WriteVersions(key, *versions);
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << e.what();
   }
 }

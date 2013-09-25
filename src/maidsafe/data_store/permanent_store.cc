@@ -29,7 +29,6 @@
 
 #include "maidsafe/data_store/utils.h"
 
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -41,8 +40,7 @@ namespace {
 struct UsedSpace {
   UsedSpace() {}
   UsedSpace(UsedSpace&& other)
-      : directories(std::move(other.directories)),
-        disk_usage(std::move(other.disk_usage)) {}
+      : directories(std::move(other.directories)), disk_usage(std::move(other.disk_usage)) {}
 
   std::vector<fs::path> directories;
   DiskUsage disk_usage;
@@ -84,16 +82,15 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
           futures.pop_back();
           UsedSpace result = future.get();
           disk_usage.data += result.disk_usage.data;
-          std::copy(result.directories.begin(),
-                    result.directories.end(),
+          std::copy(result.directories.begin(), result.directories.end(),
                     std::back_inserter(dirs_to_do));
         }
       }
-      catch(std::system_error& exception) {
+      catch (std::system_error& exception) {
         LOG(kError) << exception.what();
         ThrowError(CommonErrors::filesystem_io_error);
       }
-      catch(...) {
+      catch (...) {
         ThrowError(CommonErrors::invalid_parameter);
       }
     }
@@ -199,17 +196,11 @@ void PermanentStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   max_disk_usage_ = max_disk_usage;
 }
 
-DiskUsage PermanentStore::GetMaxDiskUsage() {
-  return max_disk_usage_;
-}
+DiskUsage PermanentStore::GetMaxDiskUsage() { return max_disk_usage_; }
 
-DiskUsage PermanentStore::GetCurrentDiskUsage() {
-  return current_disk_usage_;
-}
+DiskUsage PermanentStore::GetCurrentDiskUsage() { return current_disk_usage_; }
 
-boost::filesystem::path PermanentStore::GetDiskPath() const {
-  return kDiskPath_;
-}
+boost::filesystem::path PermanentStore::GetDiskPath() const { return kDiskPath_; }
 
 fs::path PermanentStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);

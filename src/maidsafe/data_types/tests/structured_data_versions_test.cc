@@ -26,7 +26,6 @@
 
 #include "maidsafe/data_types/structured_data_versions.h"
 
-
 namespace maidsafe {
 
 namespace test {
@@ -39,10 +38,8 @@ ImmutableData::Name RandomId() {
   return ImmutableData::Name(Identity(RandomAlphaNumericString(64)));
 }
 
-std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
-                                   VersionName old_version,
-                                   uint32_t start_index,
-                                   uint32_t count) {
+std::vector<VersionName> AddBranch(StructuredDataVersions& versions, VersionName old_version,
+                                   uint32_t start_index, uint32_t count) {
   std::vector<VersionName> branch(1, old_version);
   for (uint32_t i(0); i != count; ++i) {
     VersionName new_version(start_index + i, RandomId());
@@ -55,9 +52,9 @@ std::vector<VersionName> AddBranch(StructuredDataVersions& versions,
 
 std::string DisplayVersion(const VersionName& version, bool to_hex) {
   return std::to_string(version.index) + "-" +
-      (version.id->IsInitialised() ?
-         (to_hex ? HexEncode(version.id.value) : version.id->string()).substr(0, 3) :
-         ("Uninitialised"));
+         (version.id->IsInitialised()
+              ? (to_hex ? HexEncode(version.id.value) : version.id->string()).substr(0, 3)
+              : ("Uninitialised"));
 }
 
 std::string DisplayVersions(const std::vector<VersionName>& versions, bool to_hex) {
@@ -68,22 +65,22 @@ std::string DisplayVersions(const std::vector<VersionName>& versions, bool to_he
 }
 
 void ConstructAsDiagram(StructuredDataVersions& versions) {
-/*   7-yyy       0-aaa
-       |           |
-       |           |
-     8-zzz       1-bbb
-              /    |   \
-            /      |     \
-         2-ccc   2-ddd   2-eee
-         /         |          \
-       /           |            \
-    3-fff        3-ggg           3-hhh
-      |           /  \             /  \
-      |         /      \         /      \
-    4-iii    4-jjj    4-kkk   4-lll    4-mmm
-                        |
-                        |
-                      5-nnn                        */
+  /*   7-yyy       0-aaa
+         |           |
+         |           |
+       8-zzz       1-bbb
+                /    |   \
+              /      |     \
+           2-ccc   2-ddd   2-eee
+           /         |          \
+         /           |            \
+      3-fff        3-ggg           3-hhh
+        |           /  \             /  \
+        |         /      \         /      \
+      4-iii    4-jjj    4-kkk   4-lll    4-mmm
+                          |
+                          |
+                        5-nnn                        */
   VersionName v0_aaa(0, ImmutableData::Name(Identity(std::string(64, 'a'))));
   VersionName v1_bbb(1, ImmutableData::Name(Identity(std::string(64, 'b'))));
   VersionName v2_ccc(2, ImmutableData::Name(Identity(std::string(64, 'c'))));
@@ -133,11 +130,11 @@ testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
                                     const StructuredDataVersions& rhs) {
   if (lhs.max_versions() != rhs.max_versions())
     return testing::AssertionFailure() << "lhs.max_versions (" << lhs.max_versions()
-        << ") != rhs.max_versions(" << rhs.max_versions() << ")";
+                                       << ") != rhs.max_versions(" << rhs.max_versions() << ")";
 
   if (lhs.max_branches() != rhs.max_branches())
     return testing::AssertionFailure() << "lhs.max_branches (" << lhs.max_branches()
-        << ") != rhs.max_branches(" << rhs.max_branches() << ")";
+                                       << ") != rhs.max_branches(" << rhs.max_branches() << ")";
 
   auto lhs_tots(lhs.Get());
   auto rhs_tots(rhs.Get());
@@ -145,8 +142,8 @@ testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
   std::sort(std::begin(rhs_tots), std::end(rhs_tots));
   if (lhs_tots != rhs_tots) {
     return testing::AssertionFailure() << "lhs.tips_of_trees != rhs.tips_of_trees:\n"
-        << "lhs: " << DisplayVersions(lhs_tots, false) << "\n rhs: "
-        << DisplayVersions(rhs_tots, false) << '\n';
+                                       << "lhs: " << DisplayVersions(lhs_tots, false)
+                                       << "\n rhs: " << DisplayVersions(rhs_tots, false) << '\n';
   }
 
   std::vector<std::vector<VersionName>> lhs_branches, rhs_branches;
@@ -158,7 +155,8 @@ testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
     std::string output("lhs.branches != rhs.branches:\n");
     for (size_t i(0); i != lhs_branches.size(); ++i) {
       output += "lhs " + std::to_string(i) + ": " + DisplayVersions(lhs_branches[i], false) +
-          "\n rhs " + std::to_string(i) + ": " + DisplayVersions(rhs_branches[i], false) + '\n';
+                "\n rhs " + std::to_string(i) + ": " + DisplayVersions(rhs_branches[i], false) +
+                '\n';
     }
     return testing::AssertionFailure() << output;
   }
@@ -166,7 +164,6 @@ testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
 }
 
 }  // unnamed namespace
-
 
 TEST(StructuredDataVersionsTest, BEH_Put) {
   StructuredDataVersions versions(100, 10);

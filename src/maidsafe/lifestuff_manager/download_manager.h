@@ -31,13 +31,13 @@
 
 #include "maidsafe/lifestuff_manager/config.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
 
-namespace test { class DownloadManagerTest; }
-
+namespace test {
+class DownloadManagerTest;
+}
 
 class DownloadManager {
  public:
@@ -63,8 +63,7 @@ class DownloadManager {
                    std::vector<boost::filesystem::path>& updated_files);
   std::string GetAndVerifyFile(const boost::filesystem::path& remote_path);
   bool PrepareDownload(const boost::filesystem::path& remote_path,
-                       boost::asio::streambuf& response_buffer,
-                       std::istream& response_stream,
+                       boost::asio::streambuf& response_buffer, std::istream& response_stream,
                        boost::asio::ip::tcp::socket& socket);
   bool CheckResponse(const boost::filesystem::path& remote_path, std::istream& response_stream);
   std::string DownloadFile(const boost::filesystem::path& remote_path);

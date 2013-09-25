@@ -73,11 +73,11 @@ class Process {
   void AddArgument(const std::string& argument) { args_.push_back(argument); }
   std::string name() const { return name_; }
   std::vector<std::string> args() const { return args_; }
+
  private:
   std::vector<std::string> args_;
   std::string name_;
 };
-
 
 class ProcessManager {
  public:
@@ -100,17 +100,19 @@ class ProcessManager {
 
  private:
   struct ProcessInfo {
-    ProcessInfo() : process(),
-                    thread(),
-                    index(0),
-                    port(0),
-                    restart_count(0),
-                    done(false),
-                    status(ProcessStatus::kStopped),
+    ProcessInfo()
+        : process(),
+          thread(),
+          index(0),
+          port(0),
+          restart_count(0),
+          done(false),
+          status(ProcessStatus::kStopped),
 #ifdef MAIDSAFE_WIN32
-                    child(PROCESS_INFORMATION()) {}
+          child(PROCESS_INFORMATION()) {
+    }
 #else
-                    child(0) {}
+    child(0) {}
 #endif
     ProcessInfo(ProcessInfo&& other);
     ProcessInfo& operator=(ProcessInfo&& other);
@@ -125,7 +127,7 @@ class ProcessManager {
   };
 
   ProcessManager(const ProcessManager&);
-  ProcessManager &operator=(const ProcessManager&);
+  ProcessManager& operator=(const ProcessManager&);
   std::vector<ProcessInfo>::iterator FindProcess(const ProcessIndex& index);
   void RunProcess(const ProcessIndex& index, bool restart, bool logging);
   void TerminateAll();

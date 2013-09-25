@@ -17,9 +17,9 @@
     use of the MaidSafe Software.                                                                 */
 
 #ifdef MAIDSAFE_WIN32
-#  include <windows.h>
+#include <windows.h>
 #else
-#  include <signal.h>
+#include <signal.h>
 #endif
 
 #include <condition_variable>
@@ -40,7 +40,6 @@
 
 #include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 #include "maidsafe/lifestuff_manager/utils.h"
-
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -110,8 +109,8 @@ void ServiceMain() {
   g_service_status.dwCheckPoint = 0;
   g_service_status.dwWaitHint = 0;
 
-  g_service_status_handle = RegisterServiceCtrlHandler(g_service_name,
-      reinterpret_cast<LPHANDLER_FUNCTION>(ControlHandler));
+  g_service_status_handle = RegisterServiceCtrlHandler(
+      g_service_name, reinterpret_cast<LPHANDLER_FUNCTION>(ControlHandler));
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
 
   try {
@@ -119,15 +118,16 @@ void ServiceMain() {
     std::unique_lock<std::mutex> lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
-    g_cond_var.wait_for(lock, std::chrono::minutes(1), [] { return g_shutdown_service; });  // NOLINT (Fraser)
+    g_cond_var.wait_for(lock, std::chrono::minutes(1),
+                        [] { return g_shutdown_service; });  // NOLINT (Fraser)
     StopService(0, 0);
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
     StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeLifeStuffManagerStdException);
     return;
   }
-  catch(...) {
+  catch (...) {
     LOG(kError) << "Exception of unknown type!";
     StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultServiceUnknownException);
   }
@@ -158,7 +158,8 @@ std::vector<boost::asio::ip::udp::endpoint> ParseIps(const std::string& paramete
       endpoint.port(maidsafe::kLivePort);
       endpoints.push_back(endpoint);
     }
-    catch(...) {}
+    catch (...) {
+    }
     ++it;
   }
 #ifndef NDEBUG
@@ -172,16 +173,17 @@ void HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
   options_description.add_options()
 #ifdef TESTING
-      ("port", po::value<int>(), "Listening port")
-      ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
-      ("root_dir", po::value<std::string>(), "Path to folder of config file and vault chunkstore")
-      ("bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.")
+      ("port", po::value<int>(), "Listening port")("vault_path", po::value<std::string>(),
+                                                   "Path to the vault executable including name")(
+          "root_dir", po::value<std::string>(),
+          "Path to folder of config file and vault chunkstore")(
+          "bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.")
 #endif
       ("help", "produce help message");
   po::variables_map variables_map;
-  po::store(po::command_line_parser(argc, argv).options(options_description).
-                allow_unregistered().run(),
-            variables_map);
+  po::store(
+      po::command_line_parser(argc, argv).options(options_description).allow_unregistered().run(),
+      variables_map);
   po::notify(variables_map);
 
   if (variables_map.count("help") != 0) {
@@ -209,21 +211,17 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("bootstrap_ips") != 0)
     booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
-  maidsafe::lifestuff_manager::detail::SetTestEnvironmentVariables(port,
-                                                                   root_dir,
-                                                                   path_to_vault,
+  maidsafe::lifestuff_manager::detail::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
                                                                    booststrap_ips);
 #endif
 }
 
 }  // unnamed namespace
 
-
-
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
 #ifdef MAIDSAFE_WIN32
-#  ifdef TESTING
+#ifdef TESTING
   try {
     HandleProgramOptions(argc, argv);
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
@@ -235,11 +233,11 @@ int main(int argc, char** argv) {
       return -3;
     }
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
     return -4;
   }
-#  else
+#else
   SERVICE_TABLE_ENTRY service_table[2];
   service_table[0].lpServiceName = g_service_name;
   service_table[0].lpServiceProc = reinterpret_cast<LPSERVICE_MAIN_FUNCTION>(ServiceMain);
@@ -247,24 +245,23 @@ int main(int argc, char** argv) {
   service_table[1].lpServiceProc = NULL;
   // Start the control dispatcher thread for our service
   StartServiceCtrlDispatcher(service_table);
-#  endif
+#endif
 #else
-//  try {
-    HandleProgramOptions(argc, argv);
-    maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
-    std::cout << "Successfully started lifestuff_mgr" << std::endl;
-    signal(SIGINT, ShutDownLifeStuffManager);
-    signal(SIGTERM, ShutDownLifeStuffManager);
-    std::unique_lock<std::mutex> lock(g_mutex);
-    g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
-    std::cout << "Successfully stopped lifestuff_mgr" << std::endl;
-//  }
-//  catch(const std::exception& e) {
-//    LOG(kError) << "Error: " << e.what();
-//    return -5;
-//  }
+  //  try {
+  HandleProgramOptions(argc, argv);
+  maidsafe::lifestuff_manager::LifeStuffManager lifestuff_manager;
+  std::cout << "Successfully started lifestuff_mgr" << std::endl;
+  signal(SIGINT, ShutDownLifeStuffManager);
+  signal(SIGTERM, ShutDownLifeStuffManager);
+  std::unique_lock<std::mutex> lock(g_mutex);
+  g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
+  std::cout << "Successfully stopped lifestuff_mgr" << std::endl;
+  //  }
+  //  catch(const std::exception& e) {
+  //    LOG(kError) << "Error: " << e.what();
+  //    return -5;
+  //  }
   std::cout << "After try/catch, only return pending." << std::endl;
 #endif
   return 0;
 }
-

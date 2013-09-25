@@ -26,16 +26,13 @@
 
 #include "maidsafe/data_types/directory_types.pb.h"
 
-
 namespace maidsafe {
 
 GroupDirectory::GroupDirectory(const GroupDirectory& other)
-    : name_(other.name_),
-      data_(other.data_) {}
+    : name_(other.name_), data_(other.data_) {}
 
 GroupDirectory::GroupDirectory(GroupDirectory&& other)
-    : name_(std::move(other.name_)),
-      data_(std::move(other.data_)) {}
+    : name_(std::move(other.name_)), data_(std::move(other.data_)) {}
 
 GroupDirectory& GroupDirectory::operator=(GroupDirectory other) {
   swap(*this, other);
@@ -43,12 +40,10 @@ GroupDirectory& GroupDirectory::operator=(GroupDirectory other) {
 }
 
 GroupDirectory::GroupDirectory(Name name, NonEmptyString data)
-    : name_(std::move(name)),
-      data_(std::move(data)) {}
+    : name_(std::move(name)), data_(std::move(data)) {}
 
 GroupDirectory::GroupDirectory(Name name, const serialised_type& serialised_mutable_data)
-    : name_(std::move(name)),
-      data_() {
+    : name_(std::move(name)), data_() {
   protobuf::GroupDirectory proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
     ThrowError(CommonErrors::parsing_error);
@@ -61,13 +56,9 @@ GroupDirectory::serialised_type GroupDirectory::Serialise() const {
   return serialised_type(NonEmptyString(proto_mutable_data.SerializeAsString()));
 }
 
-GroupDirectory::Name GroupDirectory::name() const {
-  return name_;
-}
+GroupDirectory::Name GroupDirectory::name() const { return name_; }
 
-NonEmptyString GroupDirectory::data() const {
-  return data_;
-}
+NonEmptyString GroupDirectory::data() const { return data_; }
 
 void swap(GroupDirectory& lhs, GroupDirectory& rhs) {
   using std::swap;

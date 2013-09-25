@@ -24,7 +24,6 @@
 
 #include "maidsafe/data_types/data_type_values.h"
 
-
 namespace maidsafe {
 
 class ImmutableData {
@@ -52,10 +51,10 @@ class ImmutableData {
   NonEmptyString data_;
 };
 
-template<>
+template <>
 struct is_long_term_cacheable<ImmutableData> : public std::true_type {};
 
-template<>
+template <>
 struct is_unique_on_network<ImmutableData> : public std::false_type {};
 
 }  // namespace maidsafe

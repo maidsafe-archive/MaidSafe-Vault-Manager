@@ -19,17 +19,16 @@
 #include "maidsafe/data_store/data_buffer.h"
 #include "maidsafe/data_store/utils.h"
 
-
 namespace maidsafe {
 
 namespace data_store {
 
-template<>
+template <>
 boost::filesystem::path DataBuffer<DataNameVariant>::GetFilename(const DataNameVariant& key) const {
   return kDiskBuffer_ / detail::GetFileName(key);
 }
 
-template<>
+template <>
 std::string DataBuffer<DataNameVariant>::DebugKeyName(const DataNameVariant& key) {
   static GetIdentityVisitor get_identity_visitor;
   return HexEncode(boost::apply_visitor(get_identity_visitor, key).string());

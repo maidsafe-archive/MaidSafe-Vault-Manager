@@ -38,8 +38,7 @@ namespace {
 struct UsedSpace {
   UsedSpace() {}
   UsedSpace(UsedSpace&& other)
-      : directories(std::move(other.directories)),
-        disk_usage(std::move(other.disk_usage)) {}
+      : directories(std::move(other.directories)), disk_usage(std::move(other.disk_usage)) {}
 
   std::vector<fs::path> directories;
   DiskUsage disk_usage;
@@ -81,16 +80,15 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
           futures.pop_back();
           UsedSpace result = future.get();
           disk_usage.data += result.disk_usage.data;
-          std::copy(result.directories.begin(),
-                    result.directories.end(),
+          std::copy(result.directories.begin(), result.directories.end(),
                     std::back_inserter(dirs_to_do));
         }
       }
-      catch(std::system_error& exception) {
+      catch (std::system_error& exception) {
         LOG(kError) << exception.what();
         ThrowError(CommonErrors::filesystem_io_error);
       }
-      catch(...) {
+      catch (...) {
         ThrowError(CommonErrors::invalid_parameter);
       }
     }
@@ -112,9 +110,7 @@ SureFileStore::SureFileStore(const fs::path& disk_path, DiskUsage max_disk_usage
   asio_service_.Start();
 }
 
-SureFileStore::~SureFileStore() {
-  asio_service_.Stop();
-}
+SureFileStore::~SureFileStore() { asio_service_.Stop(); }
 
 NonEmptyString SureFileStore::DoGet(const KeyType& key) const {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -186,13 +182,9 @@ void SureFileStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   max_disk_usage_ = max_disk_usage;
 }
 
-DiskUsage SureFileStore::GetMaxDiskUsage() const {
-  return max_disk_usage_;
-}
+DiskUsage SureFileStore::GetMaxDiskUsage() const { return max_disk_usage_; }
 
-DiskUsage SureFileStore::GetCurrentDiskUsage() const {
-  return current_disk_usage_;
-}
+DiskUsage SureFileStore::GetCurrentDiskUsage() const { return current_disk_usage_; }
 
 fs::path SureFileStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
@@ -236,15 +228,14 @@ uint32_t SureFileStore::GetReferenceCount(const fs::path& path) const {
         return std::stoul(it->path().extension().string().substr(1));
     }
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
   }
 
   return 0;
 }
 
-void SureFileStore::Write(const boost::filesystem::path& path,
-                          const NonEmptyString& value,
+void SureFileStore::Write(const boost::filesystem::path& path, const NonEmptyString& value,
                           const uintmax_t& size) {
   if (!HasDiskSpace(size)) {
     LOG(kError) << "Out of space.";

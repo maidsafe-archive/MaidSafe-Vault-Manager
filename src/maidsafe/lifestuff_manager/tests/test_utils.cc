@@ -29,7 +29,6 @@
 
 #include "maidsafe/lifestuff_manager/config.h"
 
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -66,7 +65,7 @@ int GetNumRunningProcesses(const std::string& process_name) {
 #endif
     return num_processes;
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << e.what();
     return -1;
   }

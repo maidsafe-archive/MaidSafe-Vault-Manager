@@ -40,7 +40,6 @@
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/utils.h"
 
-
 namespace bp = boost::process;
 namespace fs = boost::filesystem;
 
@@ -51,7 +50,7 @@ namespace lifestuff_manager {
 namespace {
 
 #ifdef MAIDSAFE_WIN32
-std::wstring StringToWstring(const std::string &input) {
+std::wstring StringToWstring(const std::string& input) {
   std::unique_ptr<wchar_t[]> buffer(new wchar_t[input.size()]);
   size_t num_chars = mbstowcs(buffer.get(), input.c_str(), input.size());
   return std::wstring(buffer.get(), num_chars);
@@ -94,8 +93,6 @@ bool Process::SetExecutablePath(const fs::path& executable_path) {
   return true;
 }
 
-
-
 ProcessManager::ProcessInfo::ProcessInfo(ProcessManager::ProcessInfo&& other)
     : process(std::move(other.process)),
       thread(std::move(other.thread)),
@@ -119,13 +116,9 @@ ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
   return *this;
 }
 
-
-
 ProcessManager::ProcessManager() : processes_(), current_max_id_(0), mutex_(), cond_var_() {}
 
-ProcessManager::~ProcessManager() {
-  TerminateAll();
-}
+ProcessManager::~ProcessManager() { TerminateAll(); }
 
 ProcessIndex ProcessManager::AddProcess(Process process, Port port) {
   if (process.name().empty()) {
@@ -154,27 +147,23 @@ size_t ProcessManager::NumberOfProcesses() const {
 
 size_t ProcessManager::NumberOfLiveProcesses() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return std::count_if(processes_.begin(),
-                       processes_.end(),
-                       [](const ProcessInfo& process_info) {
-                         return !process_info.done && process_info.thread.joinable();
-                       });
+  return std::count_if(processes_.begin(), processes_.end(), [](const ProcessInfo & process_info) {
+    return !process_info.done && process_info.thread.joinable();
+  });
 }
 
 size_t ProcessManager::NumberOfSleepingProcesses() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return std::count_if(processes_.begin(),
-                       processes_.end(),
-                       [](const ProcessInfo& process_info) { return !process_info.done; });  // NOLINT (Fraser)
+  return std::count_if(processes_.begin(), processes_.end(), [](const ProcessInfo & process_info) {
+    return !process_info.done;
+  });  // NOLINT (Fraser)
 }
 
 std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(
     const ProcessIndex& index) {
-  return std::find_if(processes_.begin(),
-                      processes_.end(),
-                      [index] (ProcessInfo &process_info) {
-                        return (process_info.index == index);
-                      });
+  return std::find_if(processes_.begin(), processes_.end(), [index](ProcessInfo & process_info) {
+    return (process_info.index == index);
+  });
 }
 
 void ProcessManager::StartProcess(const ProcessIndex& index) {
@@ -185,7 +174,8 @@ void ProcessManager::StartProcess(const ProcessIndex& index) {
   (*itr).done = false;
   (*itr).restart_count = 0;
   LOG(kInfo) << "StartProcess: AddStatus. ID: " << index;
-  (*itr).thread = std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
+  (*itr).thread =
+      std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
 }
 
 void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool logging) {
@@ -205,23 +195,22 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   if (restart) {
     Sleep(std::chrono::milliseconds(600));
     // SetInstruction(id, ProcessInstruction::kRun);
-//    if (logging) {
-//      log::FilterMap filter;
-//      filter["*"] = log::kVerbose;
-//      log::Logging::instance().SetFilter(filter);
-//      log::Logging::instance().SetAsync(true);
-//    }
+    //    if (logging) {
+    //      log::FilterMap filter;
+    //      filter["*"] = log::kVerbose;
+    //      log::Logging::instance().SetFilter(filter);
+    //      log::Logging::instance().SetAsync(true);
+    //    }
   }
   boost::system::error_code error_code;
   // TODO(Fraser#5#): 2012-08-29 - Handle logging to a file.  See:
-  // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams  NOLINT (Fraser)
+  // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams
+  // NOLINT (Fraser)
   SetProcessStatus(index, ProcessStatus::kRunning);
-  bp::child child(bp::execute(
-    bp::initializers::run_exe(process_name),
-    bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
-    bp::initializers::set_on_error(error_code),
-    bp::initializers::inherit_env()
-  ));
+  bp::child child(bp::execute(bp::initializers::run_exe(process_name),
+                              bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
+                              bp::initializers::set_on_error(error_code),
+                              bp::initializers::inherit_env()));
   boost::system::error_code error;
   auto exit_code = wait_for_exit(child, error);
   if (error) {
@@ -331,7 +320,9 @@ bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
   auto itr = FindProcess(index);
   if (itr == processes_.end())
     return false;
-  if (cond_var_.wait_for(lock, std::chrono::seconds(5), [&] ()->bool { return (*itr).status != ProcessStatus::kRunning; }))  //NOLINT (Philip)
+  if (cond_var_.wait_for(lock, std::chrono::seconds(5), [&]()->bool {
+        return (*itr).status != ProcessStatus::kRunning;
+      }))  // NOLINT (Philip)
     return true;
   LOG(kError) << "Wait for process " << index << " to stop timed out. Terminating...";
   lock.unlock();
@@ -352,7 +343,7 @@ bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessSt
 void ProcessManager::TerminateAll() {
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto& process : processes_) {
-      LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
+    LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
     if (process.thread.joinable() && process.status == ProcessStatus::kRunning)
       process.thread.join();
   }

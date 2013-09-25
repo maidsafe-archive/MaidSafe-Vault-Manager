@@ -27,7 +27,6 @@
 
 #include "maidsafe/data_types/data_type_values.h"
 
-
 namespace maidsafe {
 
 class WorldDirectory {
@@ -55,7 +54,7 @@ class WorldDirectory {
   asymm::Signature signature_;
 };
 
-template<>
+template <>
 struct is_short_term_cacheable<WorldDirectory> : public std::true_type {};
 
 }  // namespace maidsafe

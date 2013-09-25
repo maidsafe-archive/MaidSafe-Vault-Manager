@@ -35,7 +35,6 @@
 
 #include "maidsafe/passport/types.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -49,7 +48,7 @@ class VaultController {
   ~VaultController();
 
   bool GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
-                   std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints);
+                   std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
   void ConfirmJoin();
   bool SendEndpointToLifeStuffManager(const boost::asio::ip::udp::endpoint& endpoint);
   bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
@@ -63,8 +62,8 @@ class VaultController {
   void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
   void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToLifeStuffManagerResponse(const std::string& message,
-                                                    std::function<void(bool)> callback);  // NOLINT (Philip)
+  void HandleSendEndpointToLifeStuffManagerResponse(
+      const std::string& message, std::function<void(bool)> callback);  // NOLINT (Philip)
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
                                std::function<void(bool)> callback);  // NOLINT (Philip)

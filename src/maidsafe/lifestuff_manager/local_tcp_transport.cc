@@ -25,7 +25,6 @@
 #include "maidsafe/lifestuff_manager/return_codes.h"
 #include "maidsafe/lifestuff_manager/tcp_connection.h"
 
-
 namespace asio = boost::asio;
 namespace bs = boost::system;
 namespace ip = asio::ip;
@@ -35,7 +34,7 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
-LocalTcpTransport::LocalTcpTransport(boost::asio::io_service &asio_service) // NOLINT
+LocalTcpTransport::LocalTcpTransport(boost::asio::io_service& asio_service)  // NOLINT
     : asio_service_(asio_service),
       on_message_received_(),
       on_error_(),
@@ -53,8 +52,7 @@ LocalTcpTransport::~LocalTcpTransport() {
 
 Port LocalTcpTransport::StartListening(Port port, int& result) {
   std::unique_lock<std::mutex> lock(mutex_);
-  strand_.post(std::bind(&LocalTcpTransport::DoStartListening, shared_from_this(), port,
-                             &result));
+  strand_.post(std::bind(&LocalTcpTransport::DoStartListening, shared_from_this(), port, &result));
   cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
   done_ = false;
   boost::system::error_code error_code;
@@ -131,10 +129,10 @@ void LocalTcpTransport::DoStartListening(Port port, int* result) {
   ConnectionPtr new_connection(new TcpConnection(shared_from_this()));
 
   // The connection object is kept alive in the acceptor handler until HandleAccept() is called.
-  acceptor_.async_accept(new_connection->Socket(),
-                         strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept,
-                                                shared_from_this(), std::ref(acceptor_),
-                                                new_connection, args::_1)));
+  acceptor_.async_accept(
+      new_connection->Socket(),
+      strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept, shared_from_this(),
+                             std::ref(acceptor_), new_connection, args::_1)));
   *result = kSuccess;
   done_ = true;
   cond_var_.notify_all();
@@ -151,8 +149,7 @@ void LocalTcpTransport::StopListening() {
 }
 
 void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
-                                     ConnectionPtr connection,
-                                     const bs::error_code& ec) {
+                                     ConnectionPtr connection, const bs::error_code& ec) {
   if (!acceptor.is_open())
     return connection->Close();
 
@@ -168,15 +165,13 @@ void LocalTcpTransport::HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
   // The connection object is kept alive in the acceptor handler until
   // HandleAccept() is called.
   acceptor.async_accept(new_connection->Socket(),
-                        strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept,
-                                               shared_from_this(), std::ref(acceptor),
-                                               new_connection, args::_1)));
+                        strand_.wrap(std::bind(&LocalTcpTransport::HandleAccept, shared_from_this(),
+                                               std::ref(acceptor), new_connection, args::_1)));
 }
 
 void LocalTcpTransport::Connect(Port server_port, int& result) {
   std::unique_lock<std::mutex> lock(mutex_);
-  strand_.post(std::bind(&LocalTcpTransport::DoConnect, shared_from_this(), server_port,
-                             &result));
+  strand_.post(std::bind(&LocalTcpTransport::DoConnect, shared_from_this(), server_port, &result));
   cond_var_.wait(lock, [=]()->bool { return done_; });  // NOLINT
   done_ = false;
 }
@@ -205,12 +200,11 @@ void LocalTcpTransport::Send(const std::string& data, Port port) {
 }
 
 void LocalTcpTransport::DoSend(const std::string& data, Port port) {
-  auto itr(std::find_if(connections_.begin(),
-                        connections_.end(),
-                        [port](ConnectionPtr connection)->bool {
-                          boost::system::error_code error_code;
-                          return connection->Socket().remote_endpoint(error_code).port() == port;
-                        }));
+  auto itr(std::find_if(connections_.begin(), connections_.end(),
+                                                  [port](ConnectionPtr connection)->bool {
+    boost::system::error_code error_code;
+    return connection->Socket().remote_endpoint(error_code).port() == port;
+  }));
   if (itr == connections_.end()) {
     LOG(kError) << "Not connected to port " << port;
     on_error_(kInvalidAddress);
@@ -220,8 +214,8 @@ void LocalTcpTransport::DoSend(const std::string& data, Port port) {
 }
 
 void LocalTcpTransport::InsertConnection(ConnectionPtr connection) {
-  strand_.dispatch(std::bind(&LocalTcpTransport::DoInsertConnection,
-                             shared_from_this(), connection));
+  strand_.dispatch(
+      std::bind(&LocalTcpTransport::DoInsertConnection, shared_from_this(), connection));
 }
 
 void LocalTcpTransport::DoInsertConnection(ConnectionPtr connection) {
@@ -229,8 +223,8 @@ void LocalTcpTransport::DoInsertConnection(ConnectionPtr connection) {
 }
 
 void LocalTcpTransport::RemoveConnection(ConnectionPtr connection) {
-  strand_.dispatch(std::bind(&LocalTcpTransport::DoRemoveConnection,
-                             shared_from_this(), connection));
+  strand_.dispatch(
+      std::bind(&LocalTcpTransport::DoRemoveConnection, shared_from_this(), connection));
 }
 
 void LocalTcpTransport::DoRemoveConnection(ConnectionPtr connection) {

@@ -37,12 +37,13 @@
 
 #include "maidsafe/data_types/data_name_variant.h"
 
-
 namespace maidsafe {
 
 namespace data_store {
 
-namespace test { class PermanentStoreTest; }
+namespace test {
+class PermanentStoreTest;
+}
 
 class PermanentStore {
  public:
@@ -84,6 +85,5 @@ class PermanentStore {
 }  // namespace data_store
 
 }  // namespace maidsafe
-
 
 #endif  // MAIDSAFE_DATA_STORE_PERMANENT_STORE_H_

@@ -29,7 +29,6 @@
 
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -40,8 +39,7 @@ namespace detail {
 
 std::string WrapMessage(const MessageType& message_type, const std::string& payload);
 
-bool UnwrapMessage(const std::string& wrapped_message,
-                   MessageType& message_type,
+bool UnwrapMessage(const std::string& wrapped_message, MessageType& message_type,
                    std::string& payload);
 
 // Returns a string which can be used as the --vmid argument of the PD vault.
@@ -49,8 +47,7 @@ std::string GenerateVmidParameter(const uint32_t& process_index,
                                   const uint16_t& lifestuff_manager_port);
 
 // Parses a --vmid argument of the PD vault into its constituent parts.
-void ParseVmidParameter(const std::string& lifestuff_manager_identifier,
-                        uint32_t& process_index,
+void ParseVmidParameter(const std::string& lifestuff_manager_identifier, uint32_t& process_index,
                         uint16_t& lifestuff_manager_port);
 
 void StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,

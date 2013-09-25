@@ -25,7 +25,6 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/utils.h"
 
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -36,8 +35,7 @@ namespace detail {
 
 fs::path GetFileName(const DataNameVariant& data_name_variant) {
   auto result(boost::apply_visitor(GetTagValueAndIdentityVisitor(), data_name_variant));
-  return (HexEncode(result.second) + '_' +
-          std::to_string(static_cast<uint32_t>(result.first)));
+  return (HexEncode(result.second) + '_' + std::to_string(static_cast<uint32_t>(result.first)));
 }
 
 DataNameVariant GetDataNameVariant(const fs::path& file_name) {

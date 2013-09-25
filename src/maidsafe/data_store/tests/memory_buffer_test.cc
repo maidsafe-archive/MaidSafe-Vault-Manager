@@ -43,40 +43,52 @@ class MemoryBufferTest : public ::testing::Test {
 
   KeyType GetRandomKey() {
     // Currently 15 types are defined, but...
-    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
-             type_number;
+    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return passport::PublicAnmid::Name();
-      case  1: return passport::PublicAnsmid::Name();
-      case  2: return passport::PublicAntmid::Name();
-      case  3: return passport::PublicAnmaid::Name();
-      case  4: return passport::PublicMaid::Name();
-      case  5: return passport::PublicPmid::Name();
-      case  6: return passport::Mid::Name();
-      case  7: return passport::Smid::Name();
-      case  8: return passport::Tmid::Name();
-      case  9: return passport::PublicAnmpid::Name();
-      case 10: return passport::PublicMpid::Name();
-      case 11: return ImmutableData::Name();
-      case 12: return OwnerDirectory::Name();
-      case 13: return GroupDirectory::Name();
-      case 14: return WorldDirectory::Name();
-      // default:
+      case 0:
+        return passport::PublicAnmid::Name();
+      case 1:
+        return passport::PublicAnsmid::Name();
+      case 2:
+        return passport::PublicAntmid::Name();
+      case 3:
+        return passport::PublicAnmaid::Name();
+      case 4:
+        return passport::PublicMaid::Name();
+      case 5:
+        return passport::PublicPmid::Name();
+      case 6:
+        return passport::Mid::Name();
+      case 7:
+        return passport::Smid::Name();
+      case 8:
+        return passport::Tmid::Name();
+      case 9:
+        return passport::PublicAnmpid::Name();
+      case 10:
+        return passport::PublicMpid::Name();
+      case 11:
+        return ImmutableData::Name();
+      case 12:
+        return OwnerDirectory::Name();
+      case 13:
+        return GroupDirectory::Name();
+      case 14:
+        return WorldDirectory::Name();
+        // default:
         // Throw something!
-      //  ;
+        //  ;
     }
     return KeyType();
   }
 
-  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString>
-  {
+  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString> {
     GenerateKeyValuePair() : size_(OneKB) {}
     explicit GenerateKeyValuePair(uint32_t size) : size_(size) {}
 
-    template<typename T>
-    NonEmptyString operator()(T& key)
-    {
+    template <typename T>
+    NonEmptyString operator()(T& key) {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
       key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;
@@ -190,11 +202,10 @@ TEST_F(MemoryBufferTest, BEH_Delete) {
 TEST_F(MemoryBufferTest, BEH_RepeatedlyStoreUsingSameKey) {
   const uint32_t size(50);
   KeyType key(GetRandomKey());
-  NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % size) + 1),
-                 recovered, last_value;
-  auto async = std::async(std::launch::async, [this, key, value] {
-                                                memory_buffer_->Store(key, value);
-                                              });
+  NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % size) + 1), recovered,
+                 last_value;
+  auto async =
+      std::async(std::launch::async, [this, key, value] { memory_buffer_->Store(key, value); });
   EXPECT_NO_THROW(async.wait());
   EXPECT_EQ(true, async.valid());
   EXPECT_NO_THROW(async.get());
@@ -204,9 +215,8 @@ TEST_F(MemoryBufferTest, BEH_RepeatedlyStoreUsingSameKey) {
   uint32_t events(RandomUint32() % (2 * size));
   for (uint32_t i = 0; i != events; ++i) {
     last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % size) + 1));
-    auto async = std::async(std::launch::async, [this, key, last_value] {
-                                                  memory_buffer_->Store(key, last_value);
-                                                });
+    auto async = std::async(std::launch::async,
+                            [this, key, last_value] { memory_buffer_->Store(key, last_value); });
     EXPECT_NO_THROW(async.wait());
     EXPECT_EQ(true, async.valid());
     EXPECT_NO_THROW(async.get());
@@ -235,13 +245,10 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
       case 0: {
         if (!key_value_pairs.empty()) {
           KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-          future_deletes.push_back(std::async([this, event_key] {
-                                                memory_buffer_->Delete(event_key);
-                                             }));
+          future_deletes.push_back(
+              std::async([this, event_key] { memory_buffer_->Delete(event_key); }));
         } else {
-          future_deletes.push_back(std::async([this, key] {
-                                                memory_buffer_->Delete(key);
-                                              }));
+          future_deletes.push_back(std::async([this, key] { memory_buffer_->Delete(key); }));
         }
         break;
       }
@@ -250,20 +257,17 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
         KeyType event_key(key_value_pairs[index].first);
         NonEmptyString event_value(key_value_pairs[index].second);
         future_stores.push_back(std::async([this, event_key, event_value] {
-                                  memory_buffer_->Store(event_key, event_value);
-                                }));
+          memory_buffer_->Store(event_key, event_value);
+        }));
         break;
       }
       case 2: {
         if (!key_value_pairs.empty()) {
           KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-          future_gets.push_back(std::async([this, event_key] {
-                                              return memory_buffer_->Get(event_key);
-                                          }));
+          future_gets.push_back(
+              std::async([this, event_key] { return memory_buffer_->Get(event_key); }));
         } else {
-          future_gets.push_back(std::async([this, key] {
-                                              return memory_buffer_->Get(key);
-                                          }));
+          future_gets.push_back(std::async([this, key] { return memory_buffer_->Get(key); }));
         }
         break;
       }
@@ -277,7 +281,7 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
     try {
       future_delete.get();
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       std::string msg(e.what());
       LOG(kError) << msg;
     }
@@ -286,14 +290,13 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
   for (auto& future_get : future_gets) {
     try {
       NonEmptyString value(future_get.get());
-      auto it = std::find_if(key_value_pairs.begin(),
-                             key_value_pairs.end(),
-                             [this, &value](const value_type& key_value_pair) {
-                                return key_value_pair.second == value;
-                             });
+      auto it = std::find_if(key_value_pairs.begin(), key_value_pairs.end(),
+                             [this, &value](const value_type & key_value_pair) {
+        return key_value_pair.second == value;
+      });
       EXPECT_NE(key_value_pairs.end(), it);
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       std::string msg(e.what());
       LOG(kError) << msg;
     }

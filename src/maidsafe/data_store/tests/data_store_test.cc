@@ -50,14 +50,12 @@ class DataStoreTest : public ::testing::Test {
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
   typedef typename StoragePolicy::PopFunctor PopFunctor;
 
-  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString>
-  {
+  struct GenerateKeyValuePair : public boost::static_visitor<NonEmptyString> {
     GenerateKeyValuePair() : size_(OneKB) {}
     explicit GenerateKeyValuePair(uint32_t size) : size_(size) {}
 
-    template<typename T>
-    NonEmptyString operator()(T& key)
-    {
+    template <typename T>
+    NonEmptyString operator()(T& key) {
       NonEmptyString value = NonEmptyString(RandomAlphaNumericString(size_));
       key.value = Identity(crypto::Hash<crypto::SHA512>(value));
       return value;
@@ -66,15 +64,12 @@ class DataStoreTest : public ::testing::Test {
     uint32_t size_;
   };
 
-  struct GetIdentity : public boost::static_visitor<Identity>
-  {
-    template<typename T>
-    Identity operator()(T& key)
-    {
+  struct GetIdentity : public boost::static_visitor<Identity> {
+    template <typename T>
+    Identity operator()(T& key) {
       return key.value;
     }
   };
-
 
  protected:
   DataStoreTest()
@@ -82,14 +77,12 @@ class DataStoreTest : public ::testing::Test {
         max_disk_usage_(kDefaultMaxDiskUsage),
         data_store_path_(),
         pop_functor_(),
-        data_store_(new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_,
-                                                 pop_functor_)) {}
+        data_store_(
+            new DataStore<StoragePolicy>(max_memory_usage_, max_disk_usage_, pop_functor_)) {}
 
-  void PopFunction(const KeyType& key,
-                   const NonEmptyString& value,
-                   const std::vector<std::pair<KeyType, NonEmptyString> >& key_value_pairs,
-                   size_t& current_index,
-                   std::mutex& pop_mutex,
+  void PopFunction(const KeyType& key, const NonEmptyString& value,
+                   const std::vector<std::pair<KeyType, NonEmptyString>>& key_value_pairs,
+                   size_t& current_index, std::mutex& pop_mutex,
                    std::condition_variable& pop_cond_var) {
     {
       std::unique_lock<std::mutex> lock(pop_mutex);
@@ -97,7 +90,7 @@ class DataStoreTest : public ::testing::Test {
       NonEmptyString compare_value(key_value_pairs[current_index].second);
       GetIdentity get_identity;
       Identity compare_key_id(boost::apply_visitor(get_identity, compare_key)),
-               key_id(boost::apply_visitor(get_identity, key));
+          key_id(boost::apply_visitor(get_identity, key));
       EXPECT_EQ(compare_key_id, key_id);
       EXPECT_EQ(compare_value, value);
       ++current_index;
@@ -109,23 +102,21 @@ class DataStoreTest : public ::testing::Test {
     boost::system::error_code error_code;
     fs::directory_iterator end;
     try {
-    fs::directory_iterator it(directory);
-    for (; it != end; ++it)
-      fs::remove_all((*it).path(), error_code);
+      fs::directory_iterator it(directory);
+      for (; it != end; ++it)
+        fs::remove_all((*it).path(), error_code);
       if (error_code)
         return false;
     }
-    catch(const std::exception &e) {
+    catch (const std::exception& e) {
       LOG(kError) << e.what();
       return false;
     }
     return true;
   }
 
-  KeyValueContainer PopulateDataStore(size_t num_entries,
-                                      size_t num_memory_entries,
-                                      size_t num_disk_entries,
-                                      maidsafe::test::TestPath test_path,
+  KeyValueContainer PopulateDataStore(size_t num_entries, size_t num_memory_entries,
+                                      size_t num_disk_entries, maidsafe::test::TestPath test_path,
                                       const PopFunctor& pop_functor) {
     boost::system::error_code error_code;
     data_store_path_ = fs::path(*test_path / "data_store");
@@ -144,8 +135,7 @@ class DataStoreTest : public ::testing::Test {
                            static_cast<uint32_t>(OneKB));
 
     data_store_.reset(new DataStore<StoragePolicy>(MemoryUsage(num_memory_entries * OneKB),
-                                                   DiskUsage(num_disk_entries * OneKB),
-                                                   pop_functor,
+                                                   DiskUsage(num_disk_entries * OneKB), pop_functor,
                                                    data_store_path_));
     for (auto key_value : key_value_pairs) {
       EXPECT_NO_THROW(data_store_->Store(key_value.first, key_value.second));
@@ -161,8 +151,7 @@ class DataStoreTest : public ::testing::Test {
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
     // Currently there is 15 types defined, but do the calculation anyway...
-    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
-             type_number;
+    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
     NonEmptyString value;
     for (uint32_t i = 0; i != number; ++i) {
       type_number = RandomUint32() % number_of_types;
@@ -250,28 +239,42 @@ class DataStoreTest : public ::testing::Test {
 
   KeyType GetRandomKey() {
     // Currently 15 types are defined, but...
-    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value,
-             type_number;
+    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
-      case  0: return passport::PublicAnmid::Name();
-      case  1: return passport::PublicAnsmid::Name();
-      case  2: return passport::PublicAntmid::Name();
-      case  3: return passport::PublicAnmaid::Name();
-      case  4: return passport::PublicMaid::Name();
-      case  5: return passport::PublicPmid::Name();
-      case  6: return passport::Mid::Name();
-      case  7: return passport::Smid::Name();
-      case  8: return passport::Tmid::Name();
-      case  9: return passport::PublicAnmpid::Name();
-      case 10: return passport::PublicMpid::Name();
-      case 11: return ImmutableData::Name();
-      case 12: return OwnerDirectory::Name();
-      case 13: return GroupDirectory::Name();
-      case 14: return WorldDirectory::Name();
-      // default:
+      case 0:
+        return passport::PublicAnmid::Name();
+      case 1:
+        return passport::PublicAnsmid::Name();
+      case 2:
+        return passport::PublicAntmid::Name();
+      case 3:
+        return passport::PublicAnmaid::Name();
+      case 4:
+        return passport::PublicMaid::Name();
+      case 5:
+        return passport::PublicPmid::Name();
+      case 6:
+        return passport::Mid::Name();
+      case 7:
+        return passport::Smid::Name();
+      case 8:
+        return passport::Tmid::Name();
+      case 9:
+        return passport::PublicAnmpid::Name();
+      case 10:
+        return passport::PublicMpid::Name();
+      case 11:
+        return ImmutableData::Name();
+      case 12:
+        return OwnerDirectory::Name();
+      case 13:
+        return GroupDirectory::Name();
+      case 14:
+        return WorldDirectory::Name();
+        // default:
         // Throw something!
-      //  ;
+        //  ;
     }
     return KeyType();
   }
@@ -305,14 +308,10 @@ TYPED_TEST_P(DataStoreTest, BEH_Constructor) {
   ASSERT_FALSE(test_path->empty());
   boost::filesystem::path file_path(*test_path / "File");
   ASSERT_TRUE(WriteFile(file_path, " "));
-  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
-                                    DiskUsage(200000),
-                                    this->pop_functor_,
-                                    file_path),
-               std::exception);
-  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999),
-                                    DiskUsage(200000),
-                                    this->pop_functor_,
+  EXPECT_THROW(
+      DataStore<TypeParam>(MemoryUsage(199999), DiskUsage(200000), this->pop_functor_, file_path),
+      std::exception);
+  EXPECT_THROW(DataStore<TypeParam>(MemoryUsage(199999), DiskUsage(200000), this->pop_functor_,
                                     file_path / "base"),
                std::exception);
 
@@ -332,26 +331,25 @@ TYPED_TEST_P(DataStoreTest, BEH_Constructor) {
 TYPED_TEST_P(DataStoreTest, BEH_SetMaxDiskMemoryUsage) {
   EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_ - 1)));
   EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_)));
-  EXPECT_THROW(
-    this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_ + 1)), std::exception);
-  EXPECT_THROW(
-    this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_ - 1)), std::exception);
+  EXPECT_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(this->max_disk_usage_ + 1)),
+               std::exception);
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_ - 1)),
+               std::exception);
   EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_)));
   EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(this->max_disk_usage_ + 1)));
-  EXPECT_THROW(
-    this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))), std::exception);
+  EXPECT_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(-1))),
+               std::exception);
   EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(1))));
-  EXPECT_THROW(
-    this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))), std::exception);
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))),
+               std::exception);
   EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(1))));
   EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(static_cast<uint64_t>(0))));
   EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(static_cast<uint64_t>(0))));
   EXPECT_NO_THROW(
-    this->data_store_->SetMaxDiskUsage(DiskUsage(std::numeric_limits<uint64_t>().max())));
+      this->data_store_->SetMaxDiskUsage(DiskUsage(std::numeric_limits<uint64_t>().max())));
   EXPECT_NO_THROW(
-    this->data_store_->SetMaxMemoryUsage(MemoryUsage(std::numeric_limits<uint64_t>().max())));
-  EXPECT_THROW(
-    this->data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)), std::exception);
+      this->data_store_->SetMaxMemoryUsage(MemoryUsage(std::numeric_limits<uint64_t>().max())));
+  EXPECT_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)), std::exception);
   EXPECT_NO_THROW(this->data_store_->SetMaxMemoryUsage(MemoryUsage(kDefaultMaxMemoryUsage)));
   EXPECT_NO_THROW(this->data_store_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
 }
@@ -363,10 +361,8 @@ TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskStore) {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   fs::path data_store_path(*test_path / "data_store");
   const uintmax_t kMemorySize(1), kDiskSize(2);
-  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
-                                                   DiskUsage(kDiskSize),
-                                                   this->pop_functor_,
-                                                   data_store_path));
+  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
+                                                   this->pop_functor_, data_store_path));
   KeyType key(this->GetRandomKey());
   NonEmptyString small_value = this->GenerateKeyValueData(key, kMemorySize);
   EXPECT_NO_THROW(this->data_store_->Store(key, small_value));
@@ -381,10 +377,8 @@ TYPED_TEST_P(DataStoreTest, BEH_RemoveDiskStore) {
   EXPECT_THROW(this->data_store_->Get(key), std::exception);
   EXPECT_THROW(this->data_store_->Delete(key), std::exception);
 
-  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize),
-                                                   DiskUsage(kDiskSize),
-                                                   this->pop_functor_,
-                                                   data_store_path));
+  this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
+                                                   this->pop_functor_, data_store_path));
   NonEmptyString large_value = this->GenerateKeyValueData(key, kDiskSize);
   EXPECT_NO_THROW(this->data_store_->Store(key, large_value));
   EXPECT_NO_THROW(this->data_store_->Delete(key));
@@ -402,10 +396,10 @@ TYPED_TEST_P(DataStoreTest, BEH_SuccessfulStore) {
   typedef typename TypeParam::KeyType KeyType;
 
   KeyType key1(this->GetRandomKey()), key2(this->GetRandomKey());
-  NonEmptyString value1 = this->GenerateKeyValueData(key1,
-                                               static_cast<uint32_t>(this->max_memory_usage_)),
-                 value2 = this->GenerateKeyValueData(key2,
-                                               static_cast<uint32_t>(this->max_memory_usage_)),
+  NonEmptyString value1 = this->GenerateKeyValueData(
+                     key1, static_cast<uint32_t>(this->max_memory_usage_)),
+                 value2 = this->GenerateKeyValueData(
+                     key2, static_cast<uint32_t>(this->max_memory_usage_)),
                  recovered;
   EXPECT_NO_THROW(this->data_store_->Store(key1, value1));
   EXPECT_NO_THROW(this->data_store_->Store(key2, value2));
@@ -419,8 +413,8 @@ TYPED_TEST_P(DataStoreTest, BEH_UnsuccessfulStore) {
   typedef typename TypeParam::KeyType KeyType;
 
   KeyType key(this->GetRandomKey());
-  NonEmptyString value = this->GenerateKeyValueData(key,
-                                              static_cast<uint32_t>(this->max_disk_usage_) + 1);
+  NonEmptyString value =
+      this->GenerateKeyValueData(key, static_cast<uint32_t>(this->max_disk_usage_) + 1);
   EXPECT_THROW(this->data_store_->Store(key, value), std::exception);
 }
 
@@ -430,17 +424,13 @@ TYPED_TEST_P(DataStoreTest, BEH_DeleteOnDiskStoreOverfill) {
 
   const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  KeyValueContainer key_value_pairs(this->PopulateDataStore(num_entries,
-                                                            num_memory_entries,
-                                                            num_disk_entries,
-                                                            test_path,
-                                                            this->pop_functor_));
+  KeyValueContainer key_value_pairs(this->PopulateDataStore(
+      num_entries, num_memory_entries, num_disk_entries, test_path, this->pop_functor_));
   KeyType key(this->GetRandomKey());
   NonEmptyString value = this->GenerateKeyValueData(key, 2 * OneKB), recovered;
   KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-  auto async = std::async(std::launch::async, [this, key, value] {
-                                                  this->data_store_->Store(key, value);
-                                              });
+  auto async =
+      std::async(std::launch::async, [this, key, value] { this->data_store_->Store(key, value); });
   EXPECT_THROW(recovered = this->data_store_->Get(key), std::exception);
   EXPECT_NO_THROW(this->data_store_->Delete(first_key));
   EXPECT_NO_THROW(this->data_store_->Delete(second_key));
@@ -460,22 +450,14 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   std::mutex pop_mutex;
   std::condition_variable pop_cond_var;
   KeyValueContainer key_value_pairs;
-  PopFunctor pop_functor([this, &key_value_pairs, &current_index, &pop_mutex,
-                    &pop_cond_var](const KeyType& key, const NonEmptyString& value) {
-                        this->PopFunction(key,
-                                          value,
-                                          key_value_pairs,
-                                          current_index,
-                                          pop_mutex,
-                                          pop_cond_var);
-      });
+  PopFunctor pop_functor([this, &key_value_pairs, &current_index, &pop_mutex, &pop_cond_var](
+      const KeyType & key, const NonEmptyString & value) {
+    this->PopFunction(key, value, key_value_pairs, current_index, pop_mutex, pop_cond_var);
+  });
   const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  key_value_pairs = this->PopulateDataStore(num_entries,
-                                            num_memory_entries,
-                                            num_disk_entries,
-                                            test_path,
-                                            pop_functor);
+  key_value_pairs = this->PopulateDataStore(num_entries, num_memory_entries, num_disk_entries,
+                                            test_path, pop_functor);
   EXPECT_EQ(0, current_index);
 
   KeyType key(this->GetRandomKey());
@@ -486,9 +468,8 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_EQ(recovered, value);
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1), [&]()->bool {
-                                        return current_index == 1;
-                                      }));
+    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(1),
+                                                    [&]()->bool { return current_index == 1; }));
     EXPECT_TRUE(result);
   }
   EXPECT_EQ(1, current_index);
@@ -498,9 +479,8 @@ TYPED_TEST_P(DataStoreTest, BEH_PopOnDiskStoreOverfill) {
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2), [&]()->bool {
-                                        return current_index == 3;
-                                      }));
+    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
+                                                    [&]()->bool { return current_index == 3; }));
     EXPECT_TRUE(result);
   }
   EXPECT_EQ(3, current_index);
@@ -517,11 +497,8 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncDeleteOnDiskStoreOverfill) {
   KeyValueContainer old_key_value_pairs, new_key_value_pairs;
   const size_t num_entries(6), num_memory_entries(0), num_disk_entries(6);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  old_key_value_pairs = this->PopulateDataStore(num_entries,
-                                                num_memory_entries,
-                                                num_disk_entries,
-                                                test_path,
-                                                this->pop_functor_);
+  old_key_value_pairs = this->PopulateDataStore(num_entries, num_memory_entries, num_disk_entries,
+                                                test_path, this->pop_functor_);
   this->AddRandomKeyValuePairs(new_key_value_pairs, num_entries, OneKB);
 
   NonEmptyString value, recovered;
@@ -530,10 +507,8 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncDeleteOnDiskStoreOverfill) {
   for (auto key_value : new_key_value_pairs) {
     value = key_value.second;
     key = key_value.first;
-    async_stores.push_back(std::async(std::launch::async,
-                                      [this, key, value] {
-                                          this->data_store_->Store(key, value);
-                                      }));
+    async_stores.push_back(std::async(
+        std::launch::async, [this, key, value] { this->data_store_->Store(key, value); }));
   }
   // Check the new Store attempts all block pending some Deletes
   for (auto& async_store : async_stores) {
@@ -543,10 +518,8 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncDeleteOnDiskStoreOverfill) {
 
   std::vector<std::future<NonEmptyString>> async_gets;
   for (auto key_value : new_key_value_pairs) {
-    async_gets.push_back(std::async(std::launch::async,
-                                    [this, key_value] {
-                                        return this->data_store_->Get(key_value.first);
-                                    }));
+    async_gets.push_back(std::async(
+        std::launch::async, [this, key_value] { return this->data_store_->Get(key_value.first); }));
   }
   // Check Get attempts for the new Store values all block pending the Store attempts completing
   for (auto& async_get : async_gets) {
@@ -580,43 +553,31 @@ TYPED_TEST_P(DataStoreTest, BEH_AsyncPopOnDiskStoreOverfill) {
   std::mutex pop_mutex;
   std::condition_variable pop_cond_var;
   KeyValueContainer old_key_value_pairs, new_key_value_pairs;
-  PopFunctor pop_functor([this, &old_key_value_pairs, &current_index, &pop_mutex,
-                    &pop_cond_var](const KeyType& key, const NonEmptyString& value) {
-                        this->PopFunction(key,
-                                          value,
-                                          old_key_value_pairs,
-                                          current_index,
-                                          pop_mutex,
-                                          pop_cond_var);
-      });
+  PopFunctor pop_functor([this, &old_key_value_pairs, &current_index, &pop_mutex, &pop_cond_var](
+      const KeyType & key, const NonEmptyString & value) {
+    this->PopFunction(key, value, old_key_value_pairs, current_index, pop_mutex, pop_cond_var);
+  });
   const size_t num_entries(6), num_memory_entries(1), num_disk_entries(6);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
-  old_key_value_pairs = this->PopulateDataStore(num_entries,
-                                                num_memory_entries,
-                                                num_disk_entries,
-                                                test_path,
-                                                pop_functor);
+  old_key_value_pairs = this->PopulateDataStore(num_entries, num_memory_entries, num_disk_entries,
+                                                test_path, pop_functor);
   EXPECT_EQ(0, current_index);
 
   this->AddRandomKeyValuePairs(new_key_value_pairs, num_entries, OneKB);
 
   NonEmptyString value, recovered;
   KeyType key;
-  std::vector<std::future<void> > async_operations;
+  std::vector<std::future<void>> async_operations;
   for (auto key_value : new_key_value_pairs) {
     value = key_value.second;
     key = key_value.first;
-    async_operations.push_back(std::async(std::launch::async,
-                                          [this, key, value] {
-                                              this->data_store_->Store(key, value);
-                                          }));
+    async_operations.push_back(std::async(
+        std::launch::async, [this, key, value] { this->data_store_->Store(key, value); }));
   }
   {
     std::unique_lock<std::mutex> pop_lock(pop_mutex);
-    bool result(pop_cond_var.wait_for(pop_lock, std::chrono::seconds(2),
-                                      [&]()->bool {
-                                        return current_index == num_entries;
-                                      }));
+    bool result(pop_cond_var.wait_for(
+        pop_lock, std::chrono::seconds(2), [&]()->bool { return current_index == num_entries; }));
     EXPECT_TRUE(result);
   }
   for (auto key_value : new_key_value_pairs) {
@@ -633,19 +594,18 @@ TYPED_TEST_P(DataStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
 
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   this->data_store_path_ = fs::path(*test_path / "data_store");
-  PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-                            GetIdentity get_identity;
-                            Identity key_id(boost::apply_visitor(get_identity, key));
-                            LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string())
-                                       << "with value " << HexSubstr(value.string());
-                        });
+  PopFunctor pop_functor([this](const KeyType & key, const NonEmptyString & value) {
+    GetIdentity get_identity;
+    Identity key_id(boost::apply_visitor(get_identity, key));
+    LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string()) << "with value "
+               << HexSubstr(value.string());
+  });
   this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
-                                                   DiskUsage(kDefaultMaxDiskUsage),
-                                                   pop_functor,
+                                                   DiskUsage(kDefaultMaxDiskUsage), pop_functor,
                                                    this->data_store_path_));
   KeyType key(this->GetRandomKey());
-  NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 30) + 1),
-                 recovered, last_value;
+  NonEmptyString value = this->GenerateKeyValueData(key, (RandomUint32() % 30) + 1), recovered,
+                 last_value;
   EXPECT_NO_THROW(this->data_store_->Store(key, value));
   EXPECT_NO_THROW(recovered = this->data_store_->Get(key));
   EXPECT_EQ(recovered, value);
@@ -671,15 +631,14 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
 
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   this->data_store_path_ = fs::path(*test_path / "data_store");
-  PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString& value) {
-                            GetIdentity get_identity;
-                            Identity key_id(boost::apply_visitor(get_identity, key));
-                            LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string())
-                                       << "with value " << HexSubstr(value.string());
-                        });
+  PopFunctor pop_functor([this](const KeyType & key, const NonEmptyString & value) {
+    GetIdentity get_identity;
+    Identity key_id(boost::apply_visitor(get_identity, key));
+    LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string()) << "with value "
+               << HexSubstr(value.string());
+  });
   this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(kDefaultMaxMemoryUsage),
-                                                   DiskUsage(kDefaultMaxDiskUsage),
-                                                   pop_functor,
+                                                   DiskUsage(kDefaultMaxDiskUsage), pop_functor,
                                                    this->data_store_path_));
   KeyValueContainer key_value_pairs;
   uint32_t events(RandomUint32() % 500);
@@ -696,13 +655,10 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
       case 0: {
         if (!key_value_pairs.empty()) {
           KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-          future_deletes.push_back(std::async([this, event_key] {
-                                                this->data_store_->Delete(event_key);
-                                             }));
+          future_deletes.push_back(
+              std::async([this, event_key] { this->data_store_->Delete(event_key); }));
         } else {
-          future_deletes.push_back(std::async([this, key] {
-                                                  this->data_store_->Delete(key);
-                                              }));
+          future_deletes.push_back(std::async([this, key] { this->data_store_->Delete(key); }));
         }
         break;
       }
@@ -712,20 +668,17 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
         KeyType event_key(key_value_pairs[index].first);
         NonEmptyString event_value(key_value_pairs[index].second);
         future_stores.push_back(std::async([this, event_key, event_value] {
-                                  this->data_store_->Store(event_key, event_value);
-                                }));
+          this->data_store_->Store(event_key, event_value);
+        }));
         break;
       }
       case 2: {
         if (!key_value_pairs.empty()) {
           KeyType event_key(key_value_pairs[RandomUint32() % key_value_pairs.size()].first);
-          future_gets.push_back(std::async([this, event_key] {
-                                              return this->data_store_->Get(event_key);
-                                          }));
+          future_gets.push_back(
+              std::async([this, event_key] { return this->data_store_->Get(event_key); }));
         } else {
-          future_gets.push_back(std::async([this, key] {
-                                              return this->data_store_->Get(key);
-                                          }));
+          future_gets.push_back(std::async([this, key] { return this->data_store_->Get(key); }));
         }
         break;
       }
@@ -739,7 +692,7 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
     try {
       future_delete.get();
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       std::string msg(e.what());
       LOG(kError) << msg;
     }
@@ -748,14 +701,13 @@ TYPED_TEST_P(DataStoreTest, BEH_RandomAsync) {
   for (auto& future_get : future_gets) {
     try {
       NonEmptyString value(future_get.get());
-      auto it = std::find_if(key_value_pairs.begin(),
-                             key_value_pairs.end(),
-                             [this, &value](const value_type& key_value_pair) {
-                                return key_value_pair.second == value;
-                             });
+      auto it = std::find_if(key_value_pairs.begin(), key_value_pairs.end(),
+                             [this, &value](const value_type & key_value_pair) {
+        return key_value_pair.second == value;
+      });
       EXPECT_NE(key_value_pairs.end(), it);
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       std::string msg(e.what());
       LOG(kError) << msg;
     }
@@ -783,10 +735,9 @@ TYPED_TEST_P(DataStoreTest, BEH_Store) {
     fs::path data_store_path(*test_path / "data_store");
     this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(values[i].first),
                                                      DiskUsage(values[i].second),
-                                                     this->pop_functor_,
-                                                     data_store_path));
+                                                     this->pop_functor_, data_store_path));
     uint32_t disk_usage(values[i].second), memory_usage(values[i].first),
-             total_usage(disk_usage + memory_usage);
+        total_usage(disk_usage + memory_usage);
     while (total_usage != 0) {
       KeyType key(this->GetRandomKey());
       NonEmptyString value = this->GenerateKeyValueData(key, memory_usage), recovered;
@@ -824,10 +775,9 @@ TYPED_TEST_P(DataStoreTest, BEH_Delete) {
     fs::path data_store_path(*test_path / "data_store");
     this->data_store_.reset(new DataStore<TypeParam>(MemoryUsage(values[i].first),
                                                      DiskUsage(values[i].second),
-                                                     this->pop_functor_,
-                                                     data_store_path));
+                                                     this->pop_functor_, data_store_path));
     uint32_t disk_usage(values[i].second), memory_usage(values[i].first),
-             total_usage(disk_usage + memory_usage);
+        total_usage(disk_usage + memory_usage);
     std::map<KeyType, NonEmptyString> key_value_pairs;
     while (total_usage != 0) {
       KeyType key(this->GetRandomKey());
@@ -860,20 +810,11 @@ TYPED_TEST_P(DataStoreTest, BEH_Delete) {
   }
 }
 
-REGISTER_TYPED_TEST_CASE_P(DataStoreTest,
-                           BEH_Constructor,
-                           BEH_SetMaxDiskMemoryUsage,
-                           BEH_RemoveDiskStore,
-                           BEH_SuccessfulStore,
-                           BEH_UnsuccessfulStore,
-                           BEH_DeleteOnDiskStoreOverfill,
-                           BEH_PopOnDiskStoreOverfill,
-                           BEH_AsyncDeleteOnDiskStoreOverfill,
-                           BEH_AsyncPopOnDiskStoreOverfill,
-                           BEH_RepeatedlyStoreUsingSameKey,
-                           BEH_RandomAsync,
-                           BEH_Store,
-                           BEH_Delete);
+REGISTER_TYPED_TEST_CASE_P(DataStoreTest, BEH_Constructor, BEH_SetMaxDiskMemoryUsage,
+                           BEH_RemoveDiskStore, BEH_SuccessfulStore, BEH_UnsuccessfulStore,
+                           BEH_DeleteOnDiskStoreOverfill, BEH_PopOnDiskStoreOverfill,
+                           BEH_AsyncDeleteOnDiskStoreOverfill, BEH_AsyncPopOnDiskStoreOverfill,
+                           BEH_RepeatedlyStoreUsingSameKey, BEH_RandomAsync, BEH_Store, BEH_Delete);
 
 typedef testing::Types<DataBuffer<DataNameVariant>> StoragePolicies;
 INSTANTIATE_TYPED_TEST_CASE_P(Storage, DataStoreTest, StoragePolicies);

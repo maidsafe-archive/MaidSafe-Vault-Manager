@@ -17,14 +17,14 @@
     use of the MaidSafe Software.                                                                 */
 
 #if defined MAIDSAFE_WIN32
-#  include <windows.h>
+#include <windows.h>
 #else
-#  include <unistd.h>
-#  if defined MAIDSAFE_LINUX
-#    include <termio.h>
-#  elif defined MAIDSAFE_APPLE
-#    include <termios.h>
-#  endif
+#include <unistd.h>
+#if defined MAIDSAFE_LINUX
+#include <termio.h>
+#elif defined MAIDSAFE_APPLE
+#include <termios.h>
+#endif
 #endif
 
 #include <cstdint>
@@ -50,7 +50,6 @@ static bool group_signed_in;
 template <class T>
 T Get(std::string display_message, bool echo_input = true);
 
-
 void Echo(bool enable = true) {
 #ifdef WIN32
   HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
@@ -71,7 +70,7 @@ void Echo(bool enable = true) {
   else
     tty.c_lflag |= ECHO;
 
-  (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
 }
 
@@ -81,11 +80,11 @@ std::string GetPasswd(bool repeat = true) {
     passwd = Get<std::string>("please Enter passwd \n", false);
     if (repeat)
       passwd2 = Get<std::string>("please Re-Enter same passwd \n", false);
-  }  while ((passwd != passwd2) && (repeat));
+  } while ((passwd != passwd2) && (repeat));
   return maidsafe::crypto::Hash<maidsafe::crypto::SHA512>(passwd).string();
 }
 
-std::vector<std::string> TokeniseLine(std::string line)  {
+std::vector<std::string> TokeniseLine(std::string line) {
   std::vector<std::string> args;
   line = std::string("--") + line;
   boost::char_separator<char> sep(" ");
@@ -135,35 +134,35 @@ void SavePublicKey() {
 
 void LoadPrivateKey() {
   std::string filename = Get<std::string>("please enter filename to load private key from\n");
-    fs::path file(filename);
-    std::string priv_key;
-    if (!maidsafe::ReadFile(file, &priv_key)) {
-      std::cout << "error reading file\n";
-      return;
-    }
-    Keys.private_key = maidsafe::asymm::DecodeKey(maidsafe::asymm::EncodedPrivateKey(priv_key));
+  fs::path file(filename);
+  std::string priv_key;
+  if (!maidsafe::ReadFile(file, &priv_key)) {
+    std::cout << "error reading file\n";
+    return;
+  }
+  Keys.private_key = maidsafe::asymm::DecodeKey(maidsafe::asymm::EncodedPrivateKey(priv_key));
 
-    if (maidsafe::asymm::ValidateKey(Keys.private_key))
-      std::cout << "private key loaded and valid \n";
-    else
-      std::cout << "private key invalid !! \n";
+  if (maidsafe::asymm::ValidateKey(Keys.private_key))
+    std::cout << "private key loaded and valid \n";
+  else
+    std::cout << "private key invalid !! \n";
 }
 
 void LoadPublicKey() {
   std::string filename = Get<std::string>("please enter filename to load public key from\n");
-    fs::path file(filename);
-    std::string pub_key;
-    if (!maidsafe::ReadFile(file, &pub_key)) {
-      std::cout << "error reading file\n";
-      return;
-    }
-    std::cout << maidsafe::HexEncode(pub_key) << "\n";
-    Keys.public_key = maidsafe::asymm::DecodeKey(maidsafe::asymm::EncodedPublicKey(pub_key));
+  fs::path file(filename);
+  std::string pub_key;
+  if (!maidsafe::ReadFile(file, &pub_key)) {
+    std::cout << "error reading file\n";
+    return;
+  }
+  std::cout << maidsafe::HexEncode(pub_key) << "\n";
+  Keys.public_key = maidsafe::asymm::DecodeKey(maidsafe::asymm::EncodedPublicKey(pub_key));
 
-    if (maidsafe::asymm::ValidateKey(Keys.public_key))
-      std::cout << "public key loaded and valid \n";
-    else
-      std::cout << "public key invalid !! \n";
+  if (maidsafe::asymm::ValidateKey(Keys.public_key))
+    std::cout << "public key loaded and valid \n";
+  else
+    std::cout << "public key invalid !! \n";
 }
 
 void SignFile() {
@@ -182,8 +181,9 @@ void SignFile() {
 }
 
 void ValidateSignature() {
-  std::string filename = Get<std::string>("please enter filename to validate \n We will read the "
-                                          "filename.sig as signature file\n");
+  std::string filename = Get<std::string>(
+      "please enter filename to validate \n We will read the "
+      "filename.sig as signature file\n");
   fs::path file(filename);
   fs::path sigfile(filename + ".sig");
 
@@ -196,8 +196,7 @@ void ValidateSignature() {
     std::cout << "public key invalid, aborting!!\n";
   }
 
-  if (maidsafe::asymm::CheckFileSignature(file,
-                                          maidsafe::asymm::Signature(signature),
+  if (maidsafe::asymm::CheckFileSignature(file, maidsafe::asymm::Signature(signature),
                                           Keys.public_key)) {
     std::cout << "Signature valid\n";
   } else {
@@ -210,8 +209,8 @@ void EncryptFile() {
   fs::path file(filename);
   std::string passwd = GetPasswd();
   maidsafe::crypto::AES256Key key(passwd.substr(0, maidsafe::crypto::AES256_KeySize));
-  maidsafe::crypto::AES256InitialisationVector iv(passwd.substr(maidsafe::crypto::AES256_KeySize,
-                                                                maidsafe::crypto::AES256_IVSize));
+  maidsafe::crypto::AES256InitialisationVector iv(
+      passwd.substr(maidsafe::crypto::AES256_KeySize, maidsafe::crypto::AES256_IVSize));
 
   std::string data;
   if (!maidsafe::ReadFile(file, &data)) {
@@ -231,8 +230,8 @@ void DecryptFile() {
   fs::path file(filename);
   std::string passwd = GetPasswd();
   maidsafe::crypto::AES256Key key(passwd.substr(0, maidsafe::crypto::AES256_KeySize));
-  maidsafe::crypto::AES256InitialisationVector iv(passwd.substr(maidsafe::crypto::AES256_KeySize,
-                                                                maidsafe::crypto::AES256_IVSize));
+  maidsafe::crypto::AES256InitialisationVector iv(
+      passwd.substr(maidsafe::crypto::AES256_KeySize, maidsafe::crypto::AES256_IVSize));
 
   std::string data;
   if (!maidsafe::ReadFile(file, &data)) {
@@ -284,11 +283,11 @@ void CreateKeyGroup() {
     } else {
       maidsafe::crypto::AES256Key key(passwd.substr(0, maidsafe::crypto::AES256_KeySize));
       maidsafe::crypto::AES256InitialisationVector iv(
-          passwd.substr(maidsafe::crypto::AES256_KeySize,
-          maidsafe::crypto::AES256_IVSize));
+          passwd.substr(maidsafe::crypto::AES256_KeySize, maidsafe::crypto::AES256_IVSize));
       fs::path file(location + name + ".keyfile");
-      if (!maidsafe::WriteFile(file, maidsafe::crypto::SymmEncrypt(
-                                   maidsafe::crypto::PlainText(chunks.at(i)), key, iv).string())) {
+      if (!maidsafe::WriteFile(
+               file, maidsafe::crypto::SymmEncrypt(maidsafe::crypto::PlainText(chunks.at(i)), key,
+                                                   iv).string())) {
         std::cout << "error writing file\n";
         --i;
         std::cout << "Error, are you sure you used a unique name, retry !\n";
@@ -312,7 +311,7 @@ void GroupSignIn() {
   std::string priv_key;
   std::string location = Get<std::string>("please enter location of files");
 
-  for (int i =0; i < min; ++i) {
+  for (int i = 0; i < min; ++i) {
     enc_data.clear();
     std::string name = Get<std::string>("please Enter name \n");
     std::string passwd = GetPasswd(false);
@@ -320,16 +319,15 @@ void GroupSignIn() {
 
     maidsafe::crypto::AES256Key key(passwd.substr(0, maidsafe::crypto::AES256_KeySize));
     maidsafe::crypto::AES256InitialisationVector iv(
-        passwd.substr(maidsafe::crypto::AES256_KeySize,
-        maidsafe::crypto::AES256_IVSize));
+        passwd.substr(maidsafe::crypto::AES256_KeySize, maidsafe::crypto::AES256_IVSize));
     fs::path file(location + name + ".keyfile");
     if (!maidsafe::ReadFile(file, &enc_data)) {
       std::cout << "error reading file\n";
       --i;
       std::cout << "Error, are you sure you used a correct name/password, retry !\n";
     } else {
-      chunks.push_back(maidsafe::crypto::SymmDecrypt(
-          maidsafe::crypto::CipherText(enc_data), key, iv).string());
+      chunks.push_back(
+          maidsafe::crypto::SymmDecrypt(maidsafe::crypto::CipherText(enc_data), key, iv).string());
       enc_data.clear();
     }
   }
@@ -344,17 +342,14 @@ void GroupSignIn() {
   }
 }
 
-
-void Exit() {
-  exit(0);
-}
+void Exit() { exit(0); }
 
 void Help() {
   std::cout << "\t\tMaidSafe Encryption Tool \n"
             << "_________________________________________________________________\n"
             << "1:  CreateKeys   \t \t Creates an RSA keypair (2048)\t |\n";
-            if (!group_signed_in)
-  std::cout << "2:  SavePrivateKey \t\t Stores private key to file  \t |\n";
+  if (!group_signed_in)
+    std::cout << "2:  SavePrivateKey \t\t Stores private key to file  \t |\n";
   std::cout << "3:  SavePublicKey \t\t Stores public key to file    \t |\n"
             << "4:  LoadPrivateKey \t\t Retrieve private key from file\t |\n"
             << "5:  LoadPublicKey \t\t Retrieve public key from file \t |\n"
@@ -370,52 +365,52 @@ void Help() {
 
 void Process(int command) {
   switch (command) {
-  case 0:
-    Exit();
-    break;
-  case 1:
-    CreateKeys();
-    break;
-  case 2:
-    SavePrivateKey();
-    break;
-  case 3:
-    SavePublicKey();
-    break;
-  case 4:
-    LoadPrivateKey();
-    break;
-  case 5:
-    LoadPublicKey();
-    break;
-  case 6:
-    CreateKeyGroup();
-    break;
-  case 7:
-    GroupSignIn();
-    break;
-  case 8:
-    SignFile();
-    break;
-  case 9:
-    ValidateSignature();
-    break;
-  case 10:
-    EncryptFile();
-    break;
-  case 11:
-    DecryptFile();
-    break;
-  default :
-    std::cout << "unknown option \n";
-    std::cout << prompt << std::flush;
-    Help();
+    case 0:
+      Exit();
+      break;
+    case 1:
+      CreateKeys();
+      break;
+    case 2:
+      SavePrivateKey();
+      break;
+    case 3:
+      SavePublicKey();
+      break;
+    case 4:
+      LoadPrivateKey();
+      break;
+    case 5:
+      LoadPublicKey();
+      break;
+    case 6:
+      CreateKeyGroup();
+      break;
+    case 7:
+      GroupSignIn();
+      break;
+    case 8:
+      SignFile();
+      break;
+    case 9:
+      ValidateSignature();
+      break;
+    case 10:
+      EncryptFile();
+      break;
+    case 11:
+      DecryptFile();
+      break;
+    default:
+      std::cout << "unknown option \n";
+      std::cout << prompt << std::flush;
+      Help();
   }
 }
 
 #if defined MAIDSAFE_WIN32
-#  pragma warning(push)
-#  pragma warning(disable: 4701)
+#pragma warning(push)
+#pragma warning(disable : 4701)
 #endif
 template <class T>
 T Get(std::string display_message, bool echo_input) {
@@ -438,15 +433,15 @@ T Get(std::string display_message, bool echo_input) {
   return command;
 }
 #if defined MAIDSAFE_WIN32
-#  pragma warning(pop)
+#pragma warning(pop)
 #endif
 
 int main() {
   for (;;) {
-  Echo(true);
+    Echo(true);
     std::cout << "_________________________________________________________________\n";
     Help();
     Process(Get<int>("", true));
-    std::cout <<"_________________________________________________________________\n";
+    std::cout << "_________________________________________________________________\n";
   }
 }

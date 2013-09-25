@@ -36,43 +36,47 @@
 #include "maidsafe/data_types/group_directory.h"
 #include "maidsafe/data_types/world_directory.h"
 
-
 namespace maidsafe {
 
-typedef boost::variant<passport::PublicAnmid::Name,
-                       passport::PublicAnsmid::Name,
-                       passport::PublicAntmid::Name,
-                       passport::PublicAnmaid::Name,
-                       passport::PublicMaid::Name,
-                       passport::PublicPmid::Name,
-                       passport::Mid::Name,
-                       passport::Smid::Name,
-                       passport::Tmid::Name,
-                       passport::PublicAnmpid::Name,
-                       passport::PublicMpid::Name,
-                       ImmutableData::Name,
-                       OwnerDirectory::Name,
-                       GroupDirectory::Name,
-                       WorldDirectory::Name> DataNameVariant;
-
+typedef boost::variant<passport::PublicAnmid::Name, passport::PublicAnsmid::Name,
+                       passport::PublicAntmid::Name, passport::PublicAnmaid::Name,
+                       passport::PublicMaid::Name, passport::PublicPmid::Name, passport::Mid::Name,
+                       passport::Smid::Name, passport::Tmid::Name, passport::PublicAnmpid::Name,
+                       passport::PublicMpid::Name, ImmutableData::Name, OwnerDirectory::Name,
+                       GroupDirectory::Name, WorldDirectory::Name> DataNameVariant;
 
 inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name) {
   switch (type) {
-    case DataTagValue::kAnmidValue: return passport::PublicAnmid::Name(name);
-    case DataTagValue::kAnsmidValue: return passport::PublicAnsmid::Name(name);
-    case DataTagValue::kAntmidValue: return passport::PublicAntmid::Name(name);
-    case DataTagValue::kAnmaidValue: return passport::PublicAnmaid::Name(name);
-    case DataTagValue::kMaidValue: return passport::PublicMaid::Name(name);
-    case DataTagValue::kPmidValue: return passport::PublicPmid::Name(name);
-    case DataTagValue::kMidValue: return passport::Mid::Name(name);
-    case DataTagValue::kSmidValue: return passport::Smid::Name(name);
-    case DataTagValue::kTmidValue: return passport::Tmid::Name(name);
-    case DataTagValue::kAnmpidValue: return passport::PublicAnmpid::Name(name);
-    case DataTagValue::kMpidValue: return passport::PublicMpid::Name(name);
-    case DataTagValue::kImmutableDataValue: return ImmutableData::Name(name);
-    case DataTagValue::kOwnerDirectoryValue: return OwnerDirectory::Name(name);
-    case DataTagValue::kGroupDirectoryValue: return GroupDirectory::Name(name);
-    case DataTagValue::kWorldDirectoryValue: return WorldDirectory::Name(name);
+    case DataTagValue::kAnmidValue:
+      return passport::PublicAnmid::Name(name);
+    case DataTagValue::kAnsmidValue:
+      return passport::PublicAnsmid::Name(name);
+    case DataTagValue::kAntmidValue:
+      return passport::PublicAntmid::Name(name);
+    case DataTagValue::kAnmaidValue:
+      return passport::PublicAnmaid::Name(name);
+    case DataTagValue::kMaidValue:
+      return passport::PublicMaid::Name(name);
+    case DataTagValue::kPmidValue:
+      return passport::PublicPmid::Name(name);
+    case DataTagValue::kMidValue:
+      return passport::Mid::Name(name);
+    case DataTagValue::kSmidValue:
+      return passport::Smid::Name(name);
+    case DataTagValue::kTmidValue:
+      return passport::Tmid::Name(name);
+    case DataTagValue::kAnmpidValue:
+      return passport::PublicAnmpid::Name(name);
+    case DataTagValue::kMpidValue:
+      return passport::PublicMpid::Name(name);
+    case DataTagValue::kImmutableDataValue:
+      return ImmutableData::Name(name);
+    case DataTagValue::kOwnerDirectoryValue:
+      return OwnerDirectory::Name(name);
+    case DataTagValue::kGroupDirectoryValue:
+      return GroupDirectory::Name(name);
+    case DataTagValue::kWorldDirectoryValue:
+      return WorldDirectory::Name(name);
     default: {
       LOG(kError) << "Unhandled data type";
       ThrowError(CommonErrors::invalid_parameter);
@@ -82,14 +86,14 @@ inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& nam
 }
 
 struct GetTagValueVisitor : public boost::static_visitor<DataTagValue> {
-  template<typename NameType>
+  template <typename NameType>
   result_type operator()(const NameType&) const {
     return NameType::data_type::Tag::kValue;
   }
 };
 
 struct GetIdentityVisitor : public boost::static_visitor<Identity> {
-  template<typename NameType>
+  template <typename NameType>
   result_type operator()(const NameType& name) const {
     return name.value;
   }
@@ -97,7 +101,7 @@ struct GetIdentityVisitor : public boost::static_visitor<Identity> {
 
 struct GetTagValueAndIdentityVisitor
     : public boost::static_visitor<std::pair<DataTagValue, Identity>> {
-  template<typename NameType>
+  template <typename NameType>
   result_type operator()(const NameType& name) const {
     return std::make_pair(NameType::data_type::Tag::kValue, name.value);
   }

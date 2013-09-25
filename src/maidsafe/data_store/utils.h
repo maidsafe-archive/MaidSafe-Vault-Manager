@@ -23,7 +23,6 @@
 
 #include "maidsafe/data_types/data_name_variant.h"
 
-
 namespace maidsafe {
 
 namespace data_store {

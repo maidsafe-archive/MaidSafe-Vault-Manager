@@ -37,7 +37,6 @@ class MemoryBufferTest;
 
 }  // namespace test
 
-
 class MemoryBuffer {
  public:
   typedef DataNameVariant KeyType;
@@ -63,6 +62,5 @@ class MemoryBuffer {
 
 }  // namespace data_store
 }  // namespace maidsafe
-
 
 #endif  // MAIDSAFE_DATA_STORE_MEMORY_BUFFER_H_

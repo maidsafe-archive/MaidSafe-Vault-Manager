@@ -34,7 +34,6 @@
 
 #include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
-
 namespace fs = boost::filesystem;
 
 bool g_running(true), g_out_of_date(false);
@@ -50,15 +49,14 @@ bool ConfirmChoice(bool exiting) {
   return input == "y" || input == "Y";
 }
 
-
 // Host class
 template <int command_index, typename MessagePolicy, typename InputPolicy, typename HandlePolicy>
 class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy {
  public:
-  enum { index = command_index };
-  static void PrintCommandPreamble() {
-    MessagePolicy::PrintCommandPreamble(command_index);
-  }
+  enum {
+    index = command_index
+  };
+  static void PrintCommandPreamble() { MessagePolicy::PrintCommandPreamble(command_index); }
   void Execute() const {
     MessagePolicy::PrintMessage();
     typename InputPolicy::InputType input;
@@ -72,7 +70,6 @@ class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy 
   }
 };
 
-
 // Message Policies
 template <bool loading_file>
 class MessagePolicyGetPath {
@@ -83,9 +80,7 @@ class MessagePolicyGetPath {
                          << (loading_file ? " to load an existing" : " to save to a")
                          << " bootstrap file\n";
   }
-  void PrintMessage() const {
-    TLOG(kDefaultColour) << "Enter path to bootstrap file >> ";
-  }
+  void PrintMessage() const { TLOG(kDefaultColour) << "Enter path to bootstrap file >> "; }
   void PrintErrorMessage(const std::string& error_info) const {
     if (!error_info.empty())
       TLOG(kRed) << '\n' << error_info << "\n\n";
@@ -161,7 +156,6 @@ class MessagePolicyExit {
   void PrintErrorMessage(const std::string&) const {}
 };
 
-
 // Input Policies
 class InputPolicyNull {
  protected:
@@ -186,8 +180,8 @@ class InputPolicyGetPath {
       return false;
     }
 #ifdef MAIDSAFE_WIN32
-#  pragma warning(push)
-#  pragma warning(disable: 4127)
+#pragma warning(push)
+#pragma warning(disable : 4127)
 #endif
     if (loading_file) {
       if (!fs::exists(bootstrap_path, error_code)) {
@@ -200,7 +194,7 @@ class InputPolicyGetPath {
       }
     }
 #ifdef MAIDSAFE_WIN32
-#  pragma warning(pop)
+#pragma warning(pop)
 #endif
     return true;
   }
@@ -215,7 +209,7 @@ class InputPolicyGetEndpoint {
     std::string entered_endpoint;
     std::getline(std::cin, entered_endpoint);
 
-    auto fail([&error_info, entered_endpoint](const std::string& error_finish)->bool {
+    auto fail([&error_info, entered_endpoint](const std::string & error_finish)->bool {
       error_info = "\"" + entered_endpoint + "\" is not a valid endpoint (" + error_finish;
       return false;
     });
@@ -240,8 +234,7 @@ class InputPolicyGetEndpoint {
  private:
   bool SplitInput(const std::string& entered_endpoint,
                   const std::function<bool(const std::string&)> fail_functor,
-                  std::string& entered_address,
-                  std::string& entered_port) const {
+                  std::string& entered_address, std::string& entered_port) const {
     if (entered_endpoint.size() < 9)
       return fail_functor("string too small).");
 
@@ -255,15 +248,14 @@ class InputPolicyGetEndpoint {
   }
 
   bool GetPort(const std::string& entered_port,
-               const std::function<bool(const std::string&)> fail_functor,
-               uint16_t& port) const {
+               const std::function<bool(const std::string&)> fail_functor, uint16_t& port) const {
     try {
       int port_as_int = std::stoi(entered_port);
       if (port_as_int < 1025 || port_as_int > std::numeric_limits<uint16_t>::max())
         return fail_functor("invalid port " + entered_port + ").");
       port = static_cast<uint16_t>(port_as_int);
     }
-    catch(const std::exception&) {
+    catch (const std::exception&) {
       return fail_functor("invalid port " + entered_port + ").");
     }
     return true;
@@ -278,7 +270,6 @@ class InputPolicyGetEndpoint {
     return true;
   }
 };
-
 
 // Handle Policies
 class HandlePolicyLoadBootstrapFile {
@@ -310,7 +301,7 @@ class HandlePolicyLoadBootstrapFile {
       }
       g_out_of_date = false;
     }
-    catch(const std::exception& e) {
+    catch (const std::exception& e) {
       TLOG(kRed) << "\nException while loading " << bootstrap_file << ": " << e.what() << "\n\n";
     }
     TLOG(kGreen) << "\nLoaded " << bootstrap_file << "\n\n";
@@ -402,34 +393,20 @@ class HandlePolicyExit {
   }
 };
 
-
 // Choice typedefs
-typedef Choice<1,
-               MessagePolicyGetPath<true>,
-               InputPolicyGetPath<true>,
+typedef Choice<1, MessagePolicyGetPath<true>, InputPolicyGetPath<true>,
                HandlePolicyLoadBootstrapFile> LoadBootstrapChoice;
-typedef Choice<2,
-               MessagePolicyPrependEndpoint,
-               InputPolicyGetEndpoint,
-               HandlePolicyPrependEndpoint> PrependEndpointChoice;
-typedef Choice<3,
-               MessagePolicyAppendEndpoint,
-               InputPolicyGetEndpoint,
-               HandlePolicyAppendEndpoint> AppendEndpointChoice;
-typedef Choice<4,
-               MessagePolicyRemoveEndpoint,
-               InputPolicyGetEndpoint,
-               HandlePolicyRemoveEndpoint> RemoveEndpointChoice;
-typedef Choice<5,
-               MessagePolicyGetPath<false>,
-               InputPolicyGetPath<false>,
+typedef Choice<2, MessagePolicyPrependEndpoint, InputPolicyGetEndpoint, HandlePolicyPrependEndpoint>
+    PrependEndpointChoice;
+typedef Choice<3, MessagePolicyAppendEndpoint, InputPolicyGetEndpoint, HandlePolicyAppendEndpoint>
+    AppendEndpointChoice;
+typedef Choice<4, MessagePolicyRemoveEndpoint, InputPolicyGetEndpoint, HandlePolicyRemoveEndpoint>
+    RemoveEndpointChoice;
+typedef Choice<5, MessagePolicyGetPath<false>, InputPolicyGetPath<false>,
                HandlePolicySaveBootstrapFile> SaveBootstrapChoice;
-typedef Choice<6,
-               MessagePolicyViewEndpoints,
-               InputPolicyNull,
-               HandlePolicyViewEndpoints> ViewEndpointsChoice;
+typedef Choice<6, MessagePolicyViewEndpoints, InputPolicyNull, HandlePolicyViewEndpoints>
+    ViewEndpointsChoice;
 typedef Choice<7, MessagePolicyExit, InputPolicyNull, HandlePolicyExit> ExitChoice;
-
 
 // Helpers and main
 void PrintCommands() {
@@ -452,7 +429,8 @@ int GetChoice() {
     try {
       choice = std::stoi(input);
     }
-    catch(const std::exception&) {}
+    catch (const std::exception&) {
+    }
 
     if (choice > 0 && choice < 8)
       break;

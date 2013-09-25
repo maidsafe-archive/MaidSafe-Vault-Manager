@@ -29,7 +29,6 @@
 #include "boost/asio/strand.hpp"
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -46,11 +45,11 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   void StartReceiving();
   void StartSending(const std::string& data);
 
-  boost::asio::ip::tcp::socket &Socket() { return socket_; }
+  boost::asio::ip::tcp::socket& Socket() { return socket_; }
 
  private:
   TcpConnection(const TcpConnection&);
-  TcpConnection &operator=(const TcpConnection&);
+  TcpConnection& operator=(const TcpConnection&);
 
   // Maximum number of bytes to read at a time
   static int32_t kMaxTransportChunkSize() { return 65536; }
