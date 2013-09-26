@@ -28,7 +28,6 @@
 
 #include "maidsafe/data_types/data_type_values.h"
 
-
 namespace maidsafe {
 
 class GroupDirectory {
@@ -55,7 +54,7 @@ class GroupDirectory {
   NonEmptyString data_;
 };
 
-template<>
+template <>
 struct is_short_term_cacheable<GroupDirectory> : public std::true_type {};
 
 }  // namespace maidsafe

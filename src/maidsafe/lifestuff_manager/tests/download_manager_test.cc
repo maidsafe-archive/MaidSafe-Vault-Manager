@@ -29,7 +29,6 @@
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
 
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -38,7 +37,7 @@ namespace lifestuff_manager {
 
 namespace test {
 
-class DownloadManagerTest: public testing::Test {
+class DownloadManagerTest : public testing::Test {
  public:
   DownloadManagerTest() : download_manager_() {}
 
@@ -111,7 +110,8 @@ TEST_F(DownloadManagerTest, BEH_UpdateNoManifestFile) {
 }
 
 class DownloadManagerCommonTest : public DownloadManagerTest,
-                                  public ::testing::WithParamInterface<std::string> {};  // NOLINT (Fraser)
+                                  public ::testing::WithParamInterface<std::string> {
+};  // NOLINT (Fraser)
 
 TEST_P(DownloadManagerCommonTest, BEH_UpdateThirdFileFail) {
   InitialiseDownloadManager("/downloads/download_manager_tests/" + GetParam());
@@ -142,11 +142,9 @@ TEST_P(DownloadManagerCommonTest, BEH_UpdateThirdFileFail) {
   EXPECT_EQ(boost::system::errc::no_such_file_or_directory, error.value());
 }
 
-INSTANTIATE_TEST_CASE_P(AllFail,
-                        DownloadManagerCommonTest,
-                        testing::Values("incorrect_manifest",
-                                        "no_signature",
-                                        "incorrect_signature"));
+INSTANTIATE_TEST_CASE_P(
+    AllFail, DownloadManagerCommonTest,
+    testing::Values("incorrect_manifest", "no_signature", "incorrect_signature"));
 
 }  // namespace test
 

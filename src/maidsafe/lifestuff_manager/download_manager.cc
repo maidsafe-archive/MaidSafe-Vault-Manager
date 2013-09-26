@@ -41,7 +41,6 @@
 #include "maidsafe/lifestuff_manager/return_codes.h"
 #include "maidsafe/lifestuff_manager/utils.h"
 
-
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace fs = boost::filesystem;
@@ -50,9 +49,7 @@ namespace maidsafe {
 
 namespace lifestuff_manager {
 
-DownloadManager::DownloadManager(std::string location,
-                                 std::string site,
-                                 std::string protocol)
+DownloadManager::DownloadManager(std::string location, std::string site, std::string protocol)
     : location_(std::move(location)),
       site_(std::move(site)),
       protocol_(std::move(protocol)),
@@ -109,7 +106,7 @@ bool DownloadManager::InitialisePublicKey() {
       return false;
     }
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Exception validating MaidSafe public key: " << e.what();
     return false;
   }
@@ -235,16 +232,14 @@ std::string DownloadManager::GetAndVerifyFile(const fs::path& remote_path) {
     }
     return contents.string();
   }
-  catch(const std::exception &e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Error getting and verifying " << remote_path << ": " << e.what();
     return "";
   }
 }
 
-bool DownloadManager::PrepareDownload(const fs::path& remote_path,
-                                      asio::streambuf& response_buffer,
-                                      std::istream& response_stream,
-                                      ip::tcp::socket& socket) {
+bool DownloadManager::PrepareDownload(const fs::path& remote_path, asio::streambuf& response_buffer,
+                                      std::istream& response_stream, ip::tcp::socket& socket) {
   try {
     asio::streambuf request_buffer;
     std::ostream request_stream(&request_buffer);
@@ -252,7 +247,8 @@ bool DownloadManager::PrepareDownload(const fs::path& remote_path,
     // Form the request. Use "Connection: close" header so that the server will close the socket
     // after transmitting the response; allowing us to treat all data up until the EOF as content.
     request_stream << "GET /" << location_ << "/" << remote_path.generic_string() << " HTTP/1.0\r\n"
-                   << "Host: " << site_ << "\r\nAccept: */*\r\n" << "Connection: close\r\n\r\n";
+                   << "Host: " << site_ << "\r\nAccept: */*\r\n"
+                   << "Connection: close\r\n\r\n";
     // Send the request.
     asio::write(socket, request_buffer);
     // Read the response status line. The response streambuf will automatically grow to accommodate
@@ -262,7 +258,7 @@ bool DownloadManager::PrepareDownload(const fs::path& remote_path,
     if (!CheckResponse(remote_path, response_stream))
       return false;
   }
-  catch(const std::exception &e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Error preparing downloading of " << site_ << "/" << location_ << "/"
                 << remote_path << "  : " << e.what();
     return false;
@@ -309,9 +305,9 @@ std::string DownloadManager::DownloadFile(const fs::path& remote_path) {
       return "";
     }
   }
-  catch(const std::exception &e) {
-    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path
-                << ": " << e.what();
+  catch (const std::exception& e) {
+    LOG(kError) << "Error downloading " << site_ << "/" << location_ << "/" << remote_path << ": "
+                << e.what();
     return "";
   }
 

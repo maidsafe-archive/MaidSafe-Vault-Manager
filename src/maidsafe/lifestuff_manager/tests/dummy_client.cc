@@ -25,7 +25,6 @@
 
 #include "maidsafe/lifestuff_manager/client_controller.h"
 
-
 int main(int argc, char** argv) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
   maidsafe::lifestuff_manager::ClientController client([](const std::string&) {});
@@ -37,7 +36,8 @@ int main(int argc, char** argv) {
     if (!client.StartVault(pmid, maid.name(), "")) {
       LOG(kError) << "dummy_client: Failed to start vault " << pmid.name()->string();
     }
-  } catch(...) {
+  }
+  catch (...) {
     LOG(kError) << "dummy_client: Problem starting vault " << pmid.name()->string();
   }
   LOG(kInfo) << "Identity: " << maidsafe::Base64Substr(pmid.name()->string());

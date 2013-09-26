@@ -26,16 +26,13 @@
 
 #include "maidsafe/data_types/directory_types.pb.h"
 
-
 namespace maidsafe {
 
 WorldDirectory::WorldDirectory(const WorldDirectory& other)
-    : name_(other.name_),
-      data_(other.data_) {}
+    : name_(other.name_), data_(other.data_) {}
 
 WorldDirectory::WorldDirectory(WorldDirectory&& other)
-    : name_(std::move(other.name_)),
-      data_(std::move(other.data_)) {}
+    : name_(std::move(other.name_)), data_(std::move(other.data_)) {}
 
 WorldDirectory& WorldDirectory::operator=(WorldDirectory other) {
   swap(*this, other);
@@ -43,13 +40,10 @@ WorldDirectory& WorldDirectory::operator=(WorldDirectory other) {
 }
 
 WorldDirectory::WorldDirectory(Name name, NonEmptyString data)
-    : name_(std::move(name)),
-      data_(std::move(data)) {}
+    : name_(std::move(name)), data_(std::move(data)) {}
 
 WorldDirectory::WorldDirectory(Name name, const serialised_type& serialised_mutable_data)
-    : name_(std::move(name)),
-      data_(),
-      signature_() {
+    : name_(std::move(name)), data_(), signature_() {
   protobuf::WorldDirectory proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
     ThrowError(CommonErrors::parsing_error);
@@ -62,13 +56,9 @@ WorldDirectory::serialised_type WorldDirectory::Serialise() const {
   return serialised_type(NonEmptyString(proto_mutable_data.SerializeAsString()));
 }
 
-WorldDirectory::Name WorldDirectory::name() const {
-  return name_;
-}
+WorldDirectory::Name WorldDirectory::name() const { return name_; }
 
-NonEmptyString WorldDirectory::data() const {
-  return data_;
-}
+NonEmptyString WorldDirectory::data() const { return data_; }
 
 void swap(WorldDirectory& lhs, WorldDirectory& rhs) {
   using std::swap;

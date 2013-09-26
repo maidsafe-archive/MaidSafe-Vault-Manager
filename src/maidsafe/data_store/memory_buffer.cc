@@ -22,8 +22,7 @@ namespace maidsafe {
 namespace data_store {
 
 MemoryBuffer::MemoryBuffer(MemoryUsage max_memory_usage)
-    : memory_buffer_(static_cast<uint32_t>(max_memory_usage.data)),
-      mutex_() {}
+    : memory_buffer_(static_cast<uint32_t>(max_memory_usage.data)), mutex_() {}
 
 MemoryBuffer::~MemoryBuffer() {}
 
@@ -56,11 +55,9 @@ void MemoryBuffer::Delete(const KeyType& key) {
 }
 
 MemoryBuffer::MemoryBufferType::iterator MemoryBuffer::Find(const KeyType& key) {
-  return std::find_if(memory_buffer_.begin(),
-                      memory_buffer_.end(),
-                      [&key](const MemoryBufferType::value_type& key_value) {
-                          return key_value.first == key;
-                      });
+  return std::find_if(
+      memory_buffer_.begin(), memory_buffer_.end(),
+      [&key](const MemoryBufferType::value_type & key_value) { return key_value.first == key; });
 }
 
 }  // namespace data_store

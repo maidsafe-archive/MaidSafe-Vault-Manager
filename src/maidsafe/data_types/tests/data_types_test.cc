@@ -23,7 +23,6 @@
 
 #include "maidsafe/data_types/data_name_variant.h"
 
-
 namespace maidsafe {
 
 namespace test {
@@ -43,25 +42,25 @@ TEST(DataTypesTest, BEH_ConstructType) {
 TEST(DataTypesTest, BEH_RetrieveType) {
   Identity id(RandomString(64));
 
-  static_assert(std::is_same<passport::PublicAnmid,
-                             passport::PublicAnmid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicAnsmid,
-                             passport::PublicAnsmid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicAntmid,
-                             passport::PublicAntmid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicAnmaid,
-                             passport::PublicAnmaid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicMaid,
-                             passport::PublicMaid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicPmid,
-                             passport::PublicPmid::Name::data_type>::value, "");
+  static_assert(std::is_same<passport::PublicAnmid, passport::PublicAnmid::Name::data_type>::value,
+                "");
+  static_assert(
+      std::is_same<passport::PublicAnsmid, passport::PublicAnsmid::Name::data_type>::value, "");
+  static_assert(
+      std::is_same<passport::PublicAntmid, passport::PublicAntmid::Name::data_type>::value, "");
+  static_assert(
+      std::is_same<passport::PublicAnmaid, passport::PublicAnmaid::Name::data_type>::value, "");
+  static_assert(std::is_same<passport::PublicMaid, passport::PublicMaid::Name::data_type>::value,
+                "");
+  static_assert(std::is_same<passport::PublicPmid, passport::PublicPmid::Name::data_type>::value,
+                "");
   static_assert(std::is_same<passport::Mid, passport::Mid::Name::data_type>::value, "");
   static_assert(std::is_same<passport::Smid, passport::Smid::Name::data_type>::value, "");
   static_assert(std::is_same<passport::Tmid, passport::Tmid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicAnmpid,
-                             passport::PublicAnmpid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicMpid,
-                             passport::PublicMpid::Name::data_type>::value, "");
+  static_assert(
+      std::is_same<passport::PublicAnmpid, passport::PublicAnmpid::Name::data_type>::value, "");
+  static_assert(std::is_same<passport::PublicMpid, passport::PublicMpid::Name::data_type>::value,
+                "");
   static_assert(std::is_same<ImmutableData, ImmutableData::Name::data_type>::value, "");
   static_assert(std::is_same<OwnerDirectory, OwnerDirectory::Name::data_type>::value, "");
   static_assert(std::is_same<GroupDirectory, GroupDirectory::Name::data_type>::value, "");

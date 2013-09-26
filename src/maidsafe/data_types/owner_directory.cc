@@ -26,16 +26,13 @@
 
 #include "maidsafe/data_types/directory_types.pb.h"
 
-
 namespace maidsafe {
 
 OwnerDirectory::OwnerDirectory(const OwnerDirectory& other)
-    : name_(other.name_),
-      data_(other.data_) {}
+    : name_(other.name_), data_(other.data_) {}
 
 OwnerDirectory::OwnerDirectory(OwnerDirectory&& other)
-    : name_(std::move(other.name_)),
-      data_(std::move(other.data_)) {}
+    : name_(std::move(other.name_)), data_(std::move(other.data_)) {}
 
 OwnerDirectory& OwnerDirectory::operator=(OwnerDirectory other) {
   swap(*this, other);
@@ -43,12 +40,10 @@ OwnerDirectory& OwnerDirectory::operator=(OwnerDirectory other) {
 }
 
 OwnerDirectory::OwnerDirectory(Name name, NonEmptyString data)
-    : name_(std::move(name)),
-      data_(std::move(data)) {}
+    : name_(std::move(name)), data_(std::move(data)) {}
 
 OwnerDirectory::OwnerDirectory(Name name, const serialised_type& serialised_mutable_data)
-    : name_(std::move(name)),
-      data_() {
+    : name_(std::move(name)), data_() {
   protobuf::OwnerDirectory proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
     ThrowError(CommonErrors::parsing_error);
@@ -61,13 +56,9 @@ OwnerDirectory::serialised_type OwnerDirectory::Serialise() const {
   return serialised_type(NonEmptyString(proto_mutable_data.SerializeAsString()));
 }
 
-OwnerDirectory::Name OwnerDirectory::name() const {
-  return name_;
-}
+OwnerDirectory::Name OwnerDirectory::name() const { return name_; }
 
-NonEmptyString OwnerDirectory::data() const {
-  return data_;
-}
+NonEmptyString OwnerDirectory::data() const { return data_; }
 
 void swap(OwnerDirectory& lhs, OwnerDirectory& rhs) {
   using std::swap;

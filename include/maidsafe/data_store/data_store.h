@@ -28,61 +28,49 @@ namespace maidsafe {
 
 namespace data_store {
 
-
 namespace fs = boost::filesystem;
 
-template<typename StoragePolicy>
-class DataStore
-  : public StoragePolicy {
+template <typename StoragePolicy>
+class DataStore : public StoragePolicy {
  public:
   typedef typename StoragePolicy::KeyType KeyType;
   typedef typename StoragePolicy::PopFunctor PopFunctor;
 
-  explicit DataStore(MemoryUsage max_memory_usage)
-    : StoragePolicy(max_memory_usage) {}
+  explicit DataStore(MemoryUsage max_memory_usage) : StoragePolicy(max_memory_usage) {}
 
   DataStore(MemoryUsage max_memory_usage, PopFunctor pop_functor)
-    : StoragePolicy(max_memory_usage, pop_functor) {}
+      : StoragePolicy(max_memory_usage, pop_functor) {}
 
-  explicit DataStore(DiskUsage max_disk_usage)
-    : StoragePolicy(max_disk_usage) {}
+  explicit DataStore(DiskUsage max_disk_usage) : StoragePolicy(max_disk_usage) {}
 
   DataStore(DiskUsage max_disk_usage, PopFunctor pop_functor)
-    : StoragePolicy(max_disk_usage, pop_functor) {}
+      : StoragePolicy(max_disk_usage, pop_functor) {}
 
   DataStore(DiskUsage max_disk_usage, PopFunctor pop_functor, const fs::path& disk_path)
-    : StoragePolicy(max_disk_usage, pop_functor, disk_path) {}
+      : StoragePolicy(max_disk_usage, pop_functor, disk_path) {}
 
   DataStore(MemoryUsage max_memory_usage, DiskUsage max_disk_usage, PopFunctor pop_functor)
-    : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor) {}
+      : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor) {}
 
-  DataStore(MemoryUsage max_memory_usage,
-            DiskUsage max_disk_usage,
-            PopFunctor pop_functor,
+  DataStore(MemoryUsage max_memory_usage, DiskUsage max_disk_usage, PopFunctor pop_functor,
             const fs::path& disk_path)
-    : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor, disk_path) {}
+      : StoragePolicy(max_memory_usage, max_disk_usage, pop_functor, disk_path) {}
 
   ~DataStore() {}
 
-  void Store(const KeyType& key, const NonEmptyString& value) {
-    StoragePolicy::Store(key, value);
-  }
-  NonEmptyString Get(const KeyType& key) {
-    return StoragePolicy::Get(key);
-  }
-  void Delete(const KeyType& key) {
-    StoragePolicy::Delete(key);
-  }
+  void Store(const KeyType& key, const NonEmptyString& value) { StoragePolicy::Store(key, value); }
+  NonEmptyString Get(const KeyType& key) { return StoragePolicy::Get(key); }
+  void Delete(const KeyType& key) { StoragePolicy::Delete(key); }
 
-  template<typename T>
+  template <typename T>
   void Store(const T& key, const NonEmptyString& value) {
     StoragePolicy::Store(key, value);
   }
-  template<typename T>
+  template <typename T>
   NonEmptyString Get(const T& key) {
     return StoragePolicy::Get(key);
   }
-  template<typename T>
+  template <typename T>
   void Delete(const T& key) {
     StoragePolicy::Delete(key);
   }

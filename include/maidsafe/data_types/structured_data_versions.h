@@ -72,7 +72,6 @@ The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
 
 #include "maidsafe/data_types/immutable_data.h"
 
-
 namespace maidsafe {
 
 namespace protobuf {
@@ -82,7 +81,6 @@ class StructuredDataVersions_Branch;
 class Version;
 
 }  // namespace protobuf
-
 
 // All public functions in this class provide the strong exception guarantee.
 class StructuredDataVersions {
@@ -204,35 +202,25 @@ class StructuredDataVersions {
                           const protobuf::StructuredDataVersions& proto_versions,
                           int& proto_branch_index);
   VersionsItr HandleFirstVersionInBranchFromProtobuf(
-      VersionsItr parent_itr,
-      const protobuf::StructuredDataVersions_Branch& proto_branch);
+      VersionsItr parent_itr, const protobuf::StructuredDataVersions_Branch& proto_branch);
   VersionsItr CheckedInsert(const protobuf::Version& proto_version);
-  void BranchToProtobuf(VersionsItr itr,
-                        protobuf::StructuredDataVersions& proto_versions,
+  void BranchToProtobuf(VersionsItr itr, protobuf::StructuredDataVersions& proto_versions,
                         const VersionName& absent_parent) const;
-  void BranchToProtobuf(VersionsItr itr,
-                        protobuf::StructuredDataVersions& proto_versions,
+  void BranchToProtobuf(VersionsItr itr, protobuf::StructuredDataVersions& proto_versions,
                         protobuf::StructuredDataVersions_Branch* proto_branch) const;
   void ApplyBranch(VersionName parent, VersionsItr itr, StructuredDataVersions& new_versions) const;
   VersionName ParentName(VersionsItr itr) const;
   VersionName ParentName(Versions::const_iterator itr) const;
   VersionName RootParentName() const;
   bool NewVersionPreExists(const VersionName& old_version, const VersionName& new_version) const;
-  void CheckForUnorphaning(Version& version,
-                           bool& unorphans_existing_root,
+  void CheckForUnorphaning(Version& version, bool& unorphans_existing_root,
                            size_t& unorphan_count) const;
   std::future<void> CheckVersionNotInBranch(VersionsItr itr, const VersionName& version) const;
-  void CheckBranchCount(const Version& version,
-                        bool is_orphan,
-                        size_t unorphaned_count,
+  void CheckBranchCount(const Version& version, bool is_orphan, size_t unorphaned_count,
                         bool& erase_existing_root) const;
-  boost::optional<VersionName> Insert(const Version& version,
-                                      bool is_root,
-                                      bool is_orphan,
-                                      const VersionName& old_version,
-                                      bool unorphans_existing_root,
-                                      size_t unorphan_count,
-                                      bool erase_existing_root);
+  boost::optional<VersionName> Insert(const Version& version, bool is_root, bool is_orphan,
+                                      const VersionName& old_version, bool unorphans_existing_root,
+                                      size_t unorphan_count, bool erase_existing_root);
   void SetVersionAsChildOfItsParent(VersionsItr versions_itr);
   void UnorphanRoot(VersionsItr parent, bool is_root_or_orphan, const VersionName& old_version);
   void Unorphan(VersionsItr parent);
@@ -257,7 +245,6 @@ class StructuredDataVersions {
   SortedVersionsItrs tips_of_trees_;
   Orphans orphans_;
 };
-
 
 void swap(StructuredDataVersions::VersionName& lhs,
           StructuredDataVersions::VersionName& rhs) MAIDSAFE_NOEXCEPT;

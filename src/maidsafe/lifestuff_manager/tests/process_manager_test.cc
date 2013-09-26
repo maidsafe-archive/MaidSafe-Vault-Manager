@@ -30,10 +30,11 @@
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/tests/test_utils.h"
 
-
 namespace fs = boost::filesystem;
 
-namespace { std::string g_parent_path; }
+namespace {
+std::string g_parent_path;
+}
 
 namespace maidsafe {
 
@@ -248,7 +249,6 @@ class ProcessManagerTest : public testing::Test {
   const std::string kProcessName_;
   fs::path kExecutablePath_;
 };
-
 
 TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   ASSERT_EQ(0, GetNumRunningProcesses(detail::kVaultName));
@@ -515,8 +515,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
 }  // namespace maidsafe
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   fs::path full_path(argv[0]);
   g_parent_path = full_path.parent_path().string();
   return maidsafe::test::ExecuteMain(argc, argv);

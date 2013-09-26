@@ -25,7 +25,6 @@
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/owner_directory.h"
 
-
 namespace maidsafe {
 
 namespace data_store {

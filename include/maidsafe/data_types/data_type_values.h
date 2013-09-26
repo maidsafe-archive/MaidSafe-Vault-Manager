@@ -26,7 +26,6 @@
 
 #include "maidsafe/common/types.h"
 
-
 namespace maidsafe {
 
 enum class DataTagValue : uint32_t {
@@ -47,10 +46,9 @@ enum class DataTagValue : uint32_t {
   kWorldDirectoryValue
 };
 
-
 template <typename Elem, typename Traits>
 std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& ostream,
-                                             const DataTagValue &data_type) {
+                                             const DataTagValue& data_type) {
   std::string data_type_str;
   switch (data_type) {
     case DataTagValue::kAnmidValue:
@@ -103,14 +101,14 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
       break;
   }
 
-  for (auto & elem : data_type_str)
+  for (auto& elem : data_type_str)
     ostream << ostream.widen(elem);
   return ostream;
 }
 
 namespace detail {
 
-template<typename Parent>
+template <typename Parent>
 struct Name {
   Name() : value() {}
   explicit Name(Identity value_in) : value(std::move(value_in)) {}
@@ -126,56 +124,54 @@ struct Name {
   typedef Parent data_type;
 };
 
-template<typename Parent>
+template <typename Parent>
 void swap(Name<Parent>& lhs, Name<Parent>& rhs) MAIDSAFE_NOEXCEPT {
   using std::swap;
   swap(lhs.value, rhs.value);
 }
 
-template<typename Parent>
+template <typename Parent>
 Name<Parent>& Name<Parent>::operator=(Name<Parent> other) {
   swap(*this, other);
   return *this;
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator==(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return lhs.value == rhs.value;
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator!=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return !operator==(lhs, rhs);
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator<(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return lhs.value < rhs.value;
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator>(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return operator<(rhs, lhs);
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator<=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return !operator>(lhs, rhs);
 }
 
-template<typename Parent>
+template <typename Parent>
 inline bool operator>=(const Name<Parent>& lhs, const Name<Parent>& rhs) {
   return !operator<(lhs, rhs);
 }
 
-
-
-template<DataTagValue Value>
+template <DataTagValue Value>
 struct Tag {
   static const DataTagValue kValue = Value;
 };
 
-template<DataTagValue Value>
+template <DataTagValue Value>
 const DataTagValue Tag<Value>::kValue;
 
 }  // namespace detail

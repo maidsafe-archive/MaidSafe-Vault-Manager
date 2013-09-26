@@ -33,7 +33,6 @@
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
 
-
 namespace asio = boost::asio;
 namespace bs = boost::system;
 namespace ip = asio::ip;
@@ -83,25 +82,21 @@ void TcpConnection::StartReceiving() {
   strand_.dispatch(std::bind(&TcpConnection::DoStartReceiving, shared_from_this()));
 }
 
-void TcpConnection::DoStartReceiving() {
-  StartReadSize();
-}
+void TcpConnection::DoStartReceiving() { StartReadSize(); }
 
 void TcpConnection::StartSending(const std::string& data) {
   EncodeData(data);
   strand_.dispatch(std::bind(&TcpConnection::DoStartSending, shared_from_this()));
 }
 
-void TcpConnection::DoStartSending() {
-  StartWrite();
-}
+void TcpConnection::DoStartSending() { StartWrite(); }
 
 void TcpConnection::StartReadSize() {
   if (!socket_.is_open())
     return;
-  asio::async_read(socket_, asio::buffer(size_buffer_),
-                   strand_.wrap(std::bind(&TcpConnection::HandleReadSize,
-                                          shared_from_this(), args::_1)));
+  asio::async_read(
+      socket_, asio::buffer(size_buffer_),
+      strand_.wrap(std::bind(&TcpConnection::HandleReadSize, shared_from_this(), args::_1)));
 }
 
 void TcpConnection::HandleReadSize(const bs::error_code& ec) {
@@ -120,8 +115,9 @@ void TcpConnection::HandleReadSize(const bs::error_code& ec) {
     return;
   }
 
-  LocalTcpTransport::DataSize size = (((((size_buffer_.at(0) << 8) | size_buffer_.at(1)) << 8) |
-                                       size_buffer_.at(2)) << 8) | size_buffer_.at(3);
+  LocalTcpTransport::DataSize size =
+      (((((size_buffer_.at(0) << 8) | size_buffer_.at(1)) << 8) | size_buffer_.at(2)) << 8) |
+      size_buffer_.at(3);
 
   data_size_ = size;
   data_received_ = 0;
@@ -134,14 +130,13 @@ void TcpConnection::StartReadData() {
     return;
 
   size_t buffer_size = data_received_;
-  buffer_size += std::min(static_cast<size_t>(kMaxTransportChunkSize()),
-                          data_size_ - data_received_);
+  buffer_size +=
+      std::min(static_cast<size_t>(kMaxTransportChunkSize()), data_size_ - data_received_);
   data_buffer_.resize(buffer_size);
 
   asio::mutable_buffer data_buffer = asio::buffer(data_buffer_) + data_received_;
   asio::async_read(socket_, asio::buffer(data_buffer),
-                   strand_.wrap(std::bind(&TcpConnection::HandleReadData,
-                                          shared_from_this(),
+                   strand_.wrap(std::bind(&TcpConnection::HandleReadData, shared_from_this(),
                                           args::_1, args::_2)));
 }
 
@@ -190,9 +185,8 @@ void TcpConnection::StartWrite() {
   std::array<boost::asio::const_buffer, 2> asio_buffer;
   asio_buffer[0] = boost::asio::buffer(size_buffer_);
   asio_buffer[1] = boost::asio::buffer(data_buffer_);
-  asio::async_write(socket_, asio_buffer,
-                    strand_.wrap(std::bind(&TcpConnection::HandleWrite,
-                                           shared_from_this(), args::_1)));
+  asio::async_write(socket_, asio_buffer, strand_.wrap(std::bind(&TcpConnection::HandleWrite,
+                                                                 shared_from_this(), args::_1)));
 }
 
 void TcpConnection::HandleWrite(const bs::error_code& ec) {

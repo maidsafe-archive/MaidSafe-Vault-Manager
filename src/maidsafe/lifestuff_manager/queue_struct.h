@@ -34,7 +34,9 @@ namespace detail {
 // IpcBidirectionalQueue and SafeAddress contain only POD types. Any other type has to be given an
 // allocator to use the reserved shared memory as a construction ground.
 struct IpcBidirectionalQueue {
-  enum { kMessageSize = 100000 };
+  enum {
+    kMessageSize = 100000
+  };
 
   IpcBidirectionalQueue()
       : cwpr_mutex(),

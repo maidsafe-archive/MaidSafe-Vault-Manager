@@ -21,7 +21,6 @@
 
 #include <string>
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {

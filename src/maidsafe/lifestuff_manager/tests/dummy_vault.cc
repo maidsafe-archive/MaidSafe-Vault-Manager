@@ -47,23 +47,22 @@ void StopHandler() {
 
 }  // unnamed namespace
 
-
 int main(int argc, char* argv[]) {
   maidsafe::log::Logging::Instance().Initialise(argc, argv);
   LOG(kInfo) << "Starting dummy_vault.";
   po::options_description options_description("Allowed options");
-  options_description.add_options()
-      ("help", "produce help message")
-      ("runtime", po::value<int>(), "Set runtime in seconds then crash")
-      ("nocrash", "set no crash on runtime ended")
-      ("vmid", po::value<std::string>(), "vaults manager ID")
-      ("nocontroller", "set to use no vault controller")
-      ("usr_id", po::value<std::string>()->default_value("lifestuff"),
-          "user id if running in non-win OS and from inside a process");
+  options_description.add_options()("help", "produce help message")(
+      "runtime", po::value<int>(), "Set runtime in seconds then crash")(
+      "nocrash", "set no crash on runtime ended")(
+      "vmid", po::value<std::string>(), "vaults manager ID")("nocontroller",
+                                                             "set to use no vault controller")(
+      "usr_id", po::value<std::string>()->default_value("lifestuff"),
+      "user id if running in non-win OS and from inside a process");
   try {
     po::variables_map variables_map;
-    po::store(po::command_line_parser(argc, argv).options(options_description).
-            allow_unregistered().run(), variables_map);
+    po::store(
+        po::command_line_parser(argc, argv).options(options_description).allow_unregistered().run(),
+        variables_map);
     po::notify(variables_map);
 
     if (variables_map.count("help")) {
@@ -115,7 +114,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
     return -5;
   }

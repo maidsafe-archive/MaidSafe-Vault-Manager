@@ -37,7 +37,6 @@
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/vault_info.pb.h"
 
-
 namespace bptime = boost::posix_time;
 namespace fs = boost::filesystem;
 
@@ -56,7 +55,8 @@ LifeStuffManager::VaultInfo::VaultInfo()
 #ifdef TESTING
       identity_index(-1),
 #endif
-      vault_version(kInvalidVersion) {}
+      vault_version(kInvalidVersion) {
+}
 
 void LifeStuffManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
   pb_vault_info->set_pmid(passport::SerialisePmid(*pmid).string());
@@ -72,15 +72,16 @@ void LifeStuffManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vau
   vault_version = pb_vault_info.version();
 }
 
-
 LifeStuffManager::LifeStuffManager()
     : process_manager_(),
       download_manager_(),
 #ifdef TESTING
-      local_port_(detail::GetTestLifeStuffManagerPort() == 0 ?
-                  kDefaultPort() + 100 : detail::GetTestLifeStuffManagerPort()),
-      config_file_path_((detail::GetTestEnvironmentRootDir().empty() ?
-                             GetUserAppDir() : detail::GetTestEnvironmentRootDir()) /
+      local_port_(detail::GetTestLifeStuffManagerPort() == 0
+                      ? kDefaultPort() + 100
+                      : detail::GetTestLifeStuffManagerPort()),
+      config_file_path_((detail::GetTestEnvironmentRootDir().empty()
+                             ? GetUserAppDir()
+                             : detail::GetTestEnvironmentRootDir()) /
                         detail::kGlobalConfigFilename),
 #else
       local_port_(kDefaultPort()),
@@ -98,29 +99,29 @@ LifeStuffManager::LifeStuffManager()
       update_interval_(kMinUpdateInterval()),
       update_mutex_(),
       update_timer_(asio_service_.service()),
-      transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/nullptr),
+      transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/ nullptr),
       maid_(passport::Anmaid()),
       initial_contact_memory_(maid_) {
-//  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion());
-//  passport::Anmaid anmaid;
-//  passport::Maid maid(anmaid);
-//  passport::Pmid pmid(maid);
-//  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string) {});
-//  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string) {});
-//  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
-//  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
-//  asio_service_.Start();
-//  Initialise();
+  //  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion());
+  //  passport::Anmaid anmaid;
+  //  passport::Maid maid(anmaid);
+  //  passport::Pmid pmid(maid);
+  //  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string)
+  // {});
+  //  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string)
+  // {});
+  //  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
+  //  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
+  //  asio_service_.Start();
+  //  Initialise();
 }
 
 void LifeStuffManager::Initialise() {
-  transport_->on_message_received().connect(
-      [this] (const std::string& message, Port peer_port) {
-        HandleReceivedMessage(message, peer_port);
-      });
-  transport_->on_error().connect([] (const int& error) {
-                                   LOG(kError) << "Transport reported error code: " << error;
-                                 });
+  transport_->on_message_received().connect([this](
+      const std::string & message, Port peer_port) { HandleReceivedMessage(message, peer_port); });
+  transport_->on_error().connect([](const int & error) {
+    LOG(kError) << "Transport reported error code: " << error;
+  });
 
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
@@ -146,37 +147,38 @@ void LifeStuffManager::Initialise() {
   ReadConfigFileAndStartVaults();
 
   update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+  update_timer_.async_wait([this](const boost::system::error_code &
+                                  ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 
   LOG(kInfo) << "LifeStuffManager started";
 }
 
 LifeStuffManager::~LifeStuffManager() {
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
-//  need_to_stop_ = true;
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
-//  process_manager_.LetAllProcessesDie();
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
-//  StopAllVaults();
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
-//  {
-//    std::lock_guard<std::mutex> lock(update_mutex_);
-//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
-//    update_timer_.cancel();
-//    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
-//  }
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
-//  transport_->StopListening();
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
-//  asio_service_.Stop();
-//  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
+  //  need_to_stop_ = true;
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
+  //  process_manager_.LetAllProcessesDie();
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
+  //  StopAllVaults();
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
+  //  {
+  //    std::lock_guard<std::mutex> lock(update_mutex_);
+  //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
+  //    update_timer_.cancel();
+  //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
+  //  }
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
+  //  transport_->StopListening();
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
+  //  asio_service_.Stop();
+  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
 }
 
 void LifeStuffManager::RestartLifeStuffManager(const std::string& /*latest_file*/,
                                                const std::string& /*executable_name*/) const {
   // system("/etc/init.d/mvm restart");
-//  int result(system(command.c_str()));
-//  if (result != 0)
+  //  int result(system(command.c_str()));
+  //  if (result != 0)
   LOG(kWarning) << "Not implemented";
 }
 
@@ -187,14 +189,14 @@ bool LifeStuffManager::CreateConfigFile() {
   int count(0);
   while (!ObtainBootstrapInformation(config) && count++ < 10) {
     LOG(kError) << "Failed to obtain bootstrap information from server.";
-//    return false;
+    //    return false;
   }
   boost::system::error_code error_code;
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   if (!fs::exists(config_file_path_.parent_path(), error_code)) {
     if (!fs::create_directories(config_file_path_.parent_path(), error_code) || error_code) {
-      LOG(kError) << "Failed to create directories for config file " << config_file_path_
-                  << ": " << error_code.message();
+      LOG(kError) << "Failed to create directories for config file " << config_file_path_ << ": "
+                  << error_code.message();
       return false;
     }
   }
@@ -324,7 +326,7 @@ void LifeStuffManager::HandleReceivedMessage(const std::string& message, Port pe
 }
 
 void LifeStuffManager::HandleClientRegistrationRequest(const std::string& request,
-                                                  std::string& response) {
+                                                       std::string& response) {
   protobuf::ClientRegistrationRequest client_request;
   if (!client_request.ParseFromString(request)) {  // Silently drop
     LOG(kError) << "Failed to parse client registration request.";
@@ -353,12 +355,11 @@ void LifeStuffManager::HandleClientRegistrationRequest(const std::string& reques
       }
     }
   } else {
-    std::for_each(endpoints_.begin(),
-                  endpoints_.end(),
-                  [&client_response] (const EndPoint& element) {
-                    client_response.add_bootstrap_endpoint_ip(element.first);
-                    client_response.add_bootstrap_endpoint_port(element.second);
-                  });
+    std::for_each(endpoints_.begin(), endpoints_.end(),
+                  [&client_response](const EndPoint & element) {
+      client_response.add_bootstrap_endpoint_ip(element.first);
+      client_response.add_bootstrap_endpoint_port(element.second);
+    });
   }
 
   LOG(kVerbose) << "Version that we might inform the user "
@@ -380,7 +381,7 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
     return;
   }
 
-  auto set_response([&response] (bool result) {
+  auto set_response([&response](bool result) {
     protobuf::StartVaultResponse start_vault_response;
     start_vault_response.set_result(result);
     response = detail::WrapMessage(MessageType::kStartVaultResponse,
@@ -399,12 +400,12 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
 
   VaultInfoPtr vault_info(std::make_shared<VaultInfo>());
 #ifdef TESTING
-  std::cout << "Vault index to pass to vault: "
-            << start_vault_request.identity_index() << std::endl;
+  std::cout << "Vault index to pass to vault: " << start_vault_request.identity_index()
+            << std::endl;
   vault_info->identity_index = start_vault_request.identity_index();
 #endif
-  passport::Pmid request_pmid(passport::detail::ParsePmid(
-                                  NonEmptyString(start_vault_request.pmid())));
+  passport::Pmid request_pmid(
+      passport::detail::ParsePmid(NonEmptyString(start_vault_request.pmid())));
   {
     std::lock_guard<std::mutex> lock(vault_infos_mutex_);
     auto itr(FindFromPmidName(request_pmid.name()));
@@ -430,8 +431,8 @@ void LifeStuffManager::HandleStartVaultRequest(const std::string& request, std::
         } else {
           // TODO(Team): Start with new credentials
           (*itr)->account_name = start_vault_request.account_name();
-          (*itr)->pmid.reset(new passport::Pmid(passport::ParsePmid(
-                                                  NonEmptyString(start_vault_request.pmid()))));
+          (*itr)->pmid.reset(
+              new passport::Pmid(passport::ParsePmid(NonEmptyString(start_vault_request.pmid()))));
           (*itr)->client_port = client_port;
           (*itr)->requested_to_run = true;
         }
@@ -520,12 +521,11 @@ void LifeStuffManager::HandleVaultIdentityRequest(const std::string& request,
     vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
     (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
     (*itr)->vault_version = vault_identity_request.version();
-    std::for_each(endpoints_.begin(),
-                  endpoints_.end(),
-                  [&vault_identity_response] (const EndPoint& element) {
-                    vault_identity_response.add_bootstrap_endpoint_ip(element.first);
-                    vault_identity_response.add_bootstrap_endpoint_port(element.second);
-                  });
+    std::for_each(endpoints_.begin(), endpoints_.end(),
+                  [&vault_identity_response](const EndPoint & element) {
+      vault_identity_response.add_bootstrap_endpoint_ip(element.first);
+      vault_identity_response.add_bootstrap_endpoint_port(element.second);
+    });
   } else {
     vault_identity_response.clear_pmid();
     vault_identity_response.clear_chunkstore_path();
@@ -559,7 +559,7 @@ void LifeStuffManager::HandleVaultJoinedNetworkRequest(const std::string& reques
   }
   vault_joined_network_ack.set_ack(join_result);
   if ((*itr)->client_port != 0)
-  SendVaultJoinConfirmation((*itr)->pmid->name(), join_result);
+    SendVaultJoinConfirmation((*itr)->pmid->name(), join_result);
   response = detail::WrapMessage(MessageType::kVaultIdentityResponse,
                                  vault_joined_network_ack.SerializeAsString());
 }
@@ -593,8 +593,8 @@ void LifeStuffManager::HandleStopVaultRequest(const std::string& request, std::s
       stop_vault_response.set_result(false);
     }
   }
-  response = detail::WrapMessage(MessageType::kStopVaultResponse,
-                                 stop_vault_response.SerializeAsString());
+  response =
+      detail::WrapMessage(MessageType::kStopVaultResponse, stop_vault_response.SerializeAsString());
 }
 
 void LifeStuffManager::HandleUpdateIntervalRequest(const std::string& request,
@@ -659,15 +659,14 @@ void LifeStuffManager::HandleBootstrapRequest(const std::string& request, std::s
       }
     }
   } else {
-    std::for_each(endpoints_.begin(),
-                  endpoints_.end(),
-                  [&bootstrap_response] (const EndPoint& element) {
-                    bootstrap_response.add_bootstrap_endpoint_ip(element.first);
-                    bootstrap_response.add_bootstrap_endpoint_port(element.second);
-                  });
+    std::for_each(endpoints_.begin(), endpoints_.end(),
+                  [&bootstrap_response](const EndPoint & element) {
+      bootstrap_response.add_bootstrap_endpoint_ip(element.first);
+      bootstrap_response.add_bootstrap_endpoint_port(element.second);
+    });
   }
-  response = detail::WrapMessage(MessageType::kBootstrapResponse,
-                                 bootstrap_response.SerializeAsString());
+  response =
+      detail::WrapMessage(MessageType::kBootstrapResponse, bootstrap_response.SerializeAsString());
 }
 
 bool LifeStuffManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
@@ -677,8 +676,9 @@ bool LifeStuffManager::SetUpdateInterval(const bptime::time_duration& update_int
   }
   std::lock_guard<std::mutex> lock(update_mutex_);
   update_interval_ = update_interval;
-//  update_timer_.expires_from_now(update_interval_);
-//  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+  //  update_timer_.expires_from_now(update_interval_);
+  //  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec);
+  // });  // NOLINT (Fraser)
   return true;
 }
 
@@ -698,7 +698,8 @@ void LifeStuffManager::CheckForUpdates(const boost::system::error_code& ec) {
   UpdateExecutor();
 
   update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
+  update_timer_.async_wait([this](const boost::system::error_code &
+                                  ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
@@ -707,20 +708,19 @@ void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmi
   protobuf::VaultJoinConfirmation vault_join_confirmation;
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
-    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value)
-                << " hasn't been added.";
+    LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value) << " hasn't been added.";
     return;
   }
   uint16_t client_port((*itr)->client_port);
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&] (bool result) {  // NOLINT (Dan)
+  std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
                                          std::lock_guard<std::mutex> lock(local_mutex);
                                          local_result = result;
                                          done = true;
                                          local_cond_var.notify_one();
-                                       };
+  };
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
   request_transport->Connect((*itr)->client_port, result);
@@ -729,14 +729,13 @@ void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmi
     callback(false);
   }
 
-  request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
-        HandleVaultJoinConfirmationAck(message, callback);
-      });
-  request_transport->on_error().connect([this, callback] (const int& error) {
-                                          LOG(kError) << "Transport reported error code " << error;
-                                          callback(false);
-                                        });
+  request_transport->on_message_received().connect([this, callback](
+      const std::string & message,
+      Port /*lifestuff_manager_port*/) { HandleVaultJoinConfirmationAck(message, callback); });
+  request_transport->on_error().connect([this, callback](const int & error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
   vault_join_confirmation.set_identity(pmid_name->string());
   vault_join_confirmation.set_joined(join_result);
   LOG(kVerbose) << "Sending vault join confirmation to client on port " << (*itr)->client_port;
@@ -751,8 +750,8 @@ void LifeStuffManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmi
     LOG(kError) << "Failed to confirm joining of vault to client.";
 }
 
-void LifeStuffManager::HandleVaultJoinConfirmationAck(const std::string& message,
-                                                      std::function<void(bool)> callback) {  // NOLINT (Philip)
+void LifeStuffManager::HandleVaultJoinConfirmationAck(
+    const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -773,12 +772,12 @@ void LifeStuffManager::SendNewVersionAvailable(uint16_t client_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&] (bool result) {  // NOLINT (Dan)
+  std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
                                          std::lock_guard<std::mutex> lock(local_mutex);
                                          local_result = result;
                                          done = true;
                                          local_cond_var.notify_one();
-                                       };
+  };
   TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
   request_transport->Connect(client_port, result);
@@ -786,14 +785,13 @@ void LifeStuffManager::SendNewVersionAvailable(uint16_t client_port) {
     LOG(kError) << "Failed to connect request transport to client.";
     callback(false);
   }
-  request_transport->on_message_received().connect(
-      [this, callback](const std::string& message, Port /*lifestuff_manager_port*/) {
-        HandleNewVersionAvailableAck(message, callback);
-      });
-  request_transport->on_error().connect([this, callback] (const int& error) {
-                                          LOG(kError) << "Transport reported error code " << error;
-                                          callback(false);
-                                        });
+  request_transport->on_message_received().connect([this, callback](
+      const std::string & message,
+      Port /*lifestuff_manager_port*/) { HandleNewVersionAvailableAck(message, callback); });
+  request_transport->on_error().connect([this, callback](const int & error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
+  });
   new_version_available.set_new_version_filepath(latest_local_installer_path_.string());
   LOG(kVerbose) << "Sending new version available to client on port " << client_port;
   request_transport->Send(detail::WrapMessage(MessageType::kNewVersionAvailable,
@@ -821,8 +819,8 @@ void LifeStuffManager::SendNewVersionAvailable(uint16_t client_port) {
   }
 }
 
-void LifeStuffManager::HandleNewVersionAvailableAck(const std::string& message,
-                                                    std::function<void(bool)> callback) {  // NOLINT (Philip)
+void LifeStuffManager::HandleNewVersionAvailableAck(
+    const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -840,8 +838,7 @@ void LifeStuffManager::HandleNewVersionAvailableAck(const std::string& message,
 
 #if defined MAIDSAFE_LINUX
 bool LifeStuffManager::IsInstaller(const fs::path& path) {
-  return path.extension() == ".deb" &&
-         path.stem().string().length() > 8 &&
+  return path.extension() == ".deb" && path.stem().string().length() > 8 &&
          path.stem().string().substr(0, 9) == "LifeStuff";
 }
 #else
@@ -858,8 +855,8 @@ void LifeStuffManager::UpdateExecutor() {
   }
 
   auto it(std::find_if(updated_files.begin(),
-                       updated_files.end(),
-                       [&] (const fs::path& path)->bool { return IsInstaller(path); }));  // NOLINT
+                       updated_files.end(), [&](const fs::path & path)
+                                                ->bool { return IsInstaller(path); }));  // NOLINT
   if (it != updated_files.end()) {
     latest_local_installer_path_ = *it;
     LOG(kInfo) << "Found new installer at " << latest_local_installer_path_;
@@ -867,11 +864,9 @@ void LifeStuffManager::UpdateExecutor() {
     LOG(kInfo) << "No new installer";
   }
 
-  it = (std::find_if(updated_files.begin(),
-                     updated_files.end(),
-                     [&] (const fs::path& path)->bool {
-                       return path.stem() == detail::kVaultName;
-                     }));
+  it = (std::find_if(updated_files.begin(), updated_files.end(), [&](const fs::path & path)->bool {
+    return path.stem() == detail::kVaultName;
+  }));
   fs::path new_local_vault_path;
   if (it != updated_files.end()) {
     new_local_vault_path = *it;
@@ -880,16 +875,16 @@ void LifeStuffManager::UpdateExecutor() {
     LOG(kInfo) << "No new vault exe.";
   }
 
-//    WriteConfigFile();
-// #if defined MAIDSAFE_LINUX
-//  std::string command("dpkg -i " + latest_local_installer_path_.string());
-//  int result(system(command.c_str()));
-//  if (result != 0)
-//    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
-// #elif defined MAIDSAFE_APPLE
-//  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
-//  //  RUN INSTALLER SOMEHOW
-// #endif
+  //    WriteConfigFile();
+  // #if defined MAIDSAFE_LINUX
+  //  std::string command("dpkg -i " + latest_local_installer_path_.string());
+  //  int result(system(command.c_str()));
+  //  if (result != 0)
+  //    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
+  // #elif defined MAIDSAFE_APPLE
+  //  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
+  //  //  RUN INSTALLER SOMEHOW
+  // #endif
 
   // Notify out-of-date clients
   std::map<uint16_t, int> client_ports_and_versions_copy;
@@ -925,20 +920,18 @@ bool LifeStuffManager::InTestMode() const {
 
 std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromPmidName(
     const passport::Pmid::Name& pmid_name) {
-  return std::find_if(vault_infos_.begin(),
-                      vault_infos_.end(),
-                      [pmid_name] (const VaultInfoPtr& vault_info)->bool {
-                        return vault_info->pmid->name() == pmid_name;
-                      });
+  return std::find_if(vault_infos_.begin(), vault_infos_.end(),
+                                                [pmid_name](const VaultInfoPtr & vault_info)->bool {
+    return vault_info->pmid->name() == pmid_name;
+  });
 }
 
 std::vector<LifeStuffManager::VaultInfoPtr>::iterator LifeStuffManager::FindFromProcessIndex(
     ProcessIndex process_index) {
   return std::find_if(vault_infos_.begin(),
-                      vault_infos_.end(),
-                      [process_index] (const VaultInfoPtr& vault_info)->bool {
-                        return vault_info->process_index == process_index;
-                      });
+                      vault_infos_.end(), [process_index](const VaultInfoPtr & vault_info)->bool {
+    return vault_info->process_index == process_index;
+  });
 }
 
 void LifeStuffManager::RestartVault(const passport::Pmid::Name& pmid_name) {
@@ -955,8 +948,7 @@ void LifeStuffManager::RestartVault(const passport::Pmid::Name& pmid_name) {
 // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
 //                               Try to reduce lock scope eventually.
 bool LifeStuffManager::StopVault(const passport::Pmid::Name& pmid_name,
-                                 const asymm::PlainText& data,
-                                 const asymm::Signature& signature,
+                                 const asymm::PlainText& data, const asymm::Signature& signature,
                                  bool permanent) {
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
@@ -980,27 +972,23 @@ bool LifeStuffManager::StopVault(const passport::Pmid::Name& pmid_name,
 
   sending_transport->Send(detail::WrapMessage(MessageType::kVaultShutdownRequest,
                                               vault_shutdown_request.SerializeAsString()),
-                                              (*itr)->vault_port);
+                          (*itr)->vault_port);
   LOG(kInfo) << "Sent shutdown request to vault on port " << (*itr)->vault_port;
   return process_manager_.WaitForProcessToStop((*itr)->process_index);
 }
 
 void LifeStuffManager::StopAllVaults() {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-  std::for_each(vault_infos_.begin(),
-                vault_infos_.end(),
-                [this] (const VaultInfoPtr& info) {
-                  if (process_manager_.GetProcessStatus(info->process_index) !=
-                      ProcessStatus::kRunning) {
-                    return;
-                  }
-                  asymm::PlainText random_data(RandomString(64));
-                  asymm::Signature signature(asymm::Sign(random_data, info->pmid->private_key()));
-                  if (!StopVault(info->pmid->name(), random_data, signature, false)) {
-                    LOG(kError) << "StopAllVaults: failed to stop - "
-                                << Base64Substr(info->pmid->name().value);
-                  }
-                });
+  std::for_each(vault_infos_.begin(), vault_infos_.end(), [this](const VaultInfoPtr & info) {
+    if (process_manager_.GetProcessStatus(info->process_index) != ProcessStatus::kRunning) {
+      return;
+    }
+    asymm::PlainText random_data(RandomString(64));
+    asymm::Signature signature(asymm::Sign(random_data, info->pmid->private_key()));
+    if (!StopVault(info->pmid->name(), random_data, signature, false)) {
+      LOG(kError) << "StopAllVaults: failed to stop - " << Base64Substr(info->pmid->name().value);
+    }
+  });
 }
 
 /*
@@ -1104,13 +1092,13 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   if (executable_path.empty())
     executable_path = fs::path(".");
   std::string user_id;
-#  ifdef MAIDSAFE_WIN32
-    TCHAR file_name[MAX_PATH];
-    if (GetModuleFileName(NULL, file_name, MAX_PATH))
-      executable_path = fs::path(file_name).parent_path();
-#  else
+#ifdef MAIDSAFE_WIN32
+  TCHAR file_name[MAX_PATH];
+  if (GetModuleFileName(NULL, file_name, MAX_PATH))
+    executable_path = fs::path(file_name).parent_path();
+#else
   user_id = detail::GetUserId();
-#  endif
+#endif
 #else
   fs::path executable_path(GetAppInstallDir());
 #endif
@@ -1125,7 +1113,7 @@ bool LifeStuffManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   process.AddArgument("--chunk_path " + vault_info->chunkstore_path);
 #if defined TESTING
   process.AddArgument("--identity_index " + std::to_string(vault_info->identity_index));
-  // process.AddArgument("--log_folder ./dummy_vault_logfiles");
+// process.AddArgument("--log_folder ./dummy_vault_logfiles");
 //   process.AddArgument("--log_routing I");
 //  if (!user_id.empty())
 //    process.AddArgument("--usr_id " + user_id);
@@ -1166,11 +1154,10 @@ bool LifeStuffManager::ReadFileToLifeStuffManagerConfig(const fs::path& file_pat
 
 bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
   std::unique_lock<std::mutex> lock(config_file_mutex_);
-  auto it(std::find_if(endpoints_.begin(),
-                       endpoints_.end(),
-                       [&ip, &port] (const EndPoint& element)->bool {
-                         return element.first == ip && element.second == port;
-                       }));
+  auto it(std::find_if(endpoints_.begin(), endpoints_.end(),
+                                               [&ip, &port](const EndPoint & element)->bool {
+    return element.first == ip && element.second == port;
+  }));
 
   if (it == endpoints_.end()) {
     endpoints_.push_back(std::make_pair(ip, port));
@@ -1185,7 +1172,7 @@ bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
       return false;
     }
-    protobuf::Bootstrap *eps = config.mutable_bootstrap_endpoints();
+    protobuf::Bootstrap* eps = config.mutable_bootstrap_endpoints();
     eps->Clear();
     protobuf::Endpoint* node;
     lock.lock();

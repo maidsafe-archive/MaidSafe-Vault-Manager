@@ -37,7 +37,6 @@
 #include "maidsafe/lifestuff_manager/utils.h"
 #include "maidsafe/lifestuff_manager/lifestuff_manager.h"
 
-
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
@@ -73,22 +72,18 @@ VaultController::VaultController(const std::string& lifestuff_manager_identifier
   if (!stop_callback_)
     ThrowError(CommonErrors::invalid_parameter);
   if (lifestuff_manager_identifier != "test") {
-    detail::ParseVmidParameter(lifestuff_manager_identifier,
-                               process_index_,
+    detail::ParseVmidParameter(lifestuff_manager_identifier, process_index_,
                                lifestuff_manager_port_);
     asio_service_.Start();
-    OnMessageReceived::slot_type on_message_slot(
-        [this] (const std::string& message, Port lifestuff_manager_port) {
-          HandleReceivedRequest(message, lifestuff_manager_port);
-        });
+    OnMessageReceived::slot_type on_message_slot([this](
+        const std::string & message,
+        Port lifestuff_manager_port) { HandleReceivedRequest(message, lifestuff_manager_port); });
     detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
     RequestVaultIdentity(local_port_);
   }
 }
 
-VaultController::~VaultController() {
-  receiving_transport_->StopListening();
-}
+VaultController::~VaultController() { receiving_transport_->StopListening(); }
 
 bool VaultController::GetIdentity(
     std::unique_ptr<passport::Pmid>& pmid,
@@ -124,11 +119,10 @@ void VaultController::ConfirmJoin() {
     LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return;
   }
-  request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
-        HandleVaultJoinedAck(message, callback);
-      });
-  request_transport->on_error().connect([callback](const int& error) {
+  request_transport->on_message_received().connect([this, callback](
+      const std::string & message,
+      Port /*lifestuff_manager_port*/) { HandleVaultJoinedAck(message, callback); });
+  request_transport->on_error().connect([callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback();
   });
@@ -139,7 +133,8 @@ void VaultController::ConfirmJoin() {
                                               vault_joined_network.SerializeAsString()),
                           lifestuff_manager_port_);
 
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; }))  // NOLINT (Fraser)
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
+                               [&] { return done; }))  // NOLINT (Fraser)
     LOG(kError) << "Timed out waiting for reply.";
 }
 
@@ -160,7 +155,7 @@ void VaultController::HandleVaultJoinedAck(const std::string& message, VoidFunct
 }
 
 bool VaultController::GetBootstrapNodes(
-    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints) {
+    std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
@@ -168,7 +163,7 @@ bool VaultController::GetBootstrapNodes(
   uint32_t message_id(maidsafe::RandomUint32());
   request.set_message_id(message_id);
 
-  VoidFunctionBoolParam callback = [&] (bool result) {
+  VoidFunctionBoolParam callback = [&](bool result) {
     std::lock_guard<std::mutex> lock(local_mutex);
     done = true;
     success = result;
@@ -182,21 +177,21 @@ bool VaultController::GetBootstrapNodes(
     LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
-  request_transport->on_message_received().connect(
-      [this, callback, &bootstrap_endpoints] (const std::string& message,
-                                             Port /*lifestuff_manager_port*/) {
-        HandleBootstrapResponse(message, bootstrap_endpoints, callback);
-      });
-  request_transport->on_error().connect([callback](const int& error) {
+  request_transport->on_message_received().connect([this, callback, &bootstrap_endpoints](
+      const std::string & message, Port /*lifestuff_manager_port*/) {
+    HandleBootstrapResponse(message, bootstrap_endpoints, callback);
+  });
+  request_transport->on_error().connect([callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
   });
   std::unique_lock<std::mutex> lock(local_mutex);
   LOG(kVerbose) << "Requesting bootstrap nodes from port " << lifestuff_manager_port_;
-  request_transport->Send(detail::WrapMessage(MessageType::kBootstrapRequest,
-                                              request.SerializeAsString()),
-                          lifestuff_manager_port_);
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
+  request_transport->Send(
+      detail::WrapMessage(MessageType::kBootstrapRequest, request.SerializeAsString()),
+      lifestuff_manager_port_);
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
+                               [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
@@ -204,8 +199,7 @@ bool VaultController::GetBootstrapNodes(
 }
 
 void VaultController::HandleBootstrapResponse(
-    const std::string& message,
-    std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints,
+    const std::string& message, std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
     VoidFunctionBoolParam callback) {
   MessageType type;
   std::string payload;
@@ -234,7 +228,9 @@ void VaultController::HandleBootstrapResponse(
           GetEndpoint(bootstrap_response.bootstrap_endpoint_ip(i),
                       static_cast<Port>(bootstrap_response.bootstrap_endpoint_port(i))));
     }
-    catch(...) { continue; }
+    catch (...) {
+      continue;
+    }
   }
   bootstrap_endpoints_ = bootstrap_endpoints;
   callback(true);
@@ -249,7 +245,7 @@ bool VaultController::SendEndpointToLifeStuffManager(
   request.set_bootstrap_endpoint_ip(endpoint.address().to_string());
   request.set_bootstrap_endpoint_port(endpoint.port());
 
-  VoidFunctionBoolParam callback = [&] (bool result) {
+  VoidFunctionBoolParam callback = [&](bool result) {
     std::lock_guard<std::mutex> lock(local_mutex);
     done = true;
     success = result;
@@ -263,13 +259,13 @@ bool VaultController::SendEndpointToLifeStuffManager(
     LOG(kError) << "Failed to connect request transport to LifeStuffManager.";
     return false;
   }
-    request_transport->on_message_received().connect(
-      [this, callback] (const std::string& message, Port /*lifestuff_manager_port*/) {
-        HandleSendEndpointToLifeStuffManagerResponse(message, callback);
-      });
-    request_transport->on_error().connect([callback](const int& error) {
-      LOG(kError) << "Transport reported error code " << error;
-      callback(false);
+  request_transport->on_message_received().connect([this, callback](
+      const std::string & message, Port /*lifestuff_manager_port*/) {
+    HandleSendEndpointToLifeStuffManagerResponse(message, callback);
+  });
+  request_transport->on_error().connect([callback](const int & error) {
+    LOG(kError) << "Transport reported error code " << error;
+    callback(false);
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
@@ -277,7 +273,8 @@ bool VaultController::SendEndpointToLifeStuffManager(
   request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToLifeStuffManagerRequest,
                                               request.SerializeAsString()),
                           lifestuff_manager_port_);
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3), [&] { return done; })) {  // NOLINT (Philip)
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
+                               [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
@@ -320,13 +317,13 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
     ThrowError(CommonErrors::uninitialised);
   }
 
-  auto connection(request_transport->on_message_received().connect(
-      [this, &local_mutex, &local_cond_var] (const std::string& message,
-                                             Port /*lifestuff_manager_port*/) {
+  auto connection(
+      request_transport->on_message_received().connect([this, &local_mutex, &local_cond_var](
+          const std::string & message, Port /*lifestuff_manager_port*/) {
         HandleVaultIdentityResponse(message, local_mutex);
         local_cond_var.notify_one();
       }));
-  auto error_connection(request_transport->on_error().connect([] (const int& error) {
+  auto error_connection(request_transport->on_error().connect([](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
   }));
 
@@ -336,9 +333,8 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
                                               vault_identity_request.SerializeAsString()),
                           lifestuff_manager_port_);
 
-  if (!local_cond_var.wait_for(lock,
-                               std::chrono::seconds(3),
-                               [this] () { return static_cast<bool>(pmid_); })) {
+  if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
+                               [this]() { return static_cast<bool>(pmid_); })) {
     connection.disconnect();
     error_connection.disconnect();
     LOG(kError) << "Timed out waiting for reply.";
@@ -373,10 +369,12 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message, st
   for (int i(0); i < size; ++i) {
     try {
       bootstrap_endpoints_.push_back(
-            GetEndpoint(vault_identity_response.bootstrap_endpoint_ip(i),
-                        static_cast<Port>(vault_identity_response.bootstrap_endpoint_port(i))));
+          GetEndpoint(vault_identity_response.bootstrap_endpoint_ip(i),
+                      static_cast<Port>(vault_identity_response.bootstrap_endpoint_port(i))));
     }
-    catch(...) { continue; }
+    catch (...) {
+      continue;
+    }
   }
 
   LOG(kInfo) << "Received VaultIdentityResponse.";

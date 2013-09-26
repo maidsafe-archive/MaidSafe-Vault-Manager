@@ -23,14 +23,12 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
 
-
 namespace maidsafe {
 
 ImmutableData::ImmutableData(const ImmutableData& other) : name_(other.name_), data_(other.data_) {}
 
 ImmutableData::ImmutableData(ImmutableData&& other)
-    : name_(std::move(other.name_)),
-      data_(std::move(other.data_)) {}
+    : name_(std::move(other.name_)), data_(std::move(other.data_)) {}
 
 ImmutableData& ImmutableData::operator=(ImmutableData other) {
   swap(*this, other);
@@ -38,12 +36,10 @@ ImmutableData& ImmutableData::operator=(ImmutableData other) {
 }
 
 ImmutableData::ImmutableData(const NonEmptyString& content)
-    : name_(crypto::Hash<crypto::SHA512>(content)),
-      data_(content) {}
+    : name_(crypto::Hash<crypto::SHA512>(content)), data_(content) {}
 
-ImmutableData::ImmutableData(Name  name, serialised_type serialised_immutable_data)
-    : name_(std::move(name)),
-      data_(std::move(serialised_immutable_data.data)) {
+ImmutableData::ImmutableData(Name name, serialised_type serialised_immutable_data)
+    : name_(std::move(name)), data_(std::move(serialised_immutable_data.data)) {
   Validate();
 }
 
@@ -52,9 +48,7 @@ void ImmutableData::Validate() const {
     ThrowError(CommonErrors::hashing_error);
 }
 
-ImmutableData::serialised_type ImmutableData::Serialise() const {
-  return serialised_type(data_);
-}
+ImmutableData::serialised_type ImmutableData::Serialise() const { return serialised_type(data_); }
 
 void swap(ImmutableData& lhs, ImmutableData& rhs) {
   using std::swap;

@@ -40,7 +40,6 @@
 
 #include "maidsafe/passport/types.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -58,14 +57,12 @@ class ClientController {
   std::vector<boost::asio::ip::udp::endpoint> BootstrapEndpoints();
 
   // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const passport::Pmid& pmid,
-                  const passport::Maid::Name& account_name,
+  bool StartVault(const passport::Pmid& pmid, const passport::Maid::Name& account_name,
                   const boost::filesystem::path& chunkstore);
 
   // Blocking call to stop the vault with the specified identity. For authentication, provide data
   // signed wth the vault's private key.
-  bool StopVault(const asymm::PlainText& data,
-                 const asymm::Signature& signature,
+  bool StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
                  const Identity& identity);
 
   // Blocking call which attempts to set the LifeStuffManager's update interval.  The limits are
@@ -81,27 +78,27 @@ class ClientController {
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(
-      uint16_t test_lifestuff_manager_port,
-      boost::filesystem::path test_env_root_dir,
+      uint16_t test_lifestuff_manager_port, boost::filesystem::path test_env_root_dir,
       boost::filesystem::path path_to_vault,
       std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
 #endif
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
-  enum State { kInitialising, kVerified, kFailed };
+  enum State {
+    kInitialising,
+    kVerified,
+    kFailed
+  };
 
   ClientController(const ClientController&);
   ClientController& operator=(const ClientController&);
   bool FindNextAcceptingPort(TransportPtr requesting_transport);
   bool ConnectToLifeStuffManager(std::string& path_to_new_installer);
-  void HandleRegisterResponse(const std::string& message,
-                              uint16_t lifestuff_manager_port,
-                              std::mutex& mutex,
-                              std::condition_variable& condition_variable,
-                              State& state,
-                              std::string& path_to_new_installer);
-  template<typename ResponseType>
+  void HandleRegisterResponse(const std::string& message, uint16_t lifestuff_manager_port,
+                              std::mutex& mutex, std::condition_variable& condition_variable,
+                              State& state, std::string& path_to_new_installer);
+  template <typename ResponseType>
   void HandleStartStopVaultResponse(const std::string& message,
                                     const std::function<void(bool)>& callback);  // NOLINT
   boost::posix_time::time_duration SetOrGetUpdateInterval(
@@ -113,8 +110,8 @@ class ClientController {
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
   void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
   void HandleBootstrapResponse(const std::string& message,
-                               std::vector<boost::asio::ip::udp::endpoint> &bootstrap_endpoints,
-                               std::function<void(bool)> callback);  //NOLINT (Philip)
+                               std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
+                               std::function<void(bool)> callback);  // NOLINT (Philip)
 
   uint16_t lifestuff_manager_port_, local_port_;
   OnNewVersionAvailable on_new_version_available_;

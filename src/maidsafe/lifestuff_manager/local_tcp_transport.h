@@ -32,7 +32,6 @@
 #include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/signals2/signal.hpp"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -42,7 +41,6 @@ class TcpConnection;
 typedef uint16_t Port;
 typedef boost::signals2::signal<void(const std::string&, Port)> OnMessageReceived;
 typedef boost::signals2::signal<void(const int&)> OnError;
-
 
 class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport> {
  public:
@@ -68,8 +66,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   typedef std::set<ConnectionPtr> ConnectionSet;
 
   void DoStartListening(Port port, int* result);
-  void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor,
-                    ConnectionPtr connection,
+  void HandleAccept(boost::asio::ip::tcp::acceptor& acceptor, ConnectionPtr connection,
                     const boost::system::error_code& ec);
   void DoConnect(Port server_port, int* result);
   void DoSend(const std::string& data, Port port);
@@ -79,7 +76,7 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   void RemoveConnection(ConnectionPtr connection);
   void DoRemoveConnection(ConnectionPtr connection);
 
-  boost::asio::io_service &asio_service_;
+  boost::asio::io_service& asio_service_;
   OnMessageReceived on_message_received_;
   OnError on_error_;
   boost::asio::ip::tcp::acceptor acceptor_;

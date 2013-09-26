@@ -41,31 +41,31 @@ namespace bip = boost::interprocess;
 typedef bip::create_only_t SharedMemoryCreateOnly;
 typedef bip::open_only_t SharedMemoryOpenOnly;
 
-inline boost::posix_time::ptime Until(const boost::posix_time::time_duration &duration) {
+inline boost::posix_time::ptime Until(const boost::posix_time::time_duration& duration) {
   return boost::posix_time::microsec_clock::universal_time() + duration;
 }
 
 // decide whether to truncate the memory block based on who is the owner
-template<typename CreationTag>
+template <typename CreationTag>
 struct DecideTruncate {};
 
-template<>
+template <>
 struct DecideTruncate<SharedMemoryCreateOnly> {
   void operator()(bip::shared_memory_object& shared_memory) {
     shared_memory.truncate(sizeof(IpcBidirectionalQueue));
   }
 };
 
-template<>
+template <>
 struct DecideTruncate<SharedMemoryOpenOnly> {
   void operator()(bip::shared_memory_object&) {}
 };
 
 // decide whether to allocate the memory of the queue or jsut get a pointer to it
-template<typename CreationTag>
+template <typename CreationTag>
 struct CreateQueue {};
 
-template<>
+template <>
 struct CreateQueue<SharedMemoryCreateOnly> {
   void operator()(IpcBidirectionalQueue*& queue,
                   boost::interprocess::mapped_region& mapped_region) {
@@ -73,7 +73,7 @@ struct CreateQueue<SharedMemoryCreateOnly> {
   }
 };
 
-template<>
+template <>
 struct CreateQueue<SharedMemoryOpenOnly> {
   void operator()(IpcBidirectionalQueue*& queue,
                   boost::interprocess::mapped_region& mapped_region) {
@@ -82,34 +82,31 @@ struct CreateQueue<SharedMemoryOpenOnly> {
 };
 
 // decide whether to delete the shared memory allocated based on who is the owner
-template<typename CreationTag>
+template <typename CreationTag>
 struct DecideDeletion {};
 
-template<>
+template <>
 struct DecideDeletion<SharedMemoryCreateOnly> {
-  void operator()(const std::string& name) {
-    bip::shared_memory_object::remove(name.c_str());
-  }
+  void operator()(const std::string& name) { bip::shared_memory_object::remove(name.c_str()); }
 };
 
-template<>
+template <>
 struct DecideDeletion<SharedMemoryOpenOnly> {
   void operator()(const std::string&) {}
 };
 
 // Decide which mutex to use and which conditionals to trigger when pushing to the queue based on
 // parent/child process
-template<typename CreationTag>
+template <typename CreationTag>
 struct PushMessageToQueue {};
 
-template<>
+template <>
 struct PushMessageToQueue<SharedMemoryCreateOnly> {
   bool Push(IpcBidirectionalQueue*& queue, const std::string& message) {
     bip::scoped_lock<bip::interprocess_mutex> lock(queue->pwcr_mutex);
     if (!queue->parent_write.timed_wait(
-            lock,
-            Until(boost::posix_time::milliseconds(10000)),
-            [&queue] ()->bool { return !queue->message_from_parent; })) {
+             lock, Until(boost::posix_time::milliseconds(10000)),
+                       [&queue]()->bool { return !queue->message_from_parent; })) {
       std::cout << "timed out parent write 3" << std::endl;
       return false;
     }
@@ -124,13 +121,13 @@ struct PushMessageToQueue<SharedMemoryCreateOnly> {
   }
 };
 
-template<>
+template <>
 struct PushMessageToQueue<SharedMemoryOpenOnly> {
   bool Push(IpcBidirectionalQueue*& queue, const std::string& message) {
     bip::scoped_lock<bip::interprocess_mutex> lock(queue->cwpr_mutex);
-    if (!queue->child_write.timed_wait(lock,
-                                       Until(boost::posix_time::milliseconds(10000)),
-                                       [&queue] ()->bool { return !queue->message_from_child; })) {
+    if (!queue->child_write.timed_wait(
+             lock, Until(boost::posix_time::milliseconds(10000)),
+                       [&queue]()->bool { return !queue->message_from_child; })) {
       std::cout << "timed out child write 3" << std::endl;
       return false;
     }
@@ -145,58 +142,52 @@ struct PushMessageToQueue<SharedMemoryOpenOnly> {
 
 // Decide which mutex to use and which conditionals to trigger when popping from the queue based on
 // parent/child process
-template<typename CreationTag>
+template <typename CreationTag>
 struct RunRecevingThread {};
 
-template<>
+template <>
 struct RunRecevingThread<SharedMemoryCreateOnly> {
-  std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue,
-                                    std::atomic<bool>& receive_flag,
+  std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue, std::atomic<bool>& receive_flag,
                                     const std::function<void(std::string)>& message_notifier) {
-    return std::async(std::launch::async,
-                      [&queue, &receive_flag, &message_notifier] () {
-                        while (receive_flag.load()) {
-                          bip::scoped_lock<bip::interprocess_mutex> lock(queue->cwpr_mutex);
-                          if (!queue->parent_read.timed_wait(
-                                  lock,
-                                  Until(boost::posix_time::milliseconds(100)),
-                                  [&queue] ()->bool { return queue->message_from_child; }))
-                            continue;
+    return std::async(std::launch::async, [&queue, &receive_flag, &message_notifier]() {
+      while (receive_flag.load()) {
+        bip::scoped_lock<bip::interprocess_mutex> lock(queue->cwpr_mutex);
+        if (!queue->parent_read.timed_wait(
+                 lock, Until(boost::posix_time::milliseconds(100)),
+                           [&queue]()->bool { return queue->message_from_child; }))
+          continue;
 
-                          // Notify of message
-                          message_notifier(std::string(queue->child_message));
+        // Notify of message
+        message_notifier(std::string(queue->child_message));
 
-                          // Notify the other process that the buffer is empty
-                          queue->message_from_child = false;
-                          queue->child_write.notify_one();
-                        }
-                      });
+        // Notify the other process that the buffer is empty
+        queue->message_from_child = false;
+        queue->child_write.notify_one();
+      }
+    });
   }
 };
 
-template<>
+template <>
 struct RunRecevingThread<SharedMemoryOpenOnly> {
-  std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue,
-                                    std::atomic<bool>& receive_flag,
+  std::future<void> GetThreadFuture(IpcBidirectionalQueue*& queue, std::atomic<bool>& receive_flag,
                                     const std::function<void(std::string)>& message_notifier) {
-    return std::async(std::launch::async,
-                      [&queue, &receive_flag, &message_notifier] () {
-                        while (receive_flag.load()) {
-                          bip::scoped_lock<bip::interprocess_mutex> lock(queue->pwcr_mutex);
-                          if (!queue->child_read.timed_wait(
-                                  lock,
-                                  Until(boost::posix_time::milliseconds(100)),
-                                  [&queue] ()->bool { return queue->message_from_parent; }))
-                            continue;
+    return std::async(std::launch::async, [&queue, &receive_flag, &message_notifier]() {
+      while (receive_flag.load()) {
+        bip::scoped_lock<bip::interprocess_mutex> lock(queue->pwcr_mutex);
+        if (!queue->child_read.timed_wait(
+                 lock, Until(boost::posix_time::milliseconds(100)),
+                           [&queue]()->bool { return queue->message_from_parent; }))
+          continue;
 
-                          // Notify of message
-                          message_notifier(std::string(queue->parent_message));
+        // Notify of message
+        message_notifier(std::string(queue->parent_message));
 
-                          // Notify the other process that the buffer is empty
-                          queue->message_from_parent = false;
-                          queue->parent_write.notify_one();
-                        }
-                      });
+        // Notify the other process that the buffer is empty
+        queue->message_from_parent = false;
+        queue->parent_write.notify_one();
+      }
+    });
   }
 };
 

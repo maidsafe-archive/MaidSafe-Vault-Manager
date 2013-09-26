@@ -22,7 +22,6 @@
 
 #include "maidsafe/common/test.h"
 
-
 namespace maidsafe {
 
 namespace lifestuff_manager {
@@ -31,9 +30,7 @@ namespace detail {
 
 namespace test {
 
-TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) {
-  GTEST_FAIL() << "Needs test";
-}
+TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
 
 TEST(UtilsTest, BEH_GenerateVmidParameter) {
   EXPECT_EQ("0_0", GenerateVmidParameter(0, 0));
@@ -43,9 +40,7 @@ TEST(UtilsTest, BEH_GenerateVmidParameter) {
   EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
 }
 
-TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) {
-  GTEST_FAIL() << "Needs test";
-}
+TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) { GTEST_FAIL() << "Needs test"; }
 
 }  // namespace test
 
