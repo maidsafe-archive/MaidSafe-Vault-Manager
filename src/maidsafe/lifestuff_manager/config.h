@@ -74,9 +74,9 @@ inline asymm::PublicKey kMaidSafePublicKey() {
 
 const std::string kDownloadManagerLocation("downloads");
 #ifdef TESTING
-const std::string kDownloadManagerSite("dev.goLifestuff.com");
+const std::string kDownloadManagerSite("dev.maidsafe.net");
 #else
-const std::string kDownloadManagerSite("goLifestuff.com");
+const std::string kDownloadManagerSite("maidsafe.net");
 #endif
 const std::string kDownloadManagerProtocol("http");
 
