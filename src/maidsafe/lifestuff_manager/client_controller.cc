@@ -501,8 +501,8 @@ void ClientController::HandleBootstrapResponse(
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(
           boost::asio::ip::address::from_string(bootstrap_response.bootstrap_endpoint_ip(i)));
-      endpoint.port(static_cast<unsigned short>(
-          bootstrap_response.bootstrap_endpoint_port(i)));  // NOLINT (Fraser)
+      endpoint.port(static_cast<unsigned short>(   // NOLINT (Fraser)
+          bootstrap_response.bootstrap_endpoint_port(i)));
       bootstrap_endpoints.push_back(endpoint);
     }
     catch (...) {
