@@ -26,6 +26,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/log.h"
 
+#include "maidsafe/lifestuff_manager/config.h"
 #include "maidsafe/lifestuff_manager/download_manager.h"
 #include "maidsafe/lifestuff_manager/return_codes.h"
 
@@ -42,8 +43,8 @@ class DownloadManagerTest : public testing::Test {
   DownloadManagerTest() : download_manager_() {}
 
  protected:
-  void InitialiseDownloadManager(const std::string& remote_location) {
-    download_manager_.reset(new DownloadManager(remote_location));
+  void InitialiseDownloadManager(const std::string& remote_subdir) {
+    download_manager_.reset(new DownloadManager(detail::kDownloadManagerLocation + remote_subdir));
   }
   fs::path GetCurrentVersionDownloadPath() const {
     return download_manager_->local_path_ / download_manager_->latest_remote_version_;
@@ -55,7 +56,7 @@ class DownloadManagerTest : public testing::Test {
 };
 
 TEST_F(DownloadManagerTest, BEH_UpdateSuccessful) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/successful");
+  InitialiseDownloadManager("/download_manager_tests/successful");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kSuccess, download_manager_->Update(updated_files));
@@ -81,7 +82,7 @@ TEST_F(DownloadManagerTest, BEH_UpdateSuccessful) {
 }
 
 TEST_F(DownloadManagerTest, BEH_UpdateHasLatestVersion) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/has_latest");
+  InitialiseDownloadManager("/download_manager_tests/has_latest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.002");
   EXPECT_EQ(kNoVersionChange, download_manager_->Update(updated_files));
@@ -92,7 +93,7 @@ TEST_F(DownloadManagerTest, BEH_UpdateHasLatestVersion) {
 }
 
 TEST_F(DownloadManagerTest, BEH_UpdateNoManifestFile) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/no_manifest");
+  InitialiseDownloadManager("/download_manager_tests/no_manifest");
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kManifestFailure, download_manager_->Update(updated_files));
@@ -114,7 +115,7 @@ class DownloadManagerCommonTest : public DownloadManagerTest,
 };  // NOLINT (Fraser)
 
 TEST_P(DownloadManagerCommonTest, BEH_UpdateThirdFileFail) {
-  InitialiseDownloadManager("/downloads/download_manager_tests/" + GetParam());
+  InitialiseDownloadManager("/download_manager_tests/" + GetParam());
   std::vector<fs::path> updated_files;
   SetLatestLocalVersion("1.1.001");
   EXPECT_EQ(kSuccess, download_manager_->Update(updated_files));

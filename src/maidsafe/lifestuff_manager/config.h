@@ -72,12 +72,12 @@ inline asymm::PublicKey kMaidSafePublicKey() {
   return decoded_key;
 }
 
-const std::string kDownloadManagerLocation("downloads");
 #ifdef TESTING
-const std::string kDownloadManagerSite("dev.maidsafe.net");
+const std::string kDownloadManagerLocation("test_downloads");
 #else
-const std::string kDownloadManagerSite("maidsafe.net");
+const std::string kDownloadManagerLocation("downloads");
 #endif
+const std::string kDownloadManagerSite("maidsafe.net");
 const std::string kDownloadManagerProtocol("http");
 
 #ifndef MAIDSAFE_WIN32
