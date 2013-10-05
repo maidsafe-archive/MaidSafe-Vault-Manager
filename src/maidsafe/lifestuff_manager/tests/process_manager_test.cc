@@ -266,7 +266,7 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
   ProcessIndex process_index = process_manager_.AddProcess(test, 0);
   auto start(boost::posix_time::microsec_clock::universal_time());
   process_manager_.StartProcess(process_index);
-  EXPECT_NE(0, process_index);
+  EXPECT_NE(0U, process_index);
   EXPECT_EQ(1, GetNumRunningProcesses(detail::kVaultName));
 
   process_manager_.LetProcessDie(process_index);
@@ -447,13 +447,13 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
   std::vector<ProcessIndex> process_indices_5, process_indices_10;
   for (const auto& elem : processes_5) {
     ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
-    EXPECT_NE(0, process_index);
+    EXPECT_NE(0U, process_index);
     process_indices_5.push_back(process_index);
     process_manager_.StartProcess(process_index);
   }
   for (const auto& elem : processes_10) {
     ProcessIndex process_index = process_manager_.AddProcess(elem, 0);
-    EXPECT_NE(0, process_index);
+    EXPECT_NE(0U, process_index);
     process_manager_.StartProcess(process_index);
     process_indices_10.push_back(process_index);
   }
