@@ -82,8 +82,7 @@ bool UnwrapMessage(const std::string& wrapped_message, MessageType& message_type
   }
 }
 
-std::string GenerateVmidParameter(const ProcessIndex& process_index,
-                                  const Port& lifestuff_manager_port) {
+std::string GenerateVmidParameter(ProcessIndex process_index, Port lifestuff_manager_port) {
   return std::to_string(process_index) + kSeparator + std::to_string(lifestuff_manager_port);
 }
 

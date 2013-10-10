@@ -102,7 +102,7 @@ class SureFileStore {
   void DoDelete(const KeyType& key);
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
-  bool HasDiskSpace(const uint64_t& required_space) const;
+  bool HasDiskSpace(uint64_t required_space) const;
   boost::filesystem::path KeyToFilePath(const KeyType& key, bool create_if_missing) const;
   uint32_t GetReferenceCount(const boost::filesystem::path& path) const;
   void Write(const boost::filesystem::path& path, const NonEmptyString& value,

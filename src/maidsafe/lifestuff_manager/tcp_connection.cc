@@ -54,7 +54,7 @@ TcpConnection::TcpConnection(const std::shared_ptr<LocalTcpTransport>& transport
   static_assert((sizeof(LocalTcpTransport::DataSize)) == 4, "DataSize must be 4 bytes.");
 }
 
-int TcpConnection::Connect(const uint16_t& remote_port) {
+int TcpConnection::Connect(uint16_t remote_port) {
   assert(!socket_.is_open());
   boost::system::error_code ec;
   socket_.connect(ip::tcp::endpoint(ip::address_v4::loopback(), remote_port), ec);

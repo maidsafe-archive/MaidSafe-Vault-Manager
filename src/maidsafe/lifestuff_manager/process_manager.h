@@ -87,15 +87,15 @@ class ProcessManager {
   size_t NumberOfProcesses() const;
   size_t NumberOfLiveProcesses() const;
   size_t NumberOfSleepingProcesses() const;
-  void StartProcess(const ProcessIndex& index);
-  void LetProcessDie(const ProcessIndex& index);
+  void StartProcess(ProcessIndex index);
+  void LetProcessDie(ProcessIndex index);
   void LetAllProcessesDie();
   void WaitForProcesses();
-  void KillProcess(const ProcessIndex& index);
-  void StopProcess(const ProcessIndex& index);
-  void RestartProcess(const ProcessIndex& index);
-  ProcessStatus GetProcessStatus(const ProcessIndex& index);
-  bool WaitForProcessToStop(const ProcessIndex& index);
+  void KillProcess(ProcessIndex index);
+  void StopProcess(ProcessIndex index);
+  void RestartProcess(ProcessIndex index);
+  ProcessStatus GetProcessStatus(ProcessIndex index);
+  bool WaitForProcessToStop(ProcessIndex index);
   static ProcessIndex kInvalidIndex() { return std::numeric_limits<ProcessIndex>::max(); }
 
  private:
@@ -128,10 +128,10 @@ class ProcessManager {
 
   ProcessManager(const ProcessManager&);
   ProcessManager& operator=(const ProcessManager&);
-  std::vector<ProcessInfo>::iterator FindProcess(const ProcessIndex& index);
-  void RunProcess(const ProcessIndex& index, bool restart, bool logging);
+  std::vector<ProcessInfo>::iterator FindProcess(ProcessIndex index);
+  void RunProcess(ProcessIndex index, bool restart, bool logging);
   void TerminateAll();
-  bool SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status);
+  bool SetProcessStatus(ProcessIndex index, const ProcessStatus& status);
 
   std::vector<ProcessInfo> processes_;
   ProcessIndex current_max_id_;

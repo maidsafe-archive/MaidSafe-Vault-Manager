@@ -146,11 +146,11 @@ class DataBuffer {
   void Init();
 
   std::unique_lock<std::mutex> StoreInMemory(const KeyType& key, const NonEmptyString& value);
-  void WaitForSpaceInMemory(const uint64_t& required_space,
+  void WaitForSpaceInMemory(uint64_t required_space,
                             std::unique_lock<std::mutex>& memory_store_lock);
   void StoreOnDisk(const KeyType& key, const NonEmptyString& value,
                    std::unique_lock<std::mutex>&& disk_store_lock);
-  void WaitForSpaceOnDisk(const KeyType& key, const uint64_t& required_space,
+  void WaitForSpaceOnDisk(const KeyType& key, uint64_t required_space,
                           std::unique_lock<std::mutex>& disk_store_lock, bool& cancelled);
   void DeleteFromMemory(const KeyType& key, StoringState& also_on_disk);
   void DeleteFromDisk(const KeyType& key);
@@ -162,14 +162,14 @@ class DataBuffer {
   boost::filesystem::path GetFilename(const KeyType& key) const;
 
   template <typename T>
-  bool HasSpace(const T& store, const uint64_t& required_space) const;
+  bool HasSpace(const T& store, uint64_t required_space) const;
 
   template <typename T>
   typename T::index_type::iterator Find(T& store, const KeyType& key);
 
   typename MemoryIndex::iterator FindOldestInMemoryOnly();
   typename MemoryIndex::iterator FindMemoryRemovalCandidate(
-      const uint64_t& required_space, std::unique_lock<std::mutex>& memory_store_lock);
+      uint64_t required_space, std::unique_lock<std::mutex>& memory_store_lock);
 
   typename DiskIndex::iterator FindStartedToStoreOnDisk(const KeyType& key);
   typename DiskIndex::iterator FindOldestOnDisk();
@@ -323,7 +323,7 @@ std::unique_lock<std::mutex> DataBuffer<Key>::StoreInMemory(const KeyType& key,
 }
 
 template <typename Key>
-void DataBuffer<Key>::WaitForSpaceInMemory(const uint64_t& required_space,
+void DataBuffer<Key>::WaitForSpaceInMemory(uint64_t required_space,
                                            std::unique_lock<std::mutex>& memory_store_lock) {
   while (!HasSpace(memory_store_, required_space)) {
     auto itr(FindMemoryRemovalCandidate(required_space, memory_store_lock));
@@ -371,7 +371,7 @@ void DataBuffer<Key>::StoreOnDisk(const KeyType& key, const NonEmptyString& valu
 }
 
 template <typename Key>
-void DataBuffer<Key>::WaitForSpaceOnDisk(const KeyType& key, const uint64_t& required_space,
+void DataBuffer<Key>::WaitForSpaceOnDisk(const KeyType& key, uint64_t required_space,
                                          std::unique_lock<std::mutex>& disk_store_lock,
                                          bool& cancelled) {
   while (!HasSpace(disk_store_, required_space) && running_) {
@@ -586,7 +586,7 @@ boost::filesystem::path DataBuffer<DataNameVariant>::GetFilename(const DataNameV
 
 template <typename Key>
 template <typename T>
-bool DataBuffer<Key>::HasSpace(const T& store, const uint64_t& required_space) const {
+bool DataBuffer<Key>::HasSpace(const T& store, uint64_t required_space) const {
   assert(store.max >= required_space);
   return store.current <= store.max - required_space;
 }
@@ -609,7 +609,7 @@ typename DataBuffer<Key>::MemoryIndex::iterator DataBuffer<Key>::FindOldestInMem
 
 template <typename Key>
 typename DataBuffer<Key>::MemoryIndex::iterator DataBuffer<Key>::FindMemoryRemovalCandidate(
-    const uint64_t& required_space, std::unique_lock<std::mutex>& memory_store_lock) {
+    uint64_t required_space, std::unique_lock<std::mutex>& memory_store_lock) {
   auto itr(memory_store_.index.end());
   memory_store_.cond_var.wait(memory_store_lock, [this, &itr, &required_space]()->bool {
     itr = std::find_if(memory_store_.index.begin(), memory_store_.index.end(),
