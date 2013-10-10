@@ -1152,7 +1152,7 @@ bool LifeStuffManager::ReadFileToLifeStuffManagerConfig(const fs::path& file_pat
   return true;
 }
 
-bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, const uint16_t& port) {
+bool LifeStuffManager::AddBootstrapEndPoint(const std::string& ip, uint16_t port) {
   std::unique_lock<std::mutex> lock(config_file_mutex_);
   auto it(std::find_if(endpoints_.begin(), endpoints_.end(),
                                                [&ip, &port](const EndPoint & element)->bool {

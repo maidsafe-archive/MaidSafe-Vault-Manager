@@ -72,7 +72,7 @@ class PermanentStore {
   PermanentStore& operator=(const PermanentStore&);
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
-  bool HasDiskSpace(const uint64_t& required_space) const;
+  bool HasDiskSpace(uint64_t required_space) const;
   boost::filesystem::path KeyToFilePath(const KeyType& key);
 
   const boost::filesystem::path kDiskPath_;

@@ -159,14 +159,13 @@ size_t ProcessManager::NumberOfSleepingProcesses() const {
   });  // NOLINT (Fraser)
 }
 
-std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(
-    const ProcessIndex& index) {
+std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {
   return std::find_if(processes_.begin(), processes_.end(), [index](ProcessInfo & process_info) {
     return (process_info.index == index);
   });
 }
 
-void ProcessManager::StartProcess(const ProcessIndex& index) {
+void ProcessManager::StartProcess(ProcessIndex index) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -178,7 +177,7 @@ void ProcessManager::StartProcess(const ProcessIndex& index) {
       std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
 }
 
-void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool logging) {
+void ProcessManager::RunProcess(ProcessIndex index, bool restart, bool logging) {
   std::string process_name;
   std::vector<std::string> process_args;
   {
@@ -242,7 +241,7 @@ void ProcessManager::RunProcess(const ProcessIndex& index, bool restart, bool lo
   RunProcess(index, true, logging);
 }
 
-void ProcessManager::LetProcessDie(const ProcessIndex& index) {
+void ProcessManager::LetProcessDie(ProcessIndex index) {
   LOG(kVerbose) << "LetProcessDie: ID: " << index;
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
@@ -281,7 +280,7 @@ void ProcessManager::WaitForProcesses() {
   }
 }
 
-void ProcessManager::KillProcess(const ProcessIndex& index) {
+void ProcessManager::KillProcess(ProcessIndex index) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -290,7 +289,7 @@ void ProcessManager::KillProcess(const ProcessIndex& index) {
   bp::terminate((*itr).child);
 }
 
-void ProcessManager::StopProcess(const ProcessIndex& index) {
+void ProcessManager::StopProcess(ProcessIndex index) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -298,7 +297,7 @@ void ProcessManager::StopProcess(const ProcessIndex& index) {
   (*itr).done = true;
 }
 
-void ProcessManager::RestartProcess(const ProcessIndex& index) {
+void ProcessManager::RestartProcess(ProcessIndex index) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -307,7 +306,7 @@ void ProcessManager::RestartProcess(const ProcessIndex& index) {
   // SetInstruction(id, ProcessInstruction::kTerminate);
 }
 
-ProcessStatus ProcessManager::GetProcessStatus(const ProcessIndex& index) {
+ProcessStatus ProcessManager::GetProcessStatus(ProcessIndex index) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -315,7 +314,7 @@ ProcessStatus ProcessManager::GetProcessStatus(const ProcessIndex& index) {
   return (*itr).status;
 }
 
-bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
+bool ProcessManager::WaitForProcessToStop(ProcessIndex index) {
   std::unique_lock<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())
@@ -330,7 +329,7 @@ bool ProcessManager::WaitForProcessToStop(const ProcessIndex& index) {
   return true;
 }
 
-bool ProcessManager::SetProcessStatus(const ProcessIndex& index, const ProcessStatus& status) {
+bool ProcessManager::SetProcessStatus(ProcessIndex index, const ProcessStatus& status) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = FindProcess(index);
   if (itr == processes_.end())

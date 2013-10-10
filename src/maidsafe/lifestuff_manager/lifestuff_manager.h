@@ -187,7 +187,7 @@ class LifeStuffManager {
   //  int32_t ListVaults(bool select) const;
   bool ObtainBootstrapInformation(protobuf::LifeStuffManagerConfig& config);
   void LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points);
-  bool AddBootstrapEndPoint(const std::string& ip, const uint16_t& port);
+  bool AddBootstrapEndPoint(const std::string& ip, uint16_t port);
   bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 
   ProcessManager process_manager_;

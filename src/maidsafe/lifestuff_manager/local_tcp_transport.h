@@ -40,7 +40,7 @@ class TcpConnection;
 
 typedef uint16_t Port;
 typedef boost::signals2::signal<void(const std::string&, Port)> OnMessageReceived;
-typedef boost::signals2::signal<void(const int&)> OnError;
+typedef boost::signals2::signal<void(int)> OnError;  // NOLINT
 
 class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport> {
  public:

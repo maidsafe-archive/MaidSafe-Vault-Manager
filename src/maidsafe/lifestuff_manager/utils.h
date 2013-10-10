@@ -43,8 +43,7 @@ bool UnwrapMessage(const std::string& wrapped_message, MessageType& message_type
                    std::string& payload);
 
 // Returns a string which can be used as the --vmid argument of the PD vault.
-std::string GenerateVmidParameter(const uint32_t& process_index,
-                                  const uint16_t& lifestuff_manager_port);
+std::string GenerateVmidParameter(uint32_t process_index, uint16_t lifestuff_manager_port);
 
 // Parses a --vmid argument of the PD vault into its constituent parts.
 void ParseVmidParameter(const std::string& lifestuff_manager_identifier, uint32_t& process_index,

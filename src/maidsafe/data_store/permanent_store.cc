@@ -206,7 +206,7 @@ fs::path PermanentStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }
 
-bool PermanentStore::HasDiskSpace(const uint64_t& required_space) const {
+bool PermanentStore::HasDiskSpace(uint64_t required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 

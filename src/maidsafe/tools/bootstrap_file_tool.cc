@@ -367,7 +367,7 @@ class HandlePolicyRemoveEndpoint {
 class HandlePolicyViewEndpoints {
  protected:
   virtual ~HandlePolicyViewEndpoints() {}
-  void HandleInput(const int&) const {
+  void HandleInput(int) const {  // NOLINT
     if (g_bootstrap_endpoints.empty()) {
       TLOG(kGreen) << "\nCurrently no endpoints are loaded.\n";
     } else {
@@ -382,7 +382,7 @@ class HandlePolicyViewEndpoints {
 class HandlePolicyExit {
  protected:
   virtual ~HandlePolicyExit() {}
-  void HandleInput(const int&) const {
+  void HandleInput(int) const {  // NOLINT
     if (g_out_of_date) {
       if (ConfirmChoice(true))
         g_running = false;

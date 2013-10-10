@@ -40,7 +40,7 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   explicit TcpConnection(const std::shared_ptr<LocalTcpTransport>& local_tcp_transport);
   ~TcpConnection() {}
 
-  int Connect(const uint16_t& remote_port);
+  int Connect(uint16_t remote_port);
   void Close();
   void StartReceiving();
   void StartSending(const std::string& data);
