@@ -202,6 +202,18 @@ DiskUsage PermanentStore::GetCurrentDiskUsage() { return current_disk_usage_; }
 
 boost::filesystem::path PermanentStore::GetDiskPath() const { return kDiskPath_; }
 
+std::vector<PermanentStore::KeyType> PermanentStore::GetFileNames() const {
+  std::vector<DataNameVariant> file_names;
+  fs::directory_iterator end_iter;
+
+  if (fs::exists(kDiskPath_) && fs::is_directory(kDiskPath_)) {
+    for(fs::directory_iterator dir_iter(kDiskPath_); dir_iter != end_iter; ++dir_iter)
+      if (fs::is_regular_file(dir_iter->status()))
+        file_names.push_back(detail::GetDataNameVariant(*dir_iter));
+  }
+  return file_names;
+}
+
 fs::path PermanentStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }
