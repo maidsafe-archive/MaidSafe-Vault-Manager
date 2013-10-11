@@ -105,6 +105,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, DiskUsage max_disk_usa
       max_disk_usage_(std::move(max_disk_usage)),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
       kDepth_(5),
+      mutex_(),
       get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_limit);
@@ -185,7 +186,7 @@ void PermanentStore::Delete(const KeyType& key) {
   current_disk_usage_.data -= file_size;
 }
 
-NonEmptyString PermanentStore::Get(const KeyType& key) {
+NonEmptyString PermanentStore::Get(const KeyType& key) const {
   std::lock_guard<std::mutex> lock(mutex_);
   return ReadFile(KeyToFilePath(key));
 }
@@ -196,22 +197,17 @@ void PermanentStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   max_disk_usage_ = max_disk_usage;
 }
 
-DiskUsage PermanentStore::GetMaxDiskUsage() { return max_disk_usage_; }
-
-DiskUsage PermanentStore::GetCurrentDiskUsage() { return current_disk_usage_; }
-
-boost::filesystem::path PermanentStore::GetDiskPath() const { return kDiskPath_; }
-
-std::vector<PermanentStore::KeyType> PermanentStore::GetFileNames() const {
-  std::vector<DataNameVariant> file_names;
+std::vector<PermanentStore::KeyType> PermanentStore::GetKeys() const {
+  std::vector<DataNameVariant> keys;
   fs::directory_iterator end_iter;
 
   if (fs::exists(kDiskPath_) && fs::is_directory(kDiskPath_)) {
-    for(fs::directory_iterator dir_iter(kDiskPath_); dir_iter != end_iter; ++dir_iter)
+    for (fs::directory_iterator dir_iter(kDiskPath_); dir_iter != end_iter; ++dir_iter) {
       if (fs::is_regular_file(dir_iter->status()))
-        file_names.push_back(detail::GetDataNameVariant(*dir_iter));
+        keys.push_back(detail::GetDataNameVariant(*dir_iter));
+    }
   }
-  return file_names;
+  return keys;
 }
 
 fs::path PermanentStore::GetFilePath(const KeyType& key) const {
@@ -222,7 +218,7 @@ bool PermanentStore::HasDiskSpace(uint64_t required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
-fs::path PermanentStore::KeyToFilePath(const KeyType& key) {
+fs::path PermanentStore::KeyToFilePath(const KeyType& key) const {
   NonEmptyString file_name(GetFilePath(key).filename().string());
 
   uint32_t directory_depth = kDepth_;

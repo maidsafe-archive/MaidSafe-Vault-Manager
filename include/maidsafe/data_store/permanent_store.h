@@ -54,17 +54,17 @@ class PermanentStore {
 
   void Put(const KeyType& key, const NonEmptyString& value);
   void Delete(const KeyType& key);
-  NonEmptyString Get(const KeyType& key);
+  NonEmptyString Get(const KeyType& key) const;
 
   // Return list of elements that should have but not exists yet
   std::vector<KeyType> ElementsToStore(std::set<KeyType> element_list);
 
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
-  DiskUsage GetMaxDiskUsage();
-  DiskUsage GetCurrentDiskUsage();
-  boost::filesystem::path GetDiskPath() const;
-  std::vector<KeyType> GetFileNames() const;
+  DiskUsage GetMaxDiskUsage() const { return max_disk_usage_; };
+  DiskUsage GetCurrentDiskUsage() const { return current_disk_usage_; }
+  boost::filesystem::path GetDiskPath() const { return kDiskPath_; }
+  std::vector<KeyType> GetKeys() const;
 
   friend class test::PermanentStoreTest;
 
@@ -74,12 +74,12 @@ class PermanentStore {
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(uint64_t required_space) const;
-  boost::filesystem::path KeyToFilePath(const KeyType& key);
+  boost::filesystem::path KeyToFilePath(const KeyType& key) const;
 
   const boost::filesystem::path kDiskPath_;
   DiskUsage max_disk_usage_, current_disk_usage_;
   const uint32_t kDepth_;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   GetIdentityVisitor get_identity_visitor_;
 };
 
