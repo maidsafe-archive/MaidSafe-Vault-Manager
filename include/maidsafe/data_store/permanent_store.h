@@ -61,7 +61,7 @@ class PermanentStore {
 
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
-  DiskUsage GetMaxDiskUsage() const { return max_disk_usage_; };
+  DiskUsage GetMaxDiskUsage() const { return max_disk_usage_; }
   DiskUsage GetCurrentDiskUsage() const { return current_disk_usage_; }
   boost::filesystem::path GetDiskPath() const { return kDiskPath_; }
   std::vector<KeyType> GetKeys() const;
