@@ -16,6 +16,24 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
+#include "boost/program_options.hpp"
+
 #include "maidsafe/common/test.h"
 
-int main(int argc, char** argv) { return maidsafe::test::ExecuteMain(argc, argv); }
+int main(int argc, char** argv) {
+  auto unused_options(maidsafe::log::Logging::Instance().Initialise(argc, argv));
+  boost::program_options::options_description no_option("");
+  boost::program_options::parsed_options parsed(
+    boost::program_options::command_line_parser(unused_options).options(no_option).
+      allow_unregistered().run());
+  boost::program_options::variables_map variables_map;
+  boost::program_options::store(parsed, variables_map);
+  boost::program_options::notify(variables_map);
+  unused_options = boost::program_options::collect_unrecognized(
+      parsed.options, boost::program_options::include_positional);
+  argc = static_cast<int>(unused_options.size() + 1);
+  int position(0);
+  for (const auto& unused_option : unused_options)
+    std::strcpy(argv[++position], unused_option.c_str());  // NOLINT
+  return maidsafe::test::ExecuteMain(argc, argv);
+}

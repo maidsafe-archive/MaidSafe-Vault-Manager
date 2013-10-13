@@ -33,7 +33,7 @@ namespace test {
 const uint64_t kDefaultMaxMemoryUsage(10);  // elements
 const uint64_t OneKB(1024);
 
-class MemoryBufferTest : public ::testing::Test {
+class MemoryBufferTest {
  public:
   typedef MemoryBuffer::KeyType KeyType;
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
@@ -105,129 +105,130 @@ class MemoryBufferTest : public ::testing::Test {
   std::unique_ptr<MemoryBuffer> memory_buffer_;
 };
 
-TEST_F(MemoryBufferTest, BEH_Store) {
+TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferStore", "[Private][Behavioural]") {
   KeyType key(GetRandomKey()), temp_key;
   NonEmptyString value = GenerateKeyValueData(key, OneKB), temp_value, recovered;
 
-  EXPECT_NO_THROW(memory_buffer_->Store(key, value));
-  // get first value...
-  EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-  EXPECT_EQ(recovered, value);
+  REQUIRE_NOTHROW(memory_buffer_->Store(key, value));
+  // Get first value.
+  REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+  REQUIRE(recovered == value);
 
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage - 1; ++i) {
     temp_key = GetRandomKey();
     temp_value = GenerateKeyValueData(temp_key, OneKB);
-    EXPECT_NO_THROW(memory_buffer_->Store(temp_key, temp_value));
-    EXPECT_NO_THROW(recovered = memory_buffer_->Get(temp_key));
-    EXPECT_EQ(recovered, temp_value);
+    REQUIRE_NOTHROW(memory_buffer_->Store(temp_key, temp_value));
+    REQUIRE_NOTHROW(recovered = memory_buffer_->Get(temp_key));
+    REQUIRE(recovered == temp_value);
   }
 
-  // get first value again...
-  EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-  EXPECT_EQ(recovered, value);
+  // Get first value again.
+  REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+  REQUIRE(recovered == value);
 
-  // store another value to replace first...
+  // Store another value to replace first.
   temp_key = GetRandomKey();
   temp_value = GenerateKeyValueData(temp_key, OneKB);
-  EXPECT_NO_THROW(memory_buffer_->Store(temp_key, temp_value));
-  EXPECT_NO_THROW(recovered = memory_buffer_->Get(temp_key));
-  EXPECT_EQ(recovered, temp_value);
+  REQUIRE_NOTHROW(memory_buffer_->Store(temp_key, temp_value));
+  REQUIRE_NOTHROW(recovered = memory_buffer_->Get(temp_key));
+  REQUIRE(recovered == temp_value);
 
-  // try to get first value again...
-  EXPECT_THROW(recovered = memory_buffer_->Get(key), maidsafe_error);
-  EXPECT_NE(recovered, value);
-  // should still equal last recovered value...
-  EXPECT_EQ(recovered, temp_value);
+  // Try to get first value again.
+  REQUIRE_THROWS_AS(recovered = memory_buffer_->Get(key), maidsafe_error);
+  REQUIRE(recovered != value);
+  // Should still equal last recovered value.
+  REQUIRE(recovered == temp_value);
 }
 
-TEST_F(MemoryBufferTest, BEH_Delete) {
+TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferDelete", "[Private][Behavioural]") {
   KeyValueContainer key_value_pairs;
   KeyType key;
   NonEmptyString value, recovered, temp(RandomAlphaNumericString(301));
 
-  // store some key, value pairs...
+  // Store some key, value pairs.
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage; ++i) {
     key = GetRandomKey();
     value = GenerateKeyValueData(key, (RandomUint32() % 300) + 1);
     key_value_pairs.push_back(std::make_pair(key, value));
-    EXPECT_NO_THROW(memory_buffer_->Store(key, value));
-    EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-    EXPECT_EQ(recovered, value);
+    REQUIRE_NOTHROW(memory_buffer_->Store(key, value));
+    REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+    REQUIRE(recovered == value);
   }
 
   recovered = temp;
 
-  // delete stored key, value pairs and check they're gone...
+  // Delete stored key, value pairs and check they're gone.
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage; ++i) {
-    EXPECT_NO_THROW(memory_buffer_->Delete(key_value_pairs[i].first));
-    EXPECT_THROW(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
-    EXPECT_NE(recovered, key_value_pairs[i].second);
+    REQUIRE_NOTHROW(memory_buffer_->Delete(key_value_pairs[i].first));
+    REQUIRE_THROWS_AS(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
+    REQUIRE(recovered != key_value_pairs[i].second);
   }
 
-  // re-store same key, value pairs...
+  // Re-store same key, value pairs.
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage; ++i) {
-    EXPECT_NO_THROW(memory_buffer_->Store(key_value_pairs[i].first, key_value_pairs[i].second));
-    EXPECT_NO_THROW(recovered = memory_buffer_->Get(key_value_pairs[i].first));
-    EXPECT_EQ(recovered, key_value_pairs[i].second);
+    REQUIRE_NOTHROW(memory_buffer_->Store(key_value_pairs[i].first, key_value_pairs[i].second));
+    REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key_value_pairs[i].first));
+    REQUIRE(recovered == key_value_pairs[i].second);
   }
 
   recovered = temp;
 
-  // store some additional key, value pairs...
+  // Store some additional key, value pairs.
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage; ++i) {
     key = GetRandomKey();
     value = GenerateKeyValueData(key, (RandomUint32() % 300) + 1);
     key_value_pairs.push_back(std::make_pair(key, value));
-    EXPECT_NO_THROW(memory_buffer_->Store(key, value));
-    EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-    EXPECT_EQ(recovered, value);
+    REQUIRE_NOTHROW(memory_buffer_->Store(key, value));
+    REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+    REQUIRE(recovered == value);
   }
 
   recovered = temp;
 
-  // check none of the original key, value pairs are present...
+  // Check none of the original key, value pairs are present.
   for (uint32_t i = 0; i != kDefaultMaxMemoryUsage; ++i) {
-    EXPECT_THROW(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
-    EXPECT_NE(recovered, key_value_pairs[i].second);
+    REQUIRE_THROWS_AS(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
+    REQUIRE(recovered != key_value_pairs[i].second);
   }
 
-  // delete stored key, value pairs and check they're gone...
+  // Delete stored key, value pairs and check they're gone.
   for (uint32_t i = kDefaultMaxMemoryUsage; i != 2 * kDefaultMaxMemoryUsage; ++i) {
-    EXPECT_NO_THROW(memory_buffer_->Delete(key_value_pairs[i].first));
-    EXPECT_THROW(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
-    EXPECT_NE(recovered, key_value_pairs[i].second);
+    REQUIRE_NOTHROW(memory_buffer_->Delete(key_value_pairs[i].first));
+    REQUIRE_THROWS_AS(recovered = memory_buffer_->Get(key_value_pairs[i].first), maidsafe_error);
+    REQUIRE(recovered != key_value_pairs[i].second);
   }
 }
 
-TEST_F(MemoryBufferTest, BEH_RepeatedlyStoreUsingSameKey) {
+TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferRepeatedlyStoreUsingSameKey",
+                 "[Private][Behavioural]") {
   const uint32_t size(50);
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % size) + 1), recovered,
                  last_value;
   auto async =
       std::async(std::launch::async, [this, key, value] { memory_buffer_->Store(key, value); });
-  EXPECT_NO_THROW(async.wait());
-  EXPECT_EQ(true, async.valid());
-  EXPECT_NO_THROW(async.get());
-  EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-  EXPECT_EQ(value, recovered);
+  REQUIRE_NOTHROW(async.wait());
+  REQUIRE(async.valid());
+  REQUIRE_NOTHROW(async.get());
+  REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+  REQUIRE(value == recovered);
 
   uint32_t events(RandomUint32() % (2 * size));
   for (uint32_t i = 0; i != events; ++i) {
     last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % size) + 1));
     auto async = std::async(std::launch::async,
                             [this, key, last_value] { memory_buffer_->Store(key, last_value); });
-    EXPECT_NO_THROW(async.wait());
-    EXPECT_EQ(true, async.valid());
-    EXPECT_NO_THROW(async.get());
+    REQUIRE_NOTHROW(async.wait());
+    REQUIRE(async.valid());
+    REQUIRE_NOTHROW(async.get());
   }
 
-  EXPECT_NO_THROW(recovered = memory_buffer_->Get(key));
-  EXPECT_NE(value, recovered);
-  EXPECT_EQ(last_value, recovered);
+  REQUIRE_NOTHROW(recovered = memory_buffer_->Get(key));
+  REQUIRE(value != recovered);
+  REQUIRE(last_value == recovered);
 }
 
-TEST_F(MemoryBufferTest, BEH_RandomAsync) {
+TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferRandomAsync", "[Private][Behavioural]") {
   typedef KeyValueContainer::value_type value_type;
 
   KeyValueContainer key_value_pairs;
@@ -274,8 +275,9 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
     }
   }
 
-  for (auto& future_store : future_stores)
-    EXPECT_NO_THROW(future_store.get());
+  for (auto& future_store : future_stores) {
+    REQUIRE_NOTHROW(future_store.get());
+  }
 
   for (auto& future_delete : future_deletes) {
     try {
@@ -294,7 +296,7 @@ TEST_F(MemoryBufferTest, BEH_RandomAsync) {
                              [this, &value](const value_type & key_value_pair) {
         return key_value_pair.second == value;
       });
-      EXPECT_NE(key_value_pairs.end(), it);
+      REQUIRE(key_value_pairs.end() != it);
     }
     catch (const std::exception& e) {
       std::string msg(e.what());
