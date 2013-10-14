@@ -26,14 +26,13 @@
 #include "maidsafe/data_types/owner_directory.h"
 
 namespace maidsafe {
-
 namespace data_store {
 
 namespace test {
 
 const DiskUsage kDefaultMaxDiskUsage(2000);
 
-class SureFileStoreTest : public testing::Test {
+class SureFileStoreTest {
  protected:
   SureFileStoreTest()
       : sure_file_store_path_(maidsafe::test::CreateTestPath("MaidSafe_Test_SureFileStore")),
@@ -43,7 +42,7 @@ class SureFileStoreTest : public testing::Test {
   SureFileStore sure_file_store_;
 };
 
-TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
+TEST_CASE_METHOD(SureFileStoreTest, "SureFileStoreSuccessfulStore", "[Private][Behavioural]") {
   const size_t kDataSize(100);
   ImmutableData data(NonEmptyString(RandomString(kDataSize)));
   sure_file_store_.Put(data);
@@ -54,12 +53,12 @@ TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
     else
       break;
   }
-  EXPECT_EQ(DiskUsage(kDataSize), sure_file_store_.GetCurrentDiskUsage());
+  REQUIRE(DiskUsage(kDataSize) == sure_file_store_.GetCurrentDiskUsage());
 
   auto retrieved_data(sure_file_store_.Get<ImmutableData>(data.name()).get());
-  EXPECT_EQ(data.name(), retrieved_data.name());
-  EXPECT_EQ(data.data(), retrieved_data.data());
-  EXPECT_EQ(DiskUsage(kDataSize), sure_file_store_.GetCurrentDiskUsage());
+  REQUIRE(data.name() == retrieved_data.name());
+  REQUIRE(data.data() == retrieved_data.data());
+  REQUIRE(DiskUsage(kDataSize) == sure_file_store_.GetCurrentDiskUsage());
 
   sure_file_store_.Delete<ImmutableData>(data.name());
   auto delete_timeout(std::chrono::system_clock::now() + std::chrono::milliseconds(100));
@@ -69,7 +68,7 @@ TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
     else
       break;
   }
-  EXPECT_EQ(DiskUsage(0), sure_file_store_.GetCurrentDiskUsage());
+  REQUIRE(DiskUsage(0) == sure_file_store_.GetCurrentDiskUsage());
 
   StructuredDataVersions::VersionName default_version;
   StructuredDataVersions::VersionName version0(0, ImmutableData::Name(Identity(RandomString(64))));
@@ -82,23 +81,22 @@ TEST_F(SureFileStoreTest, BEH_SuccessfulStore) {
   sure_file_store_.PutVersion<OwnerDirectory>(dir_name, version1, version2);
 
   auto retrieved_versions(sure_file_store_.GetVersions<OwnerDirectory>(dir_name).get());
-  EXPECT_EQ(1U, retrieved_versions.size());
-  EXPECT_EQ(version2, retrieved_versions.front());
+  REQUIRE(1U == retrieved_versions.size());
+  REQUIRE(version2 == retrieved_versions.front());
 
   retrieved_versions = sure_file_store_.GetBranch<OwnerDirectory>(dir_name, version2).get();
-  EXPECT_EQ(3U, retrieved_versions.size());
+  REQUIRE(3U == retrieved_versions.size());
   auto itr(std::begin(retrieved_versions));
-  EXPECT_EQ(version2, *itr++);
-  EXPECT_EQ(version1, *itr++);
-  EXPECT_EQ(version0, *itr);
+  REQUIRE(version2 == *itr++);
+  REQUIRE(version1 == *itr++);
+  REQUIRE(version0 == *itr);
 
   sure_file_store_.DeleteBranchUntilFork<OwnerDirectory>(dir_name, version2);
   retrieved_versions = sure_file_store_.GetVersions<OwnerDirectory>(dir_name).get();
-  EXPECT_TRUE(retrieved_versions.empty());
+  REQUIRE(retrieved_versions.empty());
 }
 
 }  // namespace test
 
 }  // namespace data_store
-
 }  // namespace maidsafe

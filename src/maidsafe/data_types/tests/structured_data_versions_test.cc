@@ -126,24 +126,27 @@ void ConstructAsDiagram(StructuredDataVersions& versions) {
   }
 }
 
-testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
-                                    const StructuredDataVersions& rhs) {
-  if (lhs.max_versions() != rhs.max_versions())
-    return testing::AssertionFailure() << "lhs.max_versions (" << lhs.max_versions()
-                                       << ") != rhs.max_versions(" << rhs.max_versions() << ")";
-
-  if (lhs.max_branches() != rhs.max_branches())
-    return testing::AssertionFailure() << "lhs.max_branches (" << lhs.max_branches()
-                                       << ") != rhs.max_branches(" << rhs.max_branches() << ")";
+bool Equivalent(const StructuredDataVersions& lhs, const StructuredDataVersions& rhs) {
+  if (lhs.max_versions() != rhs.max_versions()) {
+    LOG(kInfo) << "lhs.max_versions (" << lhs.max_versions()
+               << ") != rhs.max_versions(" << rhs.max_versions() << ")";
+    return false;
+  }
+  if (lhs.max_branches() != rhs.max_branches()) {
+    LOG(kInfo) << "lhs.max_branches (" << lhs.max_branches()
+               << ") != rhs.max_branches(" << rhs.max_branches() << ")";
+    return false;
+  }
 
   auto lhs_tots(lhs.Get());
   auto rhs_tots(rhs.Get());
   std::sort(std::begin(lhs_tots), std::end(lhs_tots));
   std::sort(std::begin(rhs_tots), std::end(rhs_tots));
   if (lhs_tots != rhs_tots) {
-    return testing::AssertionFailure() << "lhs.tips_of_trees != rhs.tips_of_trees:\n"
-                                       << "lhs: " << DisplayVersions(lhs_tots, false)
-                                       << "\n rhs: " << DisplayVersions(rhs_tots, false) << '\n';
+    LOG(kInfo) << "lhs.tips_of_trees != rhs.tips_of_trees:\n"
+               << "lhs: " << DisplayVersions(lhs_tots, false)
+               << "\n rhs: " << DisplayVersions(rhs_tots, false) << '\n';
+    return false;
   }
 
   std::vector<std::vector<VersionName>> lhs_branches, rhs_branches;
@@ -158,28 +161,29 @@ testing::AssertionResult Equivalent(const StructuredDataVersions& lhs,
                 "\n rhs " + std::to_string(i) + ": " + DisplayVersions(rhs_branches[i], false) +
                 '\n';
     }
-    return testing::AssertionFailure() << output;
+    LOG(kInfo) << output;
+    return false;
   }
-  return testing::AssertionSuccess();
+  return true;
 }
 
 }  // unnamed namespace
 
-TEST(StructuredDataVersionsTest, BEH_Put) {
+TEST_CASE("StructuredDataVersionsPut", "[Private][Behavioural]") {
   StructuredDataVersions versions(100, 10);
   VersionName old_version, new_version;
   for (uint32_t i(0); i != 100; ++i) {
     new_version = VersionName(i, RandomId());
-    versions.Put(old_version, new_version);
+    REQUIRE_NOTHROW(versions.Put(old_version, new_version));
     if (i % 20 == 0 && i != 0) {
       for (uint32_t j(0); j != (i / 20); ++j)
-        AddBranch(versions, old_version, i, 20);
+        REQUIRE_NOTHROW(AddBranch(versions, old_version, i, 20));
     }
     old_version = new_version;
   }
 }
 
-TEST(StructuredDataVersionsTest, BEH_PutOrphans) {
+TEST_CASE("StructuredDataVersionsPutOrphans", "[Private][Behavioural]") {
   StructuredDataVersions versions(1000, 100);
   VersionName old_version, new_version;
   std::vector<std::pair<VersionName, VersionName>> missing_names;
@@ -187,67 +191,69 @@ TEST(StructuredDataVersionsTest, BEH_PutOrphans) {
     new_version = VersionName(i, RandomId());
     if (i % 20 == 0 && i != 0 && i != 20) {
       for (uint32_t j(0); j != (i / 20); ++j) {
-        auto branch(AddBranch(versions, new_version, i, 20));
-        AddBranch(versions, branch[7], i + 7, 20);
-        AddBranch(versions, branch[14], i + 14, 20);
+        std::vector<VersionName> branch;
+        REQUIRE_NOTHROW(branch = AddBranch(versions, new_version, i, 20));
+        REQUIRE_NOTHROW(AddBranch(versions, branch[7], i + 7, 20));
+        REQUIRE_NOTHROW(AddBranch(versions, branch[14], i + 14, 20));
       }
       missing_names.push_back(std::make_pair(old_version, new_version));
     } else {
-      versions.Put(old_version, new_version);
+      REQUIRE_NOTHROW(versions.Put(old_version, new_version));
     }
     old_version = new_version;
   }
 
-  for (const auto& missing_name : missing_names)
-    versions.Put(missing_name.first, missing_name.second);
+  for (const auto& missing_name : missing_names) {
+    REQUIRE_NOTHROW(versions.Put(missing_name.first, missing_name.second));
+  }
 }
 
-TEST(StructuredDataVersionsTest, BEH_Serialise) {
+TEST_CASE("StructuredDataVersionsSerialise", "[Private][Behavioural]") {
   StructuredDataVersions versions1(100, 20), versions2(100, 20);
   ConstructAsDiagram(versions1);
   ConstructAsDiagram(versions2);
 
-  EXPECT_TRUE(Equivalent(versions1, versions2));
+  REQUIRE(Equivalent(versions1, versions2));
 
   auto serialised1(versions1.Serialise());
   auto serialised2(versions2.Serialise());
 
-  EXPECT_EQ(serialised1, serialised2);
+  REQUIRE(serialised1 == serialised2);
 
   StructuredDataVersions parsed1(serialised1);
   StructuredDataVersions parsed2(serialised2);
 
-  EXPECT_TRUE(Equivalent(versions1, parsed1));
-  EXPECT_TRUE(Equivalent(versions2, parsed2));
-  EXPECT_TRUE(Equivalent(parsed1, parsed2));
+  REQUIRE(Equivalent(versions1, parsed1));
+  REQUIRE(Equivalent(versions2, parsed2));
+  REQUIRE(Equivalent(parsed1, parsed2));
 
   auto reserialised1(parsed1.Serialise());
   auto reserialised2(parsed2.Serialise());
-  EXPECT_EQ(serialised1, reserialised1);
-  EXPECT_EQ(serialised2, reserialised2);
-  EXPECT_EQ(reserialised1, reserialised2);
+  REQUIRE(serialised1 == reserialised1);
+  REQUIRE(serialised2 == reserialised2);
+  REQUIRE(reserialised1 == reserialised2);
 }
 
-TEST(StructuredDataVersionsTest, BEH_ApplySerialised) {
+TEST_CASE("StructuredDataVersionsApplySerialised", "[Private][Behavioural]") {
   StructuredDataVersions versions1(100, 20);
-  ConstructAsDiagram(versions1);
+  REQUIRE_NOTHROW(ConstructAsDiagram(versions1));
   auto serialised1(versions1.Serialise());
   // Check applying all included versions doesn't modify the SDV.
-  versions1.ApplySerialised(serialised1);
+  REQUIRE_NOTHROW(versions1.ApplySerialised(serialised1));
   auto temp_serialised(versions1.Serialise());
-  EXPECT_EQ(serialised1, temp_serialised);
+  REQUIRE(serialised1 == temp_serialised);
 
   // Construct SDV with only "absent" version from diagram included.
   VersionName v5_nnn(5, ImmutableData::Name(Identity(std::string(64, 'n'))));
   VersionName absent(6, ImmutableData::Name(Identity(std::string(64, 'x'))));
   StructuredDataVersions versions2(100, 20);
-  versions2.Put(v5_nnn, absent);
+  REQUIRE_NOTHROW(versions2.Put(v5_nnn, absent));
   auto serialised2(versions2.Serialise());
 
   // Apply each serialised SDV to the other and check they produce the same resultant SDV.
-  versions1.ApplySerialised(serialised2);
-  versions2.ApplySerialised(serialised1);
-  EXPECT_TRUE(Equivalent(versions1, versions2));
+  REQUIRE_NOTHROW(versions1.ApplySerialised(serialised2));
+  REQUIRE_NOTHROW(versions2.ApplySerialised(serialised1));
+  REQUIRE(Equivalent(versions1, versions2));
 }
 
 }  // namespace test

@@ -27,44 +27,33 @@ namespace maidsafe {
 
 namespace test {
 
-TEST(DataTypesTest, BEH_ConstructType) {
-  // EXPECT_NO_THROW(DataHolder data_holder);
-  static_assert(is_short_term_cacheable<OwnerDirectory>::value, "");
-  static_assert(is_short_term_cacheable<GroupDirectory>::value, "");
-  static_assert(is_short_term_cacheable<WorldDirectory>::value, "");
-  static_assert(!is_long_term_cacheable<OwnerDirectory>::value, "");
-  static_assert(!is_long_term_cacheable<GroupDirectory>::value, "");
-  static_assert(!is_long_term_cacheable<WorldDirectory>::value, "");
-  static_assert(!is_short_term_cacheable<ImmutableData>::value, "");
-  static_assert(is_long_term_cacheable<ImmutableData>::value, "");
+TEST_CASE("DataTypesConstructType", "[Private][Behavioural]") {
+  REQUIRE(is_short_term_cacheable<OwnerDirectory>::value);
+  REQUIRE(is_short_term_cacheable<GroupDirectory>::value);
+  REQUIRE(is_short_term_cacheable<WorldDirectory>::value);
+  REQUIRE(!is_long_term_cacheable<OwnerDirectory>::value);
+  REQUIRE(!is_long_term_cacheable<GroupDirectory>::value);
+  REQUIRE(!is_long_term_cacheable<WorldDirectory>::value);
+  REQUIRE(!is_short_term_cacheable<ImmutableData>::value);
+  REQUIRE(is_long_term_cacheable<ImmutableData>::value);
 }
 
-TEST(DataTypesTest, BEH_RetrieveType) {
-  Identity id(RandomString(64));
-
-  static_assert(std::is_same<passport::PublicAnmid, passport::PublicAnmid::Name::data_type>::value,
-                "");
-  static_assert(
-      std::is_same<passport::PublicAnsmid, passport::PublicAnsmid::Name::data_type>::value, "");
-  static_assert(
-      std::is_same<passport::PublicAntmid, passport::PublicAntmid::Name::data_type>::value, "");
-  static_assert(
-      std::is_same<passport::PublicAnmaid, passport::PublicAnmaid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicMaid, passport::PublicMaid::Name::data_type>::value,
-                "");
-  static_assert(std::is_same<passport::PublicPmid, passport::PublicPmid::Name::data_type>::value,
-                "");
-  static_assert(std::is_same<passport::Mid, passport::Mid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::Smid, passport::Smid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::Tmid, passport::Tmid::Name::data_type>::value, "");
-  static_assert(
-      std::is_same<passport::PublicAnmpid, passport::PublicAnmpid::Name::data_type>::value, "");
-  static_assert(std::is_same<passport::PublicMpid, passport::PublicMpid::Name::data_type>::value,
-                "");
-  static_assert(std::is_same<ImmutableData, ImmutableData::Name::data_type>::value, "");
-  static_assert(std::is_same<OwnerDirectory, OwnerDirectory::Name::data_type>::value, "");
-  static_assert(std::is_same<GroupDirectory, GroupDirectory::Name::data_type>::value, "");
-  static_assert(std::is_same<WorldDirectory, WorldDirectory::Name::data_type>::value, "");
+TEST_CASE("DataTypesRetrieveType", "[Private][Behavioural]") {
+  REQUIRE((std::is_same<passport::PublicAnmid, passport::PublicAnmid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicAnsmid, passport::PublicAnsmid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicAntmid, passport::PublicAntmid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicAnmaid, passport::PublicAnmaid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicMaid, passport::PublicMaid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicPmid, passport::PublicPmid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::Mid, passport::Mid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::Smid, passport::Smid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::Tmid, passport::Tmid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicAnmpid, passport::PublicAnmpid::Name::data_type>::value));
+  REQUIRE((std::is_same<passport::PublicMpid, passport::PublicMpid::Name::data_type>::value));
+  REQUIRE((std::is_same<ImmutableData, ImmutableData::Name::data_type>::value));
+  REQUIRE((std::is_same<OwnerDirectory, OwnerDirectory::Name::data_type>::value));
+  REQUIRE((std::is_same<GroupDirectory, GroupDirectory::Name::data_type>::value));
+  REQUIRE((std::is_same<WorldDirectory, WorldDirectory::Name::data_type>::value));
 }
 
 }  // namespace test

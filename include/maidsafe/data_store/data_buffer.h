@@ -50,9 +50,7 @@ namespace data_store {
 
 namespace test {
 
-template <typename Key>
 class DataBufferTest;
-template <typename StoragePolicy>
 class DataStoreTest;
 
 }  // namespace test
@@ -92,9 +90,7 @@ class DataBuffer {
   // Throws if max_memory_usage_ > max_disk_usage.
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
-  template <typename KeyType>
   friend class test::DataBufferTest;
-  template <typename StoragePolicy>
   friend class test::DataStoreTest;
 
  private:

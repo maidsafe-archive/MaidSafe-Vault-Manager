@@ -36,7 +36,6 @@ namespace pt = boost::posix_time;
 namespace args = std::placeholders;
 
 namespace maidsafe {
-
 namespace data_store {
 
 namespace test {
@@ -44,7 +43,7 @@ namespace test {
 const uint64_t kDefaultMaxDiskUsage(4 * 1024);
 const uint64_t OneKB(1024);
 
-class PermanentStoreTest : public ::testing::Test {
+class PermanentStoreTest {
  public:
   typedef PermanentStore::KeyType KeyType;
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
@@ -103,21 +102,19 @@ class PermanentStoreTest : public ::testing::Test {
     KeyType key;
 
     if (!fs::exists(test_path))
-      EXPECT_TRUE(fs::create_directories(permanent_store_path_, error_code))
-          << permanent_store_path_ << ": " << error_code.message();
-    EXPECT_EQ(0, error_code.value()) << permanent_store_path_ << ": " << error_code.message();
-    EXPECT_TRUE(fs::exists(permanent_store_path_, error_code)) << permanent_store_path_ << ": "
-                                                               << error_code.message();
-    EXPECT_EQ(0, error_code.value());
+      REQUIRE(fs::create_directories(permanent_store_path_, error_code));
+    REQUIRE(0 == error_code.value());
+    REQUIRE(fs::exists(permanent_store_path_, error_code));
+    REQUIRE(0 == error_code.value());
 
     AddRandomKeyValuePairs(key_value_pairs, num_entries, OneKB);
 
     DiskUsage disk_usage(disk_entries * OneKB);
     permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
     for (auto key_value : key_value_pairs) {
-      EXPECT_NO_THROW(permanent_store_->Put(key_value.first, key_value.second));
-      EXPECT_NO_THROW(recovered = permanent_store_->Get(key_value.first));
-      EXPECT_EQ(key_value.second, recovered);
+      REQUIRE_NOTHROW(permanent_store_->Put(key_value.first, key_value.second));
+      REQUIRE_NOTHROW(recovered = permanent_store_->Get(key_value.first));
+      REQUIRE(key_value.second == recovered);
     }
     return key_value_pairs;
   }
@@ -269,24 +266,24 @@ class PermanentStoreTest : public ::testing::Test {
   std::unique_ptr<PermanentStore> permanent_store_;
 };
 
-TEST_F(PermanentStoreTest, BEH_Constructor) {
-  EXPECT_NO_THROW(PermanentStore(permanent_store_path_, DiskUsage(0)));
-  EXPECT_NO_THROW(PermanentStore(permanent_store_path_, DiskUsage(1)));
-  EXPECT_NO_THROW(PermanentStore(permanent_store_path_, DiskUsage(200000)));
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreConstructor", "[Private][Behavioural]") {
+  REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(0)));
+  REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(1)));
+  REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(200000)));
   // Create a path to a file, and check that this can't be used as the disk store path.
   maidsafe::test::TestPath test_path(
       maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore"));
-  ASSERT_FALSE(test_path->empty());
+  REQUIRE_FALSE(test_path->empty());
   boost::filesystem::path file_path(*test_path / "File");
-  ASSERT_TRUE(WriteFile(file_path, " "));
-  EXPECT_THROW(PermanentStore(file_path, DiskUsage(200000)), std::exception);
-  EXPECT_THROW(PermanentStore(file_path / "base", DiskUsage(200000)), std::exception);
+  REQUIRE(WriteFile(file_path, " "));
+  REQUIRE_THROWS_AS(PermanentStore(file_path, DiskUsage(200000)), std::exception);
+  REQUIRE_THROWS_AS(PermanentStore(file_path / "base", DiskUsage(200000)), std::exception);
   boost::filesystem::path directory_path(*test_path / "Directory");
-  EXPECT_NO_THROW(PermanentStore(directory_path, DiskUsage(1)));
-  ASSERT_TRUE(fs::exists(directory_path));
+  REQUIRE_NOTHROW(PermanentStore(directory_path, DiskUsage(1)));
+  REQUIRE(fs::exists(directory_path));
 }
 
-TEST_F(PermanentStoreTest, BEH_RemoveDiskStore) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRemoveDiskStore", "[Private][Behavioural]") {
   boost::system::error_code error_code;
   maidsafe::test::TestPath test_path(
       maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore"));
@@ -295,79 +292,81 @@ TEST_F(PermanentStoreTest, BEH_RemoveDiskStore) {
   permanent_store_.reset(new PermanentStore(permanent_store_path, DiskUsage(kDiskSize)));
   KeyType key(GetRandomKey());
   NonEmptyString small_value = GenerateKeyValueData(key, kSize);
-  EXPECT_NO_THROW(permanent_store_->Put(key, small_value));
-  EXPECT_NO_THROW(permanent_store_->Delete(key));
-  ASSERT_EQ(6, fs::remove_all(permanent_store_path, error_code));
-  ASSERT_FALSE(fs::exists(permanent_store_path, error_code));
+  REQUIRE_NOTHROW(permanent_store_->Put(key, small_value));
+  REQUIRE_NOTHROW(permanent_store_->Delete(key));
+  REQUIRE(6 == fs::remove_all(permanent_store_path, error_code));
+  REQUIRE_FALSE(fs::exists(permanent_store_path, error_code));
   KeyType key1(GetRandomKey());
   NonEmptyString large_value = GenerateKeyValueData(key1, kDiskSize);
-  EXPECT_THROW(permanent_store_->Put(key, small_value), std::exception);
-  EXPECT_THROW(permanent_store_->Get(key), std::exception);
-  EXPECT_THROW(permanent_store_->Delete(key), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Put(key, small_value), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Get(key), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Delete(key), std::exception);
   permanent_store_.reset(new PermanentStore(permanent_store_path, DiskUsage(kDiskSize)));
-  EXPECT_NO_THROW(permanent_store_->Put(key1, large_value));
-  EXPECT_NO_THROW(permanent_store_->Delete(key1));
-  EXPECT_NE(6, fs::remove_all(permanent_store_path, error_code));
-  ASSERT_FALSE(fs::exists(permanent_store_path, error_code));
-  EXPECT_THROW(permanent_store_->Put(key, small_value), std::exception);
-  EXPECT_THROW(permanent_store_->Get(key), std::exception);
-  EXPECT_THROW(permanent_store_->Delete(key), std::exception);
+  REQUIRE_NOTHROW(permanent_store_->Put(key1, large_value));
+  REQUIRE_NOTHROW(permanent_store_->Delete(key1));
+  REQUIRE(6 != fs::remove_all(permanent_store_path, error_code));
+  REQUIRE_FALSE(fs::exists(permanent_store_path, error_code));
+  REQUIRE_THROWS_AS(permanent_store_->Put(key, small_value), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Get(key), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Delete(key), std::exception);
 }
 
-TEST_F(PermanentStoreTest, BEH_SuccessfulStore) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreSuccessfulStore", "[Private][Behavioural]") {
   KeyType key1(GetRandomKey()), key2(GetRandomKey());
   NonEmptyString value1 = GenerateKeyValueData(key1, static_cast<uint32_t>(2 * OneKB)),
                  value2 = GenerateKeyValueData(key2, static_cast<uint32_t>(2 * OneKB)), recovered;
-  EXPECT_NO_THROW(permanent_store_->Put(key1, value1));
-  EXPECT_NO_THROW(permanent_store_->Put(key2, value2));
-  EXPECT_NO_THROW(recovered = permanent_store_->Get(key1));
-  EXPECT_EQ(recovered, value1);
-  EXPECT_NO_THROW(recovered = permanent_store_->Get(key2));
-  EXPECT_EQ(recovered, value2);
+  REQUIRE_NOTHROW(permanent_store_->Put(key1, value1));
+  REQUIRE_NOTHROW(permanent_store_->Put(key2, value2));
+  REQUIRE_NOTHROW(recovered = permanent_store_->Get(key1));
+  REQUIRE(recovered == value1);
+  REQUIRE_NOTHROW(recovered = permanent_store_->Get(key2));
+  REQUIRE(recovered == value2);
 }
 
-TEST_F(PermanentStoreTest, BEH_UnsuccessfulStore) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreUnsuccessfulStore", "[Private][Behavioural]") {
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, static_cast<uint32_t>(kDefaultMaxDiskUsage) + 1);
-  EXPECT_THROW(permanent_store_->Put(key, value), std::exception);
+  REQUIRE_THROWS_AS(permanent_store_->Put(key, value), std::exception);
 }
 
-TEST_F(PermanentStoreTest, BEH_DeleteOnDiskStoreOverfill) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreDeleteOnDiskStoreOverfill",
+                 "[Private][Behavioural]") {
   const size_t num_entries(4), num_disk_entries(4);
   KeyValueContainer key_value_pairs(
       PopulatePermanentStore(num_entries, num_disk_entries, permanent_store_path_));
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, 2 * OneKB), recovered;
   KeyType first_key(key_value_pairs[0].first), second_key(key_value_pairs[1].first);
-  EXPECT_THROW(permanent_store_->Put(key, value), std::exception);
-  EXPECT_THROW(recovered = permanent_store_->Get(key), std::exception);
-  EXPECT_NO_THROW(permanent_store_->Delete(first_key));
-  EXPECT_NO_THROW(permanent_store_->Delete(second_key));
-  EXPECT_NO_THROW(permanent_store_->Put(key, value));
-  EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
-  EXPECT_EQ(recovered, value);
+  REQUIRE_THROWS_AS(permanent_store_->Put(key, value), std::exception);
+  REQUIRE_THROWS_AS(recovered = permanent_store_->Get(key), std::exception);
+  REQUIRE_NOTHROW(permanent_store_->Delete(first_key));
+  REQUIRE_NOTHROW(permanent_store_->Delete(second_key));
+  REQUIRE_NOTHROW(permanent_store_->Put(key, value));
+  REQUIRE_NOTHROW(recovered = permanent_store_->Get(key));
+  REQUIRE(recovered == value);
 }
 
-TEST_F(PermanentStoreTest, BEH_RepeatedlyStoreUsingSameKey) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRepeatedlyStoreUsingSameKey",
+                 "[Private][Behavioural]") {
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % 30) + 1), recovered,
                  last_value;
-  EXPECT_NO_THROW(permanent_store_->Put(key, value));
-  EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
-  EXPECT_EQ(recovered, value);
+  REQUIRE_NOTHROW(permanent_store_->Put(key, value));
+  REQUIRE_NOTHROW(recovered = permanent_store_->Get(key));
+  REQUIRE(recovered == value);
 
   uint32_t events(RandomUint32() % 100);
   for (uint32_t i = 0; i != events; ++i) {
     last_value = NonEmptyString(RandomAlphaNumericString((RandomUint32() % 30) + 1));
-    EXPECT_NO_THROW(permanent_store_->Put(key, last_value));
+    REQUIRE_NOTHROW(permanent_store_->Put(key, last_value));
   }
-  EXPECT_NO_THROW(recovered = permanent_store_->Get(key));
-  EXPECT_NE(value, recovered);
-  EXPECT_EQ(last_value, recovered);
-  EXPECT_EQ(last_value.string().size(), permanent_store_->GetCurrentDiskUsage().data);
+  REQUIRE_NOTHROW(recovered = permanent_store_->Get(key));
+  REQUIRE(value != recovered);
+  REQUIRE(last_value == recovered);
+  REQUIRE(last_value.string().size() == permanent_store_->GetCurrentDiskUsage().data);
 }
 
-TEST_F(PermanentStoreTest, FUNC_Restart) {
+TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRestart", "[Private][Functional]") {
   const size_t num_entries(10 * OneKB), disk_entries(1000 * OneKB);
   KeyValueContainer key_value_pairs(
       PopulatePermanentStore(num_entries, disk_entries, permanent_store_path_));
@@ -377,11 +376,10 @@ TEST_F(PermanentStoreTest, FUNC_Restart) {
   permanent_store_.reset(new PermanentStore(permanent_store_path_, disk_usage));
   pt::ptime stop_time(pt::microsec_clock::universal_time());
   PrintResult(start_time, stop_time);
-  EXPECT_EQ(num_entries * OneKB, permanent_store_->GetCurrentDiskUsage().data);
+  REQUIRE((num_entries * OneKB) == permanent_store_->GetCurrentDiskUsage().data);
 }
 
 }  // namespace test
 
 }  // namespace data_store
-
 }  // namespace maidsafe
