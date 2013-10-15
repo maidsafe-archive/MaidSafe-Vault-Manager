@@ -78,9 +78,9 @@ DataNameVariant GenerateKeyFromValue<DataNameVariant>(const NonEmptyString& valu
 class DataBufferTest {
  protected:
   typedef DataNameVariant KeyType;
-  typedef DataBuffer<KeyType> DataBuffer;
-  typedef std::unique_ptr<DataBuffer> DataBufferPtr;
-  typedef DataBuffer::PopFunctor PopFunctor;
+  typedef DataBuffer<KeyType> DataBufferType;
+  typedef std::unique_ptr<DataBufferType> DataBufferPtr;
+  typedef DataBufferType::PopFunctor PopFunctor;
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueVector;
 
   DataBufferTest()
@@ -88,7 +88,7 @@ class DataBufferTest {
         max_disk_usage_(kDefaultMaxDiskUsage),
         data_buffer_path_(),
         pop_functor_(),
-        data_buffer_(new DataBuffer(max_memory_usage_, max_disk_usage_, pop_functor_)) {}
+        data_buffer_(new DataBufferType(max_memory_usage_, max_disk_usage_, pop_functor_)) {}
 
   void PopFunction(const KeyType& key, const NonEmptyString& value,
                    const std::vector<std::pair<KeyType, NonEmptyString>>& key_value_pairs,
@@ -142,9 +142,9 @@ class DataBufferTest {
       key = GenerateKeyFromValue<KeyType>(value);
       key_value_pairs.push_back(std::make_pair(key, value));
     }
-    data_buffer_.reset(new DataBuffer(MemoryUsage(num_memory_entries * OneKB),
-                                      DiskUsage(num_disk_entries * OneKB), pop_functor,
-                                      data_buffer_path_));
+    data_buffer_.reset(new DataBufferType(MemoryUsage(num_memory_entries * OneKB),
+                                          DiskUsage(num_disk_entries * OneKB), pop_functor,
+                                          data_buffer_path_));
     for (auto key_value : key_value_pairs) {
       REQUIRE_NOTHROW(data_buffer_->Store(key_value.first, key_value.second));
       REQUIRE_NOTHROW(recovered = data_buffer_->Get(key_value.first));
@@ -153,7 +153,7 @@ class DataBufferTest {
     return key_value_pairs;
   }
 
-  boost::filesystem::path GetkDiskBuffer(const DataBuffer& data_buffer) {
+  boost::filesystem::path GetkDiskBuffer(const DataBufferType& data_buffer) {
     return data_buffer.kDiskBuffer_;
   }
 
@@ -167,34 +167,34 @@ class DataBufferTest {
 };
 
 TEST_CASE_METHOD(DataBufferTest, "DataBufferConstructor", "[Private][Behavioural]") {
-  REQUIRE_NOTHROW(DataBuffer(MemoryUsage(0), DiskUsage(0), pop_functor_));
-  REQUIRE_NOTHROW(DataBuffer(MemoryUsage(1), DiskUsage(1), pop_functor_));
-  REQUIRE_THROWS_AS(DataBuffer(MemoryUsage(1), DiskUsage(0), pop_functor_), std::exception);
-  REQUIRE_THROWS_AS(DataBuffer(MemoryUsage(2), DiskUsage(1), pop_functor_), std::exception);
-  REQUIRE_THROWS_AS(DataBuffer(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
+  REQUIRE_NOTHROW(DataBufferType(MemoryUsage(0), DiskUsage(0), pop_functor_));
+  REQUIRE_NOTHROW(DataBufferType(MemoryUsage(1), DiskUsage(1), pop_functor_));
+  REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(1), DiskUsage(0), pop_functor_), std::exception);
+  REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(2), DiskUsage(1), pop_functor_), std::exception);
+  REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
                     std::exception);
-  REQUIRE_NOTHROW(DataBuffer(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
+  REQUIRE_NOTHROW(DataBufferType(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
 
   // Create a path to a file, and check that it can't be used as the disk buffer path.
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   REQUIRE(!test_path->empty());
   boost::filesystem::path file_path(*test_path / "File");
   REQUIRE(WriteFile(file_path, " "));
-  REQUIRE_THROWS_AS(DataBuffer(MemoryUsage(199999), DiskUsage(200000), pop_functor_, file_path),
+  REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(199999), DiskUsage(200000), pop_functor_, file_path),
                     std::exception);
-  REQUIRE_THROWS_AS(DataBuffer(MemoryUsage(199999), DiskUsage(200000), pop_functor_,
-                        file_path / "Directory"), std::exception);
+  REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(199999), DiskUsage(200000), pop_functor_,
+                                   file_path / "Directory"), std::exception);
 
   // Create a path to a directory, and check that it can be used as the disk buffer path.
   boost::filesystem::path directory_path(*test_path / "Directory");
-  REQUIRE_NOTHROW(DataBuffer(MemoryUsage(1), DiskUsage(1), pop_functor_, directory_path));
+  REQUIRE_NOTHROW(DataBufferType(MemoryUsage(1), DiskUsage(1), pop_functor_, directory_path));
   REQUIRE(fs::exists(directory_path));
 }
 
 TEST_CASE_METHOD(DataBufferTest, "DataBufferDestructor", "[Private][Behavioural]") {
   boost::filesystem::path data_buffer_path;
   {
-    DataBuffer data_buffer(MemoryUsage(1), DiskUsage(1), pop_functor_);
+    DataBufferType data_buffer(MemoryUsage(1), DiskUsage(1), pop_functor_);
     data_buffer_path = GetkDiskBuffer(data_buffer);
     REQUIRE(fs::exists(data_buffer_path));
   }
@@ -204,7 +204,7 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferDestructor", "[Private][Behavioural]
   REQUIRE(!test_path->empty());
   data_buffer_path = *test_path / "Directory";
   {
-    DataBuffer data_buffer(MemoryUsage(1), DiskUsage(1), pop_functor_, data_buffer_path);
+    DataBufferType data_buffer(MemoryUsage(1), DiskUsage(1), pop_functor_, data_buffer_path);
     REQUIRE(fs::exists(data_buffer_path));
   }
   REQUIRE(fs::exists(data_buffer_path));
@@ -244,8 +244,8 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferRemoveDiskBuffer", "[Private][Behavi
   fs::path data_buffer_path(*test_path / "data_buffer");
   const uintmax_t kMemorySize(1), kDiskSize(2);
 
-  data_buffer_.reset(new DataBuffer(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
-                                    data_buffer_path));
+  data_buffer_.reset(new DataBufferType(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
+                                        data_buffer_path));
   auto key(GenerateRandomKey<KeyType>());
   NonEmptyString small_value(std::string(kMemorySize, 'a'));
   REQUIRE_NOTHROW(data_buffer_->Store(key, small_value));
@@ -260,8 +260,8 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferRemoveDiskBuffer", "[Private][Behavi
   REQUIRE_THROWS_AS(data_buffer_->Get(key), std::exception);
   REQUIRE_THROWS_AS(data_buffer_->Delete(key), std::exception);
 
-  data_buffer_.reset(new DataBuffer(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
-                                    data_buffer_path));
+  data_buffer_.reset(new DataBufferType(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
+                                        data_buffer_path));
   NonEmptyString large_value(std::string(kDiskSize, 'a'));
   REQUIRE_NOTHROW(data_buffer_->Store(key, large_value));
   REQUIRE_NOTHROW(data_buffer_->Delete(key));
@@ -477,9 +477,9 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferRepeatedlyStoreUsingSameKey",
     LOG(kInfo) << "Pop called on " << DebugKeyName(key) << "with value "
                << HexSubstr(value.string());
   });
-  data_buffer_.reset(new DataBuffer(MemoryUsage(kDefaultMaxMemoryUsage),
-                                    DiskUsage(kDefaultMaxDiskUsage), pop_functor,
-                                    data_buffer_path_));
+  data_buffer_.reset(new DataBufferType(MemoryUsage(kDefaultMaxMemoryUsage),
+                                        DiskUsage(kDefaultMaxDiskUsage), pop_functor,
+                                        data_buffer_path_));
   NonEmptyString value(RandomAlphaNumericString((RandomUint32() % 30) + 1)), recovered, last_value;
   auto key(GenerateKeyFromValue<KeyType>(value));
   auto async = std::async(std::launch::async,
@@ -517,9 +517,9 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferRandomAsync", "[Private][Behavioural
     LOG(kInfo) << "Pop called on " << DebugKeyName(key) << "with value "
                << HexSubstr(value.string());
   });
-  data_buffer_.reset(new DataBuffer(MemoryUsage(kDefaultMaxMemoryUsage),
-                                    DiskUsage(kDefaultMaxDiskUsage), pop_functor,
-                                    data_buffer_path_));
+  data_buffer_.reset(new DataBufferType(MemoryUsage(kDefaultMaxMemoryUsage),
+                                        DiskUsage(kDefaultMaxDiskUsage), pop_functor,
+                                        data_buffer_path_));
 
   KeyValueVector key_value_pairs;
   uint32_t events(RandomUint32() % 500);
@@ -600,15 +600,15 @@ TEST_CASE_METHOD(DataBufferTest, "DataBufferRandomAsync", "[Private][Behavioural
 class DataBufferValueParameterisedTest {
  protected:
   typedef DataNameVariant KeyType;
-  typedef DataBuffer<KeyType> DataBuffer;
-  typedef DataBuffer::PopFunctor PopFunctor;
-  typedef std::unique_ptr<DataBuffer> DataBufferPtr;
+  typedef DataBuffer<KeyType> DataBufferType;
+  typedef DataBufferType::PopFunctor PopFunctorType;
+  typedef std::unique_ptr<DataBufferType> DataBufferPtr;
 
   DataBufferValueParameterisedTest()
       : pop_functor_(),
         data_buffer_() {}
 
-  PopFunctor pop_functor_;
+  PopFunctorType pop_functor_;
   DataBufferPtr data_buffer_;
 };
 
@@ -630,7 +630,7 @@ TEST_CASE_METHOD(DataBufferValueParameterisedTest, "DataBufferValueParameterised
 
   MemoryUsage max_memory_usage(memory_usage);
   DiskUsage max_disk_usage(disk_usage);
-  data_buffer_.reset(new DataBuffer(max_memory_usage, max_disk_usage, pop_functor_));
+  data_buffer_.reset(new DataBufferType(max_memory_usage, max_disk_usage, pop_functor_));
 
   while (total_usage != 0) {
     NonEmptyString value(std::string(RandomAlphaNumericString(
@@ -659,7 +659,7 @@ TEST_CASE_METHOD(DataBufferValueParameterisedTest, "DataBufferValueParameterised
 
   MemoryUsage max_memory_usage(memory_usage);
   DiskUsage max_disk_usage(disk_usage);
-  data_buffer_.reset(new DataBuffer(max_memory_usage, max_disk_usage, pop_functor_));
+  data_buffer_.reset(new DataBufferType(max_memory_usage, max_disk_usage, pop_functor_));
 
   std::map<KeyType, NonEmptyString> key_value_pairs;
   while (total_usage != 0) {
