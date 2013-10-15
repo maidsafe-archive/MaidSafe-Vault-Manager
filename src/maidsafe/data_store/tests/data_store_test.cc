@@ -45,8 +45,8 @@ const uint64_t OneKB(1024);
 class DataStoreTest {
  public:
   typedef DataBuffer<DataNameVariant> StoragePolicy;
-  typedef DataStore<StoragePolicy> DataStore;
-  typedef std::unique_ptr<DataStore> DataStorePtr;
+  typedef DataStore<StoragePolicy> DataStoreType;
+  typedef std::unique_ptr<DataStoreType> DataStorePtr;
   typedef StoragePolicy::KeyType KeyType;
   typedef std::vector<std::pair<KeyType, NonEmptyString>> KeyValueContainer;
   typedef StoragePolicy::PopFunctor PopFunctor;
@@ -78,7 +78,7 @@ class DataStoreTest {
         max_disk_usage_(kDefaultMaxDiskUsage),
         data_store_path_(),
         pop_functor_(),
-        data_store_(new DataStore(max_memory_usage_, max_disk_usage_, pop_functor_)) {}
+        data_store_(new DataStoreType(max_memory_usage_, max_disk_usage_, pop_functor_)) {}
 
   void PopFunction(const KeyType& key, const NonEmptyString& value,
                    const std::vector<std::pair<KeyType, NonEmptyString>>& key_value_pairs,
@@ -132,9 +132,9 @@ class DataStoreTest {
     AddRandomKeyValuePairs(key_value_pairs, static_cast<uint32_t>(num_entries),
                            static_cast<uint32_t>(OneKB));
 
-    data_store_.reset(new DataStore(MemoryUsage(num_memory_entries * OneKB),
-                                    DiskUsage(num_disk_entries * OneKB), pop_functor,
-                                    data_store_path_));
+    data_store_.reset(new DataStoreType(MemoryUsage(num_memory_entries * OneKB),
+                                        DiskUsage(num_disk_entries * OneKB), pop_functor,
+                                        data_store_path_));
     for (auto key_value : key_value_pairs) {
       REQUIRE_NOTHROW(data_store_->Store(key_value.first, key_value.second));
       REQUIRE_NOTHROW(recovered = data_store_->Get(key_value.first));
@@ -143,7 +143,7 @@ class DataStoreTest {
     return key_value_pairs;
   }
 
-  boost::filesystem::path GetDiskStore(const DataStore& data_store) {
+  boost::filesystem::path GetDiskStore(const DataStoreType& data_store) {
     return data_store.kDiskBuffer_;
   }
 
@@ -290,30 +290,30 @@ class DataStoreTest {
 };
 
 TEST_CASE_METHOD(DataStoreTest, "Constructor", "[Private][Behavioural]") {
-  REQUIRE_NOTHROW(DataStore(MemoryUsage(0), DiskUsage(0), pop_functor_));
-  REQUIRE_NOTHROW(DataStore(MemoryUsage(1), DiskUsage(1), pop_functor_));
-  REQUIRE_THROWS_AS(DataStore(MemoryUsage(1), DiskUsage(0), pop_functor_), std::exception);
-  REQUIRE_THROWS_AS(DataStore(MemoryUsage(2), DiskUsage(1), pop_functor_), std::exception);
-  REQUIRE_THROWS_AS(DataStore(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
+  REQUIRE_NOTHROW(DataStoreType(MemoryUsage(0), DiskUsage(0), pop_functor_));
+  REQUIRE_NOTHROW(DataStoreType(MemoryUsage(1), DiskUsage(1), pop_functor_));
+  REQUIRE_THROWS_AS(DataStoreType(MemoryUsage(1), DiskUsage(0), pop_functor_), std::exception);
+  REQUIRE_THROWS_AS(DataStoreType(MemoryUsage(2), DiskUsage(1), pop_functor_), std::exception);
+  REQUIRE_THROWS_AS(DataStoreType(MemoryUsage(200001), DiskUsage(200000), pop_functor_),
                     std::exception);
-  REQUIRE_NOTHROW(DataStore(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
+  REQUIRE_NOTHROW(DataStoreType(MemoryUsage(199999), DiskUsage(200000), pop_functor_));
   // Create a path to a file, and check that this can't be used as the disk store path.
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   REQUIRE_FALSE(test_path->empty());
   boost::filesystem::path file_path(*test_path / "File");
   REQUIRE(WriteFile(file_path, " "));
-  REQUIRE_THROWS_AS(DataStore(MemoryUsage(199999), DiskUsage(200000), pop_functor_, file_path),
-                    std::exception);
-  REQUIRE_THROWS_AS(DataStore(MemoryUsage(199999), DiskUsage(200000), pop_functor_,
-                              file_path / "base"), std::exception);
+  REQUIRE_THROWS_AS(DataStoreType(MemoryUsage(199999), DiskUsage(200000), pop_functor_, file_path),
+                                  std::exception);
+  REQUIRE_THROWS_AS(DataStoreType(MemoryUsage(199999), DiskUsage(200000), pop_functor_,
+                                  file_path / "base"), std::exception);
 
   boost::filesystem::path dir_path(*test_path / "Dir");
-  REQUIRE_NOTHROW(DataStore(MemoryUsage(1), DiskUsage(1), pop_functor_, dir_path));
+  REQUIRE_NOTHROW(DataStoreType(MemoryUsage(1), DiskUsage(1), pop_functor_, dir_path));
   REQUIRE(fs::exists(dir_path));
 
   boost::filesystem::path data_store_path;
   {
-    DataStore data_store(MemoryUsage(1), DiskUsage(1), pop_functor_);
+    DataStoreType data_store(MemoryUsage(1), DiskUsage(1), pop_functor_);
     data_store_path = GetDiskStore(data_store);
     REQUIRE(fs::exists(data_store_path));
   }
@@ -350,8 +350,8 @@ TEST_CASE_METHOD(DataStoreTest, "RemoveDiskStore", "[Private][Behavioural]") {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
   fs::path data_store_path(*test_path / "data_store");
   const uintmax_t kMemorySize(1), kDiskSize(2);
-  data_store_.reset(new DataStore(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
-                                  data_store_path));
+  data_store_.reset(new DataStoreType(MemoryUsage(kMemorySize), DiskUsage(kDiskSize), pop_functor_,
+                                      data_store_path));
   KeyType key(GetRandomKey());
   NonEmptyString small_value = GenerateKeyValueData(key, kMemorySize);
   REQUIRE_NOTHROW(data_store_->Store(key, small_value));
@@ -366,8 +366,8 @@ TEST_CASE_METHOD(DataStoreTest, "RemoveDiskStore", "[Private][Behavioural]") {
   REQUIRE_THROWS_AS(data_store_->Get(key), std::exception);
   REQUIRE_THROWS_AS(data_store_->Delete(key), std::exception);
 
-  data_store_.reset(new DataStore(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
-                                                   pop_functor_, data_store_path));
+  data_store_.reset(new DataStoreType(MemoryUsage(kMemorySize), DiskUsage(kDiskSize),
+                                      pop_functor_, data_store_path));
   NonEmptyString large_value = GenerateKeyValueData(key, kDiskSize);
   REQUIRE_NOTHROW(data_store_->Store(key, large_value));
   REQUIRE_NOTHROW(data_store_->Delete(key));
@@ -566,9 +566,9 @@ TEST_CASE_METHOD(DataStoreTest, "RepeatedlyStoreUsingSameKey", "[Private][Behavi
     LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string()) << "with value "
                << HexSubstr(value.string());
   });
-  data_store_.reset(new DataStore(MemoryUsage(kDefaultMaxMemoryUsage),
-                                                   DiskUsage(kDefaultMaxDiskUsage), pop_functor,
-                                                   data_store_path_));
+  data_store_.reset(new DataStoreType(MemoryUsage(kDefaultMaxMemoryUsage),
+                                      DiskUsage(kDefaultMaxDiskUsage), pop_functor,
+                                      data_store_path_));
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % 30) + 1), recovered,
                  last_value;
@@ -597,9 +597,9 @@ TEST_CASE_METHOD(DataStoreTest, "RandomAsync", "[Private][Behavioural]") {
     LOG(kInfo) << "Pop called on " << HexSubstr(key_id.string()) << "with value "
                << HexSubstr(value.string());
   });
-  data_store_.reset(new DataStore(MemoryUsage(kDefaultMaxMemoryUsage),
-                                  DiskUsage(kDefaultMaxDiskUsage), pop_functor,
-                                  data_store_path_));
+  data_store_.reset(new DataStoreType(MemoryUsage(kDefaultMaxMemoryUsage),
+                                      DiskUsage(kDefaultMaxDiskUsage), pop_functor,
+                                      data_store_path_));
   KeyValueContainer key_value_pairs;
   uint32_t events(RandomUint32() % 500);
   std::vector<std::future<void>> future_stores, future_deletes;
@@ -691,9 +691,9 @@ TEST_CASE_METHOD(DataStoreTest, "Store", "[Private][Behavioural]") {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
 
   fs::path data_store_path(*test_path / "data_store");
-  data_store_.reset(new DataStore(MemoryUsage(resource_usage->memory_usage),
-                                  DiskUsage(resource_usage->disk_usage),
-                                  pop_functor_, data_store_path));
+  data_store_.reset(new DataStoreType(MemoryUsage(resource_usage->memory_usage),
+                                      DiskUsage(resource_usage->disk_usage),
+                                      pop_functor_, data_store_path));
   uint64_t disk_usage(resource_usage->disk_usage), memory_usage(resource_usage->memory_usage),
            total_usage(disk_usage + memory_usage);
   while (total_usage != 0) {
@@ -720,9 +720,9 @@ TEST_CASE_METHOD(DataStoreTest, "Delete", "[Private][Behavioural]") {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataStore"));
 
   fs::path data_store_path(*test_path / "data_store");
-  data_store_.reset(new DataStore(MemoryUsage(resource_usage->memory_usage),
-                                  DiskUsage(resource_usage->disk_usage),
-                                  pop_functor_, data_store_path));
+  data_store_.reset(new DataStoreType(MemoryUsage(resource_usage->memory_usage),
+                                      DiskUsage(resource_usage->disk_usage),
+                                      pop_functor_, data_store_path));
   uint64_t disk_usage(resource_usage->disk_usage), memory_usage(resource_usage->memory_usage),
            total_usage(disk_usage + memory_usage);
   std::map<KeyType, NonEmptyString> key_value_pairs;
