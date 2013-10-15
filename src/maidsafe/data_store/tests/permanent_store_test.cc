@@ -266,7 +266,7 @@ class PermanentStoreTest {
   std::unique_ptr<PermanentStore> permanent_store_;
 };
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreConstructor", "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "Constructor", "[Private][Behavioural]") {
   REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(0)));
   REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(1)));
   REQUIRE_NOTHROW(PermanentStore(permanent_store_path_, DiskUsage(200000)));
@@ -283,7 +283,7 @@ TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreConstructor", "[Private][Beh
   REQUIRE(fs::exists(directory_path));
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRemoveDiskStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "RemoveDiskStore", "[Private][Behavioural]") {
   boost::system::error_code error_code;
   maidsafe::test::TestPath test_path(
       maidsafe::test::CreateTestPath("MaidSafe_Test_PermanentStore"));
@@ -311,7 +311,7 @@ TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRemoveDiskStore", "[Private]
   REQUIRE_THROWS_AS(permanent_store_->Delete(key), std::exception);
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreSuccessfulStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "SuccessfulStore", "[Private][Behavioural]") {
   KeyType key1(GetRandomKey()), key2(GetRandomKey());
   NonEmptyString value1 = GenerateKeyValueData(key1, static_cast<uint32_t>(2 * OneKB)),
                  value2 = GenerateKeyValueData(key2, static_cast<uint32_t>(2 * OneKB)), recovered;
@@ -323,14 +323,13 @@ TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreSuccessfulStore", "[Private]
   REQUIRE(recovered == value2);
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreUnsuccessfulStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "UnsuccessfulStore", "[Private][Behavioural]") {
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, static_cast<uint32_t>(kDefaultMaxDiskUsage) + 1);
   REQUIRE_THROWS_AS(permanent_store_->Put(key, value), std::exception);
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreDeleteOnDiskStoreOverfill",
-                 "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "DeleteOnDiskStoreOverfill", "[Private][Behavioural]") {
   const size_t num_entries(4), num_disk_entries(4);
   KeyValueContainer key_value_pairs(
       PopulatePermanentStore(num_entries, num_disk_entries, permanent_store_path_));
@@ -346,8 +345,7 @@ TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreDeleteOnDiskStoreOverfill",
   REQUIRE(recovered == value);
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRepeatedlyStoreUsingSameKey",
-                 "[Private][Behavioural]") {
+TEST_CASE_METHOD(PermanentStoreTest, "RepeatedlyStoreUsingSameKey", "[Private][Behavioural]") {
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % 30) + 1), recovered,
                  last_value;
@@ -366,7 +364,7 @@ TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRepeatedlyStoreUsingSameKey"
   REQUIRE(last_value.string().size() == permanent_store_->GetCurrentDiskUsage().data);
 }
 
-TEST_CASE_METHOD(PermanentStoreTest, "PermanentStoreRestart", "[Private][Functional]") {
+TEST_CASE_METHOD(PermanentStoreTest, "Restart", "[Private][Functional]") {
   const size_t num_entries(10 * OneKB), disk_entries(1000 * OneKB);
   KeyValueContainer key_value_pairs(
       PopulatePermanentStore(num_entries, disk_entries, permanent_store_path_));

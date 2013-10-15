@@ -42,7 +42,7 @@ class SureFileStoreTest {
   SureFileStore sure_file_store_;
 };
 
-TEST_CASE_METHOD(SureFileStoreTest, "SureFileStoreSuccessfulStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(SureFileStoreTest, "SuccessfulStore", "[Private][Behavioural]") {
   const size_t kDataSize(100);
   ImmutableData data(NonEmptyString(RandomString(kDataSize)));
   sure_file_store_.Put(data);

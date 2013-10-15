@@ -105,7 +105,7 @@ class MemoryBufferTest {
   std::unique_ptr<MemoryBuffer> memory_buffer_;
 };
 
-TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(MemoryBufferTest, "Store", "[Private][Behavioural]") {
   KeyType key(GetRandomKey()), temp_key;
   NonEmptyString value = GenerateKeyValueData(key, OneKB), temp_value, recovered;
 
@@ -140,7 +140,7 @@ TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferStore", "[Private][Behavioural]"
   REQUIRE(recovered == temp_value);
 }
 
-TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferDelete", "[Private][Behavioural]") {
+TEST_CASE_METHOD(MemoryBufferTest, "Delete", "[Private][Behavioural]") {
   KeyValueContainer key_value_pairs;
   KeyType key;
   NonEmptyString value, recovered, temp(RandomAlphaNumericString(301));
@@ -199,8 +199,7 @@ TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferDelete", "[Private][Behavioural]
   }
 }
 
-TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferRepeatedlyStoreUsingSameKey",
-                 "[Private][Behavioural]") {
+TEST_CASE_METHOD(MemoryBufferTest, "RepeatedlyStoreUsingSameKey", "[Private][Behavioural]") {
   const uint32_t size(50);
   KeyType key(GetRandomKey());
   NonEmptyString value = GenerateKeyValueData(key, (RandomUint32() % size) + 1), recovered,
@@ -228,7 +227,7 @@ TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferRepeatedlyStoreUsingSameKey",
   REQUIRE(last_value == recovered);
 }
 
-TEST_CASE_METHOD(MemoryBufferTest, "MemoryBufferRandomAsync", "[Private][Behavioural]") {
+TEST_CASE_METHOD(MemoryBufferTest, "RandomAsync", "[Private][Behavioural]") {
   typedef KeyValueContainer::value_type value_type;
 
   KeyValueContainer key_value_pairs;

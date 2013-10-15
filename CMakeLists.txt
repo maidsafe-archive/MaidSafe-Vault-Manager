@@ -58,8 +58,10 @@ list(REMOVE_ITEM LifestuffManagerTestsAllFiles
        "${LifestuffManagerSourcesDir}/tests/dummy_client.cc"
        "${LifestuffManagerSourcesDir}/tests/dummy_vault.cc")
 
-glob_dir(DataTypesTests ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests "Data Types Tests")
-glob_dir(DataStoreTests ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests "Data Store Tests")
+file(GLOB DataTypesTestsSources ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.cc)
+file(GLOB DataStoreTestsSources ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.cc)
+set(TestsMain ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/tests_main.cc)
+list(REMOVE_ITEM DataTypesTestsSources ${TestsMain})
 
 
 #==================================================================================================#
@@ -79,13 +81,6 @@ ms_add_executable(bootstrap_file_tool "Tools"
     "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/lifestuff_manager/vault_info.pb.cc"
     "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/lifestuff_manager/vault_info.pb.h"
     "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.proto")
-if(MaidsafeTesting)
-  ms_add_executable(test_private "Tests/Private" ${DataStoreTestsAllFiles} ${DataTypesTestsAllFiles})
-  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${LifestuffManagerTestsAllFiles})
-  ms_add_executable(dummy_client "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_client.cc")
-  ms_add_executable(dummy_vault "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_vault.cc")
-  ms_add_executable(client_controller_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/client_controller_tool.cc")
-endif()
 
 target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
 target_link_libraries(maidsafe_lifestuff_manager maidsafe_passport ${BoostRegexLibs})
@@ -94,16 +89,6 @@ add_dependencies(maidsafe_lifestuff_manager_core_dummy boost_process)
 target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
 target_link_libraries(signing_tool maidsafe_passport)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
-if(MaidsafeTesting)
-  target_link_libraries(test_private maidsafe_private)
-  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
-  target_link_libraries(dummy_client maidsafe_lifestuff_manager)
-  target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
-  target_link_libraries(client_controller_tool maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
-
-  add_dependencies(TESTlifestuff_manager dummy_vault)
-endif()
-
 
 rename_outdated_built_exes()
 
@@ -121,25 +106,45 @@ set_target_properties(maidsafe_private
 set_target_properties(maidsafe_lifestuff_manager_core_dummy PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT;APPLICATION_NAME=LifeStuff")
 set_target_properties(signing_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=SigningTool)
 
-if(MaidsafeTesting)
-  if(MSVC)
-    # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
-    set_target_properties(test_private PROPERTIES COMPILE_FLAGS "/bigobj /wd4702")
-  endif()
-  set_target_properties(test_private
-                        dummy_client
-                        dummy_vault
-                        client_controller_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=LifeStuff)
-  set_target_properties(TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT;APPLICATION_NAME=LifeStuff")
-endif()
-
-
 #==================================================================================================#
 # Tests                                                                                            #
 #==================================================================================================#
 if(MaidsafeTesting)
+  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${LifestuffManagerTestsAllFiles})
+  ms_add_executable(dummy_client "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_client.cc")
+  ms_add_executable(dummy_vault "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_vault.cc")
+  ms_add_executable(client_controller_tool "Tools" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/client_controller_tool.cc")
+
+  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
+  target_link_libraries(dummy_client maidsafe_lifestuff_manager)
+  target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
+  target_link_libraries(client_controller_tool maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
+
+  add_dependencies(TESTlifestuff_manager dummy_vault)
+
+  set_target_properties(dummy_client
+                        dummy_vault
+                        client_controller_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=LifeStuff)
+  set_target_properties(TESTlifestuff_manager PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT;APPLICATION_NAME=LifeStuff")
+
+  macro(PrivateTests Group)
+    foreach(TestSource ${ARGN})
+      get_filename_component(Exe ${TestSource} NAME_WE)
+      set(TestSources ${TestSource} ${TestsMain})
+      ms_add_executable(${Exe} "Tests/Private/test_private/${Group}" ${TestSources})
+      target_link_libraries(${Exe} maidsafe_private)
+      if(MSVC)
+        # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
+        set_target_properties(${Exe} PROPERTIES COMPILE_FLAGS "/bigobj /wd4702" COMPILE_DEFINITIONS APPLICATION_NAME=LifeStuff)
+      endif()
+      add_catch_tests(${Exe})
+    endforeach()
+  endmacro()
+
+  PrivateTests("Data Store Tests" ${DataStoreTestsSources})
+  PrivateTests("Data Types Tests" ${DataTypesTestsSources})
+
   add_style_test()
-  add_catch_tests(test_private)
   add_gtests(TESTlifestuff_manager)
   add_project_experimental()
   test_summary_output()
