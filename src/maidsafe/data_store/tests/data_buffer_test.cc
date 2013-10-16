@@ -660,7 +660,14 @@ TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Delete", "[Private][Behaviou
     NonEmptyString value(
         std::string(RandomAlphaNumericString(static_cast<uint32_t>(resource_usage->memory_usage))));
     KeyType key(GenerateKeyFromValue<KeyType>(value));
+  #if defined(__GNUC__) && !defined(__clang__)
+    auto ret_val = key_value_pairs.insert(std::make_pair(key, value));
+    if (!ret_val.second)
+      ret_val.first->second = value;
+  #else
     key_value_pairs[key] = value;
+  #endif
+
     REQUIRE_NOTHROW(data_buffer_->Store(key, value));
     if (disk_usage != 0) {
       disk_usage -= resource_usage->memory_usage;
