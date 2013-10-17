@@ -106,6 +106,7 @@ set_target_properties(maidsafe_private
 set_target_properties(maidsafe_lifestuff_manager_core_dummy PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT;APPLICATION_NAME=LifeStuff")
 set_target_properties(signing_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=SigningTool)
 
+
 #==================================================================================================#
 # Tests                                                                                            #
 #==================================================================================================#
@@ -131,11 +132,13 @@ if(MaidsafeTesting)
     foreach(TestSource ${ARGN})
       get_filename_component(Exe ${TestSource} NAME_WE)
       set(TestSources ${TestSource} ${TestsMain})
-      ms_add_executable(${Exe} "Tests/Private/test_private/${Group}" ${TestSources})
+      ms_add_executable(${Exe} "Tests/Private/${Group}" ${TestSources})
       target_link_libraries(${Exe} maidsafe_private)
       if(MSVC)
         # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
         set_target_properties(${Exe} PROPERTIES COMPILE_FLAGS "/bigobj /wd4702" COMPILE_DEFINITIONS APPLICATION_NAME=LifeStuff)
+      else()
+        set_target_properties(${Exe} PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=LifeStuff)
       endif()
       add_catch_tests(${Exe})
     endforeach()

@@ -28,12 +28,8 @@ namespace maidsafe {
 namespace test {
 
 TEST_CASE("DataTypesConstructType", "[Private][Behavioural]") {
-  REQUIRE(is_short_term_cacheable<OwnerDirectory>::value);
-  REQUIRE(is_short_term_cacheable<GroupDirectory>::value);
-  REQUIRE(is_short_term_cacheable<WorldDirectory>::value);
-  REQUIRE(!is_long_term_cacheable<OwnerDirectory>::value);
-  REQUIRE(!is_long_term_cacheable<GroupDirectory>::value);
-  REQUIRE(!is_long_term_cacheable<WorldDirectory>::value);
+  REQUIRE(is_short_term_cacheable<MutableData>::value);
+  REQUIRE(!is_long_term_cacheable<MutableData>::value);
   REQUIRE(!is_short_term_cacheable<ImmutableData>::value);
   REQUIRE(is_long_term_cacheable<ImmutableData>::value);
 }
@@ -51,9 +47,7 @@ TEST_CASE("DataTypesRetrieveType", "[Private][Behavioural]") {
   REQUIRE((std::is_same<passport::PublicAnmpid, passport::PublicAnmpid::Name::data_type>::value));
   REQUIRE((std::is_same<passport::PublicMpid, passport::PublicMpid::Name::data_type>::value));
   REQUIRE((std::is_same<ImmutableData, ImmutableData::Name::data_type>::value));
-  REQUIRE((std::is_same<OwnerDirectory, OwnerDirectory::Name::data_type>::value));
-  REQUIRE((std::is_same<GroupDirectory, GroupDirectory::Name::data_type>::value));
-  REQUIRE((std::is_same<WorldDirectory, WorldDirectory::Name::data_type>::value));
+  REQUIRE((std::is_same<MutableData, MutableData::Name::data_type>::value));
 }
 
 }  // namespace test

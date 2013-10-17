@@ -23,7 +23,7 @@
 
 #include "maidsafe/data_types/data_type_values.h"
 #include "maidsafe/data_types/immutable_data.h"
-#include "maidsafe/data_types/owner_directory.h"
+#include "maidsafe/data_types/mutable_data.h"
 
 namespace maidsafe {
 namespace data_store {
@@ -74,25 +74,25 @@ TEST_CASE_METHOD(SureFileStoreTest, "SuccessfulStore", "[Private][Behavioural]")
   StructuredDataVersions::VersionName version0(0, ImmutableData::Name(Identity(RandomString(64))));
   StructuredDataVersions::VersionName version1(1, ImmutableData::Name(Identity(RandomString(64))));
   StructuredDataVersions::VersionName version2(2, ImmutableData::Name(Identity(RandomString(64))));
-  OwnerDirectory::Name dir_name(Identity(RandomString(64)));
+  MutableData::Name dir_name(Identity(RandomString(64)));
 
-  sure_file_store_.PutVersion<OwnerDirectory>(dir_name, default_version, version0);
-  sure_file_store_.PutVersion<OwnerDirectory>(dir_name, version0, version1);
-  sure_file_store_.PutVersion<OwnerDirectory>(dir_name, version1, version2);
+  sure_file_store_.PutVersion<MutableData>(dir_name, default_version, version0);
+  sure_file_store_.PutVersion<MutableData>(dir_name, version0, version1);
+  sure_file_store_.PutVersion<MutableData>(dir_name, version1, version2);
 
-  auto retrieved_versions(sure_file_store_.GetVersions<OwnerDirectory>(dir_name).get());
+  auto retrieved_versions(sure_file_store_.GetVersions<MutableData>(dir_name).get());
   REQUIRE(1U == retrieved_versions.size());
   REQUIRE(version2 == retrieved_versions.front());
 
-  retrieved_versions = sure_file_store_.GetBranch<OwnerDirectory>(dir_name, version2).get();
+  retrieved_versions = sure_file_store_.GetBranch<MutableData>(dir_name, version2).get();
   REQUIRE(3U == retrieved_versions.size());
   auto itr(std::begin(retrieved_versions));
   REQUIRE(version2 == *itr++);
   REQUIRE(version1 == *itr++);
   REQUIRE(version0 == *itr);
 
-  sure_file_store_.DeleteBranchUntilFork<OwnerDirectory>(dir_name, version2);
-  retrieved_versions = sure_file_store_.GetVersions<OwnerDirectory>(dir_name).get();
+  sure_file_store_.DeleteBranchUntilFork<MutableData>(dir_name, version2);
+  retrieved_versions = sure_file_store_.GetVersions<MutableData>(dir_name).get();
   REQUIRE(retrieved_versions.empty());
 }
 

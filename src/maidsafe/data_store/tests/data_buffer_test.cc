@@ -22,6 +22,7 @@
 
 #include "boost/filesystem/operations.hpp"
 #include "boost/filesystem/path.hpp"
+#include "boost/mpl/size.hpp"
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/test.h"
@@ -29,7 +30,7 @@
 #include "maidsafe/data_types/data_name_variant.h"
 
 namespace fs = boost::filesystem;
-namespace args = std::placeholders;
+namespace mpl = boost::mpl;
 
 namespace maidsafe {
 namespace data_store {
@@ -42,7 +43,7 @@ typedef std::pair<uint64_t, uint64_t> MaxMemoryDiskUsage;
 const uint64_t OneKB(1024);
 const uint64_t kDefaultMaxMemoryUsage(1000);
 const uint64_t kDefaultMaxDiskUsage(2000);
-const uint32_t kMaxDataTagValue(14);
+const uint32_t kMaxDataTagIndex(mpl::size<typename DataNameVariant::types>::value - 1);
 
 template <typename KeyType>
 KeyType GenerateRandomKey() {
@@ -52,10 +53,10 @@ KeyType GenerateRandomKey() {
 template <>
 DataNameVariant GenerateRandomKey<DataNameVariant>() {
   Identity id(RandomString(crypto::SHA512::DIGESTSIZE));
-  // Check the value of 'kMaxDataTagValue' is not too high
-  GetDataNameVariant(static_cast<DataTagValue>(kMaxDataTagValue), id);
+  // Check the value of 'kMaxDataTagIndex' is not too high
+  GetDataNameVariant(static_cast<DataTagValue>(kMaxDataTagIndex), id);
 
-  DataTagValue tag_value(static_cast<DataTagValue>(RandomUint32() % kMaxDataTagValue));
+  DataTagValue tag_value(static_cast<DataTagValue>(RandomUint32() % kMaxDataTagIndex));
   return GetDataNameVariant(tag_value, id);
 }
 
@@ -67,9 +68,9 @@ KeyType GenerateKeyFromValue(const NonEmptyString& value) {
 template <>
 DataNameVariant GenerateKeyFromValue<DataNameVariant>(const NonEmptyString& value) {
   Identity id(crypto::Hash<crypto::SHA512>(value));
-  // Check the value of 'kMaxDataTagValue' is not too high
-  GetDataNameVariant(static_cast<DataTagValue>(kMaxDataTagValue), id);
-  DataTagValue tag_value(static_cast<DataTagValue>(RandomUint32() % kMaxDataTagValue));
+  // Check the value of 'kMaxDataTagIndex' is not too high
+  GetDataNameVariant(static_cast<DataTagValue>(kMaxDataTagIndex), id);
+  DataTagValue tag_value(static_cast<DataTagValue>(RandomUint32() % kMaxDataTagIndex));
   return GetDataNameVariant(tag_value, id);
 }
 

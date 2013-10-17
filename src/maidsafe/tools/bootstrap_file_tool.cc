@@ -57,6 +57,9 @@ class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy 
     index = command_index
   };
   static void PrintCommandPreamble() { MessagePolicy::PrintCommandPreamble(command_index); }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
   void Execute() const {
     MessagePolicy::PrintMessage();
     typename InputPolicy::InputType input;
@@ -68,6 +71,9 @@ class Choice : private MessagePolicy, private InputPolicy, private HandlePolicy 
     }
     HandlePolicy::HandleInput(input);
   }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 };
 
 // Message Policies

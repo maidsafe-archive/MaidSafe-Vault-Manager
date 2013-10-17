@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/data_types/world_directory.h"
+#include "maidsafe/data_types/mutable_data.h"
 
 #include <utility>
 
@@ -24,43 +24,43 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/error.h"
 
-#include "maidsafe/data_types/directory_types.pb.h"
+#include "maidsafe/data_types/mutable_types.pb.h"
 
 namespace maidsafe {
 
-WorldDirectory::WorldDirectory(const WorldDirectory& other)
+MutableData::MutableData(const MutableData& other)
     : name_(other.name_), data_(other.data_) {}
 
-WorldDirectory::WorldDirectory(WorldDirectory&& other)
+MutableData::MutableData(MutableData&& other)
     : name_(std::move(other.name_)), data_(std::move(other.data_)) {}
 
-WorldDirectory& WorldDirectory::operator=(WorldDirectory other) {
+MutableData& MutableData::operator=(MutableData other) {
   swap(*this, other);
   return *this;
 }
 
-WorldDirectory::WorldDirectory(Name name, NonEmptyString data)
+MutableData::MutableData(Name name, NonEmptyString data)
     : name_(std::move(name)), data_(std::move(data)) {}
 
-WorldDirectory::WorldDirectory(Name name, const serialised_type& serialised_mutable_data)
-    : name_(std::move(name)), data_(), signature_() {
-  protobuf::WorldDirectory proto_mutable_data;
+MutableData::MutableData(Name name, const serialised_type& serialised_mutable_data)
+    : name_(std::move(name)), data_() {
+  protobuf::MutableData proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
     ThrowError(CommonErrors::parsing_error);
   data_ = NonEmptyString(proto_mutable_data.data());
 }
 
-WorldDirectory::serialised_type WorldDirectory::Serialise() const {
-  protobuf::WorldDirectory proto_mutable_data;
+MutableData::serialised_type MutableData::Serialise() const {
+  protobuf::MutableData proto_mutable_data;
   proto_mutable_data.set_data(data_.string());
   return serialised_type(NonEmptyString(proto_mutable_data.SerializeAsString()));
 }
 
-WorldDirectory::Name WorldDirectory::name() const { return name_; }
+MutableData::Name MutableData::name() const { return name_; }
 
-NonEmptyString WorldDirectory::data() const { return data_; }
+NonEmptyString MutableData::data() const { return data_; }
 
-void swap(WorldDirectory& lhs, WorldDirectory& rhs) {
+void swap(MutableData& lhs, MutableData& rhs) {
   using std::swap;
   swap(lhs.name_, rhs.name_);
   swap(lhs.data_, rhs.data_);

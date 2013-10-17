@@ -148,8 +148,8 @@ class DataStoreTest {
   }
 
   void AddRandomKeyValuePairs(KeyValueContainer& container, uint32_t number, uint32_t size) {
-    // Currently there is 15 types defined, but do the calculation anyway...
-    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
+    // Currently there is 13 types defined, but do the calculation anyway...
+    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::value, type_number;
     NonEmptyString value;
     for (uint32_t i = 0; i != number; ++i) {
       type_number = RandomUint32() % number_of_types;
@@ -216,17 +216,7 @@ class DataStoreTest {
           break;
         }
         case 12: {
-          OwnerDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
-          container.push_back(std::make_pair(key, value));
-          break;
-        }
-        case 13: {
-          GroupDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
-          container.push_back(std::make_pair(key, value));
-          break;
-        }
-        case 14: {
-          WorldDirectory::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
+          MutableData::Name key(Identity(crypto::Hash<crypto::SHA512>(value)));
           container.push_back(std::make_pair(key, value));
           break;
         }
@@ -236,8 +226,8 @@ class DataStoreTest {
   }
 
   KeyType GetRandomKey() {
-    // Currently 15 types are defined, but...
-    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
+    // Currently 13 types are defined, but...
+    uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::value, type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
       case 0:
@@ -265,11 +255,7 @@ class DataStoreTest {
       case 11:
         return ImmutableData::Name();
       case 12:
-        return OwnerDirectory::Name();
-      case 13:
-        return GroupDirectory::Name();
-      case 14:
-        return WorldDirectory::Name();
+        return MutableData::Name();
         // default:
         // Throw something!
         //  ;
