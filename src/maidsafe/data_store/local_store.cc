@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/data_store/sure_file_store.h"
+#include "maidsafe/data_store/local_store.h"
 
 #include <string>
 #include <vector>
@@ -98,7 +98,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
 
 }  // unnamed namespace
 
-SureFileStore::SureFileStore(const fs::path& disk_path, DiskUsage max_disk_usage)
+LocalStore::LocalStore(const fs::path& disk_path, DiskUsage max_disk_usage)
     : asio_service_(Concurrency()),  // TODO(Fraser#5#): 2013-09-06 - determine best value.
       kDiskPath_(disk_path),
       max_disk_usage_(std::move(max_disk_usage)),
@@ -110,9 +110,9 @@ SureFileStore::SureFileStore(const fs::path& disk_path, DiskUsage max_disk_usage
   asio_service_.Start();
 }
 
-SureFileStore::~SureFileStore() { asio_service_.Stop(); }
+LocalStore::~LocalStore() { asio_service_.Stop(); }
 
-NonEmptyString SureFileStore::DoGet(const KeyType& key) const {
+NonEmptyString LocalStore::DoGet(const KeyType& key) const {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key, false));
   uint32_t reference_count(GetReferenceCount(file_path));
@@ -120,7 +120,7 @@ NonEmptyString SureFileStore::DoGet(const KeyType& key) const {
   return ReadFile(file_path);
 }
 
-void SureFileStore::DoPut(const KeyType& key, const NonEmptyString& value) {
+void LocalStore::DoPut(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!fs::exists(kDiskPath_))
     ThrowError(CommonErrors::filesystem_io_error);
@@ -152,7 +152,7 @@ void SureFileStore::DoPut(const KeyType& key, const NonEmptyString& value) {
   }
 }
 
-void SureFileStore::DoDelete(const KeyType& key) {
+void LocalStore::DoDelete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key, false));
   uintmax_t file_size(0);
@@ -176,25 +176,25 @@ void SureFileStore::DoDelete(const KeyType& key) {
   }
 }
 
-void SureFileStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
+void LocalStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   if (current_disk_usage_ > max_disk_usage)
     ThrowError(CommonErrors::invalid_parameter);
   max_disk_usage_ = max_disk_usage;
 }
 
-DiskUsage SureFileStore::GetMaxDiskUsage() const { return max_disk_usage_; }
+DiskUsage LocalStore::GetMaxDiskUsage() const { return max_disk_usage_; }
 
-DiskUsage SureFileStore::GetCurrentDiskUsage() const { return current_disk_usage_; }
+DiskUsage LocalStore::GetCurrentDiskUsage() const { return current_disk_usage_; }
 
-fs::path SureFileStore::GetFilePath(const KeyType& key) const {
+fs::path LocalStore::GetFilePath(const KeyType& key) const {
   return kDiskPath_ / detail::GetFileName(key);
 }
 
-bool SureFileStore::HasDiskSpace(uint64_t required_space) const {
+bool LocalStore::HasDiskSpace(uint64_t required_space) const {
   return current_disk_usage_ + required_space <= max_disk_usage_;
 }
 
-fs::path SureFileStore::KeyToFilePath(const KeyType& key, bool create_if_missing) const {
+fs::path LocalStore::KeyToFilePath(const KeyType& key, bool create_if_missing) const {
   NonEmptyString file_name(GetFilePath(key).filename().string());
 
   uint32_t directory_depth = kDepth_;
@@ -213,7 +213,7 @@ fs::path SureFileStore::KeyToFilePath(const KeyType& key, bool create_if_missing
   return fs::path(disk_path / file_name.string().substr(directory_depth));
 }
 
-uint32_t SureFileStore::GetReferenceCount(const fs::path& path) const {
+uint32_t LocalStore::GetReferenceCount(const fs::path& path) const {
   boost::system::error_code error_code;
   if (!fs::exists(path.parent_path(), error_code)) {
     LOG(kWarning) << path << " doesn't exist.";
@@ -235,7 +235,7 @@ uint32_t SureFileStore::GetReferenceCount(const fs::path& path) const {
   return 0;
 }
 
-void SureFileStore::Write(const boost::filesystem::path& path, const NonEmptyString& value,
+void LocalStore::Write(const boost::filesystem::path& path, const NonEmptyString& value,
                           const uintmax_t& size) {
   if (!HasDiskSpace(size)) {
     LOG(kError) << "Out of space.";
@@ -247,7 +247,7 @@ void SureFileStore::Write(const boost::filesystem::path& path, const NonEmptyStr
   }
 }
 
-uintmax_t SureFileStore::Remove(const fs::path& path) {
+uintmax_t LocalStore::Remove(const fs::path& path) {
   boost::system::error_code error_code;
   uintmax_t file_size = fs::file_size(path, error_code);
   if (error_code) {
@@ -261,7 +261,7 @@ uintmax_t SureFileStore::Remove(const fs::path& path) {
   return file_size;
 }
 
-uintmax_t SureFileStore::Rename(const fs::path& old_path, const fs::path& new_path) {
+uintmax_t LocalStore::Rename(const fs::path& old_path, const fs::path& new_path) {
   boost::system::error_code error_code;
   uintmax_t file_size = fs::file_size(old_path, error_code);
   if (error_code) {
@@ -276,7 +276,7 @@ uintmax_t SureFileStore::Rename(const fs::path& old_path, const fs::path& new_pa
   return file_size;
 }
 
-std::unique_ptr<StructuredDataVersions> SureFileStore::ReadVersions(const KeyType& key) const {
+std::unique_ptr<StructuredDataVersions> LocalStore::ReadVersions(const KeyType& key) const {
   fs::path file_path(KeyToFilePath(key, false));
   file_path.replace_extension(".ver");
   boost::system::error_code ec;
@@ -289,7 +289,7 @@ std::unique_ptr<StructuredDataVersions> SureFileStore::ReadVersions(const KeyTyp
   }
 }
 
-void SureFileStore::WriteVersions(const KeyType& key, const StructuredDataVersions& versions) {
+void LocalStore::WriteVersions(const KeyType& key, const StructuredDataVersions& versions) {
   if (!fs::exists(kDiskPath_))
     ThrowError(CommonErrors::filesystem_io_error);
 
