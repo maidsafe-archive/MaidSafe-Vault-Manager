@@ -55,12 +55,12 @@ TEST_CASE_METHOD(SureFileStoreTest, "SuccessfulStore", "[Private][Behavioural]")
   }
   REQUIRE(DiskUsage(kDataSize) == sure_file_store_.GetCurrentDiskUsage());
 
-  auto retrieved_data(sure_file_store_.Get<ImmutableData>(data.name()).get());
+  auto retrieved_data(sure_file_store_.Get(data.name()).get());
   REQUIRE(data.name() == retrieved_data.name());
   REQUIRE(data.data() == retrieved_data.data());
   REQUIRE(DiskUsage(kDataSize) == sure_file_store_.GetCurrentDiskUsage());
 
-  sure_file_store_.Delete<ImmutableData>(data.name());
+  sure_file_store_.Delete(data.name());
   auto delete_timeout(std::chrono::system_clock::now() + std::chrono::milliseconds(100));
   while (std::chrono::system_clock::now() < delete_timeout) {
     if (sure_file_store_.GetCurrentDiskUsage() != DiskUsage(0))
