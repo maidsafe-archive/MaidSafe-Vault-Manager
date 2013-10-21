@@ -42,7 +42,7 @@ class MemoryBufferTest {
   MemoryBufferTest() : memory_buffer_(new MemoryBuffer(MemoryUsage(kDefaultMaxMemoryUsage))) {}
 
   KeyType GetRandomKey() {
-    // Currently 15 types are defined, but...
+    // Currently 13 types are defined, but...
     uint32_t number_of_types = boost::mpl::size<typename KeyType::types>::type::value, type_number;
     type_number = RandomUint32() % number_of_types;
     switch (type_number) {
@@ -71,11 +71,7 @@ class MemoryBufferTest {
       case 11:
         return ImmutableData::Name();
       case 12:
-        return OwnerDirectory::Name();
-      case 13:
-        return GroupDirectory::Name();
-      case 14:
-        return WorldDirectory::Name();
+        return MutableData::Name();
         // default:
         // Throw something!
         //  ;

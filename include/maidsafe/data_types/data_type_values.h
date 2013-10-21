@@ -41,9 +41,7 @@ enum class DataTagValue : uint32_t {
   kAnmpidValue,
   kMpidValue,
   kImmutableDataValue,
-  kOwnerDirectoryValue,
-  kGroupDirectoryValue,
-  kWorldDirectoryValue
+  kMutableDataValue,
 };
 
 template <typename Elem, typename Traits>
@@ -87,14 +85,8 @@ std::basic_ostream<Elem, Traits>& operator<<(std::basic_ostream<Elem, Traits>& o
     case DataTagValue::kImmutableDataValue:
       data_type_str = "Immutable Data";
       break;
-    case DataTagValue::kOwnerDirectoryValue:
-      data_type_str = "Owner Directory";
-      break;
-    case DataTagValue::kGroupDirectoryValue:
-      data_type_str = "Group Directory";
-      break;
-    case DataTagValue::kWorldDirectoryValue:
-      data_type_str = "World Directory";
+    case DataTagValue::kMutableDataValue:
+      data_type_str = "Mutable Directory";
       break;
     default:
       data_type_str = "Invalid data type";

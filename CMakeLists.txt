@@ -106,6 +106,7 @@ set_target_properties(maidsafe_private
 set_target_properties(maidsafe_lifestuff_manager_core_dummy PROPERTIES COMPILE_DEFINITIONS "USE_DUMMY_VAULT;APPLICATION_NAME=LifeStuff")
 set_target_properties(signing_tool PROPERTIES COMPILE_DEFINITIONS APPLICATION_NAME=SigningTool)
 
+
 #==================================================================================================#
 # Tests                                                                                            #
 #==================================================================================================#

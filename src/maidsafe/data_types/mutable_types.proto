@@ -18,14 +18,7 @@
 
 package maidsafe.protobuf;
 
-message OwnerDirectory {
+message MutableData {
   required bytes data = 1;
 }
 
-message GroupDirectory {
-  required bytes data = 1;
-}
-
-message WorldDirectory {
-  required bytes data = 1;
-}

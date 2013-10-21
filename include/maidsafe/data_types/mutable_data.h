@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_DATA_TYPES_WORLD_DIRECTORY_H_
-#define MAIDSAFE_DATA_TYPES_WORLD_DIRECTORY_H_
+#ifndef MAIDSAFE_DATA_TYPES_OWNER_DIRECTORY_H_
+#define MAIDSAFE_DATA_TYPES_OWNER_DIRECTORY_H_
 
 #include <cstdint>
 #include <algorithm>
@@ -30,34 +30,33 @@
 
 namespace maidsafe {
 
-class WorldDirectory {
+class MutableData {
  public:
-  typedef detail::Name<WorldDirectory> Name;
-  typedef detail::Tag<DataTagValue::kWorldDirectoryValue> Tag;
+  typedef maidsafe::detail::Name<MutableData> Name;
+  typedef maidsafe::detail::Tag<DataTagValue::kMutableDataValue> Tag;
   typedef TaggedValue<NonEmptyString, Tag> serialised_type;
 
-  WorldDirectory(const WorldDirectory& other);
-  WorldDirectory(WorldDirectory&& other);
-  WorldDirectory& operator=(WorldDirectory other);
+  MutableData(const MutableData& other);
+  MutableData(MutableData&& other);
+  MutableData& operator=(MutableData other);
 
-  WorldDirectory(Name name, NonEmptyString data);
-  WorldDirectory(Name name, const serialised_type& serialised_mutable_data);
+  MutableData(Name name, NonEmptyString data);
+  MutableData(Name name, const serialised_type& serialised_mutable_data);
   serialised_type Serialise() const;
 
   Name name() const;
   NonEmptyString data() const;
 
-  friend void swap(WorldDirectory& lhs, WorldDirectory& rhs);
+  friend void swap(MutableData& lhs, MutableData& rhs);
 
  private:
   Name name_;
   NonEmptyString data_;
-  asymm::Signature signature_;
 };
 
 template <>
-struct is_short_term_cacheable<WorldDirectory> : public std::true_type {};
+struct is_short_term_cacheable<MutableData> : public std::true_type {};
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_DATA_TYPES_WORLD_DIRECTORY_H_
+#endif  // MAIDSAFE_DATA_TYPES_OWNER_DIRECTORY_H_
