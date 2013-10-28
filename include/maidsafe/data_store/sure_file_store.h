@@ -53,16 +53,16 @@ class SureFileStore {
   SureFileStore(const boost::filesystem::path& disk_path, DiskUsage max_disk_usage);
   ~SureFileStore();
 
-  template <typename Data>
-  boost::future<Data> Get(const typename Data::Name& data_name,
-                          const std::chrono::steady_clock::duration& timeout =
-                              std::chrono::seconds(10));
+  template <typename DataName>
+  boost::future<typename DataName::data_type> Get(
+      const DataName& data_name,
+      const std::chrono::steady_clock::duration& timeout = std::chrono::seconds(10));
 
   template <typename Data>
   void Put(const Data& data);
 
-  template <typename Data>
-  void Delete(const typename Data::Name& data_name);
+  template <typename DataName>
+  void Delete(const DataName& data_name);
 
   template <typename Data>
   VersionNamesFuture GetVersions(const typename Data::Name& data_name,
@@ -123,15 +123,17 @@ class SureFileStore {
 };
 
 // ==================== Implementation =============================================================
-template <typename Data>
-boost::future<Data> SureFileStore::Get(const typename Data::Name& data_name,
-                                       const std::chrono::steady_clock::duration& /*timeout*/) {
+template <typename DataName>
+boost::future<typename DataName::data_type> SureFileStore::Get(
+    const DataName& data_name,
+    const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting: " << HexSubstr(data_name.value);
-  auto promise(std::make_shared<boost::promise<Data>>());
+  auto promise(std::make_shared<boost::promise<typename DataName::data_type>>());
   auto async_future(boost::async(boost::launch::async, [=] {
     try {
       auto result(this->DoGet(KeyType(data_name)));
-      Data data(data_name, typename Data::serialised_type(result));
+      typename DataName::data_type data(data_name,
+                                        typename DataName::data_type::serialised_type(result));
       LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
       promise->set_value(data);
     }
@@ -158,8 +160,8 @@ void SureFileStore::Put(const Data& data) {
   });
 }
 
-template <typename Data>
-void SureFileStore::Delete(const typename Data::Name& data_name) {
+template <typename DataName>
+void SureFileStore::Delete(const DataName& data_name) {
   LOG(kVerbose) << "DELETING: " << HexSubstr(data_name.value);
   asio_service_.service().post([this, data_name] {
     try {
