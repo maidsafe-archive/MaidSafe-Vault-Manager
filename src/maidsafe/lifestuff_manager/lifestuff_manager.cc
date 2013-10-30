@@ -24,7 +24,7 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
 
-#include "maidsafe/common/config.h"
+#include "maidsafe/common/application_support_directories.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 

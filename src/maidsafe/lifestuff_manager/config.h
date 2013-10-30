@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "maidsafe/common/config.h"
+#include "maidsafe/common/application_support_directories.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
@@ -39,27 +39,27 @@ const std::string kGlobalBootstrapFilename("global-bootstrap.dat");
 const std::string kLifeStuffManagerName("lifestuff_mgr");
 
 const std::string kExecutableExtension([]()->std::string {
-  if (kTargetPlatform == "Win8" || kTargetPlatform == "Win7" || kTargetPlatform == "Vista")
+  if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
     return ".exe";
-  if (kTargetPlatform == "OSX10.8")
+  if (kTargetPlatform() == "OSX10.8")
     return "";
-  if (kTargetPlatform == "Linux")
+  if (kTargetPlatform() == "Linux")
     return "";
   return ".unknown";
 }());
 
 const std::string kInstallerExtension([]()->std::string {
-  if (kTargetPlatform == "Win8" || kTargetPlatform == "Win7" || kTargetPlatform == "Vista")
+  if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
     return ".exe";
-  if (kTargetPlatform == "OSX10.8")
+  if (kTargetPlatform() == "OSX10.8")
     return ".dmg";
   // TODO(Team): Distinguish between the supported Linux distros.
-  if (kTargetPlatform == "Linux")
+  if (kTargetPlatform() == "Linux")
     return ".rpm";
   return ".unknown";
 }());
 
-const std::string kTargetPlatformAndArchitecture(kTargetPlatform + '_' + kTargetArchitecture);
+const std::string kTargetPlatformAndArchitecture(kTargetPlatform() + '_' + kTargetArchitecture());
 
 inline asymm::PublicKey kMaidSafePublicKey() {
   static auto const decoded_key = asymm::DecodeKey(asymm::EncodedPublicKey(HexDecode(
