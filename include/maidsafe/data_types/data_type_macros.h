@@ -85,26 +85,26 @@
 
 
 #define MAIDSAFE_DATA_TYPES_GET_SECOND_WITH_COMMA_AND_NAME_TYPE(r, data, i, elem)                  \
-    BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(2, 1, elem), ::Name)                                          \
-    BOOST_PP_COMMA_IF(BOOST_PP_NOT_EQUAL(i, data))
+    BOOST_PP_TUPLE_ELEM(2, 1, elem) ::Name BOOST_PP_COMMA_IF(BOOST_PP_NOT_EQUAL(i, data))
 
 #define MAIDSAFE_DATA_TYPES_MAP_FIRST_TO_SECOND(r, data, elem)                                     \
     case DataTagValue::MAIDSAFE_DATA_TYPES_GET_ENUM_VALUE(BOOST_PP_TUPLE_ELEM(2, 0, elem)) :       \
-      return BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(2, 1, elem), ::Name)                                 \
-             BOOST_PP_LPAREN() name BOOST_PP_RPAREN();                                             \
+      return BOOST_PP_TUPLE_ELEM(2, 1, elem) ::Name BOOST_PP_LPAREN() name BOOST_PP_RPAREN();
 
-// #define DEFINE_IS_MAIDSAFE_DATA_STRUCT(r, data, elem)                                           \
-//     template<DataTagValue tag_value>                                                            \
-//     struct is_maidsafe_data< tag_value,                                                         \
-//         typename std::enable_if<                                                                \
-//             std::is_same<                                                                       \
-//                 std::integral_constant< DataTagValue, tag_value >,                              \
-//                 std::integral_constant< DataTagValue, DataTagValue::                            \
-//           MAIDSAFE_DATA_TYPES_GET_ENUM_VALUE(BOOST_PP_TUPLE_ELEM(2, 0, elem))>>::value>::type> {\
-//       static const bool value = true;                                                           \
-//       typedef BOOST_PP_TUPLE_ELEM(2, 1, elem) data_type;                                        \
-//       typedef data_type::name_type name_type;                                                   \
-//     };
+/*
+#define DEFINE_IS_MAIDSAFE_DATA_STRUCT(r, data, elem)                                              \
+    template<DataTagValue tag_value>                                                               \
+    struct is_maidsafe_data< tag_value,                                                            \
+        typename std::enable_if<                                                                   \
+            std::is_same<                                                                          \
+                std::integral_constant< DataTagValue, tag_value >,                                 \
+                std::integral_constant< DataTagValue, DataTagValue::                               \
+          MAIDSAFE_DATA_TYPES_GET_ENUM_VALUE(BOOST_PP_TUPLE_ELEM(2, 0, elem))>>::value>::type> {   \
+      static const bool value = true;                                                              \
+      typedef BOOST_PP_TUPLE_ELEM(2, 1, elem) data_type;                                           \
+      typedef data_type::name_type name_type;                                                      \
+    };
+*/
 
 #define DEFINE_DATA_NAME_VARIANT_WITH_PARENS(enumerators)                                          \
     typedef boost::variant<                                                                        \
