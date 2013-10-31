@@ -27,6 +27,25 @@ namespace maidsafe {
 
 namespace test {
 
+TEST_CASE("DataTypesOutputOperator", "[Private][Behavioural]") {
+  LOG(kInfo) << DataTagValue::kAnmidValue;
+  LOG(kInfo) << DataTagValue::kAnsmidValue;
+  LOG(kInfo) << DataTagValue::kAntmidValue;
+  LOG(kInfo) << DataTagValue::kAnmaidValue;
+  LOG(kInfo) << DataTagValue::kMaidValue;
+  LOG(kInfo) << DataTagValue::kPmidValue;
+  LOG(kInfo) << DataTagValue::kMidValue;
+  LOG(kInfo) << DataTagValue::kSmidValue;
+  LOG(kInfo) << DataTagValue::kTmidValue;
+  LOG(kInfo) << DataTagValue::kAnmpidValue;
+  LOG(kInfo) << DataTagValue::kMpidValue;
+  LOG(kInfo) << DataTagValue::kImmutableDataValue;
+  LOG(kInfo) << DataTagValue::kOwnerDirectoryValue;
+  LOG(kInfo) << DataTagValue::kGroupDirectoryValue;
+  LOG(kInfo) << DataTagValue::kWorldDirectoryValue;
+  LOG(kInfo) << static_cast<DataTagValue>(-9);
+}
+
 TEST_CASE("DataTypesConstructType", "[Private][Behavioural]") {
   REQUIRE(is_short_term_cacheable<OwnerDirectory>::value);
   REQUIRE(is_short_term_cacheable<GroupDirectory>::value);
