@@ -178,8 +178,11 @@ void SureFileStore::DoDelete(const KeyType& key) {
 }
 
 void SureFileStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
-  if (current_disk_usage_ > max_disk_usage)
+  if (current_disk_usage_ > max_disk_usage) {
+    LOG(kError) << "current_disk_usage_ " << current_disk_usage_.data
+                << " exceeds target max_disk_usage " << max_disk_usage.data;
     ThrowError(CommonErrors::invalid_parameter);
+  }
   max_disk_usage_ = max_disk_usage;
 }
 
