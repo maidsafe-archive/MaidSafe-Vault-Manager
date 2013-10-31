@@ -30,54 +30,18 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
+#include "maidsafe/data_types/data_type_macros.h"
 #include "maidsafe/data_types/data_type_values.h"
 #include "maidsafe/data_types/immutable_data.h"
 #include "maidsafe/data_types/mutable_data.h"
 
 namespace maidsafe {
 
-typedef boost::variant<passport::PublicAnmid::Name, passport::PublicAnsmid::Name,
-                       passport::PublicAntmid::Name, passport::PublicAnmaid::Name,
-                       passport::PublicMaid::Name, passport::PublicPmid::Name, passport::Mid::Name,
-                       passport::Smid::Name, passport::Tmid::Name, passport::PublicAnmpid::Name,
-                       passport::PublicMpid::Name, ImmutableData::Name, MutableData::Name>
-                       DataNameVariant;
-
-inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name) {
-  switch (type) {
-    case DataTagValue::kAnmidValue:
-      return passport::PublicAnmid::Name(name);
-    case DataTagValue::kAnsmidValue:
-      return passport::PublicAnsmid::Name(name);
-    case DataTagValue::kAntmidValue:
-      return passport::PublicAntmid::Name(name);
-    case DataTagValue::kAnmaidValue:
-      return passport::PublicAnmaid::Name(name);
-    case DataTagValue::kMaidValue:
-      return passport::PublicMaid::Name(name);
-    case DataTagValue::kPmidValue:
-      return passport::PublicPmid::Name(name);
-    case DataTagValue::kMidValue:
-      return passport::Mid::Name(name);
-    case DataTagValue::kSmidValue:
-      return passport::Smid::Name(name);
-    case DataTagValue::kTmidValue:
-      return passport::Tmid::Name(name);
-    case DataTagValue::kAnmpidValue:
-      return passport::PublicAnmpid::Name(name);
-    case DataTagValue::kMpidValue:
-      return passport::PublicMpid::Name(name);
-    case DataTagValue::kImmutableDataValue:
-      return ImmutableData::Name(name);
-    case DataTagValue::kMutableDataValue:
-      return MutableData::Name(name);
-    default: {
-      LOG(kError) << "Unhandled data type";
-      ThrowError(CommonErrors::invalid_parameter);
-      return DataNameVariant();
-    }
-  }
-}
+// Defines a typedef of boost::variant<MAIDSAFE_DATA_TYPES> named 'DataNameVariant'.  Also defines a
+// function with signature:
+//     inline DataNameVariant GetDataNameVariant(DataTagValue type, const Identity& name);
+// This throws if 'type' is not a valid DataTagValue.
+DEFINE_DATA_NAME_VARIANT
 
 struct GetTagValueVisitor : public boost::static_visitor<DataTagValue> {
   template <typename NameType>

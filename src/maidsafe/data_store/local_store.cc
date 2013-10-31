@@ -89,6 +89,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
         ThrowError(CommonErrors::filesystem_io_error);
       }
       catch (...) {
+        LOG(kError) << "exception during InitialiseDiskRoot";
         ThrowError(CommonErrors::invalid_parameter);
       }
     }

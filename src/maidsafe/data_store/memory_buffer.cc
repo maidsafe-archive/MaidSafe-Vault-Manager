@@ -51,7 +51,6 @@ void MemoryBuffer::Delete(const KeyType& key) {
     memory_buffer_.erase(itr);
   else
     ThrowError(CommonErrors::no_such_element);
-  return;
 }
 
 MemoryBuffer::MemoryBufferType::iterator MemoryBuffer::Find(const KeyType& key) {

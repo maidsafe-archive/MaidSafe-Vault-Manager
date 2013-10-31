@@ -55,12 +55,12 @@ TEST_CASE_METHOD(LocalStoreTest, "SuccessfulStore", "[Private][Behavioural]") {
   }
   REQUIRE(DiskUsage(kDataSize) == local_store_.GetCurrentDiskUsage());
 
-  auto retrieved_data(local_store_.Get<ImmutableData>(data.name()).get());
+  auto retrieved_data(local_store_.Get(data.name()).get());
   REQUIRE(data.name() == retrieved_data.name());
   REQUIRE(data.data() == retrieved_data.data());
   REQUIRE(DiskUsage(kDataSize) == local_store_.GetCurrentDiskUsage());
 
-  local_store_.Delete<ImmutableData>(data.name());
+  local_store_.Delete(data.name());
   auto delete_timeout(std::chrono::system_clock::now() + std::chrono::milliseconds(100));
   while (std::chrono::system_clock::now() < delete_timeout) {
     if (local_store_.GetCurrentDiskUsage() != DiskUsage(0))

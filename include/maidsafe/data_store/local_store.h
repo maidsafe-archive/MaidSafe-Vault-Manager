@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_DATA_STORE_local_STORE_H_
-#define MAIDSAFE_DATA_STORE_local_STORE_H_
+#ifndef MAIDSAFE_DATA_STORE_LOCAL_STORE_H_
+#define MAIDSAFE_DATA_STORE_LOCAL_STORE_H_
 
 #include <cstdint>
 #include <memory>
@@ -53,16 +53,16 @@ class LocalStore {
   LocalStore(const boost::filesystem::path& disk_path, DiskUsage max_disk_usage);
   ~LocalStore();
 
-  template <typename Data>
-  boost::future<Data> Get(const typename Data::Name& data_name,
-                          const std::chrono::steady_clock::duration& timeout =
-                              std::chrono::seconds(10));
+  template <typename DataName>
+  boost::future<typename DataName::data_type> Get(
+      const DataName& data_name,
+      const std::chrono::steady_clock::duration& timeout = std::chrono::seconds(10));
 
   template <typename Data>
   void Put(const Data& data);
 
-  template <typename Data>
-  void Delete(const typename Data::Name& data_name);
+  template <typename DataName>
+  void Delete(const DataName& data_name);
 
   template <typename Data>
   VersionNamesFuture GetVersions(const typename Data::Name& data_name,
@@ -123,15 +123,17 @@ class LocalStore {
 };
 
 // ==================== Implementation =============================================================
-template <typename Data>
-boost::future<Data> LocalStore::Get(const typename Data::Name& data_name,
-                                       const std::chrono::steady_clock::duration& /*timeout*/) {
+template <typename DataName>
+boost::future<typename DataName::data_type> LocalStore::Get(
+    const DataName& data_name,
+    const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting: " << HexSubstr(data_name.value);
-  auto promise(std::make_shared<boost::promise<Data>>());
+  auto promise(std::make_shared<boost::promise<typename DataName::data_type>>());
   auto async_future(boost::async(boost::launch::async, [=] {
     try {
       auto result(this->DoGet(KeyType(data_name)));
-      Data data(data_name, typename Data::serialised_type(result));
+      typename DataName::data_type data(data_name,
+                                        typename DataName::data_type::serialised_type(result));
       LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
       promise->set_value(data);
     }
@@ -158,8 +160,8 @@ void LocalStore::Put(const Data& data) {
   });
 }
 
-template <typename Data>
-void LocalStore::Delete(const typename Data::Name& data_name) {
+template <typename DataName>
+void LocalStore::Delete(const DataName& data_name) {
   LOG(kVerbose) << "DELETING: " << HexSubstr(data_name.value);
   asio_service_.service().post([this, data_name] {
     try {
@@ -255,4 +257,4 @@ void LocalStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_DATA_STORE_local_STORE_H_
+#endif  // MAIDSAFE_DATA_STORE_LOCAL_STORE_H_
