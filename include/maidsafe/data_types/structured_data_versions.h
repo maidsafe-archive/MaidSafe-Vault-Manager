@@ -47,7 +47,7 @@ one root.  If the current root is erased, a new root is chosen from the remainin
 will be the child of the deleted root, or if the entire branch containing the root was erased, an
 orphan will be chosen.
 
-The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '5-ooo', '4-lll' and '4-mmm'.
+The "tips of trees" are '8-zzz', '4-iii', '5-nnn', '4-lll' and '4-mmm'.
 */
 
 #ifndef MAIDSAFE_DATA_TYPES_STRUCTURED_DATA_VERSIONS_H_

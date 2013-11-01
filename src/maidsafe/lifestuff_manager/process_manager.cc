@@ -33,8 +33,9 @@
 #include "boost/iostreams/device/file_descriptor.hpp"
 
 #include "maidsafe/common/log.h"
-#include "maidsafe/common/utils.h"
+#include "maidsafe/common/process.h"
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/utils.h"
 
 #include "maidsafe/lifestuff_manager/controller_messages.pb.h"
 #include "maidsafe/lifestuff_manager/local_tcp_transport.h"
@@ -46,32 +47,6 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace lifestuff_manager {
-
-namespace {
-
-#ifdef MAIDSAFE_WIN32
-std::wstring StringToWstring(const std::string& input) {
-  std::unique_ptr<wchar_t[]> buffer(new wchar_t[input.size()]);
-  size_t num_chars = mbstowcs(buffer.get(), input.c_str(), input.size());
-  return std::wstring(buffer.get(), num_chars);
-}
-
-std::wstring ConstructCommandLine(std::vector<std::string> process_args) {
-  std::string args;
-  for (auto arg : process_args)
-    args += (arg + " ");
-  return StringToWstring(args);
-}
-#else
-std::string ConstructCommandLine(std::vector<std::string> process_args) {
-  std::string args;
-  for (auto arg : process_args)
-    args += (arg + " ");
-  return args;
-}
-#endif
-
-}  // unnamed namespace
 
 bool Process::SetExecutablePath(const fs::path& executable_path) {
   boost::system::error_code ec;
@@ -206,10 +181,11 @@ void ProcessManager::RunProcess(ProcessIndex index, bool restart, bool logging) 
   // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams
   // NOLINT (Fraser)
   SetProcessStatus(index, ProcessStatus::kRunning);
-  bp::child child(bp::execute(bp::initializers::run_exe(process_name),
-                              bp::initializers::set_cmd_line(ConstructCommandLine(process_args)),
-                              bp::initializers::set_on_error(error_code),
-                              bp::initializers::inherit_env()));
+  bp::child child(bp::execute(
+      bp::initializers::run_exe(process_name),
+      bp::initializers::set_cmd_line(process::ConstructCommandLine(process_args)),
+      bp::initializers::set_on_error(error_code),
+      bp::initializers::inherit_env()));
   boost::system::error_code error;
   auto exit_code = wait_for_exit(child, error);
   if (error) {
