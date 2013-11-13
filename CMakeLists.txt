@@ -102,6 +102,10 @@ rename_outdated_built_exes()
 # Set compiler and linker flags                                                                    #
 #==================================================================================================#
 include(standard_flags)
+target_compile_definitions(maidsafe_lifestuff_manager PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager)
+target_compile_definitions(maidsafe_lifestuff_manager_core PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager)
+target_compile_definitions(maidsafe_lifestuff_manager_core_dummy PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager USE_DUMMY_VAULT)
+
 
 #==================================================================================================#
 # Tests                                                                                            #
