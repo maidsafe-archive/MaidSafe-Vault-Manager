@@ -71,6 +71,7 @@ ClientController::ClientController(
   std::string path_to_new_installer;
   if (!ConnectToLifeStuffManager(path_to_new_installer)) {
     receiving_transport_->StopListening();
+    LOG(kError) << "ClientController::ClientController can't connect to LifeStuffManager";
     ThrowError(CommonErrors::uninitialised);
   }
 

@@ -187,6 +187,7 @@ void HandleProgramOptions(int argc, char** argv) {
   po::notify(variables_map);
 
   if (variables_map.count("help") != 0) {
+    LOG(kError) << "Printing out help menu";
     std::cout << options_description;
     maidsafe::ThrowError(maidsafe::CommonErrors::uninitialised);
   }
