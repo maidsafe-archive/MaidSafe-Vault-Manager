@@ -279,10 +279,10 @@ template <typename Key>
 void DataBuffer<Key>::Store(const KeyType& key, const NonEmptyString& value) {
   try {
     Delete(key);
-    LOG(kInfo) << "Re-storing value " << HexEncode(value) << " with key " << DebugKeyName(key);
+    LOG(kInfo) << "Re-storing " << DebugKeyName(key) << " with value " << HexEncode(value);
   }
   catch (const std::exception&) {
-    LOG(kInfo) << "Storing value " << HexEncode(value) << " with key " << DebugKeyName(key);
+    LOG(kInfo) << "Storing " << DebugKeyName(key) << " with value " << HexEncode(value);
   }
 
   CheckWorkerIsStillRunning();
@@ -644,7 +644,7 @@ typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindAndThrowIfCan
 
 template <typename Key>
 std::string DataBuffer<Key>::DebugKeyName(const KeyType& key) {
-  return HexEncode(key);
+  return HexSubstr(key);
 }
 
 template <>
