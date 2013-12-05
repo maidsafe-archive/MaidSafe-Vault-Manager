@@ -162,7 +162,7 @@ void LocalStore::Put(const Data& data) {
 
 template <typename DataName>
 void LocalStore::Delete(const DataName& data_name) {
-  LOG(kVerbose) << "DELETING: " << HexSubstr(data_name.value);
+  LOG(kVerbose) << "Deleting: " << HexSubstr(data_name.value);
   asio_service_.service().post([this, data_name] {
     try {
       DoDelete(KeyType(data_name));
@@ -176,6 +176,7 @@ void LocalStore::Delete(const DataName& data_name) {
 template <typename Data>
 LocalStore::VersionNamesFuture LocalStore::GetVersions(
     const typename Data::Name& data_name, const std::chrono::steady_clock::duration& /*timeout*/) {
+  LOG(kVerbose) << "Getting versions: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<VersionNamesPromise>());
   auto async_future(boost::async(boost::launch::async, [=] {
     try {
@@ -187,7 +188,7 @@ LocalStore::VersionNamesFuture LocalStore::GetVersions(
       promise->set_value(versions->Get());
     }
     catch (const std::exception& e) {
-      LOG(kError) << e.what();
+      LOG(kError) << "Failed getting versions: " << e.what();
       promise->set_exception(boost::current_exception());
     }
   }));
@@ -199,6 +200,8 @@ template <typename Data>
 LocalStore::VersionNamesFuture LocalStore::GetBranch(
     const typename Data::Name& data_name, const StructuredDataVersions::VersionName& branch_tip,
     const std::chrono::steady_clock::duration& /*timeout*/) {
+  LOG(kVerbose) << "Getting branch: " << HexSubstr(data_name.value) << ".  Tip: "
+                << branch_tip.index << "-" << HexSubstr(branch_tip.id.value);
   auto promise(std::make_shared<VersionNamesPromise>());
   auto async_future(boost::async(boost::launch::async, [=] {
     try {
@@ -210,7 +213,7 @@ LocalStore::VersionNamesFuture LocalStore::GetBranch(
       promise->set_value(versions->GetBranch(branch_tip));
     }
     catch (const std::exception& e) {
-      LOG(kError) << e.what();
+      LOG(kError) << "Failed getting branch: " << e.what();
       promise->set_exception(boost::current_exception());
     }
   }));
@@ -220,8 +223,13 @@ LocalStore::VersionNamesFuture LocalStore::GetBranch(
 
 template <typename Data>
 void LocalStore::PutVersion(const typename Data::Name& data_name,
-                               const StructuredDataVersions::VersionName& old_version_name,
-                               const StructuredDataVersions::VersionName& new_version_name) {
+                            const StructuredDataVersions::VersionName& old_version_name,
+                            const StructuredDataVersions::VersionName& new_version_name) {
+  LOG(kVerbose) << "Putting version: " << HexSubstr(data_name.value) << ".  Old: "
+                << (old_version_name.id.value.IsInitialised() ?
+                       (std::to_string(old_version_name.index) + "-" +
+                           HexSubstr(old_version_name.id.value)) : "N/A") << "  New: "
+                << new_version_name.index << "-" << HexSubstr(new_version_name.id.value);
   try {
     KeyType key(data_name);
     std::lock_guard<std::mutex> lock(mutex_);
@@ -232,13 +240,15 @@ void LocalStore::PutVersion(const typename Data::Name& data_name,
     WriteVersions(key, *versions);
   }
   catch (const std::exception& e) {
-    LOG(kError) << e.what();
+    LOG(kError) << "Failed putting version: " << e.what();
   }
 }
 
 template <typename Data>
 void LocalStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
-                                          const StructuredDataVersions::VersionName& branch_tip) {
+                                       const StructuredDataVersions::VersionName& branch_tip) {
+  LOG(kVerbose) << "Deleting branch: " << HexSubstr(data_name.value) << ".  Tip: "
+                << branch_tip.index << "-" << HexSubstr(branch_tip.id.value);
   try {
     KeyType key(data_name);
     std::lock_guard<std::mutex> lock(mutex_);
@@ -249,7 +259,7 @@ void LocalStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
     WriteVersions(key, *versions);
   }
   catch (const std::exception& e) {
-    LOG(kError) << e.what();
+    LOG(kError) << "Failed deleting branch: " << e.what();
   }
 }
 
