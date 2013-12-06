@@ -64,6 +64,9 @@ class LocalStore {
   template <typename DataName>
   void Delete(const DataName& data_name);
 
+  void IncrementReferenceCount(const std::vector<ImmutableData::Name>& data_names);
+  void DecrementReferenceCount(const std::vector<ImmutableData::Name>& data_names);
+
   template <typename Data>
   VersionNamesFuture GetVersions(const typename Data::Name& data_name,
                                  const std::chrono::steady_clock::duration& timeout =
@@ -100,6 +103,8 @@ class LocalStore {
   NonEmptyString DoGet(const KeyType& key) const;
   void DoPut(const KeyType& key, const NonEmptyString& value);
   void DoDelete(const KeyType& key);
+  void DoIncrement(const std::vector<ImmutableData::Name>& data_names);
+  void DoDecrement(const std::vector<ImmutableData::Name>& data_names);
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(uint64_t required_space) const;

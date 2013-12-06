@@ -100,7 +100,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
 }  // unnamed namespace
 
 LocalStore::LocalStore(const fs::path& disk_path, DiskUsage max_disk_usage)
-    : asio_service_(Concurrency()),  // TODO(Fraser#5#): 2013-09-06 - determine best value.
+    : asio_service_(Concurrency() / 2),  // TODO(Fraser#5#): 2013-09-06 - determine best value.
       kDiskPath_(disk_path),
       max_disk_usage_(std::move(max_disk_usage)),
       current_disk_usage_(InitialiseDiskRoot(kDiskPath_)),
@@ -157,11 +157,13 @@ void LocalStore::DoDelete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   fs::path file_path(KeyToFilePath(key, false));
   uintmax_t file_size(0);
-  boost::system::error_code error_code;
   uint32_t reference_count(GetReferenceCount(file_path));
 
-  if (reference_count == 0)
+  if (reference_count == 0) {
+    LOG(kWarning) << HexSubstr(boost::apply_visitor(GetTagValueAndIdentityVisitor(), key).second)
+                  << " already deleted.";
     return;
+  }
 
   if (reference_count == 1) {
     file_path.replace_extension(".1");
@@ -175,6 +177,52 @@ void LocalStore::DoDelete(const KeyType& key) {
     file_size = Rename(file_path, new_path);
     assert(file_size != 0);
   }
+}
+
+void LocalStore::IncrementReferenceCount(const std::vector<ImmutableData::Name>& data_names) {
+  asio_service_.service().post([this, data_names] {
+    try {
+      DoIncrement(data_names);
+    }
+    catch (const std::exception& e) {
+      LOG(kWarning) << "IncrementReferenceCount failed: " << e.what();
+    }
+  });
+}
+
+void LocalStore::DecrementReferenceCount(const std::vector<ImmutableData::Name>& data_names) {
+  asio_service_.service().post([this, data_names] {
+    try {
+      DoDecrement(data_names);
+    }
+    catch (const std::exception& e) {
+      LOG(kWarning) << "DecrementReferenceCount failed: " << e.what();
+    }
+  });
+}
+
+void LocalStore::DoIncrement(const std::vector<ImmutableData::Name>& data_names) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (!fs::exists(kDiskPath_))
+    ThrowError(CommonErrors::filesystem_io_error);
+
+  for (const auto& data_name : data_names) {
+    fs::path file_path(KeyToFilePath(data_name, false));
+    uint32_t reference_count(GetReferenceCount(file_path));
+    assert(reference_count != 0);
+
+    fs::path old_path(file_path), new_path(file_path);
+    old_path.replace_extension("." + std::to_string(reference_count));
+    ++reference_count;
+    new_path.replace_extension("." + std::to_string(reference_count));
+    auto file_size(Rename(old_path, new_path));
+    assert(file_size != 0);
+  }
+}
+
+void LocalStore::DoDecrement(const std::vector<ImmutableData::Name>& data_names) {
+  for (const auto& data_name : data_names)
+    DoDelete(data_name);
 }
 
 void LocalStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
