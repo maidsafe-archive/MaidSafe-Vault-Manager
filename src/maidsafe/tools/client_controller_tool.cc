@@ -25,10 +25,10 @@
 
 #include "maidsafe/passport/detail/fob.h"
 
-#include "maidsafe/lifestuff_manager/client_controller.h"
-#include "maidsafe/lifestuff_manager/utils.h"
+#include "maidsafe/client_manager/client_controller.h"
+#include "maidsafe/client_manager/utils.h"
 
-#include "maidsafe/lifestuff_manager/shared_memory_communication.h"
+#include "maidsafe/client_manager/shared_memory_communication.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -36,11 +36,11 @@ namespace po = boost::program_options;
 int main(int argc, char** /*argv[]*/) {
   if (argc == 2) {
     boost::interprocess::shared_memory_object shared_memory(
-        boost::interprocess::open_or_create, "lifestuff_manager", boost::interprocess::read_write);
-    boost::interprocess::shared_memory_object::remove("lifestuff_manager");
+        boost::interprocess::open_or_create, "client_manager", boost::interprocess::read_write);
+    boost::interprocess::shared_memory_object::remove("client_manager");
     std::cout << "delete mem" << std::endl;
   } else if (argc == 1) {
-    maidsafe::lifestuff_manager::LifeStuffManagerAddressGetter address_getter;
+    maidsafe::client_manager::ClientManagerAddressGetter address_getter;
     try {
       std::cout << "client tool got instance address: "
                 << maidsafe::HexEncode(address_getter.GetAddress().value) << std::endl;
@@ -82,8 +82,8 @@ int main(int argc, char** /*argv[]*/) {
   //    }
 
   //    int index(variables_map.at("identity_index").as<int>());
-  //    maidsafe::lifestuff_manager::detail::SetIdentityIndex(index);
-  //    maidsafe::lifestuff_manager::ClientController controller(
+  //    maidsafe::client_manager::detail::SetIdentityIndex(index);
+  //    maidsafe::client_manager::ClientController controller(
   //        [] (const maidsafe::NonEmptyString& /*new_version*/) {});
   //    if (controller.StartVault(key_chains.at(index).pmid,
   //                              key_chains.at(index).maid.name(),

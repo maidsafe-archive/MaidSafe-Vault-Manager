@@ -1,0 +1,105 @@
+/*  Copyright 2012 MaidSafe.net limited
+
+    This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
+    version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
+    licence you accepted on initial access to the Software (the "Licences").
+
+    By contributing code to the MaidSafe Software, or to this project generally, you agree to be
+    bound by the terms of the MaidSafe Contributor Agreement, version 1.0, found in the root
+    directory of this project at LICENSE, COPYING and CONTRIBUTOR respectively and also
+    available at: http://www.maidsafe.net/licenses
+
+    Unless required by applicable law or agreed to in writing, the MaidSafe Software distributed
+    under the GPL Licence is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+    OF ANY KIND, either express or implied.
+
+    See the Licences for the specific language governing permissions and limitations relating to
+    use of the MaidSafe Software.                                                                 */
+
+#ifndef MAIDSAFE_CLIENT_MANAGER_CONFIG_H_
+#define MAIDSAFE_CLIENT_MANAGER_CONFIG_H_
+
+#include <string>
+
+#include "maidsafe/common/application_support_directories.h"
+#include "maidsafe/common/rsa.h"
+#include "maidsafe/common/utils.h"
+
+namespace maidsafe {
+
+namespace client_manager {
+
+namespace detail {
+
+const std::string kSignatureExtension(".sig");
+const std::string kVersionFilename("version.dat");
+const std::string kManifestFilename("manifest.gz");
+const std::string kGlobalConfigFilename("global-config.dat");
+const std::string kGlobalBootstrapFilename("global-bootstrap.dat");
+const std::string kClientManagerName("client_mgr");
+
+const std::string kExecutableExtension([]()->std::string {
+  if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
+    return ".exe";
+  if (kTargetPlatform() == "OSX10.8")
+    return "";
+  if (kTargetPlatform() == "Linux")
+    return "";
+  return ".unknown";
+}());
+
+const std::string kInstallerExtension([]()->std::string {
+  if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
+    return ".exe";
+  if (kTargetPlatform() == "OSX10.8")
+    return ".dmg";
+  // TODO(Team): Distinguish between the supported Linux distros.
+  if (kTargetPlatform() == "Linux")
+    return ".rpm";
+  return ".unknown";
+}());
+
+const std::string kTargetPlatformAndArchitecture(kTargetPlatform() + '_' + kTargetArchitecture());
+
+inline asymm::PublicKey kMaidSafePublicKey() {
+  static auto const decoded_key = asymm::DecodeKey(asymm::EncodedPublicKey(HexDecode(
+      "308201080282010100e97d80923586b7ac2c72b8087598af9bd054249879b8d99c249af05ae4338dcd969c440a39"
+      "a79d8caba34a7bc5571e92557c1ede11d48ba34dc464b7f7f358092d391622a2a20c183d6f2969827e537e6dd650"
+      "f7f17cfa9ca8b3e90b86212e0718855468286d353d0279e6cbdc70b338fa56362b15c7534e2ee1ff6271c8a98b09"
+      "f7bab16c47576826aefa2485720c0bf30c28deb5d5eb583fdfb3b4182f4ba83b7b004d414bf7ae4c54402ed86064"
+      "096ba2cec02fcaf3368c9b04700e5e7a55f2d16286ad890d7c39395a04ccd27f7302ff55ba5eea4f5ae9d81371db"
+      "9bb32dcbecca9a1f96c6a58bd9b63e2bfcf89ecaf1b2b0d29e798892968d0f0057e177020111")));  // NOLINT
+  return decoded_key;
+}
+
+#ifdef TESTING
+const std::string kDownloadManagerLocation("test_downloads");
+#else
+const std::string kDownloadManagerLocation("downloads");
+#endif
+const std::string kDownloadManagerSite("maidsafe.net");
+const std::string kDownloadManagerProtocol("http");
+
+#ifndef MAIDSAFE_WIN32
+inline std::string GetUserId() {
+  char user_name[64] = {0};
+  int result(getlogin_r(user_name, sizeof(user_name) - 1));
+  if (0 != result)
+    return "";
+  return std::string(user_name);
+}
+#endif
+
+#ifdef USE_DUMMY_VAULT
+const std::string kVaultName("dummy_vault" + kExecutableExtension);
+#else
+const std::string kVaultName("client_vault" + kExecutableExtension);
+#endif
+
+}  // namespace detail
+
+}  // namespace client_manager
+
+}  // namespace maidsafe
+
+#endif  // MAIDSAFE_CLIENT_MANAGER_CONFIG_H_

@@ -32,28 +32,28 @@ include(../../cmake_modules/standard_setup.cmake)
 #==================================================================================================#
 # Set up all files as GLOBs                                                                        #
 #==================================================================================================#
-set(LifestuffManagerSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager)
-glob_dir(LifestuffManager ${LifestuffManagerSourcesDir} "LifeStuff Manager")
-set(LifestuffManagerCoreAllFiles
-      "${LifestuffManagerSourcesDir}/lifestuff_manager.cc"
-      "${LifestuffManagerSourcesDir}/lifestuff_manager.h"
-      "${LifestuffManagerSourcesDir}/config.h"
-      ${LifestuffManagerProtoHeaders})
-source_group("LifeStuff Manager Core Source Files" FILES "${LifestuffManagerSourcesDir}/lifestuff_manager.cc")
-source_group("LifeStuff Manager Core Header Files" FILES "${LifestuffManagerSourcesDir}/lifestuff_manager.h"
-                                                         "${LifestuffManagerSourcesDir}/config.h")
-list(REMOVE_ITEM LifestuffManagerAllFiles
-       ${LifestuffManagerCoreAllFiles}
-       "${LifestuffManagerSourcesDir}/lifestuff_manager_main.cc")
+set(ClientManagerSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/client_manager)
+glob_dir(ClientManager ${ClientManagerSourcesDir} "Client Manager")
+set(ClientManagerCoreAllFiles
+      "${ClientManagerSourcesDir}/client_manager.cc"
+      "${ClientManagerSourcesDir}/client_manager.h"
+      "${ClientManagerSourcesDir}/config.h"
+      ${ClientManagerProtoHeaders})
+source_group("Client Manager Core Source Files" FILES "${ClientManagerSourcesDir}/client_manager.cc")
+source_group("Client Manager Core Header Files" FILES "${ClientManagerSourcesDir}/client_manager.h"
+                                                         "${ClientManagerSourcesDir}/config.h")
+list(REMOVE_ITEM ClientManagerAllFiles
+       ${ClientManagerCoreAllFiles}
+       "${ClientManagerSourcesDir}/client_manager_main.cc")
 
 glob_dir(DataTypes ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types "Data Types")
 glob_dir(DataStore ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store "Data Store")
 
 # Tests
-glob_dir(LifestuffManagerTests ${LifestuffManagerSourcesDir}/tests "LifeStuff Manager Tests")
-list(REMOVE_ITEM LifestuffManagerTestsAllFiles
-       "${LifestuffManagerSourcesDir}/tests/dummy_client.cc"
-       "${LifestuffManagerSourcesDir}/tests/dummy_vault.cc")
+glob_dir(ClientManagerTests ${ClientManagerSourcesDir}/tests "Client Manager Tests")
+list(REMOVE_ITEM ClientManagerTestsAllFiles
+       "${ClientManagerSourcesDir}/tests/dummy_client.cc"
+       "${ClientManagerSourcesDir}/tests/dummy_vault.cc")
 
 file(GLOB DataTypesTestsSources ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types/tests/*.cc)
 file(GLOB DataStoreTestsSources ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store/tests/*.cc)
@@ -65,33 +65,33 @@ list(REMOVE_ITEM DataTypesTestsSources ${TestsMain})
 # Define MaidSafe libraries and executables                                                        #
 #==================================================================================================#
 ms_add_static_library(private ${DataStoreAllFiles} ${DataTypesAllFiles})
-ms_add_static_library(lifestuff_manager ${LifestuffManagerAllFiles})
-ms_add_static_library(lifestuff_manager_core
-    ${LifestuffManagerCoreAllFiles}
-    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/lifestuff_manager/vault_info.pb.h")
-ms_add_static_library(lifestuff_manager_core_dummy ${LifestuffManagerCoreAllFiles})
+ms_add_static_library(client_manager ${ClientManagerAllFiles})
+ms_add_static_library(client_manager_core
+    ${ClientManagerCoreAllFiles}
+    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/client_manager/vault_info.pb.h")
+ms_add_static_library(client_manager_core_dummy ${ClientManagerCoreAllFiles})
 target_include_directories(maidsafe_private PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_include_directories(maidsafe_lifestuff_manager PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_include_directories(maidsafe_lifestuff_manager_core PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_include_directories(maidsafe_lifestuff_manager_core_dummy PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_include_directories(maidsafe_client_manager PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_include_directories(maidsafe_client_manager_core PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_include_directories(maidsafe_client_manager_core_dummy PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-set(lifestuff_mgrName LifeStuffManager)
-ms_add_executable(lifestuff_mgr "Production" "${LifestuffManagerSourcesDir}/lifestuff_manager_main.cc")
-target_include_directories(lifestuff_mgr PRIVATE ${PROJECT_SOURCE_DIR}/src)
+set(client_mgrName ClientManager)
+ms_add_executable(client_mgr "Production" "${ClientManagerSourcesDir}/client_manager_main.cc")
+target_include_directories(client_mgr PRIVATE ${PROJECT_SOURCE_DIR}/src)
 ms_add_executable(signing_tool "Tools/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/signing_tool.cc")
 ms_add_executable(bootstrap_file_tool "Tools/Private"
     "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/bootstrap_file_tool.cc"
-    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/lifestuff_manager/vault_info.pb.cc"
-    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/lifestuff_manager/vault_info.pb.h"
-    "${PROJECT_SOURCE_DIR}/src/maidsafe/lifestuff_manager/vault_info.proto")
+    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/client_manager/vault_info.pb.cc"
+    "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/client_manager/vault_info.pb.h"
+    "${PROJECT_SOURCE_DIR}/src/maidsafe/client_manager/vault_info.proto")
 
 target_link_libraries(maidsafe_private maidsafe_passport maidsafe_common)
-target_link_libraries(maidsafe_lifestuff_manager maidsafe_passport ${BoostRegexLibs})
-target_link_libraries(maidsafe_lifestuff_manager_core maidsafe_passport)
-target_link_libraries(maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
-add_dependencies(maidsafe_lifestuff_manager_core boost_process)
-add_dependencies(maidsafe_lifestuff_manager_core_dummy boost_process)
-target_link_libraries(lifestuff_mgr maidsafe_lifestuff_manager_core maidsafe_lifestuff_manager)
+target_link_libraries(maidsafe_client_manager maidsafe_passport ${BoostRegexLibs})
+target_link_libraries(maidsafe_client_manager_core maidsafe_passport)
+target_link_libraries(maidsafe_client_manager_core_dummy maidsafe_passport)
+add_dependencies(maidsafe_client_manager_core boost_process)
+add_dependencies(maidsafe_client_manager_core_dummy boost_process)
+target_link_libraries(client_mgr maidsafe_client_manager_core maidsafe_client_manager)
 target_link_libraries(signing_tool maidsafe_passport)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 
@@ -102,30 +102,30 @@ rename_outdated_built_exes()
 # Set compiler and linker flags                                                                    #
 #==================================================================================================#
 include(standard_flags)
-target_compile_definitions(maidsafe_lifestuff_manager PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager)
-target_compile_definitions(maidsafe_lifestuff_manager_core PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager)
-target_compile_definitions(maidsafe_lifestuff_manager_core_dummy PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=LifeStuffManager USE_DUMMY_VAULT)
+target_compile_definitions(maidsafe_client_manager PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=ClientManager)
+target_compile_definitions(maidsafe_client_manager_core PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=ClientManager)
+target_compile_definitions(maidsafe_client_manager_core_dummy PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=ClientManager USE_DUMMY_VAULT)
 
 
 #==================================================================================================#
 # Tests                                                                                            #
 #==================================================================================================#
 if(MaidsafeTesting)
-  ms_add_executable(TESTlifestuff_manager "Tests/Private" ${LifestuffManagerTestsAllFiles})
-  target_include_directories(TESTlifestuff_manager PRIVATE ${PROJECT_SOURCE_DIR}/src)
-  ms_add_executable(dummy_client "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_client.cc")
-  ms_add_executable(dummy_vault "Tests/Private" "${LifestuffManagerSourcesDir}/tests/dummy_vault.cc")
+  ms_add_executable(TESTclient_manager "Tests/Private" ${ClientManagerTestsAllFiles})
+  target_include_directories(TESTclient_manager PRIVATE ${PROJECT_SOURCE_DIR}/src)
+  ms_add_executable(dummy_client "Tests/Private" "${ClientManagerSourcesDir}/tests/dummy_client.cc")
+  ms_add_executable(dummy_vault "Tests/Private" "${ClientManagerSourcesDir}/tests/dummy_vault.cc")
   ms_add_executable(client_controller_tool "Tools/Private" "${PROJECT_SOURCE_DIR}/src/maidsafe/tools/client_controller_tool.cc")
   target_include_directories(client_controller_tool PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-  target_link_libraries(TESTlifestuff_manager maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
-  target_link_libraries(dummy_client maidsafe_lifestuff_manager)
-  target_link_libraries(dummy_vault maidsafe_lifestuff_manager ${BoostRegexLibs})
-  target_link_libraries(client_controller_tool maidsafe_lifestuff_manager maidsafe_lifestuff_manager_core_dummy maidsafe_passport)
+  target_link_libraries(TESTclient_manager maidsafe_client_manager maidsafe_client_manager_core_dummy maidsafe_passport)
+  target_link_libraries(dummy_client maidsafe_client_manager)
+  target_link_libraries(dummy_vault maidsafe_client_manager ${BoostRegexLibs})
+  target_link_libraries(client_controller_tool maidsafe_client_manager maidsafe_client_manager_core_dummy maidsafe_passport)
 
-  add_dependencies(TESTlifestuff_manager dummy_vault)
+  add_dependencies(TESTclient_manager dummy_vault)
 
-  target_compile_definitions(TESTlifestuff_manager PRIVATE USE_DUMMY_VAULT)
+  target_compile_definitions(TESTclient_manager PRIVATE USE_DUMMY_VAULT)
 
   macro(PrivateTests Group)
     foreach(TestSource ${ARGN})
@@ -144,7 +144,7 @@ if(MaidsafeTesting)
   PrivateTests("Data Types Tests" ${DataTypesTestsSources})
 
   add_style_test()
-  add_gtests(TESTlifestuff_manager)
+  add_gtests(TESTclient_manager)
   add_project_experimental()
   test_summary_output()
 endif()
