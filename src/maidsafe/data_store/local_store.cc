@@ -217,6 +217,7 @@ void LocalStore::DoIncrement(const std::vector<ImmutableData::Name>& data_names)
     new_path.replace_extension("." + std::to_string(reference_count));
     auto file_size(Rename(old_path, new_path));
     assert(file_size != 0);
+    static_cast<void>(file_size);
   }
 }
 
