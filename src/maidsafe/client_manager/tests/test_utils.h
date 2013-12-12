@@ -27,7 +27,7 @@ namespace client_manager {
 
 namespace test {
 
-int GetNumRunningProcesses(const std::string& process_name);
+int GetNumRunningProcesses(std::string process_name);
 
 }  // namespace test
 

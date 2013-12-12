@@ -38,16 +38,6 @@ const std::string kGlobalConfigFilename("global-config.dat");
 const std::string kGlobalBootstrapFilename("global-bootstrap.dat");
 const std::string kClientManagerName("client_mgr");
 
-const std::string kExecutableExtension([]()->std::string {
-  if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
-    return ".exe";
-  if (kTargetPlatform() == "OSX10.8")
-    return "";
-  if (kTargetPlatform() == "Linux")
-    return "";
-  return ".unknown";
-}());
-
 const std::string kInstallerExtension([]()->std::string {
   if (kTargetPlatform() == "Win8" || kTargetPlatform() == "Win7" || kTargetPlatform() == "Vista")
     return ".exe";
@@ -91,9 +81,9 @@ inline std::string GetUserId() {
 #endif
 
 #ifdef USE_DUMMY_VAULT
-const std::string kVaultName("dummy_vault" + kExecutableExtension);
+const std::string kVaultName("dummy_vault");
 #else
-const std::string kVaultName("client_vault" + kExecutableExtension);
+const std::string kVaultName("vault");
 #endif
 
 }  // namespace detail

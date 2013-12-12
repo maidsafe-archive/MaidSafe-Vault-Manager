@@ -24,6 +24,7 @@
 #include "boost/algorithm/string/trim.hpp"
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -37,8 +38,9 @@ namespace client_manager {
 
 namespace test {
 
-int GetNumRunningProcesses(const std::string& process_name) {
+int GetNumRunningProcesses(std::string process_name) {
 #ifdef MAIDSAFE_WIN32
+  process_name += ThisExecutablePath().extension().string();
   std::string command("tasklist /fi \"imagename eq " + process_name + "\" /nh > process_count.txt");
 #else
   std::string command("ps -ef | grep " + process_name +

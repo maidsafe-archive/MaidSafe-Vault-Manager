@@ -22,6 +22,7 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/process.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
@@ -31,10 +32,6 @@
 #include "maidsafe/client_manager/tests/test_utils.h"
 
 namespace fs = boost::filesystem;
-
-namespace {
-std::string g_parent_path;
-}
 
 namespace maidsafe {
 
@@ -241,12 +238,10 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest()
       : process_manager_(),
-        kProcessName_(detail::kVaultName),
-        kExecutablePath_(fs::path(g_parent_path) / kProcessName_) {}
+        kExecutablePath_(process::GetOtherExecutablePath(detail::kVaultName)) {}
 
  protected:
   ProcessManager process_manager_;
-  const std::string kProcessName_;
   fs::path kExecutablePath_;
 };
 
@@ -255,8 +250,7 @@ TEST_F(ProcessManagerTest, BEH_StartSingleProcess) {
 
   Process test;
   ASSERT_TRUE(test.SetExecutablePath(kExecutablePath_));
-  test.AddArgument("--runtime");
-  test.AddArgument("2");
+  test.AddArgument("--runtime 2");
   test.AddArgument("--nocrash");
   test.AddArgument("--nocontroller");
 
@@ -516,7 +510,5 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 }  // namespace maidsafe
 
 int main(int argc, char** argv) {
-  fs::path full_path(argv[0]);
-  g_parent_path = full_path.parent_path().string();
   return maidsafe::test::ExecuteMain(argc, argv);
 }
