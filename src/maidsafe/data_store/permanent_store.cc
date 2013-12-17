@@ -116,10 +116,13 @@ PermanentStore::~PermanentStore() {}
 
 void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
-  if (!fs::exists(kDiskPath_))
+  if (!fs::exists(kDiskPath_)) {
+    LOG(kError) << "PermanentStore::Put kDiskPath_ " << kDiskPath_ << " doesn't exists";
     ThrowError(CommonErrors::filesystem_io_error);
+  }
 
   fs::path file_path(KeyToFilePath(key));
+  LOG(kVerbose) << "PermanentStore::Put file_path " << file_path;
   uint32_t value_size(static_cast<uint32_t>(value.string().size()));
   uint64_t file_size(0), size(0);
   bool increment(true);
