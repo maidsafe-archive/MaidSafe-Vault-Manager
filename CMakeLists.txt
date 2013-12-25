@@ -33,7 +33,7 @@ include(../../cmake_modules/standard_setup.cmake)
 # Set up all files as GLOBs                                                                        #
 #==================================================================================================#
 set(ClientManagerSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/client_manager)
-glob_dir(ClientManager ${ClientManagerSourcesDir} "Client Manager")
+ms_glob_dir(ClientManager ${ClientManagerSourcesDir} "Client Manager")
 set(ClientManagerCoreAllFiles
       "${ClientManagerSourcesDir}/client_manager.cc"
       "${ClientManagerSourcesDir}/client_manager.h"
@@ -46,11 +46,11 @@ list(REMOVE_ITEM ClientManagerAllFiles
        ${ClientManagerCoreAllFiles}
        "${ClientManagerSourcesDir}/client_manager_main.cc")
 
-glob_dir(DataTypes ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types "Data Types")
-glob_dir(DataStore ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store "Data Store")
+ms_glob_dir(DataTypes ${PROJECT_SOURCE_DIR}/src/maidsafe/data_types "Data Types")
+ms_glob_dir(DataStore ${PROJECT_SOURCE_DIR}/src/maidsafe/data_store "Data Store")
 
 # Tests
-glob_dir(ClientManagerTests ${ClientManagerSourcesDir}/tests "Client Manager Tests")
+ms_glob_dir(ClientManagerTests ${ClientManagerSourcesDir}/tests "Client Manager Tests")
 list(REMOVE_ITEM ClientManagerTestsAllFiles
        "${ClientManagerSourcesDir}/tests/dummy_client.cc"
        "${ClientManagerSourcesDir}/tests/dummy_vault.cc")
@@ -64,12 +64,12 @@ list(REMOVE_ITEM DataTypesTestsSources ${TestsMain})
 #==================================================================================================#
 # Define MaidSafe libraries and executables                                                        #
 #==================================================================================================#
-ms_add_static_library(private ${DataStoreAllFiles} ${DataTypesAllFiles})
-ms_add_static_library(client_manager ${ClientManagerAllFiles})
-ms_add_static_library(client_manager_core
+ms_add_static_library(maidsafe_private ${DataStoreAllFiles} ${DataTypesAllFiles})
+ms_add_static_library(maidsafe_client_manager ${ClientManagerAllFiles})
+ms_add_static_library(maidsafe_client_manager_core
     ${ClientManagerCoreAllFiles}
     "${CMAKE_BINARY_DIR}/GeneratedProtoFiles/maidsafe/client_manager/vault_info.pb.h")
-ms_add_static_library(client_manager_core_dummy ${ClientManagerCoreAllFiles})
+ms_add_static_library(maidsafe_client_manager_core_dummy ${ClientManagerCoreAllFiles})
 target_include_directories(maidsafe_private PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_include_directories(maidsafe_client_manager PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_include_directories(maidsafe_client_manager_core PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -95,7 +95,7 @@ target_link_libraries(client_mgr maidsafe_client_manager_core maidsafe_client_ma
 target_link_libraries(signing_tool maidsafe_passport)
 target_link_libraries(bootstrap_file_tool maidsafe_common)
 
-rename_outdated_built_exes()
+ms_rename_outdated_built_exes()
 
 
 #==================================================================================================#
@@ -137,15 +137,15 @@ if(MaidsafeTesting)
       target_link_libraries(${Exe} maidsafe_private)
       # TODO - Investigate why boost variant requires this warning to be disabled in RelWithDebInfo only.
       target_compile_options(${Exe} PRIVATE $<$<BOOL:${MSVC}>:/bigobj $<$<CONFIG:RelWithDebInfo>:/wd4702>>)
-      add_catch_tests(${Exe})
+      ms_add_catch_tests(${Exe})
     endforeach()
   endmacro()
 
   PrivateTests("Data Store Tests" ${DataStoreTestsSources})
   PrivateTests("Data Types Tests" ${DataTypesTestsSources})
 
-  add_style_test()
-  add_gtests(TESTclient_manager)
-  add_project_experimental()
-  test_summary_output()
+  ms_add_style_test()
+  ms_add_gtests(TESTclient_manager)
+  ms_add_project_experimental()
+  ms_test_summary_output()
 endif()
