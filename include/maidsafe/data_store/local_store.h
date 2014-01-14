@@ -67,24 +67,24 @@ class LocalStore {
   void IncrementReferenceCount(const std::vector<ImmutableData::Name>& data_names);
   void DecrementReferenceCount(const std::vector<ImmutableData::Name>& data_names);
 
-  template <typename Data>
-  VersionNamesFuture GetVersions(const typename Data::Name& data_name,
+  template <typename DataName>
+  VersionNamesFuture GetVersions(const DataName& data_name,
                                  const std::chrono::steady_clock::duration& timeout =
                                      std::chrono::seconds(10));
 
-  template <typename Data>
-  VersionNamesFuture GetBranch(const typename Data::Name& data_name,
+  template <typename DataName>
+  VersionNamesFuture GetBranch(const DataName& data_name,
                                const StructuredDataVersions::VersionName& branch_tip,
                                const std::chrono::steady_clock::duration& timeout =
                                    std::chrono::seconds(10));
 
-  template <typename Data>
-  void PutVersion(const typename Data::Name& data_name,
+  template <typename DataName>
+  void PutVersion(const DataName& data_name,
                   const StructuredDataVersions::VersionName& old_version_name,
                   const StructuredDataVersions::VersionName& new_version_name);
 
-  template <typename Data>
-  void DeleteBranchUntilFork(const typename Data::Name& data_name,
+  template <typename DataName>
+  void DeleteBranchUntilFork(const DataName& data_name,
                              const StructuredDataVersions::VersionName& branch_tip);
 
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
@@ -178,9 +178,9 @@ void LocalStore::Delete(const DataName& data_name) {
   });
 }
 
-template <typename Data>
+template <typename DataName>
 LocalStore::VersionNamesFuture LocalStore::GetVersions(
-    const typename Data::Name& data_name, const std::chrono::steady_clock::duration& /*timeout*/) {
+    const DataName& data_name, const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting versions: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<VersionNamesPromise>());
   auto async_future(boost::async(boost::launch::async, [=] {
@@ -201,9 +201,9 @@ LocalStore::VersionNamesFuture LocalStore::GetVersions(
   return promise->get_future();
 }
 
-template <typename Data>
+template <typename DataName>
 LocalStore::VersionNamesFuture LocalStore::GetBranch(
-    const typename Data::Name& data_name, const StructuredDataVersions::VersionName& branch_tip,
+    const DataName& data_name, const StructuredDataVersions::VersionName& branch_tip,
     const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting branch: " << HexSubstr(data_name.value) << ".  Tip: "
                 << branch_tip.index << "-" << HexSubstr(branch_tip.id.value);
@@ -226,8 +226,8 @@ LocalStore::VersionNamesFuture LocalStore::GetBranch(
   return promise->get_future();
 }
 
-template <typename Data>
-void LocalStore::PutVersion(const typename Data::Name& data_name,
+template <typename DataName>
+void LocalStore::PutVersion(const DataName& data_name,
                             const StructuredDataVersions::VersionName& old_version_name,
                             const StructuredDataVersions::VersionName& new_version_name) {
   LOG(kVerbose) << "Putting version: " << HexSubstr(data_name.value) << ".  Old: "
@@ -249,8 +249,8 @@ void LocalStore::PutVersion(const typename Data::Name& data_name,
   }
 }
 
-template <typename Data>
-void LocalStore::DeleteBranchUntilFork(const typename Data::Name& data_name,
+template <typename DataName>
+void LocalStore::DeleteBranchUntilFork(const DataName& data_name,
                                        const StructuredDataVersions::VersionName& branch_tip) {
   LOG(kVerbose) << "Deleting branch: " << HexSubstr(data_name.value) << ".  Tip: "
                 << branch_tip.index << "-" << HexSubstr(branch_tip.id.value);
