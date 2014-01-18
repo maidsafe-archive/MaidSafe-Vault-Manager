@@ -85,12 +85,15 @@ class DataBuffer {
   // Throws if the background worker has thrown (e.g. the disk has become inaccessible).  Throws if
   // the value was written to disk and can't be removed.
   void Delete(const KeyType& key);
+  // Delete based on a predicate, allows pairs etc. to be used as key
+  void Delete(std::function<bool(const Key&)> Predicate);
   // Throws if max_memory_usage > max_disk_usage_.
   void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
   // Throws if max_memory_usage_ > max_disk_usage.
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
   friend class test::DataBufferTest;
+  friend class test::DataBufferUnitTest;
   friend class test::DataStoreTest;
 
  private:
@@ -431,6 +434,26 @@ void DataBuffer<Key>::Delete(const KeyType& key) {
   DeleteFromMemory(key, also_on_disk);
   if (also_on_disk != StoringState::kNotStarted)
     DeleteFromDisk(key);
+}
+
+template <typename Key>
+void DataBuffer<Key>::Delete(std::function<bool(const Key&)> predicate) {
+  CheckWorkerIsStillRunning();
+  StoringState also_on_disk(StoringState::kNotStarted);
+  {
+    std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
+    auto before_size(memory_store_.size());
+    memory_store_.erase(std::remove(std::begin(memory_store_), std::end(memory_store_), predicate));
+    if(memory_store_.size() != before_size)
+      memory_store_.cond_var.notify_all();
+  }
+  {
+    std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
+    auto before_size(disk_store_.size());
+    disk_store_.erase(std::remove(std::begin(disk_store_), std::end(disk_store_), predicate));
+    if(disk_store_.size() != before_size)
+      disk_store_.cond_var.notify_all();
+  }
 }
 
 template <typename Key>
