@@ -45,6 +45,14 @@
 #include "maidsafe/data_types/data_type_values.h"
 
 namespace maidsafe {
+//limit scope for these specialisations 
+std::string HexEncode(const std::pair<std::string, std::string>& input) {
+  return HexEncode(input.first + input.second);
+}
+
+std::string HexSubstr(const std::pair<std::string, std::string>& input) {
+  return HexSubstr(input.first + input.second);
+}
 
 namespace data_store {
 
@@ -93,7 +101,6 @@ class DataBuffer {
   void SetMaxDiskUsage(DiskUsage max_disk_usage);
 
   friend class test::DataBufferTest;
-  friend class test::DataBufferUnitTest;
   friend class test::DataStoreTest;
 
  private:
