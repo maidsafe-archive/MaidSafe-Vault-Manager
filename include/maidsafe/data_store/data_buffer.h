@@ -94,7 +94,7 @@ class DataBuffer {
   // the value was written to disk and can't be removed.
   void Delete(const KeyType& key);
   // Delete based on a predicate, allows pairs etc. to be used as key
-  void Delete(std::function<bool(const Key&)> Predicate);
+  void DeleteRange(std::string& range);
   // Throws if max_memory_usage > max_disk_usage_.
   void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
   // Throws if max_memory_usage_ > max_disk_usage.
@@ -444,21 +444,35 @@ void DataBuffer<Key>::Delete(const KeyType& key) {
 }
 
 template <typename Key>
-void DataBuffer<Key>::Delete(std::function<bool(const Key&)> predicate) {
+void DataBuffer<Key>::DeleteRange(std::string& range) {
   CheckWorkerIsStillRunning();
-  StoringState also_on_disk(StoringState::kNotStarted);
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
-    auto before_size(memory_store_.size());
-    memory_store_.erase(std::remove(std::begin(memory_store_), std::end(memory_store_), predicate));
-    if(memory_store_.size() != before_size)
+    auto before_size(memory_store_.index.size());
+    memory_store_.index.erase(std::remove_if(std::begin(memory_store_.index),
+                                             std::end(memory_store_.index),
+                [&](const typename Storage<MemoryUsage, MemoryIndex>::index_type::value_type& item)
+                                           {
+                                           if(item.key.second == range) {
+                                           memory_store_.current.data -= item.value.string().size();
+                                           return true;
+                                           } else {
+                                           return false;
+                                           }
+                                           }));
+    if(memory_store_.index.size() != before_size)
       memory_store_.cond_var.notify_all();
   }
   {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
-    auto before_size(disk_store_.size());
-    disk_store_.erase(std::remove(std::begin(disk_store_), std::end(disk_store_), predicate));
-    if(disk_store_.size() != before_size)
+    auto before_size(disk_store_.index.size());
+    disk_store_.index.erase(std::remove_if(std::begin(disk_store_.index),
+                                           std::end(disk_store_.index),
+              [&](const typename Storage<DiskUsage, DiskIndex>::index_type::value_type& item)
+                                         {
+                                         return(item.key.second == range);
+                                         }));
+    if(disk_store_.index.size() != before_size)
       disk_store_.cond_var.notify_all();
   }
 }
