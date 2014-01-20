@@ -29,56 +29,62 @@ namespace fs = boost::filesystem;
 namespace mpl = boost::mpl;
 
 namespace maidsafe {
+
 namespace data_store {
 
 namespace test {
 
-TEST_CASE("Zero size memory", "[Private][unit]") {
-CHECK_NOTHROW(DataBuffer<std::string> buff(MemoryUsage(0), DiskUsage(100), nullptr));
+TEST_CASE("Zero size memory", "[DataBuffer][Unit]") {
+  CHECK_NOTHROW(DataBuffer<std::string>(MemoryUsage(0), DiskUsage(100), nullptr));
 }
 
-TEST_CASE("Max memory usage must be <= max disk usage", "[Private][unit]") {
-CHECK_THROWS_AS(DataBuffer<std::string> buff(MemoryUsage(1), DiskUsage(0), nullptr), std::exception);
+TEST_CASE("Max memory usage must be <= max disk usage", "[DataBuffer][Unit]") {
+  CHECK_THROWS_AS(DataBuffer<std::string>(MemoryUsage(1), DiskUsage(0), nullptr), std::exception);
 }
 
-TEST_CASE("Zero size disk and memory", "[Private][unit]") {
-CHECK_NOTHROW(DataBuffer<std::string> buff(MemoryUsage(0), DiskUsage(0), nullptr));
+TEST_CASE("Zero size disk and memory", "[DataBuffer][Unit]") {
+  CHECK_NOTHROW(DataBuffer<std::string>(MemoryUsage(0), DiskUsage(0), nullptr));
 }
 
-TEST_CASE("Construct with complex key", "[Private][unit]") {
-  typedef std::pair<std::string, std::string> key_type;
-  CHECK_NOTHROW(DataBuffer<key_type> buff(MemoryUsage(0), DiskUsage(100), nullptr));
+TEST_CASE("Construct with complex key", "[DataBuffer][Unit]") {
+  typedef std::pair<std::string, std::string> Key;
+  CHECK_NOTHROW(DataBuffer<Key>(MemoryUsage(0), DiskUsage(100), nullptr));
 }
 
-TEST_CASE("disk only insert and delete", "[Private][unit]") {
-  DataBuffer<std::string> buff(MemoryUsage(0), DiskUsage(100), nullptr);
-  CHECK_NOTHROW(buff.Store("a", NonEmptyString("b")));
-  CHECK(NonEmptyString("b") == buff.Get("a"));
-  CHECK_NOTHROW(buff.Delete("a"));
-  CHECK_THROWS_AS(buff.Delete("a"), std::exception);
+TEST_CASE("Disk only insert and delete", "[DataBuffer][Unit]") {
+  DataBuffer<std::string> data_buffer(MemoryUsage(0), DiskUsage(100), nullptr);
+  CHECK_NOTHROW(data_buffer.Store("a", NonEmptyString("b")));
+  CHECK(NonEmptyString("b") == data_buffer.Get("a"));
+  CHECK_NOTHROW(data_buffer.Delete(std::string("a")));
+  CHECK_THROWS_AS(data_buffer.Delete(std::string("a")), std::exception);
 }
 
-TEST_CASE("disk only insert and delete complex key", "[Private][unit]") {
-  DataBuffer<std::pair<std::string, std::string>> buff(MemoryUsage(0), DiskUsage(100), nullptr);
-  CHECK_NOTHROW(buff.Store(std::make_pair("a", "b"), NonEmptyString("b")));
-  CHECK(NonEmptyString("b") == buff.Get(std::make_pair("a", "b")));
-  CHECK_NOTHROW(buff.Delete(std::make_pair("a", "b")));
-  CHECK_THROWS_AS(buff.Delete(std::make_pair("a", "b")), std::exception);
+TEST_CASE("Disk only insert and delete complex key", "[DataBuffer][Unit]") {
+  typedef std::pair<std::string, std::string> Key;
+  DataBuffer<Key> data_buffer(MemoryUsage(0), DiskUsage(100), nullptr);
+  CHECK_NOTHROW(data_buffer.Store(std::make_pair("a", "b"), NonEmptyString("b")));
+  CHECK(NonEmptyString("b") == data_buffer.Get(std::make_pair("a", "b")));
+  CHECK_NOTHROW(data_buffer.Delete(std::make_pair(std::string("a"), std::string("b"))));
+  CHECK_THROWS_AS(data_buffer.Delete(std::make_pair(std::string("a"), std::string("b"))),
+                  std::exception);
 }
 
-TEST_CASE("disk only insert and delete range", "[Private][unit]") {
-  DataBuffer<std::pair<std::string, std::string>> buff(MemoryUsage(0), DiskUsage(100), nullptr);
-  CHECK_NOTHROW(buff.Store(std::make_pair("a", "b"), NonEmptyString("b")));
-  CHECK_NOTHROW(buff.Store(std::make_pair("b", "b"), NonEmptyString("b")));
-  CHECK(NonEmptyString("b") == buff.Get(std::make_pair("a", "b")));
-  std::string range("b");
-  CHECK_NOTHROW(buff.DeleteRange(range));
-  CHECK_THROWS_AS(buff.Delete(std::make_pair("a", "b")), std::exception);
-  // CHECK_THROWS_AS(buff.Delete(predicate), std::exception);
+TEST_CASE("Disk only insert and delete range", "[DataBuffer][Unit]") {
+  typedef std::pair<std::string, std::string> Key;
+  DataBuffer<Key> data_buffer(MemoryUsage(0), DiskUsage(100), nullptr);
+  CHECK_NOTHROW(data_buffer.Store(std::make_pair("a", "b"), NonEmptyString("b")));
+  CHECK_NOTHROW(data_buffer.Store(std::make_pair("b", "b"), NonEmptyString("b")));
+  CHECK(NonEmptyString("b") == data_buffer.Get(std::make_pair("a", "b")));
+  std::function<bool(const Key&)> predicate([](const Key& key) { return key.second == "b"; });
+  CHECK_NOTHROW(data_buffer.Delete(predicate));
+  CHECK_THROWS_AS(data_buffer.Delete(std::make_pair(std::string("a"), std::string("b"))),
+                  std::exception);
+  CHECK_NOTHROW(data_buffer.Delete(predicate));
 }
 
 
 }  // namespace test
 
 }  // namespace data_store
+
 }  // namespace maidsafe

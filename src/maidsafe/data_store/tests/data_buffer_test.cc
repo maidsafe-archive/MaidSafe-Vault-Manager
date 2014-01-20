@@ -167,7 +167,7 @@ class DataBufferTest {
   DataBufferPtr data_buffer_;
 };
 
-TEST_CASE_METHOD(DataBufferTest, "Constructor", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "Constructor", "[DataBuffer][Behavioural]") {
   REQUIRE_NOTHROW(DataBufferType(MemoryUsage(0), DiskUsage(0), pop_functor_));
   REQUIRE_NOTHROW(DataBufferType(MemoryUsage(1), DiskUsage(1), pop_functor_));
   REQUIRE_THROWS_AS(DataBufferType(MemoryUsage(1), DiskUsage(0), pop_functor_), std::exception);
@@ -192,7 +192,7 @@ TEST_CASE_METHOD(DataBufferTest, "Constructor", "[Private][Behavioural]") {
   REQUIRE(fs::exists(directory_path));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "Destructor", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "Destructor", "[DataBuffer][Behavioural]") {
   boost::filesystem::path data_buffer_path;
   {
     DataBufferType data_buffer(MemoryUsage(1), DiskUsage(1), pop_functor_);
@@ -213,7 +213,7 @@ TEST_CASE_METHOD(DataBufferTest, "Destructor", "[Private][Behavioural]") {
   REQUIRE(!fs::exists(data_buffer_path));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "SetMaxDiskMemoryUsage", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "SetMaxDiskMemoryUsage", "[DataBuffer][Behavioural]") {
   REQUIRE_NOTHROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ - 1)));
   REQUIRE_NOTHROW(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_)));
   REQUIRE_THROWS_AS(data_buffer_->SetMaxMemoryUsage(MemoryUsage(max_disk_usage_ + 1)),
@@ -239,7 +239,7 @@ TEST_CASE_METHOD(DataBufferTest, "SetMaxDiskMemoryUsage", "[Private][Behavioural
   REQUIRE_NOTHROW(data_buffer_->SetMaxDiskUsage(DiskUsage(kDefaultMaxDiskUsage)));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "RemoveDiskBuffer", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "RemoveDiskBuffer", "[DataBuffer][Behavioural]") {
   boost::system::error_code error_code;
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   fs::path data_buffer_path(*test_path / "data_buffer");
@@ -275,7 +275,7 @@ TEST_CASE_METHOD(DataBufferTest, "RemoveDiskBuffer", "[Private][Behavioural]") {
   REQUIRE_THROWS_AS(data_buffer_->Delete(key), std::exception);
 }
 
-TEST_CASE_METHOD(DataBufferTest, "SuccessfulStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "SuccessfulStore", "[DataBuffer][Behavioural]") {
   NonEmptyString value1(RandomAlphaNumericString(static_cast<uint32_t>(max_memory_usage_)));
   auto key1(GenerateKeyFromValue<KeyType>(value1));
   NonEmptyString value2(RandomAlphaNumericString(static_cast<uint32_t>(max_memory_usage_)));
@@ -290,13 +290,13 @@ TEST_CASE_METHOD(DataBufferTest, "SuccessfulStore", "[Private][Behavioural]") {
   REQUIRE(recovered == value2);
 }
 
-TEST_CASE_METHOD(DataBufferTest, "UnsuccessfulStore", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "UnsuccessfulStore", "[DataBuffer][Behavioural]") {
   NonEmptyString value(std::string(static_cast<uint32_t>(max_disk_usage_ + 1), 'a'));
   auto key(GenerateKeyFromValue<KeyType>(value));
   REQUIRE_THROWS_AS(data_buffer_->Store(key, value), std::exception);
 }
 
-TEST_CASE_METHOD(DataBufferTest, "DeleteOnDiskBufferOverfill", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "DeleteOnDiskBufferOverfill", "[DataBuffer][Behavioural]") {
   const size_t num_entries(4), num_memory_entries(1), num_disk_entries(4);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   KeyValueVector key_value_pairs(PopulateDataBuffer(num_entries, num_memory_entries,
@@ -317,7 +317,7 @@ TEST_CASE_METHOD(DataBufferTest, "DeleteOnDiskBufferOverfill", "[Private][Behavi
   REQUIRE(DeleteDirectory(data_buffer_path_));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "PopOnDiskBufferOverfill", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "PopOnDiskBufferOverfill", "[DataBuffer][Behavioural]") {
   size_t index(0);
   std::mutex mutex;
   std::condition_variable condition_variable;
@@ -362,7 +362,7 @@ TEST_CASE_METHOD(DataBufferTest, "PopOnDiskBufferOverfill", "[Private][Behaviour
   REQUIRE(DeleteDirectory(data_buffer_path_));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "AsyncDeleteOnDiskBufferOverfill", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "AsyncDeleteOnDiskBufferOverfill", "[DataBuffer][Behavioural]") {
   KeyValueVector old_key_value_pairs, new_key_value_pairs;
   const size_t num_entries(6), num_memory_entries(0), num_disk_entries(6);
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
@@ -424,7 +424,7 @@ TEST_CASE_METHOD(DataBufferTest, "AsyncDeleteOnDiskBufferOverfill", "[Private][B
   REQUIRE(DeleteDirectory(this->data_buffer_path_));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "AsyncPopOnDiskBufferOverfill", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "AsyncPopOnDiskBufferOverfill", "[DataBuffer][Behavioural]") {
   size_t index(0);
   std::mutex mutex;
   std::condition_variable condition_variable;
@@ -467,7 +467,7 @@ TEST_CASE_METHOD(DataBufferTest, "AsyncPopOnDiskBufferOverfill", "[Private][Beha
   REQUIRE(DeleteDirectory(data_buffer_path_));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "RepeatedlyStoreUsingSameKey", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "RepeatedlyStoreUsingSameKey", "[DataBuffer][Behavioural]") {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   data_buffer_path_ = fs::path(*test_path / "data_buffer");
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString & value) {
@@ -507,7 +507,7 @@ TEST_CASE_METHOD(DataBufferTest, "RepeatedlyStoreUsingSameKey", "[Private][Behav
   REQUIRE(DeleteDirectory(data_buffer_path_));
 }
 
-TEST_CASE_METHOD(DataBufferTest, "RandomAsync", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferTest, "RandomAsync", "[DataBuffer][Behavioural]") {
   maidsafe::test::TestPath test_path(maidsafe::test::CreateTestPath("MaidSafe_Test_DataBuffer"));
   data_buffer_path_ = fs::path(*test_path / "data_buffer");
   PopFunctor pop_functor([this](const KeyType& key, const NonEmptyString & value) {
@@ -617,7 +617,7 @@ MaxDataBufferUsage max_data_buffer_usage[] = {{1, 2}, {1, 1024}, {8, 1024}, {102
                                               {1000, 10000}, {10000, 1000000}};
 }  // unnamed namespace
 
-TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Store", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Store", "[DataBuffer][Behavioural]") {
   MaxDataBufferUsage* resource_usage = Catch::Generators::GENERATE(between(max_data_buffer_usage,
       &max_data_buffer_usage[sizeof(max_data_buffer_usage)/sizeof(MaxDataBufferUsage)-1]));
 
@@ -645,7 +645,7 @@ TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Store", "[Private][Behaviour
   }
 }
 
-TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Delete", "[Private][Behavioural]") {
+TEST_CASE_METHOD(DataBufferValueParameterisedTest, "Delete", "[DataBuffer][Behavioural]") {
   MaxDataBufferUsage* resource_usage = Catch::Generators::GENERATE(between(max_data_buffer_usage,
       &max_data_buffer_usage[sizeof(max_data_buffer_usage)/sizeof(MaxDataBufferUsage)-1]));
 

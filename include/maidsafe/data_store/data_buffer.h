@@ -45,12 +45,12 @@
 #include "maidsafe/data_types/data_type_values.h"
 
 namespace maidsafe {
-//limit scope for these specialisations 
-std::string HexEncode(const std::pair<std::string, std::string>& input) {
+
+inline std::string HexEncode(const std::pair<std::string, std::string>& input) {
   return HexEncode(input.first + input.second);
 }
 
-std::string HexSubstr(const std::pair<std::string, std::string>& input) {
+inline std::string HexSubstr(const std::pair<std::string, std::string>& input) {
   return HexSubstr(input.first + input.second);
 }
 
@@ -94,7 +94,7 @@ class DataBuffer {
   // the value was written to disk and can't be removed.
   void Delete(const KeyType& key);
   // Delete based on a predicate, allows pairs etc. to be used as key
-  void DeleteRange(std::string& range);
+  void Delete(std::function<bool(const KeyType&)> predicate);
   // Throws if max_memory_usage > max_disk_usage_.
   void SetMaxMemoryUsage(MemoryUsage max_memory_usage);
   // Throws if max_memory_usage_ > max_disk_usage.
@@ -444,37 +444,36 @@ void DataBuffer<Key>::Delete(const KeyType& key) {
 }
 
 template <typename Key>
-void DataBuffer<Key>::DeleteRange(std::string& range) {
+void DataBuffer<Key>::Delete(std::function<bool(const KeyType&)> predicate) {
   CheckWorkerIsStillRunning();
   {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
     auto before_size(memory_store_.index.size());
-    memory_store_.index.erase(std::remove_if(std::begin(memory_store_.index),
-                                             std::end(memory_store_.index),
-                [&](const typename Storage<MemoryUsage, MemoryIndex>::index_type::value_type& item)
-                                           {
-                                           if(item.key.second == range) {
-                                           memory_store_.current.data -= item.value.string().size();
-                                           return true;
-                                           } else {
-                                           return false;
-                                           }
-                                           }));
-    if(memory_store_.index.size() != before_size)
+    memory_store_.index.erase(
+        std::remove_if(std::begin(memory_store_.index),
+                       std::end(memory_store_.index),
+                       [&](const MemoryElement& item) {
+                         if (predicate(item.key)) {
+                           memory_store_.current.data -= item.value.string().size();
+                           return true;
+                         } else {
+                           return false;
+                         }
+                       }),
+        std::end(memory_store_.index));
+    if (memory_store_.index.size() != before_size)
       memory_store_.cond_var.notify_all();
   }
-  {
-    std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
-    auto before_size(disk_store_.index.size());
-    disk_store_.index.erase(std::remove_if(std::begin(disk_store_.index),
-                                           std::end(disk_store_.index),
-              [&](const typename Storage<DiskUsage, DiskIndex>::index_type::value_type& item)
-                                         {
-                                         return(item.key.second == range);
-                                         }));
-    if(disk_store_.index.size() != before_size)
-      disk_store_.cond_var.notify_all();
-  }
+  std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
+  auto before_size(disk_store_.index.size());
+  disk_store_.index.erase(std::remove_if(std::begin(disk_store_.index),
+                                          std::end(disk_store_.index),
+                                          [&](const DiskElement& item) {
+                                            return predicate(item.key);
+                                          }),
+                          std::end(disk_store_.index));
+  if (disk_store_.index.size() != before_size)
+    disk_store_.cond_var.notify_all();
 }
 
 template <typename Key>
