@@ -74,7 +74,6 @@ VaultController::VaultController(const std::string& client_manager_identifier,
   if (client_manager_identifier != "test") {
     detail::ParseVmidParameter(client_manager_identifier, process_index_,
                                client_manager_port_);
-    asio_service_.Start();
     OnMessageReceived::slot_type on_message_slot([this](
         const std::string & message,
         Port client_manager_port) { HandleReceivedRequest(message, client_manager_port); });

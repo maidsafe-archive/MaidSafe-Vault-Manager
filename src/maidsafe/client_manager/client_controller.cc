@@ -63,7 +63,6 @@ ClientController::ClientController(
         joining_vaults_conditional_(),
         asio_service_(3),
         receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
-  asio_service_.Start();
   OnMessageReceived::slot_type on_message_slot([this](
       const std::string & message,
       Port client_manager_port) { HandleReceivedRequest(message, client_manager_port); });
