@@ -112,7 +112,6 @@ ClientManager::ClientManager()
   // {});
   //  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
   //  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
-  //  asio_service_.Start();
   //  Initialise();
 }
 

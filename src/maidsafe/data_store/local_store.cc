@@ -108,7 +108,6 @@ LocalStore::LocalStore(const fs::path& disk_path, DiskUsage max_disk_usage)
       get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
     ThrowError(CommonErrors::cannot_exceed_limit);
-  asio_service_.Start();
 }
 
 LocalStore::~LocalStore() { asio_service_.Stop(); }
