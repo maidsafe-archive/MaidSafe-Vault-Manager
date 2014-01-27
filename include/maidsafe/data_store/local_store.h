@@ -134,7 +134,7 @@ boost::future<typename DataName::data_type> LocalStore::Get(
     const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<boost::promise<typename DataName::data_type>>());
-  auto async_future(boost::async(boost::launch::async, [=] {
+  auto async_future(boost::async([=] {
     try {
       auto result(this->DoGet(KeyType(data_name)));
       typename DataName::data_type data(data_name,
@@ -183,7 +183,7 @@ LocalStore::VersionNamesFuture LocalStore::GetVersions(
     const DataName& data_name, const std::chrono::steady_clock::duration& /*timeout*/) {
   LOG(kVerbose) << "Getting versions: " << HexSubstr(data_name.value);
   auto promise(std::make_shared<VersionNamesPromise>());
-  auto async_future(boost::async(boost::launch::async, [=] {
+  auto async_future(boost::async([=] {
     try {
       KeyType key(data_name);
       std::lock_guard<std::mutex> lock(this->mutex_);
@@ -208,7 +208,7 @@ LocalStore::VersionNamesFuture LocalStore::GetBranch(
   LOG(kVerbose) << "Getting branch: " << HexSubstr(data_name.value) << ".  Tip: "
                 << branch_tip.index << "-" << HexSubstr(branch_tip.id.value);
   auto promise(std::make_shared<VersionNamesPromise>());
-  auto async_future(boost::async(boost::launch::async, [=] {
+  auto async_future(boost::async([=] {
     try {
       KeyType key(data_name);
       std::lock_guard<std::mutex> lock(this->mutex_);
