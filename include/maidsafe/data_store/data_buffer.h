@@ -78,7 +78,7 @@ class DataBuffer {
   // pop_functor is valid, the disk cache will pop excess items when it is full, otherwise Store
   // will block until there is space made via Delete calls.
   DataBuffer(MemoryUsage max_memory_usage, DiskUsage max_disk_usage, PopFunctor pop_functor,
-             const boost::filesystem::path& disk_buffer);
+             const boost::filesystem::path& disk_buffer, bool should_remove_root = false);
   ~DataBuffer();
   // Throws if the background worker has thrown (e.g. the disk has become inaccessible).  Throws if
   // the size of value is greater than the current specified maximum disk usage, or if the value
@@ -212,12 +212,13 @@ DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage, DiskUsage max_disk_usa
 
 template <typename Key>
 DataBuffer<Key>::DataBuffer(MemoryUsage max_memory_usage, DiskUsage max_disk_usage,
-                            PopFunctor pop_functor, const boost::filesystem::path& disk_buffer)
+                            PopFunctor pop_functor, const boost::filesystem::path& disk_buffer,
+                            bool should_remove_root)
     : memory_store_(max_memory_usage),
       disk_store_(max_disk_usage),
       kPopFunctor_(std::move(pop_functor)),
       kDiskBuffer_(disk_buffer),
-      kShouldRemoveRoot_(false),
+      kShouldRemoveRoot_(should_remove_root),
       running_(true),
       worker_mutex_(),
       worker_() {
