@@ -44,6 +44,7 @@ struct UsedSpace {
   DiskUsage disk_usage;
 };
 
+/*
 UsedSpace GetUsedSpace(fs::path directory) {
   UsedSpace used_space;
   for (fs::directory_iterator it(directory); it != fs::directory_iterator(); ++it) {
@@ -54,6 +55,7 @@ UsedSpace GetUsedSpace(fs::path directory) {
   }
   return used_space;
 }
+*/
 
 DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
   boost::system::error_code error_code;
@@ -64,6 +66,10 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       ThrowError(CommonErrors::uninitialised);
       return disk_usage;
     }
+  }
+  // TODO(Fraser#5#): 2014-01-30 - BEFORE_RELEASE re-enable this functionality using a different
+  //                               (much faster) method.
+/*
   } else {
     std::vector<fs::path> dirs_to_do;
     dirs_to_do.push_back(disk_root);
@@ -94,6 +100,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       }
     }
   }
+*/
   return disk_usage;
 }
 

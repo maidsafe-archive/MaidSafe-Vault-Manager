@@ -147,6 +147,7 @@ BOOL CtrlHandler(DWORD control_type) {
 
 #endif
 
+#ifdef TESTING
 std::vector<boost::asio::ip::udp::endpoint> ParseIps(const std::string& parameter_ips) {
   std::vector<boost::asio::ip::udp::endpoint> endpoints;
   boost::regex re(",");
@@ -162,12 +163,11 @@ std::vector<boost::asio::ip::udp::endpoint> ParseIps(const std::string& paramete
     }
     ++it;
   }
-#ifndef NDEBUG
   for (auto& ep : endpoints)
     LOG(kInfo) << "IP candidate: " << ep;
-#endif
   return endpoints;
 }
+#endif
 
 void HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
