@@ -139,7 +139,7 @@ boost::future<typename DataName::data_type> LocalStore::Get(
       auto result(this->DoGet(KeyType(data_name)));
       typename DataName::data_type data(data_name,
                                         typename DataName::data_type::serialised_type(result));
-      LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexEncode(result);
+      LOG(kVerbose) << "Got: " << HexSubstr(data_name.value) << "  " << HexSubstr(result);
       promise->set_value(data);
     }
     catch (const std::exception& e) {
@@ -154,7 +154,7 @@ boost::future<typename DataName::data_type> LocalStore::Get(
 template <typename Data>
 void LocalStore::Put(const Data& data) {
   LOG(kVerbose) << "Putting: " << HexSubstr(data.name().value) << "  "
-                << HexEncode(data.Serialise().data);
+                << HexSubstr(data.Serialise().data);
   asio_service_.service().post([this, data] {
     try {
       DoPut(KeyType(data.name()), data.Serialise());

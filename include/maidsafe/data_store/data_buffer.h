@@ -290,10 +290,10 @@ template <typename Key>
 void DataBuffer<Key>::Store(const KeyType& key, const NonEmptyString& value) {
   try {
     Delete(key);
-    LOG(kVerbose) << "Re-storing " << DebugKeyName(key) << " with value " << HexEncode(value);
+    LOG(kVerbose) << "Re-storing " << DebugKeyName(key) << " with value " << HexSubstr(value);
   }
   catch (const std::exception&) {
-    LOG(kVerbose) << "Storing " << DebugKeyName(key) << " with value " << HexEncode(value);
+    LOG(kVerbose) << "Storing " << DebugKeyName(key) << " with value " << HexSubstr(value);
   }
 
   CheckWorkerIsStillRunning();
