@@ -46,7 +46,7 @@ MutableData::MutableData(Name name, const serialised_type& serialised_mutable_da
     : name_(std::move(name)), data_() {
   protobuf::MutableData proto_mutable_data;
   if (!proto_mutable_data.ParseFromString(serialised_mutable_data->string()))
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
   data_ = NonEmptyString(proto_mutable_data.data());
 }
 

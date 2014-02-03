@@ -37,7 +37,7 @@ StructuredDataVersions::VersionName::VersionName(const std::string& serialised_v
   protobuf::Version version_proto;
   if (!version_proto.ParseFromString(serialised_version_name)) {
     LOG(kWarning) << "Failed to parse serialised version name";
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
   }
   index = version_proto.index();
   id = ImmutableData::Name(Identity(version_proto.id()));
@@ -148,7 +148,7 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
       orphans_() {
   protobuf::StructuredDataVersions proto_versions;
   if (!proto_versions.ParseFromString(serialised_data_versions->string()))
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
 
   max_versions_ = proto_versions.max_versions();
   max_branches_ = proto_versions.max_branches();
@@ -159,7 +159,7 @@ StructuredDataVersions::StructuredDataVersions(const serialised_type& serialised
     BranchFromProtobuf(std::end(versions_), proto_versions, proto_branch_index);
 
   if (versions_.size() > max_versions_ || tips_of_trees_.size() == max_branches_)
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
 }
 
 StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() const {
@@ -179,14 +179,14 @@ StructuredDataVersions::serialised_type StructuredDataVersions::Serialise() cons
 
 void StructuredDataVersions::ValidateLimits() const {
   if (max_versions_ < 1U || max_branches_ < 1U)
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
 }
 
 void StructuredDataVersions::BranchFromProtobuf(
     VersionsItr parent_itr, const protobuf::StructuredDataVersions& proto_versions,
     int& proto_branch_index) {
   if (proto_branch_index >= proto_versions.branch_size())
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
 
   // Handle first version in branch
   const auto& proto_branch(proto_versions.branch(proto_branch_index));
@@ -206,7 +206,7 @@ void StructuredDataVersions::BranchFromProtobuf(
   // Handle continuation forks or mark as tip of tree.
   if (proto_branch.name(proto_version_index).has_forking_child_count()) {
     if (proto_branch.name(proto_version_index).forking_child_count() < 2U)
-      ThrowError(CommonErrors::parsing_error);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
     for (uint32_t i(0); i != proto_branch.name(proto_version_index).forking_child_count(); ++i)
       BranchFromProtobuf(itr, proto_versions, proto_branch_index);
   } else {
@@ -232,7 +232,7 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::HandleFirstVersionIn
     } else {
       // Mark as orphan
       if (!absent_parent.id->IsInitialised())
-        ThrowError(CommonErrors::parsing_error);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
       InsertOrphan(absent_parent, itr);
     }
   } else {
@@ -249,7 +249,7 @@ StructuredDataVersions::VersionsItr StructuredDataVersions::CheckedInsert(
                            ImmutableData::Name(Identity(proto_version.id())));
   auto result(versions_.insert(std::make_pair(version_name, std::make_shared<Details>())));
   if (!result.second)
-    ThrowError(CommonErrors::parsing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
   return result.first;
 }
 
@@ -325,7 +325,7 @@ boost::optional<StructuredDataVersions::VersionName> StructuredDataVersions::Put
   // Check we've not been asked to store two roots.
   bool is_root(!old_version.id->IsInitialised() || versions_.empty());
   if (is_root && root_.second != std::end(versions_) && !RootParentName().id->IsInitialised())
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
 
   // Construct temp objects before modifying members in case exception is thrown.
   Version version(std::make_pair(
@@ -376,7 +376,7 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
       if (new_version == root_.second->first) {
         if (root_.first == old_version)
           return true;
-        ThrowError(CommonErrors::invalid_parameter);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
       }
 
       auto orphan_itr(FindOrphan(new_version));
@@ -384,12 +384,12 @@ bool StructuredDataVersions::NewVersionPreExists(const VersionName& old_version,
              orphan_itr.second != std::end(orphan_itr.first->second));
       if (orphan_itr.first != std::end(orphans_) && orphan_itr.first->first == old_version)
         return true;
-      ThrowError(CommonErrors::invalid_parameter);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     } else {
       if (ParentName(existing_itr) == old_version)
         return true;
       else
-        ThrowError(CommonErrors::invalid_parameter);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     }
   }
   return false;
@@ -426,7 +426,7 @@ std::future<void> StructuredDataVersions::CheckVersionNotInBranch(
       if (child_itr == std::end(versions_itr->second->children))
         return;
       if ((*child_itr)->first == version)
-        ThrowError(CommonErrors::invalid_parameter);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
       std::vector<std::future<void>> check_futures;
       while (++child_itr != std::end(versions_itr->second->children))
         check_futures.emplace_back(CheckVersionNotInBranch(*child_itr, version));
@@ -448,7 +448,7 @@ void StructuredDataVersions::CheckBranchCount(const Version& version, bool is_or
       if (root_is_tip_of_tree)
         erase_existing_root = true;
       else
-        ThrowError(CommonErrors::cannot_exceed_limit);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
     }
   }
 }
@@ -519,7 +519,7 @@ void StructuredDataVersions::UnorphanRoot(VersionsItr parent, bool is_root_or_or
     auto orphan_itr(FindOrphan(new_root->first));
     assert(orphan_itr.first != std::end(orphans_));
     if (orphan_itr.first == std::end(orphans_))
-      ThrowError(CommonErrors::unknown);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::unknown));
     // Move from orphans to root_
     root_.first = orphan_itr.first->first;
     root_.second = *orphan_itr.second;
@@ -531,7 +531,7 @@ void StructuredDataVersions::Unorphan(VersionsItr parent) {
   auto orphans_itr(orphans_.find(parent->first));
   assert(orphans_itr != std::end(orphans_));
   if (orphans_itr == std::end(orphans_))
-    ThrowError(CommonErrors::unknown);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::unknown));
 
   for (auto orphan : orphans_itr->second)
     orphan->second->parent = parent;
@@ -657,9 +657,9 @@ void StructuredDataVersions::CheckBranchTipIterator(
     const VersionName& name, SortedVersionsItrs::const_iterator branch_tip_itr) const {
   if (branch_tip_itr == std::end(tips_of_trees_)) {
     if (versions_.find(name) == std::end(versions_))
-      ThrowError(CommonErrors::no_such_element);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
     else
-      ThrowError(CommonErrors::invalid_parameter);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 }
 

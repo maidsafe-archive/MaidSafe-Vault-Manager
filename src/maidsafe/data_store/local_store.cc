@@ -61,8 +61,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
   if (!fs::exists(disk_root, error_code)) {
     if (!fs::create_directories(disk_root, error_code)) {
       LOG(kError) << "Can't create disk root at " << disk_root << ": " << error_code.message();
-      ThrowError(CommonErrors::uninitialised);
-      return disk_usage;
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
     }
   } else {
     std::vector<fs::path> dirs_to_do;
@@ -86,11 +85,11 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       }
       catch (std::system_error& exception) {
         LOG(kError) << exception.what();
-        ThrowError(CommonErrors::filesystem_io_error);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
       }
       catch (...) {
         LOG(kError) << "exception during InitialiseDiskRoot";
-        ThrowError(CommonErrors::invalid_parameter);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
       }
     }
   }
@@ -107,7 +106,7 @@ LocalStore::LocalStore(const fs::path& disk_path, DiskUsage max_disk_usage)
       kDepth_(5),
       get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
-    ThrowError(CommonErrors::cannot_exceed_limit);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
 }
 
 LocalStore::~LocalStore() { asio_service_.Stop(); }
@@ -123,7 +122,7 @@ NonEmptyString LocalStore::DoGet(const KeyType& key) const {
 void LocalStore::DoPut(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!fs::exists(kDiskPath_))
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
 
   fs::path file_path(KeyToFilePath(key, true));
   uint32_t value_size(static_cast<uint32_t>(value.string().size()));
@@ -203,7 +202,7 @@ void LocalStore::DecrementReferenceCount(const std::vector<ImmutableData::Name>&
 void LocalStore::DoIncrement(const std::vector<ImmutableData::Name>& data_names) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!fs::exists(kDiskPath_))
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
 
   for (const auto& data_name : data_names) {
     fs::path file_path(KeyToFilePath(data_name, false));
@@ -229,7 +228,7 @@ void LocalStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   if (current_disk_usage_ > max_disk_usage) {
     LOG(kError) << "current_disk_usage_ " << current_disk_usage_.data
                 << " exceeds target max_disk_usage " << max_disk_usage.data;
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   max_disk_usage_ = max_disk_usage;
 }
@@ -269,7 +268,7 @@ uint32_t LocalStore::GetReferenceCount(const fs::path& path) const {
   boost::system::error_code error_code;
   if (!fs::exists(path.parent_path(), error_code)) {
     LOG(kWarning) << path << " doesn't exist.";
-    ThrowError(CommonErrors::no_such_element);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
 
   try {
@@ -291,11 +290,11 @@ void LocalStore::Write(const boost::filesystem::path& path, const NonEmptyString
                           const uintmax_t& size) {
   if (!HasDiskSpace(size)) {
     LOG(kError) << "Out of space.";
-    ThrowError(CommonErrors::cannot_exceed_limit);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
   }
   if (!WriteFile(path, value.string())) {
     LOG(kError) << "Write failed.";
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
 }
 
@@ -304,11 +303,11 @@ uintmax_t LocalStore::Remove(const fs::path& path) {
   uintmax_t file_size = fs::file_size(path, error_code);
   if (error_code) {
     LOG(kError) << "Error getting file size of " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   if (!fs::remove(path, error_code) || error_code) {
     LOG(kError) << "Error removing file " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   return file_size;
 }
@@ -318,12 +317,12 @@ uintmax_t LocalStore::Rename(const fs::path& old_path, const fs::path& new_path)
   uintmax_t file_size = fs::file_size(old_path, error_code);
   if (error_code) {
     LOG(kError) << "Error getting file size of " << old_path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   fs::rename(old_path, new_path, error_code);
   if (error_code) {
     LOG(kError) << "Error renaming file " << old_path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   return file_size;
 }
@@ -343,7 +342,7 @@ std::unique_ptr<StructuredDataVersions> LocalStore::ReadVersions(const KeyType& 
 
 void LocalStore::WriteVersions(const KeyType& key, const StructuredDataVersions& versions) {
   if (!fs::exists(kDiskPath_))
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
 
   fs::path file_path(KeyToFilePath(key, true));
   file_path.replace_extension(".ver");

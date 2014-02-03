@@ -120,7 +120,7 @@ class SafeReadOnlySharedMemory {
       memcpy(safe_address_->signature, new_signature.string().c_str(),
              new_signature.string().size());
     } else {
-      ThrowError(AsymmErrors::invalid_signature);
+      BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
     }
   }
 

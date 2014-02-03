@@ -117,8 +117,7 @@
         BOOST_PP_SEQ_FOR_EACH(MAIDSAFE_DATA_TYPES_MAP_FIRST_TO_SECOND, , enumerators)              \
         default: {                                                                                 \
           LOG(kError) << "Unhandled data type";                                                    \
-          ThrowError(CommonErrors::invalid_parameter);                                             \
-          return DataNameVariant();                                                                \
+          BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));                       \
         }                                                                                          \
       }                                                                                            \
     }                                                                                              \
