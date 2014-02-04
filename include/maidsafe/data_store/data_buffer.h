@@ -229,13 +229,13 @@ template <typename Key>
 void DataBuffer<Key>::Init() {
   if (memory_store_.max > disk_store_.max) {
     LOG(kError) << "Max memory usage must be < max disk usage.";
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   boost::system::error_code error_code;
   if (!boost::filesystem::exists(kDiskBuffer_, error_code)) {
     if (!boost::filesystem::create_directories(kDiskBuffer_, error_code)) {
       LOG(kError) << "Can't create disk root at " << kDiskBuffer_ << ": " << error_code.message();
-      ThrowError(CommonErrors::uninitialised);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
       return;
     }
   }
@@ -243,7 +243,7 @@ void DataBuffer<Key>::Init() {
   auto test_file(kDiskBuffer_ / "TestFile");
   if (!WriteFile(test_file, "Test")) {
     LOG(kError) << "Can't write file " << test_file;
-    ThrowError(CommonErrors::uninitialised);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
     return;
   }
   boost::filesystem::remove(test_file);
@@ -352,7 +352,7 @@ void DataBuffer<Key>::StoreOnDisk(const KeyType& key, const NonEmptyString& valu
     LOG(kError) << "Cannot store " << DebugKeyName(key) << " since its " << value.string().size()
                 << " bytes exceeds max of " << disk_store_.max << " bytes.";
     StopRunning();
-    ThrowError(CommonErrors::cannot_exceed_limit);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
   }
   disk_store_.index.emplace_back(key);
 
@@ -365,7 +365,7 @@ void DataBuffer<Key>::StoreOnDisk(const KeyType& key, const NonEmptyString& valu
     if (!WriteFile(GetFilename(key), value.string())) {
       LOG(kError) << "Failed to move " << DebugKeyName(key) << " to disk.";
       StopRunning();
-      ThrowError(CommonErrors::filesystem_io_error);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
     }
     auto itr(FindStartedToStoreOnDisk(key));
     if (itr != disk_store_.index.end())
@@ -504,7 +504,7 @@ void DataBuffer<Key>::DeleteFromDisk(const KeyType& key) {
     auto itr(Find(disk_store_, key));
     if (itr == disk_store_.index.end()) {
       LOG(kWarning) << DebugKeyName(key) << " is not in the disk index.";
-      ThrowError(CommonErrors::no_such_element);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
     }
 
     if ((*itr).state == StoringState::kStarted) {
@@ -524,13 +524,13 @@ void DataBuffer<Key>::RemoveFile(const KeyType& key, NonEmptyString* value) {
   uint64_t size(boost::filesystem::file_size(path, error_code));
   if (error_code) {
     LOG(kError) << "Error getting file size of " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   if (value)
     *value = ReadFile(path);
   if (!boost::filesystem::remove(path, error_code) || error_code) {
     LOG(kError) << "Error removing " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   disk_store_.current.data -= size;
 }
@@ -576,7 +576,7 @@ void DataBuffer<Key>::CheckWorkerIsStillRunning() {
   }
   if (!running_) {
     LOG(kError) << "Worker is no longer running.";
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
 }
 
@@ -593,7 +593,7 @@ void DataBuffer<Key>::SetMaxMemoryUsage(MemoryUsage max_memory_usage) {
     std::lock_guard<std::mutex> memory_store_lock(memory_store_.mutex);
     if (max_memory_usage > disk_store_.max) {
       LOG(kError) << "Max memory usage must be <= max disk usage.";
-      ThrowError(CommonErrors::invalid_parameter);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     }
     memory_store_.max = max_memory_usage;
   }
@@ -607,7 +607,7 @@ void DataBuffer<Key>::SetMaxDiskUsage(DiskUsage max_disk_usage) {
     std::lock_guard<std::mutex> disk_store_lock(disk_store_.mutex);
     if (memory_store_.max > max_disk_usage) {
       LOG(kError) << "Max memory usage must be <= max disk usage.";
-      ThrowError(CommonErrors::invalid_parameter);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     }
     increased = (max_disk_usage > disk_store_.max);
     disk_store_.max = max_disk_usage;
@@ -681,7 +681,7 @@ typename DataBuffer<Key>::DiskIndex::iterator DataBuffer<Key>::FindAndThrowIfCan
   auto itr(Find(disk_store_, key));
   if (itr == disk_store_.index.end() || (*itr).state == StoringState::kCancelled) {
     LOG(kWarning) << DebugKeyName(key) << " is not in the disk index or is cancelled.";
-    ThrowError(CommonErrors::no_such_element);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
   return itr;
 }

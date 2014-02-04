@@ -70,7 +70,7 @@ VaultController::VaultController(const std::string& client_manager_identifier,
       asio_service_(3),
       receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   if (!stop_callback_)
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   if (client_manager_identifier != "test") {
     detail::ParseVmidParameter(client_manager_identifier, process_index_,
                                client_manager_port_);
@@ -313,7 +313,7 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   request_transport->Connect(client_manager_port_, connect_result);
   if (connect_result != kSuccess) {
     LOG(kError) << "Failed to connect request transport to ClientManager.";
-    ThrowError(CommonErrors::uninitialised);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
   }
 
   auto connection(
@@ -337,7 +337,7 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
     connection.disconnect();
     error_connection.disconnect();
     LOG(kError) << "Timed out waiting for reply.";
-    ThrowError(CommonErrors::uninitialised);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
   }
 }
 

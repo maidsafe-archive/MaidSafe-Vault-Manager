@@ -63,8 +63,7 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
   if (!fs::exists(disk_root, error_code)) {
     if (!fs::create_directories(disk_root, error_code)) {
       LOG(kError) << "Can't create disk root at " << disk_root << ": " << error_code.message();
-      ThrowError(CommonErrors::uninitialised);
-      return disk_usage;
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
     }
   } else {
     std::vector<fs::path> dirs_to_do;
@@ -88,11 +87,11 @@ DiskUsage InitialiseDiskRoot(const fs::path& disk_root) {
       }
       catch (std::system_error& exception) {
         LOG(kError) << exception.what();
-        ThrowError(CommonErrors::filesystem_io_error);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
       }
       catch (...) {
         LOG(kError) << "exception during InitialiseDiskRoot";
-        ThrowError(CommonErrors::invalid_parameter);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
       }
     }
   }
@@ -109,7 +108,7 @@ PermanentStore::PermanentStore(const fs::path& disk_path, DiskUsage max_disk_usa
       mutex_(),
       get_identity_visitor_() {
   if (current_disk_usage_ > max_disk_usage_)
-    ThrowError(CommonErrors::cannot_exceed_limit);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
 }
 
 PermanentStore::~PermanentStore() {}
@@ -118,7 +117,7 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (!fs::exists(kDiskPath_)) {
     LOG(kError) << "PermanentStore::Put kDiskPath_ " << kDiskPath_ << " doesn't exists";
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
 
   fs::path file_path(KeyToFilePath(key));
@@ -132,12 +131,12 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
     if (error_code) {
       LOG(kError) << "Unable to determine file status for " << file_path << ": "
                   << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
     }
     file_size = fs::file_size(file_path, error_code);
     if (error_code) {
       LOG(kError) << "Error getting file size of " << file_path << ": " << error_code.message();
-      ThrowError(CommonErrors::filesystem_io_error);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
     }
   }
   if (file_size != 0) {
@@ -157,14 +156,14 @@ void PermanentStore::Put(const KeyType& key, const NonEmptyString& value) {
                   << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
                   << " since the addition of " << size << " bytes exceeds max of "
                   << max_disk_usage_ << " bytes.";
-      ThrowError(CommonErrors::cannot_exceed_limit);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::cannot_exceed_limit));
     }
   }
   if (!WriteFile(file_path, value.string())) {
     LOG(kError) << "Failed to write "
                 << HexSubstr(boost::apply_visitor(get_identity_visitor_, key).string())
                 << " to disk.";
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
 
   if (increment) {
@@ -181,11 +180,11 @@ void PermanentStore::Delete(const KeyType& key) {
   uint64_t file_size(fs::file_size(path, error_code));
   if (error_code) {
     LOG(kError) << "Error getting file size of " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   if (!fs::remove(path, error_code) || error_code) {
     LOG(kError) << "Error removing " << path << ": " << error_code.message();
-    ThrowError(CommonErrors::filesystem_io_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   current_disk_usage_.data -= file_size;
 }
@@ -199,7 +198,7 @@ void PermanentStore::SetMaxDiskUsage(DiskUsage max_disk_usage) {
   if (current_disk_usage_ > max_disk_usage) {
     LOG(kError) << "current_disk_usage_ " << current_disk_usage_.data
                 << " exceeds target max_disk_usage " << max_disk_usage.data;
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   max_disk_usage_ = max_disk_usage;
 }

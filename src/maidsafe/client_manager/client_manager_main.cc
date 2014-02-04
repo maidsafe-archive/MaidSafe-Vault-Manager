@@ -189,7 +189,7 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("help") != 0) {
     LOG(kError) << "Printing out help menu";
     std::cout << options_description;
-    maidsafe::ThrowError(maidsafe::CommonErrors::uninitialised);
+    BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::uninitialised));
   }
 
 #ifdef TESTING
@@ -198,7 +198,7 @@ void HandleProgramOptions(int argc, char** argv) {
     if (variables_map.at("port").as<int>() < 1025 ||
         variables_map.at("port").as<int>() > std::numeric_limits<uint16_t>::max()) {
       LOG(kError) << "port must lie in range [1025, 65535]";
-      maidsafe::ThrowError(maidsafe::CommonErrors::invalid_parameter);
+      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     }
     port = static_cast<uint16_t>(variables_map["port"].as<int>());
   }

@@ -45,7 +45,7 @@ ImmutableData::ImmutableData(Name name, serialised_type serialised_immutable_dat
 
 void ImmutableData::Validate() const {
   if (name_.value != crypto::Hash<crypto::SHA512>(data_))
-    ThrowError(CommonErrors::hashing_error);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::hashing_error));
 }
 
 ImmutableData::serialised_type ImmutableData::Serialise() const { return serialised_type(data_); }

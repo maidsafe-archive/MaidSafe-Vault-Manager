@@ -96,7 +96,7 @@ void ParseVmidParameter(const std::string& client_manager_identifier,
   if (separator_position == std::string::npos) {
     LOG(kError) << "client_manager_identifier " << client_manager_identifier
                 << " has wrong format";
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   try {
     process_index = static_cast<ProcessIndex>(
@@ -107,12 +107,12 @@ void ParseVmidParameter(const std::string& client_manager_identifier,
   catch (const std::logic_error& exception) {
     LOG(kError) << "client_manager_identifier " << client_manager_identifier
                 << " has wrong format: " << exception.what();
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 
   if (process_index == 0) {
     LOG(kError) << "Invalid process index of 0";
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 
 #ifndef TESTING
@@ -135,7 +135,7 @@ void StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
 
   if (result != kSuccess) {
     LOG(kError) << "Failed to start listening port.";
-    ThrowError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 
   transport->on_message_received().connect(on_message_received_slot);

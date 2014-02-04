@@ -189,7 +189,7 @@ LocalStore::VersionNamesFuture LocalStore::GetVersions(
       std::lock_guard<std::mutex> lock(this->mutex_);
       auto versions(this->ReadVersions(key));
       if (!versions)
-        ThrowError(CommonErrors::no_such_element);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
       promise->set_value(versions->Get());
     }
     catch (const std::exception& e) {
@@ -214,7 +214,7 @@ LocalStore::VersionNamesFuture LocalStore::GetBranch(
       std::lock_guard<std::mutex> lock(this->mutex_);
       auto versions(this->ReadVersions(key));
       if (!versions)
-        ThrowError(CommonErrors::no_such_element);
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
       promise->set_value(versions->GetBranch(branch_tip));
     }
     catch (const std::exception& e) {
@@ -259,7 +259,7 @@ void LocalStore::DeleteBranchUntilFork(const DataName& data_name,
     std::lock_guard<std::mutex> lock(mutex_);
     auto versions(ReadVersions(key));
     if (!versions)
-      ThrowError(CommonErrors::no_such_element);
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
     versions->DeleteBranchUntilFork(branch_tip);
     WriteVersions(key, *versions);
   }

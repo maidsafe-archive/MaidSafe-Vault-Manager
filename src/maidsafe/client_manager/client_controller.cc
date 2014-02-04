@@ -71,7 +71,7 @@ ClientController::ClientController(
   if (!ConnectToClientManager(path_to_new_installer)) {
     receiving_transport_->StopListening();
     LOG(kError) << "ClientController::ClientController can't connect to ClientManager";
-    ThrowError(CommonErrors::uninitialised);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
   }
 
   on_new_version_available_.connect(on_new_version_available_slot);

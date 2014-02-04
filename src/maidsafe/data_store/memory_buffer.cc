@@ -19,6 +19,7 @@
 #include "maidsafe/data_store/memory_buffer.h"
 
 namespace maidsafe {
+
 namespace data_store {
 
 MemoryBuffer::MemoryBuffer(MemoryUsage max_memory_usage)
@@ -27,7 +28,7 @@ MemoryBuffer::MemoryBuffer(MemoryUsage max_memory_usage)
 MemoryBuffer::~MemoryBuffer() {}
 
 void MemoryBuffer::Store(const KeyType& key, const NonEmptyString& value) {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   auto itr(Find(key));
   if (itr != memory_buffer_.end())
     memory_buffer_.erase(itr);
@@ -37,27 +38,25 @@ void MemoryBuffer::Store(const KeyType& key, const NonEmptyString& value) {
 NonEmptyString MemoryBuffer::Get(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr(Find(key));
-  if (itr != memory_buffer_.end())
-    return itr->second;
-  else
-    ThrowError(CommonErrors::no_such_element);
-  return NonEmptyString();
+  if (itr == std::end(memory_buffer_))
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  return itr->second;
 }
 
 void MemoryBuffer::Delete(const KeyType& key) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr(Find(key));
-  if (itr != memory_buffer_.end())
-    memory_buffer_.erase(itr);
-  else
-    ThrowError(CommonErrors::no_such_element);
+  if (itr == std::end(memory_buffer_))
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  memory_buffer_.erase(itr);
 }
 
 MemoryBuffer::MemoryBufferType::iterator MemoryBuffer::Find(const KeyType& key) {
   return std::find_if(
-      memory_buffer_.begin(), memory_buffer_.end(),
+      std::begin(memory_buffer_), std::end(memory_buffer_),
       [&key](const MemoryBufferType::value_type & key_value) { return key_value.first == key; });
 }
 
 }  // namespace data_store
+
 }  // namespace maidsafe
