@@ -125,8 +125,10 @@ bool ClientController::ConnectToClientManager(std::string& path_to_new_installer
                                 path_to_new_installer);
        });
   request_transport->on_error().connect([&mutex, &condition_variable, &state](const int & error) {
-    std::unique_lock<std::mutex> lock(mutex);
-    state = kFailed;
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      state = kFailed;
+    }
     condition_variable.notify_one();
     LOG(kError) << "Transport reported error code " << error;
   });
@@ -165,27 +167,30 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
     LOG(kError) << "Failed to handle incoming message.";
-    std::unique_lock<std::mutex> lock(mutex);
-    state = kFailed;
-    condition_variable.notify_one();
-    return;
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      state = kFailed;
+    }
+    return condition_variable.notify_one();
   }
   protobuf::ClientRegistrationResponse response;
   if (!response.ParseFromString(payload)) {
     LOG(kError) << "Failed to parse ClientRegistrationResponse.";
-    std::unique_lock<std::mutex> lock(mutex);
-    state = kFailed;
-    condition_variable.notify_one();
-    return;
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      state = kFailed;
+    }
+    return condition_variable.notify_one();
   }
 
   //  if (response.bootstrap_endpoint_ip_size() == 0 ||
   //      response.bootstrap_endpoint_port_size() == 0) {
   //    LOG(kError) << "Response has no bootstrap nodes.";
-  //    std::unique_lock<std::mutex> lock(mutex);
-  //    state = kFailed;
-  //    condition_variable.notify_one();
-  //    return;
+  //    {
+  //      std::lock_guard<std::mutex> lock(mutex);
+  //      state = kFailed;
+  //    }
+  //    return condition_variable.notify_one();
   //  }
 
   if (response.has_path_to_new_installer()) {
@@ -216,8 +221,10 @@ void ClientController::HandleRegisterResponse(const std::string& message,
 
   LOG(kSuccess) << "Successfully registered with ClientManager on port "
                 << client_manager_port_;
-  std::lock_guard<std::mutex> lock(mutex);
-  state = kVerified;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    state = kVerified;
+  }
   condition_variable.notify_one();
 }
 
@@ -242,9 +249,11 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
 #endif
   std::function<void(bool)> callback =  // NOLINT (Fraser)
       [&](bool result) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    local_result = result;
-    done = true;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+    }
     local_cond_var.notify_one();
   };
 
@@ -304,9 +313,11 @@ bool ClientController::StopVault(const asymm::PlainText& data, const asymm::Sign
 
   std::function<void(bool)> callback =  // NOLINT (Fraser)
       [&](bool result) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    local_result = result;
-    done = true;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      local_result = result;
+      done = true;
+    }
     local_cond_var.notify_one();
   };
 
@@ -387,8 +398,10 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
     update_interval_request.set_new_update_interval(update_interval.total_seconds());
 
   std::function<void(bptime::time_duration)> callback = [&](bptime::time_duration update_interval) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    returned_result = update_interval;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      returned_result = update_interval;
+    }
     local_cond_var.notify_one();
   };
 
@@ -438,9 +451,11 @@ bool ClientController::GetBootstrapNodes(
   request.set_message_id(message_id);
 
   VoidFunctionBoolParam callback = [&](bool result) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    done = true;
-    success = result;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      done = true;
+      success = result;
+    }
     local_cond_var.notify_one();
   };
 
@@ -596,7 +611,7 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
     vault_join_confirmation_ack.set_ack(false);
   } else {
     passport::Pmid::Name identity(Identity(vault_join_confirmation.identity()));
-    std::unique_lock<std::mutex> lock(joining_vaults_mutex_);
+    std::lock_guard<std::mutex> lock(joining_vaults_mutex_);
     if (joining_vaults_.find(identity) == joining_vaults_.end()) {
       LOG(kError) << "Identity is not in list of joining vaults.";
       vault_join_confirmation_ack.set_ack(false);

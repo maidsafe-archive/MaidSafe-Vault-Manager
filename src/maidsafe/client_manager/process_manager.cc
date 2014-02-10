@@ -306,11 +306,13 @@ bool ProcessManager::WaitForProcessToStop(ProcessIndex index) {
 }
 
 bool ProcessManager::SetProcessStatus(ProcessIndex index, const ProcessStatus& status) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return false;
-  (*itr).status = status;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto itr = FindProcess(index);
+    if (itr == processes_.end())
+      return false;
+    (*itr).status = status;
+  }
   cond_var_.notify_all();
   return true;
 }

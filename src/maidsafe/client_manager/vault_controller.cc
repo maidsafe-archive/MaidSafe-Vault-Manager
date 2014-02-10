@@ -106,8 +106,10 @@ void VaultController::ConfirmJoin() {
   vault_joined_network.set_joined(true);
 
   VoidFunction callback = [&] {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    done = true;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      done = true;
+    }
     local_cond_var.notify_one();
   };
 
@@ -163,9 +165,11 @@ bool VaultController::GetBootstrapNodes(
   request.set_message_id(message_id);
 
   VoidFunctionBoolParam callback = [&](bool result) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    done = true;
-    success = result;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      done = true;
+      success = result;
+    }
     local_cond_var.notify_one();
   };
 
@@ -245,9 +249,11 @@ bool VaultController::SendEndpointToClientManager(
   request.set_bootstrap_endpoint_port(endpoint.port());
 
   VoidFunctionBoolParam callback = [&](bool result) {
-    std::lock_guard<std::mutex> lock(local_mutex);
-    done = true;
-    success = result;
+    {
+      std::lock_guard<std::mutex> lock(local_mutex);
+      done = true;
+      success = result;
+    }
     local_cond_var.notify_one();
   };
 

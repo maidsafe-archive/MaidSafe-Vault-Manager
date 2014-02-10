@@ -715,10 +715,12 @@ void ClientManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_n
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
-                                         std::lock_guard<std::mutex> lock(local_mutex);
-                                         local_result = result;
-                                         done = true;
-                                         local_cond_var.notify_one();
+      {
+        std::lock_guard<std::mutex> lock(local_mutex);
+        local_result = result;
+        done = true;
+      }
+      local_cond_var.notify_one();
   };
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
@@ -772,10 +774,12 @@ void ClientManager::SendNewVersionAvailable(uint16_t client_port) {
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
   std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
-                                         std::lock_guard<std::mutex> lock(local_mutex);
-                                         local_result = result;
-                                         done = true;
-                                         local_cond_var.notify_one();
+      {
+        std::lock_guard<std::mutex> lock(local_mutex);
+        local_result = result;
+        done = true;
+      }
+      local_cond_var.notify_one();
   };
   TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);

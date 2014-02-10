@@ -40,8 +40,10 @@ std::condition_variable cond_var;
 
 void StopHandler() {
   LOG(kInfo) << "Process stopping, asked to stop by parent.";
-  std::lock_guard<std::mutex> lock(mutex);
-  g_check_finished = true;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    g_check_finished = true;
+  }
   cond_var.notify_all();
 }
 
