@@ -16,136 +16,74 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_CLIENT_MANAGER_H_
-#define MAIDSAFE_CLIENT_MANAGER_CLIENT_MANAGER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
+#define MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
 
-#include <condition_variable>
-#include <mutex>
-#include <cstdint>
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "boost/asio/deadline_timer.hpp"
-#include "boost/date_time/posix_time/posix_time_duration.hpp"
-#include "boost/filesystem/path.hpp"
-#include "boost/thread/condition_variable.hpp"
-#include "boost/thread/mutex.hpp"
-#include "boost/thread/thread.hpp"
-
-#include "maidsafe/common/asio_service.h"
-#include "maidsafe/common/rsa.h"
-
-#include "maidsafe/passport/types.h"
-
-#include "maidsafe/client_manager/download_manager.h"
-#include "maidsafe/client_manager/process_manager.h"
-#include "maidsafe/client_manager/shared_memory_communication.h"
-#include "maidsafe/client_manager/utils.h"
-#include "maidsafe/client_manager/vault_info.pb.h"
+//#include <condition_variable>
+//#include <mutex>
+//#include <cstdint>
+//#include <functional>
+//#include <map>
+//#include <memory>
+//#include <string>
+//#include <utility>
+//#include <vector>
+//
+//#include "boost/asio/deadline_timer.hpp"
+//#include "boost/filesystem/path.hpp"
+//#include "boost/thread/condition_variable.hpp"
+//#include "boost/thread/mutex.hpp"
+//#include "boost/thread/thread.hpp"
+//
+//#include "maidsafe/common/asio_service.h"
+//#include "maidsafe/common/rsa.h"
+#include "maidsafe/common/crypto.h"
+//
+//#include "maidsafe/passport/types.h"
+//
+#include "maidsafe/vault_manager/config.h"
+//#include "maidsafe/vault_manager/utils.h"
 
 namespace maidsafe {
 
-namespace client_manager {
-
-namespace detail {
-class Platform;
-}
+namespace vault_manager {
 
 class LocalTcpTransport;
 
-enum class MessageType {
-  kClientRegistrationRequest = 1,
-  kClientRegistrationResponse,
-  kStartVaultRequest,
-  kStartVaultResponse,
-  kStopVaultRequest,
-  kStopVaultResponse,
-  kVaultIdentityRequest,
-  kVaultIdentityResponse,
-  kVaultJoinedNetwork,
-  kVaultJoinedNetworkAck,
-  kVaultJoinConfirmation,
-  kVaultJoinConfirmationAck,
-  kVaultShutdownRequest,
-  kVaultShutdownResponse,
-  kVaultShutdownResponseAck,
-  kSendEndpointToClientManagerRequest,
-  kSendEndpointToClientManagerResponse,
-  kUpdateIntervalRequest,
-  kUpdateIntervalResponse,
-  kNewVersionAvailable,
-  kNewVersionAvailableAck,
-  kBootstrapRequest,
-  kBootstrapResponse
-};
-
-// The ClientManager has several responsibilities:
+// The VaultManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file as having been started before.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
-// * Regularly checks for (and downloads) updated client or vault executables.
-class ClientManager {
+class VaultManager {
  public:
-  ClientManager();
-  ~ClientManager();
-  static uint16_t kDefaultPort() { return kLivePort; }
-  static uint16_t kMaxRangeAboveDefaultPort() { return 10; }
-
-  // TODO(Fraser#5#): 2012-08-12 - Confirm these intervals are appropriate
-  static boost::posix_time::time_duration kMinUpdateInterval() {
-    return boost::posix_time::minutes(5);
-  }
-  static boost::posix_time::time_duration kMaxUpdateInterval() {
-    return boost::posix_time::hours(24 * 7);
-  }
+  VaultManager();
+  ~VaultManager();
 
  private:
-  typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
-  struct VaultInfo {
-    VaultInfo();
-    void ToProtobuf(protobuf::VaultInfo* pb_vault_info) const;
-    void FromProtobuf(const protobuf::VaultInfo& pb_vault_info);
-    ProcessIndex process_index;
-    std::string account_name;
-    std::unique_ptr<passport::Pmid> pmid;
-    std::string chunkstore_path;
-    uint16_t vault_port, client_port;
-    bool requested_to_run, joined_network;
-#ifdef TESTING
-    int identity_index;
-#endif
-    int vault_version;
-  };
-  typedef std::shared_ptr<VaultInfo> VaultInfoPtr;
-  typedef std::pair<std::string, uint16_t> EndPoint;
+                                                                    typedef std::pair<std::string, Port> EndPoint;
 
-  ClientManager(const ClientManager&);
-  ClientManager operator=(const ClientManager&);
+  VaultManager(const VaultManager&) = delete;
+  VaultManager(VaultManager&&) = delete;
+  VaultManager operator=(VaultManager) = delete;
 
   void Initialise();
-  void RestartClientManager(const std::string& latest_file,
-                               const std::string& executable_name) const;
 
   // Config file handling
   bool CreateConfigFile();
   bool ReadConfigFileAndStartVaults();
   bool WriteConfigFile();
-  bool ReadFileToClientManagerConfig(const boost::filesystem::path& file_path,
-                                        protobuf::ClientManagerConfig& config);
+  bool ReadFileToVaultManagerConfig(const boost::filesystem::path& file_path,
+                                    protobuf::VaultManagerConfig& config);
 
   // Client and vault request handling
   bool ListenForMessages();
-  void HandleReceivedMessage(const std::string& message, uint16_t peer_port);
+  void HandleReceivedMessage(const std::string& message, Port peer_port);
   void HandleClientRegistrationRequest(const std::string& request, std::string& response);
   void HandleStartVaultRequest(const std::string& request, std::string& response);
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   void HandleStopVaultRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToClientManagerRequest(const std::string& request,
+  void HandleSendEndpointToVaultManagerRequest(const std::string& request,
                                                    std::string& response);
   void HandleBootstrapRequest(const std::string& request, std::string& response);
 
@@ -160,7 +98,7 @@ class ClientManager {
   // Requests to client
   // NOTE: vault_info_mutex_ must be locked when calling this function.
   void SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name, bool join_result);
-  void SendNewVersionAvailable(uint16_t client_port);
+  void SendNewVersionAvailable(Port client_port);
 
   // Response handling from client
   void HandleVaultJoinConfirmationAck(const std::string& message,
@@ -176,7 +114,7 @@ class ClientManager {
   // General
   bool InTestMode() const;
   std::vector<VaultInfoPtr>::iterator FindFromPmidName(const passport::Pmid::Name& pmid_name);
-  std::vector<ClientManager::VaultInfoPtr>::iterator FindFromProcessIndex(
+  std::vector<VaultManager::VaultInfoPtr>::iterator FindFromProcessIndex(
       ProcessIndex process_index);
   bool StartVaultProcess(VaultInfoPtr& vault_info);
   void RestartVault(const passport::Pmid::Name& pmid_name);
@@ -185,33 +123,36 @@ class ClientManager {
   void StopAllVaults();
   //  void EraseVault(const std::string& identity);
   //  int32_t ListVaults(bool select) const;
-  bool ObtainBootstrapInformation(protobuf::ClientManagerConfig& config);
+  bool ObtainBootstrapInformation(protobuf::VaultManagerConfig& config);
   void LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points);
-  bool AddBootstrapEndPoint(const std::string& ip, uint16_t port);
+  bool AddBootstrapEndPoint(const std::string& ip, Port port);
   bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 
+  crypto::AES256Key symm_key_;
+  crypto::AES256InitialisationVector symm_iv_;
+
+
+
+
+
   ProcessManager process_manager_;
-  DownloadManager download_manager_;
-  uint16_t local_port_;
-  boost::filesystem::path config_file_path_, latest_local_installer_path_;
+  Port local_port_;
+  boost::filesystem::path config_file_path_;
   std::vector<VaultInfoPtr> vault_infos_;
   mutable std::mutex vault_infos_mutex_;
-  std::map<uint16_t, int> client_ports_and_versions_;
+  std::map<Port, int> client_ports_and_versions_;
   mutable std::mutex client_ports_mutex_;
   std::vector<EndPoint> endpoints_;
   std::mutex config_file_mutex_;
   bool need_to_stop_;
   AsioService asio_service_;
-  boost::posix_time::time_duration update_interval_;
-  mutable std::mutex update_mutex_;
-  boost::asio::deadline_timer update_timer_;
   std::shared_ptr<LocalTcpTransport> transport_;
   passport::Maid maid_;
   SafeReadOnlySharedMemory initial_contact_memory_;
 };
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_CLIENT_MANAGER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_

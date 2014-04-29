@@ -26,16 +26,16 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/config.h"
-#include "maidsafe/client_manager/process_manager.h"
-#include "maidsafe/client_manager/utils.h"
-#include "maidsafe/client_manager/tests/test_utils.h"
+#include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/process_manager.h"
+#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/tests/test_utils.h"
 
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 namespace test {
 
@@ -505,7 +505,7 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 
 }  // namespace test
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 

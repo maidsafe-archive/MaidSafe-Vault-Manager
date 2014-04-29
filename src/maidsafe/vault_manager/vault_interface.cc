@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/vault_controller.h"
+#include "maidsafe/vault_manager/vault_interface.h"
 
 #include <chrono>
 #include <iterator>
@@ -31,17 +31,17 @@
 
 #include "maidsafe/passport/types.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/client_manager/controller_messages.pb.h"
-#include "maidsafe/client_manager/local_tcp_transport.h"
-#include "maidsafe/client_manager/return_codes.h"
-#include "maidsafe/client_manager/utils.h"
-#include "maidsafe/client_manager/client_manager.h"
+#include "maidsafe/vault_manager/controller_messages.pb.h"
+#include "maidsafe/vault_manager/local_tcp_transport.h"
+#include "maidsafe/vault_manager/return_codes.h"
+#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/vault_manager.h"
 
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 namespace {
 
@@ -59,10 +59,10 @@ typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 namespace bai = boost::asio::ip;
 
-VaultController::VaultController(const std::string& client_manager_identifier,
+VaultInterface::VaultInterface(const std::string& vault_manager_identifier,
                                  VoidFunction stop_callback)
     : process_index_(std::numeric_limits<uint32_t>::max()),
-      client_manager_port_(0),
+      vault_manager_port_(0),
       local_port_(0),
       pmid_(),
       bootstrap_endpoints_(),
@@ -71,25 +71,25 @@ VaultController::VaultController(const std::string& client_manager_identifier,
       receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   if (!stop_callback_)
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-  if (client_manager_identifier != "test") {
-    detail::ParseVmidParameter(client_manager_identifier, process_index_,
-                               client_manager_port_);
+  if (vault_manager_identifier != "test") {
+    detail::ParseVmidParameter(vault_manager_identifier, process_index_,
+                               vault_manager_port_);
     OnMessageReceived::slot_type on_message_slot([this](
         const std::string & message,
-        Port client_manager_port) { HandleReceivedRequest(message, client_manager_port); });
+        Port vault_manager_port) { HandleReceivedRequest(message, vault_manager_port); });
     detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
     RequestVaultIdentity(local_port_);
   }
 }
 
-VaultController::~VaultController() { receiving_transport_->StopListening(); }
+VaultInterface::~VaultInterface() { receiving_transport_->StopListening(); }
 
-bool VaultController::GetIdentity(
+bool VaultInterface::GetIdentity(
     std::unique_ptr<passport::Pmid>& pmid,
     std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints) {
-  if (client_manager_port_ == 0) {
-    std::cout << "Invalid ClientManager port." << std::endl;
-    LOG(kError) << "Invalid ClientManager port.";
+  if (vault_manager_port_ == 0) {
+    std::cout << "Invalid VaultManager port." << std::endl;
+    LOG(kError) << "Invalid VaultManager port.";
     return false;
   }
   pmid.reset(new passport::Pmid(*pmid_));
@@ -97,7 +97,7 @@ bool VaultController::GetIdentity(
   return true;
 }
 
-void VaultController::ConfirmJoin() {
+void VaultInterface::ConfirmJoin() {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false);
@@ -115,31 +115,31 @@ void VaultController::ConfirmJoin() {
 
   TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return;
   }
   request_transport->on_message_received().connect([this, callback](
       const std::string & message,
-      Port /*client_manager_port*/) { HandleVaultJoinedAck(message, callback); });
+      Port /*vault_manager_port*/) { HandleVaultJoinedAck(message, callback); });
   request_transport->on_error().connect([callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback();
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending joined notification to port " << client_manager_port_;
+  LOG(kVerbose) << "Sending joined notification to port " << vault_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultJoinedNetwork,
                                               vault_joined_network.SerializeAsString()),
-                          client_manager_port_);
+                          vault_manager_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
                                [&] { return done; }))  // NOLINT (Fraser)
     LOG(kError) << "Timed out waiting for reply.";
 }
 
-void VaultController::HandleVaultJoinedAck(const std::string& message, VoidFunction callback) {
+void VaultInterface::HandleVaultJoinedAck(const std::string& message, VoidFunction callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -155,7 +155,7 @@ void VaultController::HandleVaultJoinedAck(const std::string& message, VoidFunct
   callback();
 }
 
-bool VaultController::GetBootstrapNodes(
+bool VaultInterface::GetBootstrapNodes(
     std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -175,13 +175,13 @@ bool VaultController::GetBootstrapNodes(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return false;
   }
   request_transport->on_message_received().connect([this, callback, &bootstrap_endpoints](
-      const std::string & message, Port /*client_manager_port*/) {
+      const std::string & message, Port /*vault_manager_port*/) {
     HandleBootstrapResponse(message, bootstrap_endpoints, callback);
   });
   request_transport->on_error().connect([callback](const int & error) {
@@ -189,10 +189,10 @@ bool VaultController::GetBootstrapNodes(
     callback(false);
   });
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Requesting bootstrap nodes from port " << client_manager_port_;
+  LOG(kVerbose) << "Requesting bootstrap nodes from port " << vault_manager_port_;
   request_transport->Send(
       detail::WrapMessage(MessageType::kBootstrapRequest, request.SerializeAsString()),
-      client_manager_port_);
+      vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
                                [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
@@ -201,7 +201,7 @@ bool VaultController::GetBootstrapNodes(
   return success;
 }
 
-void VaultController::HandleBootstrapResponse(
+void VaultInterface::HandleBootstrapResponse(
     const std::string& message, std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
     VoidFunctionBoolParam callback) {
   MessageType type;
@@ -239,12 +239,12 @@ void VaultController::HandleBootstrapResponse(
   callback(true);
 }
 
-bool VaultController::SendEndpointToClientManager(
+bool VaultInterface::SendEndpointToVaultManager(
     const boost::asio::ip::udp::endpoint& endpoint) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), success(false);
-  protobuf::SendEndpointToClientManagerRequest request;
+  protobuf::SendEndpointToVaultManagerRequest request;
   request.set_bootstrap_endpoint_ip(endpoint.address().to_string());
   request.set_bootstrap_endpoint_port(endpoint.port());
 
@@ -259,14 +259,14 @@ bool VaultController::SendEndpointToClientManager(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return false;
   }
   request_transport->on_message_received().connect([this, callback](
-      const std::string & message, Port /*client_manager_port*/) {
-    HandleSendEndpointToClientManagerResponse(message, callback);
+      const std::string & message, Port /*vault_manager_port*/) {
+    HandleSendEndpointToVaultManagerResponse(message, callback);
   });
   request_transport->on_error().connect([callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
@@ -274,10 +274,10 @@ bool VaultController::SendEndpointToClientManager(
   });
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending bootstrap endpoint to port " << client_manager_port_;
-  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToClientManagerRequest,
+  LOG(kVerbose) << "Sending bootstrap endpoint to port " << vault_manager_port_;
+  request_transport->Send(detail::WrapMessage(MessageType::kSendEndpointToVaultManagerRequest,
                                               request.SerializeAsString()),
-                          client_manager_port_);
+                          vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
                                [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
@@ -286,7 +286,7 @@ bool VaultController::SendEndpointToClientManager(
   return success;
 }
 
-void VaultController::HandleSendEndpointToClientManagerResponse(const std::string& message,
+void VaultInterface::HandleSendEndpointToVaultManagerResponse(const std::string& message,
                                                                    VoidFunctionBoolParam callback) {
   MessageType type;
   std::string payload;
@@ -296,16 +296,16 @@ void VaultController::HandleSendEndpointToClientManagerResponse(const std::strin
     return;
   }
 
-  protobuf::SendEndpointToClientManagerResponse send_endpoint_response;
+  protobuf::SendEndpointToVaultManagerResponse send_endpoint_response;
   if (!send_endpoint_response.ParseFromString(payload)) {
-    LOG(kError) << "Failed to parse SendEndpointToClientManagerResponse.";
+    LOG(kError) << "Failed to parse SendEndpointToVaultManagerResponse.";
     callback(false);
     return;
   }
   callback(send_endpoint_response.result());
 }
 
-void VaultController::RequestVaultIdentity(uint16_t listening_port) {
+void VaultInterface::RequestVaultIdentity(Port listening_port) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
 
@@ -316,15 +316,15 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
 
   TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
   int connect_result(0);
-  request_transport->Connect(client_manager_port_, connect_result);
+  request_transport->Connect(vault_manager_port_, connect_result);
   if (connect_result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
   }
 
   auto connection(
       request_transport->on_message_received().connect([this, &local_mutex, &local_cond_var](
-          const std::string & message, Port /*client_manager_port*/) {
+          const std::string & message, Port /*vault_manager_port*/) {
         HandleVaultIdentityResponse(message, local_mutex);
         local_cond_var.notify_one();
       }));
@@ -333,10 +333,10 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   }));
 
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending request for vault identity to port " << client_manager_port_;
+  LOG(kVerbose) << "Sending request for vault identity to port " << vault_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kVaultIdentityRequest,
                                               vault_identity_request.SerializeAsString()),
-                          client_manager_port_);
+                          vault_manager_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
                                [this]() { return static_cast<bool>(pmid_); })) {
@@ -347,7 +347,7 @@ void VaultController::RequestVaultIdentity(uint16_t listening_port) {
   }
 }
 
-void VaultController::HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex) {
+void VaultInterface::HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex) {
   MessageType type;
   std::string payload;
   std::lock_guard<std::mutex> lock(mutex);
@@ -385,7 +385,7 @@ void VaultController::HandleVaultIdentityResponse(const std::string& message, st
   LOG(kInfo) << "Received VaultIdentityResponse.";
 }
 
-void VaultController::HandleReceivedRequest(const std::string& message, Port /*peer_port*/) {
+void VaultInterface::HandleReceivedRequest(const std::string& message, Port /*peer_port*/) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -403,7 +403,7 @@ void VaultController::HandleReceivedRequest(const std::string& message, Port /*p
   }
 }
 
-void VaultController::HandleVaultShutdownRequest(const std::string& request,
+void VaultInterface::HandleVaultShutdownRequest(const std::string& request,
                                                  std::string& /*response*/) {
   LOG(kInfo) << "Received shutdown request.";
   protobuf::VaultShutdownRequest vault_shutdown_request;
@@ -421,6 +421,6 @@ void VaultController::HandleVaultShutdownRequest(const std::string& request,
   stop_callback_();
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

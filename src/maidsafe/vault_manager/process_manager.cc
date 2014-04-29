@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/process_manager.h"
+#include "maidsafe/vault_manager/process_manager.h"
 
 #include <algorithm>
 #include <chrono>
@@ -37,16 +37,16 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/controller_messages.pb.h"
-#include "maidsafe/client_manager/local_tcp_transport.h"
-#include "maidsafe/client_manager/utils.h"
+#include "maidsafe/vault_manager/controller_messages.pb.h"
+#include "maidsafe/vault_manager/local_tcp_transport.h"
+#include "maidsafe/vault_manager/utils.h"
 
 namespace bp = boost::process;
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 bool Process::SetExecutablePath(const fs::path& executable_path) {
   boost::system::error_code ec;
@@ -327,6 +327,6 @@ void ProcessManager::TerminateAll() {
   processes_.clear();
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

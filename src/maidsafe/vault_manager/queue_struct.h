@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_QUEUE_STRUCT_H_
-#define MAIDSAFE_CLIENT_MANAGER_QUEUE_STRUCT_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_QUEUE_STRUCT_H_
+#define MAIDSAFE_VAULT_MANAGER_QUEUE_STRUCT_H_
 
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
@@ -27,7 +27,7 @@
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 namespace detail {
 
@@ -61,8 +61,8 @@ struct SafeAddress {
 
 }  // namespace detail
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_QUEUE_STRUCT_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_QUEUE_STRUCT_H_

@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/tcp_connection.h"
 
 #include <array>
 #include <algorithm>
@@ -30,8 +30,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/local_tcp_transport.h"
-#include "maidsafe/client_manager/return_codes.h"
+#include "maidsafe/vault_manager/local_tcp_transport.h"
+#include "maidsafe/vault_manager/return_codes.h"
 
 namespace asio = boost::asio;
 namespace bs = boost::system;
@@ -41,7 +41,7 @@ namespace args = std::placeholders;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 TcpConnection::TcpConnection(const std::shared_ptr<LocalTcpTransport>& transport)
     : transport_(transport),
@@ -197,6 +197,6 @@ void TcpConnection::HandleWrite(const bs::error_code& ec) {
   }
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

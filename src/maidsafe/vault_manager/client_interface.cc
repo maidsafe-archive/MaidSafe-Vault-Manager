@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/client_controller.h"
+#include "maidsafe/vault_manager/client_interface.h"
 
 #include <chrono>
 #include <limits>
@@ -30,11 +30,11 @@
 
 #include "maidsafe/passport/passport.h"
 
-#include "maidsafe/client_manager/controller_messages.pb.h"
-#include "maidsafe/client_manager/client_manager.h"
-#include "maidsafe/client_manager/local_tcp_transport.h"
-#include "maidsafe/client_manager/return_codes.h"
-#include "maidsafe/client_manager/utils.h"
+#include "maidsafe/vault_manager/controller_messages.pb.h"
+#include "maidsafe/vault_manager/vault_manager.h"
+#include "maidsafe/vault_manager/local_tcp_transport.h"
+#include "maidsafe/vault_manager/return_codes.h"
+#include "maidsafe/vault_manager/utils.h"
 
 namespace bptime = boost::posix_time;
 namespace bs2 = boost::signals2;
@@ -42,18 +42,18 @@ namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
-ClientController::ClientController(
+ClientInterface::ClientInterface(
     std::function<void(const std::string&)> on_new_version_available_slot)
 #ifdef TESTING
-    : client_manager_port_(detail::GetTestClientManagerPort() == 0
-                                  ? ClientManager::kDefaultPort() + 100
-                                  : detail::GetTestClientManagerPort()),
+    : vault_manager_port_(detail::GetTestVaultManagerPort() == 0
+                                  ? VaultManager::kDefaultPort() + 100
+                                  : detail::GetTestVaultManagerPort()),
 #else
-      : client_manager_port_(ClientManager::kDefaultPort()),
+      : vault_manager_port_(VaultManager::kDefaultPort()),
 #endif
         local_port_(0),
         on_new_version_available_(),
@@ -65,12 +65,12 @@ ClientController::ClientController(
         receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
   OnMessageReceived::slot_type on_message_slot([this](
       const std::string & message,
-      Port client_manager_port) { HandleReceivedRequest(message, client_manager_port); });
+      Port vault_manager_port) { HandleReceivedRequest(message, vault_manager_port); });
   detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
   std::string path_to_new_installer;
-  if (!ConnectToClientManager(path_to_new_installer)) {
+  if (!ConnectToVaultManager(path_to_new_installer)) {
     receiving_transport_->StopListening();
-    LOG(kError) << "ClientController::ClientController can't connect to ClientManager";
+    LOG(kError) << "ClientInterface::ClientInterface can't connect to VaultManager";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
   }
 
@@ -79,40 +79,40 @@ ClientController::ClientController(
     on_new_version_available_(path_to_new_installer);
 }
 
-ClientController::~ClientController() { receiving_transport_->StopListening(); }
+ClientInterface::~ClientInterface() { receiving_transport_->StopListening(); }
 
 #ifdef TESTING
-void ClientController::SetTestEnvironmentVariables(
-    uint16_t test_client_manager_port, fs::path test_env_root_dir, fs::path path_to_vault,
+void ClientInterface::SetTestEnvironmentVariables(
+    Port test_vault_manager_port, fs::path test_env_root_dir, fs::path path_to_vault,
     std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips) {
-  detail::SetTestEnvironmentVariables(test_client_manager_port, test_env_root_dir, path_to_vault,
+  detail::SetTestEnvironmentVariables(test_vault_manager_port, test_env_root_dir, path_to_vault,
                                       bootstrap_ips);
 }
 #endif
 
-std::vector<boost::asio::ip::udp::endpoint> ClientController::BootstrapEndpoints() {
+std::vector<boost::asio::ip::udp::endpoint> ClientInterface::BootstrapEndpoints() {
   return bootstrap_nodes_;
 }
 
-bool ClientController::FindNextAcceptingPort(TransportPtr request_transport) {
+bool ClientInterface::FindNextAcceptingPort(TransportPtr request_transport) {
   int result(1);
-  Port manager_port(client_manager_port_);
+  Port manager_port(vault_manager_port_);
   request_transport->Connect(manager_port, result);
   while (result != kSuccess) {
     ++manager_port;
-    if (manager_port > client_manager_port_ + ClientManager::kMaxRangeAboveDefaultPort()) {
-      LOG(kError) << "ClientController failed to connect to ClientManager on all ports in range "
-                  << client_manager_port_ << " to "
-                  << client_manager_port_ + ClientManager::kMaxRangeAboveDefaultPort();
+    if (manager_port > vault_manager_port_ + VaultManager::kMaxRangeAboveDefaultPort()) {
+      LOG(kError) << "ClientInterface failed to connect to VaultManager on all ports in range "
+                  << vault_manager_port_ << " to "
+                  << vault_manager_port_ + VaultManager::kMaxRangeAboveDefaultPort();
       return false;
     }
     request_transport->Connect(manager_port, result);
   }
-  client_manager_port_ = manager_port;
+  vault_manager_port_ = manager_port;
   return true;
 }
 
-bool ClientController::ConnectToClientManager(std::string& path_to_new_installer) {
+bool ClientInterface::ConnectToVaultManager(std::string& path_to_new_installer) {
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   std::mutex mutex;
   std::condition_variable condition_variable;
@@ -120,8 +120,8 @@ bool ClientController::ConnectToClientManager(std::string& path_to_new_installer
 
   request_transport->on_message_received()
       .connect([&mutex, &condition_variable, &state, &path_to_new_installer, this](
-           const std::string & message, Port client_manager_port) {
-         HandleRegisterResponse(message, client_manager_port, mutex, condition_variable, state,
+           const std::string & message, Port vault_manager_port) {
+         HandleRegisterResponse(message, vault_manager_port, mutex, condition_variable, state,
                                 path_to_new_installer);
        });
   request_transport->on_error().connect([&mutex, &condition_variable, &state](const int & error) {
@@ -138,13 +138,13 @@ bool ClientController::ConnectToClientManager(std::string& path_to_new_installer
     request.set_version(VersionToInt(kApplicationVersion()));
     request_transport->Send(
         detail::WrapMessage(MessageType::kClientRegistrationRequest, request.SerializeAsString()),
-        client_manager_port_);
-    LOG(kVerbose) << "Sending registration request to port " << client_manager_port_;
+        vault_manager_port_);
+    LOG(kVerbose) << "Sending registration request to port " << vault_manager_port_;
     {
       std::unique_lock<std::mutex> lock(mutex);
       if (!condition_variable.wait_for(lock, std::chrono::seconds(3),
                                        [&state] { return state != kInitialising; })) {
-        LOG(kError) << "Timed out waiting for ClientController initialisation.";
+        LOG(kError) << "Timed out waiting for ClientInterface initialisation.";
       } else {
         break;
       }
@@ -152,15 +152,15 @@ bool ClientController::ConnectToClientManager(std::string& path_to_new_installer
   }
 
   if (state != kVerified) {
-    LOG(kError) << "ClientController is uninitialised.";
+    LOG(kError) << "ClientInterface is uninitialised.";
     return false;
   }
 
   return true;
 }
 
-void ClientController::HandleRegisterResponse(const std::string& message,
-                                              Port /*client_manager_port*/, std::mutex& mutex,
+void ClientInterface::HandleRegisterResponse(const std::string& message,
+                                              Port /*vault_manager_port*/, std::mutex& mutex,
                                               std::condition_variable& condition_variable,
                                               State& state, std::string& path_to_new_installer) {
   MessageType type;
@@ -219,8 +219,8 @@ void ClientController::HandleRegisterResponse(const std::string& message,
     }
   }
 
-  LOG(kSuccess) << "Successfully registered with ClientManager on port "
-                << client_manager_port_;
+  LOG(kSuccess) << "Successfully registered with VaultManager on port "
+                << vault_manager_port_;
   {
     std::lock_guard<std::mutex> lock(mutex);
     state = kVerified;
@@ -228,7 +228,7 @@ void ClientController::HandleRegisterResponse(const std::string& message,
   condition_variable.notify_one();
 }
 
-bool ClientController::StartVault(const passport::Pmid& pmid,
+bool ClientInterface::StartVault(const passport::Pmid& pmid,
                                   const passport::Maid::Name& account_name,
                                   const fs::path& chunkstore) {
   std::mutex local_mutex;
@@ -259,13 +259,13 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return false;
   }
   request_transport->on_message_received().connect([this, callback](
-      const std::string & message, Port /*client_manager_port*/) {
+      const std::string & message, Port /*vault_manager_port*/) {
     HandleStartStopVaultResponse<protobuf::StartVaultResponse>(message, callback);
   });
   request_transport->on_error().connect([this, callback](const int & error) {
@@ -273,10 +273,10 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
     callback(false);
   });
 
-  LOG(kVerbose) << "Sending request to start vault to port " << client_manager_port_;
+  LOG(kVerbose) << "Sending request to start vault to port " << vault_manager_port_;
   request_transport->Send(
       detail::WrapMessage(MessageType::kStartVaultRequest, start_vault_request.SerializeAsString()),
-      client_manager_port_);
+      vault_manager_port_);
   {
     std::unique_lock<std::mutex> local_lock(local_mutex);
     if (!local_cond_var.wait_for(local_lock, std::chrono::seconds(10), [&done] { return done; })) {
@@ -301,7 +301,7 @@ bool ClientController::StartVault(const passport::Pmid& pmid,
   return true;
 }
 
-bool ClientController::StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
+bool ClientInterface::StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
                                  const Identity& identity) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -323,13 +323,13 @@ bool ClientController::StopVault(const asymm::PlainText& data, const asymm::Sign
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return false;
   }
   request_transport->on_message_received().connect([this, callback](
-      const std::string & message, Port /*client_manager_port*/) {
+      const std::string & message, Port /*vault_manager_port*/) {
     HandleStartStopVaultResponse<protobuf::StopVaultResponse>(message, callback);
   });
   request_transport->on_error().connect([this, callback](const int & error) {
@@ -337,10 +337,10 @@ bool ClientController::StopVault(const asymm::PlainText& data, const asymm::Sign
     callback(false);
   });
 
-  LOG(kVerbose) << "Sending request to stop vault to port " << client_manager_port_;
+  LOG(kVerbose) << "Sending request to stop vault to port " << vault_manager_port_;
   request_transport->Send(
       detail::WrapMessage(MessageType::kStopVaultRequest, stop_vault_request.SerializeAsString()),
-      client_manager_port_);
+      vault_manager_port_);
 
   std::unique_lock<std::mutex> lock(local_mutex);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
@@ -353,7 +353,7 @@ bool ClientController::StopVault(const asymm::PlainText& data, const asymm::Sign
 }
 
 template <typename ResponseType>
-void ClientController::HandleStartStopVaultResponse(
+void ClientInterface::HandleStartStopVaultResponse(
     const std::string& message, const std::function<void(bool)>& callback) {  // NOLINT
   MessageType type;
   std::string payload;
@@ -373,22 +373,22 @@ void ClientController::HandleStartStopVaultResponse(
   callback(vault_response.result());
 }
 
-bool ClientController::SetUpdateInterval(const bptime::seconds& update_interval) {
-  if (update_interval < ClientManager::kMinUpdateInterval() ||
-      update_interval > ClientManager::kMaxUpdateInterval()) {
+bool ClientInterface::SetUpdateInterval(const bptime::seconds& update_interval) {
+  if (update_interval < VaultManager::kMinUpdateInterval() ||
+      update_interval > VaultManager::kMaxUpdateInterval()) {
     LOG(kError) << "Cannot set update interval to " << update_interval << "  It must be in range ["
-                << ClientManager::kMinUpdateInterval() << ", "
-                << ClientManager::kMaxUpdateInterval() << "]";
+                << VaultManager::kMinUpdateInterval() << ", "
+                << VaultManager::kMaxUpdateInterval() << "]";
     return false;
   }
   return SetOrGetUpdateInterval(update_interval) == update_interval;
 }
 
-bptime::time_duration ClientController::GetUpdateInterval() {
+bptime::time_duration ClientInterface::GetUpdateInterval() {
   return SetOrGetUpdateInterval(bptime::pos_infin);
 }
 
-bptime::time_duration ClientController::SetOrGetUpdateInterval(
+bptime::time_duration ClientInterface::SetOrGetUpdateInterval(
     const bptime::time_duration& update_interval) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -407,13 +407,13 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return bptime::pos_infin;
   }
   request_transport->on_message_received().connect([this, callback](
-      const std::string & message, Port /*client_manager_port*/) {  // NOLINT
+      const std::string & message, Port /*vault_manager_port*/) {  // NOLINT
                                                      HandleUpdateIntervalResponse(message,
                                                                                   callback);
   });
@@ -424,10 +424,10 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
 
   std::unique_lock<std::mutex> lock(local_mutex);
   LOG(kVerbose) << "Sending request to " << (update_interval.is_pos_infinity() ? "get" : "set")
-                << " update interval to ClientManager on port " << client_manager_port_;
+                << " update interval to VaultManager on port " << vault_manager_port_;
   request_transport->Send(detail::WrapMessage(MessageType::kUpdateIntervalRequest,
                                               update_interval_request.SerializeAsString()),
-                          client_manager_port_);
+                          vault_manager_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(10),
                                [&] { return !returned_result.is_neg_infinity(); })) {
@@ -441,7 +441,7 @@ bptime::time_duration ClientController::SetOrGetUpdateInterval(
   return returned_result;
 }
 
-bool ClientController::GetBootstrapNodes(
+bool ClientInterface::GetBootstrapNodes(
     std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints) {
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -461,13 +461,13 @@ bool ClientController::GetBootstrapNodes(
 
   TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
   int result(0);
-  request_transport->Connect(client_manager_port_, result);
+  request_transport->Connect(vault_manager_port_, result);
   if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to ClientManager.";
+    LOG(kError) << "Failed to connect request transport to VaultManager.";
     return false;
   }
   request_transport->on_message_received().connect([this, callback, &bootstrap_endpoints](
-      const std::string & message, Port /*client_manager_port*/) {
+      const std::string & message, Port /*vault_manager_port*/) {
     HandleBootstrapResponse(message, bootstrap_endpoints, callback);
   });
   request_transport->on_error().connect([callback](const int & error) {
@@ -475,10 +475,10 @@ bool ClientController::GetBootstrapNodes(
     callback(false);
   });
   std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Requesting bootstrap nodes from port " << client_manager_port_;
+  LOG(kVerbose) << "Requesting bootstrap nodes from port " << vault_manager_port_;
   request_transport->Send(
       detail::WrapMessage(MessageType::kBootstrapRequest, request.SerializeAsString()),
-      client_manager_port_);
+      vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
                                [&] { return done; })) {  // NOLINT (Philip)
     LOG(kError) << "Timed out waiting for reply.";
@@ -487,7 +487,7 @@ bool ClientController::GetBootstrapNodes(
   return success;
 }
 
-void ClientController::HandleBootstrapResponse(
+void ClientInterface::HandleBootstrapResponse(
     const std::string& message, std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
     VoidFunctionBoolParam callback) {
   MessageType type;
@@ -528,7 +528,7 @@ void ClientController::HandleBootstrapResponse(
   callback(true);
 }
 
-void ClientController::HandleUpdateIntervalResponse(
+void ClientInterface::HandleUpdateIntervalResponse(
     const std::string& message,
     const std::function<void(bptime::time_duration)>& callback) {  // NOLINT
   MessageType type;
@@ -555,9 +555,9 @@ void ClientController::HandleUpdateIntervalResponse(
   }
 }
 
-void ClientController::HandleReceivedRequest(const std::string& message, Port peer_port) {
-  /*assert(peer_port == client_manager_port_);*/  // ClientManager does not currently use
-  // its established port to contact ClientController
+void ClientInterface::HandleReceivedRequest(const std::string& message, Port peer_port) {
+  /*assert(peer_port == vault_manager_port_);*/  // VaultManager does not currently use
+  // its established port to contact ClientInterface
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -579,7 +579,7 @@ void ClientController::HandleReceivedRequest(const std::string& message, Port pe
   receiving_transport_->Send(response, peer_port);
 }
 
-void ClientController::HandleNewVersionAvailable(const std::string& request,
+void ClientInterface::HandleNewVersionAvailable(const std::string& request,
                                                  std::string& response) {
   protobuf::NewVersionAvailable new_version_available;
   protobuf::NewVersionAvailableAck new_version_available_ack;
@@ -602,7 +602,7 @@ void ClientController::HandleNewVersionAvailable(const std::string& request,
   on_new_version_available_(new_version_available.new_version_filepath());
 }
 
-void ClientController::HandleVaultJoinConfirmation(const std::string& request,
+void ClientInterface::HandleVaultJoinConfirmation(const std::string& request,
                                                    std::string& response) {
   protobuf::VaultJoinConfirmation vault_join_confirmation;
   protobuf::VaultJoinConfirmationAck vault_join_confirmation_ack;
@@ -625,6 +625,6 @@ void ClientController::HandleVaultJoinConfirmation(const std::string& request,
                                  vault_join_confirmation_ack.SerializeAsString());
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

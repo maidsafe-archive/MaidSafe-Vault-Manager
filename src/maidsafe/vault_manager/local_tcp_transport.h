@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_LOCAL_TCP_TRANSPORT_H_
-#define MAIDSAFE_CLIENT_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#define MAIDSAFE_VAULT_MANAGER_LOCAL_TCP_TRANSPORT_H_
 
 #include <cstdint>
 #include <memory>
@@ -34,7 +34,7 @@
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 class TcpConnection;
 
@@ -90,8 +90,8 @@ class LocalTcpTransport : public std::enable_shared_from_this<LocalTcpTransport>
   bool done_;
 };
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_LOCAL_TCP_TRANSPORT_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_LOCAL_TCP_TRANSPORT_H_

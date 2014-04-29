@@ -16,14 +16,14 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/local_tcp_transport.h"
+#include "maidsafe/vault_manager/local_tcp_transport.h"
 
 #include <functional>
 
 #include "maidsafe/common/log.h"
 
-#include "maidsafe/client_manager/return_codes.h"
-#include "maidsafe/client_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/return_codes.h"
+#include "maidsafe/vault_manager/tcp_connection.h"
 
 namespace asio = boost::asio;
 namespace bs = boost::system;
@@ -32,7 +32,7 @@ namespace args = std::placeholders;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 LocalTcpTransport::LocalTcpTransport(boost::asio::io_service& asio_service)  // NOLINT
     : asio_service_(asio_service),
@@ -231,6 +231,6 @@ void LocalTcpTransport::DoRemoveConnection(ConnectionPtr connection) {
   connections_.erase(connection);
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

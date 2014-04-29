@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_VAULT_CONTROLLER_H_
-#define MAIDSAFE_CLIENT_MANAGER_VAULT_CONTROLLER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_
+#define MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_
 
 #include <condition_variable>
 #include <cstdint>
@@ -37,38 +37,38 @@
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 class LocalTcpTransport;
 
-class VaultController {
+class VaultInterface {
  public:
-  VaultController(const std::string& client_manager_identifier,
+  VaultInterface(const std::string& vault_manager_identifier,
                   std::function<void()> stop_callback);
-  ~VaultController();
+  ~VaultInterface();
 
   bool GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
                    std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
   void ConfirmJoin();
-  bool SendEndpointToClientManager(const boost::asio::ip::udp::endpoint& endpoint);
+  bool SendEndpointToVaultManager(const boost::asio::ip::udp::endpoint& endpoint);
   bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
 
  private:
   typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
-  VaultController(const VaultController&);
-  VaultController& operator=(const VaultController&);
+  VaultInterface(const VaultInterface&);
+  VaultInterface& operator=(const VaultInterface&);
   void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
-  void RequestVaultIdentity(uint16_t listening_port);
+  void RequestVaultIdentity(Port listening_port);
   void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
-  void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
+  void HandleReceivedRequest(const std::string& message, Port peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToClientManagerResponse(
+  void HandleSendEndpointToVaultManagerResponse(
       const std::string& message, std::function<void(bool)> callback);  // NOLINT (Philip)
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
                                std::function<void(bool)> callback);  // NOLINT (Philip)
   uint32_t process_index_;
-  uint16_t client_manager_port_, local_port_;
+  Port vault_manager_port_, local_port_;
   std::unique_ptr<passport::Pmid> pmid_;
   std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints_;
   std::function<void()> stop_callback_;
@@ -76,8 +76,8 @@ class VaultController {
   TransportPtr receiving_transport_;
 };
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_VAULT_CONTROLLER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_

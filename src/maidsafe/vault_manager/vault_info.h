@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,36 +16,50 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/utils.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_
+#define MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_
 
+#include <cstdint>
+#include <memory>
 #include <string>
 
-#include "maidsafe/common/test.h"
+#include "boost/filesystem/path.hpp"
+
+#include "maidsafe/common/process.h"
+#include "maidsafe/passport/types.h"
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
-namespace detail {
+struct VaultInfo {
+  VaultInfo()
+    : process_info(0),
+      pmid(),
+      chunkstore_path(),
+      owner_name(),
+      vault_port(0),
+      client_port(0),
+      joined_network(false),
+#ifdef TESTING
+      identity_index(-1),
+#endif
+      label() {}
 
-namespace test {
+  process::ProcessInfo process_info;
+  std::unique_ptr<passport::Pmid> pmid;
+  boost::filesystem::path chunkstore_path;
+  std::unique_ptr<passport::PublicMaid::Name> owner_name;
+  uint16_t vault_port, client_port;
+  bool joined_network;
+#ifdef TESTING
+  int identity_index;
+#endif
+  std::string label;
+};
 
-TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
-
-TEST(UtilsTest, BEH_GenerateVmidParameter) {
-  EXPECT_EQ("0_0", GenerateVmidParameter(0, 0));
-  EXPECT_EQ("0_65535", GenerateVmidParameter(0, 65535));
-  EXPECT_EQ("1_65535", GenerateVmidParameter(1, 65535));
-  EXPECT_EQ("1000_65535", GenerateVmidParameter(1000, 65535));
-  EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
-}
-
-TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) { GTEST_FAIL() << "Needs test"; }
-
-}  // namespace test
-
-}  // namespace detail
-
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_

@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
-#define MAIDSAFE_CLIENT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
+#define MAIDSAFE_VAULT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
 
 #include <string>
 
@@ -29,11 +29,11 @@
 
 #include "maidsafe/passport/types.h"
 
-#include "maidsafe/client_manager/queue_operations.h"
+#include "maidsafe/vault_manager/queue_operations.h"
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 namespace detail {
 
@@ -48,10 +48,10 @@ struct is_valid_fob<passport::Pmid> : public std::true_type {};
 
 }  // namespace detail
 
-class ClientManagerAddressGetter {
+class VaultManagerAddressGetter {
  public:
-  ClientManagerAddressGetter()
-      : shared_memory_name_("client_manager"),
+  VaultManagerAddressGetter()
+      : shared_memory_name_("vault_manager"),
         shared_memory_(boost::interprocess::open_only, shared_memory_name_.c_str(),
                        boost::interprocess::read_write),
         mapped_region_(shared_memory_, boost::interprocess::read_write),
@@ -66,10 +66,10 @@ class ClientManagerAddressGetter {
   }
 
  private:
-  ClientManagerAddressGetter(const ClientManagerAddressGetter& other);
-  ClientManagerAddressGetter& operator=(const ClientManagerAddressGetter& other);
-  ClientManagerAddressGetter(ClientManagerAddressGetter&& other);
-  ClientManagerAddressGetter& operator=(ClientManagerAddressGetter&& other);
+  VaultManagerAddressGetter(const VaultManagerAddressGetter& other);
+  VaultManagerAddressGetter& operator=(const VaultManagerAddressGetter& other);
+  VaultManagerAddressGetter(VaultManagerAddressGetter&& other);
+  VaultManagerAddressGetter& operator=(VaultManagerAddressGetter&& other);
 
   const std::string shared_memory_name_;
   boost::interprocess::shared_memory_object shared_memory_;
@@ -81,7 +81,7 @@ class SafeReadOnlySharedMemory {
  public:
   explicit SafeReadOnlySharedMemory(const passport::Maid& maid)
       : maid_(maid),
-        shared_memory_name_("client_manager"),
+        shared_memory_name_("vault_manager"),
         shared_memory_(boost::interprocess::create_only, shared_memory_name_.c_str(),
                        boost::interprocess::read_write),
         mapped_region_(nullptr),
@@ -208,8 +208,8 @@ typedef SharedMemoryCommunication<passport::Maid, detail::SharedMemoryOpenOnly>
 typedef SharedMemoryCommunication<passport::Pmid, detail::SharedMemoryOpenOnly>
     PmidSharedMemoryUser;
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_SHARED_MEMORY_COMMUNICATION_H_

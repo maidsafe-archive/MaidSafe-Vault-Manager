@@ -16,7 +16,7 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/tests/test_utils.h"
+#include "maidsafe/vault_manager/tests/test_utils.h"
 
 #include <cstdlib>
 
@@ -28,13 +28,13 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/config.h"
+#include "maidsafe/vault_manager/config.h"
 
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 namespace test {
 
@@ -75,6 +75,6 @@ int GetNumRunningProcesses(std::string process_name) {
 
 }  // namespace test
 
-}  //  namespace client_manager
+}  //  namespace vault_manager
 
 }  //  namespace maidsafe

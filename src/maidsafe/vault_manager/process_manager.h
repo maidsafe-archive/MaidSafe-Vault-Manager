@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_PROCESS_MANAGER_H_
-#define MAIDSAFE_CLIENT_MANAGER_PROCESS_MANAGER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
+#define MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 
 #include <mutex>
 #include <condition_variable>
@@ -33,7 +33,7 @@
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 typedef uint32_t ProcessIndex;
 
@@ -83,7 +83,7 @@ class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  ProcessIndex AddProcess(Process process, uint16_t port);
+  ProcessIndex AddProcess(Process process, Port port);
   size_t NumberOfProcesses() const;
   size_t NumberOfLiveProcesses() const;
   size_t NumberOfSleepingProcesses() const;
@@ -119,7 +119,7 @@ class ProcessManager {
     Process process;
     boost::thread thread;
     ProcessIndex index;
-    uint16_t port;
+    Port port;
     int32_t restart_count;
     bool done;
     ProcessStatus status;
@@ -139,8 +139,8 @@ class ProcessManager {
   std::condition_variable cond_var_;
 };
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_PROCESS_MANAGER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_

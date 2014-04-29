@@ -27,7 +27,7 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/vault_controller.h"
+#include "maidsafe/vault_manager/vault_interface.h"
 
 namespace po = boost::program_options;
 
@@ -79,13 +79,13 @@ int main(int argc, char* argv[]) {
     if (variables_map.count("usr_id"))
       usr_id = variables_map.at("usr_id").as<std::string>();
 
-    std::string client_manager_id = variables_map["vmid"].as<std::string>();
+    std::string vault_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
-      LOG(kInfo) << "dummy_vault: Starting VaultController: " << usr_id;
-      maidsafe::client_manager::VaultController vault_controller(usr_id, [&] { StopHandler(); });
+      LOG(kInfo) << "dummy_vault: Starting VaultInterface: " << usr_id;
+      maidsafe::vault_manager::VaultInterface vault_interface(usr_id, [&] { StopHandler(); });
       std::unique_ptr<maidsafe::passport::Pmid> pmid;
       std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
-      vault_controller.GetIdentity(pmid, bootstrap_endpoints);
+      vault_interface.GetIdentity(pmid, bootstrap_endpoints);
       LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().value);
       LOG(kInfo) << "Validation Token: "
                  << maidsafe::Base64Substr(pmid->validation_token().string());
@@ -93,12 +93,12 @@ int main(int argc, char* argv[]) {
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
       LOG(kInfo) << "Private Key: "
                  << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
-      vault_controller.ConfirmJoin();
+      vault_interface.ConfirmJoin();
 
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(boost::asio::ip::address::from_string("127.0.0.46"));
       endpoint.port(3658);
-      vault_controller.SendEndpointToClientManager(endpoint);
+      vault_interface.SendEndpointToVaultManager(endpoint);
       std::unique_lock<std::mutex> lock(mutex);
       cond_var.wait(lock, [] { return g_check_finished; });  // NOLINT (Fraser)
     }

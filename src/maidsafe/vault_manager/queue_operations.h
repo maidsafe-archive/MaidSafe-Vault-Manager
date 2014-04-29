@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_QUEUE_OPERATIONS_H_
-#define MAIDSAFE_CLIENT_MANAGER_QUEUE_OPERATIONS_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_QUEUE_OPERATIONS_H_
+#define MAIDSAFE_VAULT_MANAGER_QUEUE_OPERATIONS_H_
 
 #include <atomic>
 #include <string>
@@ -28,13 +28,11 @@
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/scoped_lock.hpp"
 
-#include "maidsafe/client_manager/queue_struct.h"
+#include "maidsafe/vault_manager/queue_struct.h"
 
 namespace maidsafe {
 
-namespace client_manager {
-
-namespace detail {
+namespace vault_manager {
 
 namespace bip = boost::interprocess;
 
@@ -191,10 +189,8 @@ struct RunRecevingThread<SharedMemoryOpenOnly> {
   }
 };
 
-}  // namespace detail
-
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_QUEUE_OPERATIONS_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_QUEUE_OPERATIONS_H_

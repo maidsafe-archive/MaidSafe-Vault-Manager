@@ -16,27 +16,43 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-package maidsafe.client_manager.protobuf;
+#ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
 
-message Endpoint {
-  required bytes ip = 1;
-  required int32 port = 2;
-}
+#include <cstdint>
+#include <string>
+#include <utility>
 
-message Bootstrap {
-  repeated Endpoint bootstrap_contacts = 1;
-}
+namespace maidsafe {
 
-message VaultInfo {
-  required bytes pmid = 1;
-  required bytes chunkstore_path = 2;
-  required bool requested_to_run = 3;
-  required int32 version = 4;
-}
+namespace vault_manager {
 
-message ClientManagerConfig {
-  required uint32 update_interval = 1;  // In seconds
-  required Bootstrap bootstrap_endpoints = 2;
-  repeated VaultInfo vault_info = 3;
-  optional bytes vault_permissions = 4;
-}
+typedef uint16_t Port;
+
+extern const std::string kConfigFilename;
+extern const std::string kBootstrapFilename;
+extern const uint16_t kMaxRangeAboveDefaultPort;
+
+enum class MessageType : int32_t {
+  kTakeOwnershipRequest = 1,
+  kTakeOwnershipResponse,
+  kVaultIdentityRequest,
+  kVaultIdentityResponse,
+  kVaultJoinedNetwork,
+  kVaultJoinedNetworkAck,
+  kVaultJoinConfirmation,
+  kVaultJoinConfirmationAck,
+  kVaultShutdownRequest,
+  kVaultShutdownResponse,
+  kVaultShutdownResponseAck,
+  kSendEndpointToVaultManagerRequest,
+  kSendEndpointToVaultManagerResponse
+};
+
+typedef std::pair<MessageType, std::string> MessageAndType;
+
+}  // namespace vault_manager
+
+}  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_CONFIG_H_

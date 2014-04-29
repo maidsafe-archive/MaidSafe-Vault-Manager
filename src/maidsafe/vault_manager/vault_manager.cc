@@ -16,78 +16,62 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/client_manager/client_manager.h"
+#include "maidsafe/vault_manager/vault_manager.h"
 
-#include <chrono>
-#include <iostream>
+//#include <chrono>
+//#include <iostream>
+//
+//#include "boost/filesystem/path.hpp"
+//#include "boost/filesystem/operations.hpp"
+//
+//#include "maidsafe/common/application_support_directories.h"
+//#include "maidsafe/common/log.h"
+//#include "maidsafe/common/utils.h"
+//
+//#include "maidsafe/passport/passport.h"
+//
+//#include "maidsafe/vault_manager/controller_messages.pb.h"
+//#include "maidsafe/vault_manager/local_tcp_transport.h"
+//#include "maidsafe/vault_manager/return_codes.h"
+//#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/vault_info.pb.h"
 
-#include "boost/filesystem/path.hpp"
-#include "boost/filesystem/operations.hpp"
-
-#include "maidsafe/common/application_support_directories.h"
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/passport/passport.h"
-
-#include "maidsafe/client_manager/config.h"
-#include "maidsafe/client_manager/controller_messages.pb.h"
-#include "maidsafe/client_manager/local_tcp_transport.h"
-#include "maidsafe/client_manager/return_codes.h"
-#include "maidsafe/client_manager/utils.h"
-#include "maidsafe/client_manager/vault_info.pb.h"
-
-namespace bptime = boost::posix_time;
 namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
-ClientManager::VaultInfo::VaultInfo()
-    : process_index(),
-      pmid(),
-      chunkstore_path(),
-      vault_port(0),
-      client_port(0),
-      requested_to_run(false),
-      joined_network(false),
+namespace {
+
+fs::path GetConfigFilePath() {
 #ifdef TESTING
-      identity_index(-1),
-#endif
-      vault_version(kInvalidVersion) {
-}
-
-void ClientManager::VaultInfo::ToProtobuf(protobuf::VaultInfo* pb_vault_info) const {
-  pb_vault_info->set_pmid(passport::SerialisePmid(*pmid).string());
-  pb_vault_info->set_chunkstore_path(chunkstore_path);
-  pb_vault_info->set_requested_to_run(requested_to_run);
-  pb_vault_info->set_version(vault_version);
-}
-
-void ClientManager::VaultInfo::FromProtobuf(const protobuf::VaultInfo& pb_vault_info) {
-  pmid.reset(new passport::Pmid(passport::ParsePmid(NonEmptyString(pb_vault_info.pmid()))));
-  chunkstore_path = pb_vault_info.chunkstore_path();
-  requested_to_run = pb_vault_info.requested_to_run();
-  vault_version = pb_vault_info.version();
-}
-
-ClientManager::ClientManager()
-    : process_manager_(),
-      download_manager_(),
-#ifdef TESTING
-      local_port_(detail::GetTestClientManagerPort() == 0
-                      ? kDefaultPort() + 100
-                      : detail::GetTestClientManagerPort()),
-      config_file_path_((detail::GetTestEnvironmentRootDir().empty()
-                             ? GetUserAppDir()
-                             : detail::GetTestEnvironmentRootDir()) /
-                        detail::kGlobalConfigFilename),
+  return (GetTestEnvironmentRootDir().empty() ? GetUserAppDir() : GetTestEnvironmentRootDir()) /
 #else
-      local_port_(kDefaultPort()),
-      config_file_path_(GetSystemAppSupportDir() / detail::kGlobalConfigFilename),
+  return GetSystemAppSupportDir() /
 #endif
-      latest_local_installer_path_(),
+      kConfigFilename;
+}
+
+Port GetInitialLocalPort() {
+#ifdef TESTING
+  return GetTestVaultManagerPort() == 0 ? kDefaultPort() + 100 : GetTestVaultManagerPort();
+#else
+  return kDefaultPort();
+#endif
+}
+
+}  // unnamed namespace
+
+VaultManager::VaultManager()
+    : symm_key_(),
+      symm_iv_(),
+      process_manager_(),
+      local_port_(GetInitialLocalPort()),
+      config_file_path_(GetConfigFilePath()),
+
+
+
       vault_infos_(),
       vault_infos_mutex_(),
       client_ports_and_versions_(),
@@ -115,7 +99,7 @@ ClientManager::ClientManager()
   //  Initialise();
 }
 
-void ClientManager::Initialise() {
+void VaultManager::Initialise() {
   transport_->on_message_received().connect([this](
       const std::string & message, Port peer_port) { HandleReceivedMessage(message, peer_port); });
   transport_->on_error().connect([](const int & error) {
@@ -125,19 +109,19 @@ void ClientManager::Initialise() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    LOG(kInfo) << "ClientManager failed to find existing config file in " << config_file_path_;
+    LOG(kInfo) << "VaultManager failed to find existing config file in " << config_file_path_;
     while (!CreateConfigFile()) {
       if (need_to_stop_)
         return;
       LOG(kError) << "Will retry to create new config file at " << config_file_path_;
-      Sleep(std::chrono::seconds(1));
+      Sleep(std::chrono::milliseconds(100));
     }
   }
 
   while (!ListenForMessages()) {
     if (need_to_stop_)
       return;
-    LOG(kError) << "ClientManager failed to create a listening port. Shutting down.";
+    LOG(kError) << "VaultManager failed to create a listening port. Shutting down.";
     Sleep(std::chrono::seconds(1));
   }
 
@@ -149,10 +133,10 @@ void ClientManager::Initialise() {
   update_timer_.async_wait([this](const boost::system::error_code &
                                   ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
 
-  LOG(kInfo) << "ClientManager started";
+  LOG(kInfo) << "VaultManager started";
 }
 
-ClientManager::~ClientManager() {
+VaultManager::~VaultManager() {
   //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
   //  need_to_stop_ = true;
   //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
@@ -173,16 +157,8 @@ ClientManager::~ClientManager() {
   //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
 }
 
-void ClientManager::RestartClientManager(const std::string& /*latest_file*/,
-                                               const std::string& /*executable_name*/) const {
-  // system("/etc/init.d/mvm restart");
-  //  int result(system(command.c_str()));
-  //  if (result != 0)
-  LOG(kWarning) << "Not implemented";
-}
-
-bool ClientManager::CreateConfigFile() {
-  protobuf::ClientManagerConfig config;
+bool VaultManager::CreateConfigFile() {
+  protobuf::VaultManagerConfig config;
   config.set_update_interval(update_interval_.total_seconds());
 
   int count(0);
@@ -209,7 +185,7 @@ bool ClientManager::CreateConfigFile() {
   return true;
 }
 
-bool ClientManager::ReadConfigFileAndStartVaults() {
+bool VaultManager::ReadConfigFileAndStartVaults() {
   std::string content;
   {
     std::lock_guard<std::mutex> lock(config_file_mutex_);
@@ -218,7 +194,7 @@ bool ClientManager::ReadConfigFileAndStartVaults() {
       return false;
     }
   }
-  protobuf::ClientManagerConfig config;
+  protobuf::VaultManagerConfig config;
   if (!config.ParseFromString(content)) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
     return false;
@@ -242,8 +218,8 @@ bool ClientManager::ReadConfigFileAndStartVaults() {
   return true;
 }
 
-bool ClientManager::WriteConfigFile() {
-  protobuf::ClientManagerConfig config;
+bool VaultManager::WriteConfigFile() {
+  protobuf::VaultManagerConfig config;
   {
     std::lock_guard<std::mutex> lock(update_mutex_);
     config.set_update_interval(update_interval_.total_seconds());
@@ -265,7 +241,7 @@ bool ClientManager::WriteConfigFile() {
   return true;
 }
 
-bool ClientManager::ListenForMessages() {
+bool VaultManager::ListenForMessages() {
   int result(0);
   Port local(local_port_);
   transport_->StartListening(local, result);
@@ -283,7 +259,7 @@ bool ClientManager::ListenForMessages() {
   return true;
 }
 
-void ClientManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
+void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -312,8 +288,8 @@ void ClientManager::HandleReceivedMessage(const std::string& message, Port peer_
     case MessageType::kUpdateIntervalRequest:
       HandleUpdateIntervalRequest(payload, response);
       break;
-    case MessageType::kSendEndpointToClientManagerRequest:
-      HandleSendEndpointToClientManagerRequest(payload, response);
+    case MessageType::kSendEndpointToVaultManagerRequest:
+      HandleSendEndpointToVaultManagerRequest(payload, response);
       break;
     case MessageType::kBootstrapRequest:
       HandleBootstrapRequest(payload, response);
@@ -324,7 +300,7 @@ void ClientManager::HandleReceivedMessage(const std::string& message, Port peer_
   transport_->Send(response, peer_port);
 }
 
-void ClientManager::HandleClientRegistrationRequest(const std::string& request,
+void VaultManager::HandleClientRegistrationRequest(const std::string& request,
                                                        std::string& response) {
   protobuf::ClientRegistrationRequest client_request;
   if (!client_request.ParseFromString(request)) {  // Silently drop
@@ -332,7 +308,7 @@ void ClientManager::HandleClientRegistrationRequest(const std::string& request,
     return;
   }
 
-  uint16_t request_port(static_cast<uint16_t>(client_request.listening_port()));
+  Port request_port(static_cast<Port>(client_request.listening_port()));
   {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     client_ports_and_versions_[request_port] = client_request.version();
@@ -340,8 +316,8 @@ void ClientManager::HandleClientRegistrationRequest(const std::string& request,
 
   protobuf::ClientRegistrationResponse client_response;
   if (endpoints_.empty()) {
-    protobuf::ClientManagerConfig config;
-    if (!ReadFileToClientManagerConfig(config_file_path_, config)) {
+    protobuf::VaultManagerConfig config;
+    if (!ReadFileToVaultManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
     }
@@ -372,7 +348,7 @@ void ClientManager::HandleClientRegistrationRequest(const std::string& request,
                                  client_response.SerializeAsString());
 }
 
-void ClientManager::HandleStartVaultRequest(const std::string& request, std::string& response) {
+void VaultManager::HandleStartVaultRequest(const std::string& request, std::string& response) {
   protobuf::StartVaultRequest start_vault_request;
   if (!start_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -387,12 +363,12 @@ void ClientManager::HandleStartVaultRequest(const std::string& request, std::str
                                    start_vault_response.SerializeAsString());
   });
 
-  uint16_t client_port(static_cast<uint16_t>(start_vault_request.client_port()));
+  Port client_port(static_cast<Port>(start_vault_request.client_port()));
   {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     auto client_itr(client_ports_and_versions_.find(client_port));
     if (client_itr == client_ports_and_versions_.end()) {
-      LOG(kError) << "Client is not registered with ClientManager.";
+      LOG(kError) << "Client is not registered with VaultManager.";
       return set_response(false);
     }
   }
@@ -470,7 +446,7 @@ void ClientManager::HandleStartVaultRequest(const std::string& request, std::str
   set_response(true);
 }
 
-void ClientManager::HandleVaultIdentityRequest(const std::string& request,
+void VaultManager::HandleVaultIdentityRequest(const std::string& request,
                                                   std::string& response) {
   protobuf::VaultIdentityRequest vault_identity_request;
   if (!vault_identity_request.ParseFromString(request)) {
@@ -492,8 +468,8 @@ void ClientManager::HandleVaultIdentityRequest(const std::string& request,
   } else {
     serialised_pmid = passport::SerialisePmid(*(*itr)->pmid);
     if (endpoints_.empty()) {
-      protobuf::ClientManagerConfig config;
-      if (!ReadFileToClientManagerConfig(config_file_path_, config)) {
+      protobuf::VaultManagerConfig config;
+      if (!ReadFileToVaultManagerConfig(config_file_path_, config)) {
         // TODO(Team): Should have counter for failures to trigger recreation?
         LOG(kError) << "Failed to read & parse config file " << config_file_path_;
         successful_response = false;
@@ -518,7 +494,7 @@ void ClientManager::HandleVaultIdentityRequest(const std::string& request,
     itr = FindFromProcessIndex(vault_identity_request.process_index());
     vault_identity_response.set_pmid(serialised_pmid.string());
     vault_identity_response.set_chunkstore_path((*itr)->chunkstore_path);
-    (*itr)->vault_port = static_cast<uint16_t>(vault_identity_request.listening_port());
+    (*itr)->vault_port = static_cast<Port>(vault_identity_request.listening_port());
     (*itr)->vault_version = vault_identity_request.version();
     std::for_each(endpoints_.begin(), endpoints_.end(),
                   [&vault_identity_response](const EndPoint & element) {
@@ -535,7 +511,7 @@ void ClientManager::HandleVaultIdentityRequest(const std::string& request,
                                  vault_identity_response.SerializeAsString());
 }
 
-void ClientManager::HandleVaultJoinedNetworkRequest(const std::string& request,
+void VaultManager::HandleVaultJoinedNetworkRequest(const std::string& request,
                                                        std::string& response) {
   protobuf::VaultJoinedNetwork vault_joined_network;
   if (!vault_joined_network.ParseFromString(request)) {
@@ -563,7 +539,7 @@ void ClientManager::HandleVaultJoinedNetworkRequest(const std::string& request,
                                  vault_joined_network_ack.SerializeAsString());
 }
 
-void ClientManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
+void VaultManager::HandleStopVaultRequest(const std::string& request, std::string& response) {
   protobuf::StopVaultRequest stop_vault_request;
   if (!stop_vault_request.ParseFromString(request)) {
     // Silently drop
@@ -596,7 +572,7 @@ void ClientManager::HandleStopVaultRequest(const std::string& request, std::stri
       detail::WrapMessage(MessageType::kStopVaultResponse, stop_vault_response.SerializeAsString());
 }
 
-void ClientManager::HandleUpdateIntervalRequest(const std::string& request,
+void VaultManager::HandleUpdateIntervalRequest(const std::string& request,
                                                    std::string& response) {
   protobuf::UpdateIntervalRequest update_interval_request;
   if (!update_interval_request.ParseFromString(request)) {  // Silently drop
@@ -618,26 +594,26 @@ void ClientManager::HandleUpdateIntervalRequest(const std::string& request,
                                  update_interval_response.SerializeAsString());
 }
 
-void ClientManager::HandleSendEndpointToClientManagerRequest(const std::string& request,
+void VaultManager::HandleSendEndpointToVaultManagerRequest(const std::string& request,
                                                                    std::string& response) {
-  protobuf::SendEndpointToClientManagerRequest send_endpoint_request;
-  protobuf::SendEndpointToClientManagerResponse send_endpoint_response;
+  protobuf::SendEndpointToVaultManagerRequest send_endpoint_request;
+  protobuf::SendEndpointToVaultManagerResponse send_endpoint_response;
   if (!send_endpoint_request.ParseFromString(request)) {
-    LOG(kError) << "Failed to parse SendEndpointToClientManager.";
+    LOG(kError) << "Failed to parse SendEndpointToVaultManager.";
     return;
   }
   if (AddBootstrapEndPoint(
           send_endpoint_request.bootstrap_endpoint_ip(),
-          static_cast<uint16_t>(send_endpoint_request.bootstrap_endpoint_port()))) {
+          static_cast<Port>(send_endpoint_request.bootstrap_endpoint_port()))) {
     send_endpoint_response.set_result(true);
   } else {
     send_endpoint_response.set_result(false);
   }
-  response = detail::WrapMessage(MessageType::kSendEndpointToClientManagerResponse,
+  response = detail::WrapMessage(MessageType::kSendEndpointToVaultManagerResponse,
                                  send_endpoint_response.SerializeAsString());
 }
 
-void ClientManager::HandleBootstrapRequest(const std::string& request, std::string& response) {
+void VaultManager::HandleBootstrapRequest(const std::string& request, std::string& response) {
   protobuf::BootstrapRequest bootstrap_request;
   protobuf::BootstrapResponse bootstrap_response;
   if (!bootstrap_request.ParseFromString(request)) {
@@ -645,8 +621,8 @@ void ClientManager::HandleBootstrapRequest(const std::string& request, std::stri
     return;
   }
   if (endpoints_.empty()) {
-    protobuf::ClientManagerConfig config;
-    if (!ReadFileToClientManagerConfig(config_file_path_, config)) {
+    protobuf::VaultManagerConfig config;
+    if (!ReadFileToVaultManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
     }
@@ -668,7 +644,7 @@ void ClientManager::HandleBootstrapRequest(const std::string& request, std::stri
       detail::WrapMessage(MessageType::kBootstrapResponse, bootstrap_response.SerializeAsString());
 }
 
-bool ClientManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
+bool VaultManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
   if (update_interval < kMinUpdateInterval() || update_interval > kMaxUpdateInterval()) {
     LOG(kError) << "Invalid update interval of " << update_interval;
     return false;
@@ -681,12 +657,12 @@ bool ClientManager::SetUpdateInterval(const bptime::time_duration& update_interv
   return true;
 }
 
-bptime::time_duration ClientManager::GetUpdateInterval() const {
+bptime::time_duration VaultManager::GetUpdateInterval() const {
   std::lock_guard<std::mutex> lock(update_mutex_);
   return update_interval_;
 }
 
-void ClientManager::CheckForUpdates(const boost::system::error_code& ec) {
+void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
   if (ec) {
     if (ec != boost::asio::error::operation_aborted) {
       LOG(kError) << ec.message();
@@ -702,7 +678,7 @@ void ClientManager::CheckForUpdates(const boost::system::error_code& ec) {
 }
 
 // NOTE: vault_info_mutex_ must be locked when calling this function.
-void ClientManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name,
+void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name,
                                                  bool join_result) {
   protobuf::VaultJoinConfirmation vault_join_confirmation;
   auto itr(FindFromPmidName(pmid_name));
@@ -710,7 +686,7 @@ void ClientManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_n
     LOG(kError) << "Vault with identity " << Base64Substr(pmid_name.value) << " hasn't been added.";
     return;
   }
-  uint16_t client_port((*itr)->client_port);
+  Port client_port((*itr)->client_port);
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
@@ -732,7 +708,7 @@ void ClientManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_n
 
   request_transport->on_message_received().connect([this, callback](
       const std::string & message,
-      Port /*client_manager_port*/) { HandleVaultJoinConfirmationAck(message, callback); });
+      Port /*vault_manager_port*/) { HandleVaultJoinConfirmationAck(message, callback); });
   request_transport->on_error().connect([this, callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
@@ -751,7 +727,7 @@ void ClientManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_n
     LOG(kError) << "Failed to confirm joining of vault to client.";
 }
 
-void ClientManager::HandleVaultJoinConfirmationAck(
+void VaultManager::HandleVaultJoinConfirmationAck(
     const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
@@ -768,7 +744,7 @@ void ClientManager::HandleVaultJoinConfirmationAck(
   callback(ack.ack());
 }
 
-void ClientManager::SendNewVersionAvailable(uint16_t client_port) {
+void VaultManager::SendNewVersionAvailable(Port client_port) {
   protobuf::NewVersionAvailable new_version_available;
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
@@ -790,7 +766,7 @@ void ClientManager::SendNewVersionAvailable(uint16_t client_port) {
   }
   request_transport->on_message_received().connect([this, callback](
       const std::string & message,
-      Port /*client_manager_port*/) { HandleNewVersionAvailableAck(message, callback); });
+      Port /*vault_manager_port*/) { HandleNewVersionAvailableAck(message, callback); });
   request_transport->on_error().connect([this, callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
@@ -815,14 +791,14 @@ void ClientManager::SendNewVersionAvailable(uint16_t client_port) {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     auto client_itr(client_ports_and_versions_.find(client_port));
     if (client_itr == client_ports_and_versions_.end()) {
-      LOG(kError) << "Client is not registered with ClientManager.";
+      LOG(kError) << "Client is not registered with VaultManager.";
       return;
     }
     (*client_itr).second = VersionToInt(download_manager_.latest_local_version());
   }
 }
 
-void ClientManager::HandleNewVersionAvailableAck(
+void VaultManager::HandleNewVersionAvailableAck(
     const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
   MessageType type;
   std::string payload;
@@ -840,17 +816,17 @@ void ClientManager::HandleNewVersionAvailableAck(
 }
 
 #if defined MAIDSAFE_LINUX
-bool ClientManager::IsInstaller(const fs::path& path) {
+bool VaultManager::IsInstaller(const fs::path& path) {
   return path.extension() == ".deb" && path.stem().string().length() > 8 &&
          path.stem().string().substr(0, 9) == "Client";
 }
 #else
-bool ClientManager::IsInstaller(const fs::path& path) {
+bool VaultManager::IsInstaller(const fs::path& path) {
   return path.extension() == ".exe" && path.stem().string().substr(0, 9) == "Client";
 }
 #endif
 
-void ClientManager::UpdateExecutor() {
+void VaultManager::UpdateExecutor() {
   std::vector<fs::path> updated_files;
   if (download_manager_.Update(updated_files) != kSuccess) {
     LOG(kVerbose) << "No update identified in the server.";
@@ -890,7 +866,7 @@ void ClientManager::UpdateExecutor() {
   // #endif
 
   // Notify out-of-date clients
-  std::map<uint16_t, int> client_ports_and_versions_copy;
+  std::map<Port, int> client_ports_and_versions_copy;
   {
     std::lock_guard<std::mutex> lock(client_ports_mutex_);
     client_ports_and_versions_copy = client_ports_and_versions_;
@@ -917,11 +893,11 @@ void ClientManager::UpdateExecutor() {
   }
 }
 
-bool ClientManager::InTestMode() const {
+bool VaultManager::InTestMode() const {
   return config_file_path_ == fs::path(".") / detail::kGlobalConfigFilename;
 }
 
-std::vector<ClientManager::VaultInfoPtr>::iterator ClientManager::FindFromPmidName(
+std::vector<VaultManager::VaultInfoPtr>::iterator VaultManager::FindFromPmidName(
     const passport::Pmid::Name& pmid_name) {
   return std::find_if(vault_infos_.begin(), vault_infos_.end(),
                                                 [pmid_name](const VaultInfoPtr & vault_info)->bool {
@@ -929,7 +905,7 @@ std::vector<ClientManager::VaultInfoPtr>::iterator ClientManager::FindFromPmidNa
   });
 }
 
-std::vector<ClientManager::VaultInfoPtr>::iterator ClientManager::FindFromProcessIndex(
+std::vector<VaultManager::VaultInfoPtr>::iterator VaultManager::FindFromProcessIndex(
     ProcessIndex process_index) {
   return std::find_if(vault_infos_.begin(),
                       vault_infos_.end(), [process_index](const VaultInfoPtr & vault_info)->bool {
@@ -937,7 +913,7 @@ std::vector<ClientManager::VaultInfoPtr>::iterator ClientManager::FindFromProces
   });
 }
 
-void ClientManager::RestartVault(const passport::Pmid::Name& pmid_name) {
+void VaultManager::RestartVault(const passport::Pmid::Name& pmid_name) {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   auto itr(FindFromPmidName(pmid_name));
   if (itr == vault_infos_.end()) {
@@ -950,7 +926,7 @@ void ClientManager::RestartVault(const passport::Pmid::Name& pmid_name) {
 // NOTE: vault_infos_mutex_ must be locked before calling this function.
 // TODO(Fraser#5#): 2012-08-17 - This is pretty heavy-handed - locking for duration of function.
 //                               Try to reduce lock scope eventually.
-bool ClientManager::StopVault(const passport::Pmid::Name& pmid_name,
+bool VaultManager::StopVault(const passport::Pmid::Name& pmid_name,
                                  const asymm::PlainText& data, const asymm::Signature& signature,
                                  bool permanent) {
   auto itr(FindFromPmidName(pmid_name));
@@ -980,7 +956,7 @@ bool ClientManager::StopVault(const passport::Pmid::Name& pmid_name,
   return process_manager_.WaitForProcessToStop((*itr)->process_index);
 }
 
-void ClientManager::StopAllVaults() {
+void VaultManager::StopAllVaults() {
   std::lock_guard<std::mutex> lock(vault_infos_mutex_);
   std::for_each(vault_infos_.begin(), vault_infos_.end(), [this](const VaultInfoPtr & info) {
     if (process_manager_.GetProcessStatus(info->process_index) != ProcessStatus::kRunning) {
@@ -995,7 +971,7 @@ void ClientManager::StopAllVaults() {
 }
 
 /*
-//  void ClientManager::EraseVault(const std::string& account_name) {
+//  void VaultManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {
 //      auto itr(processes_.begin() + (index - 1));
 //      process_manager_.KillProcess((*itr).second);
@@ -1010,7 +986,7 @@ void ClientManager::StopAllVaults() {
 //    }
 //  }
 
-//  int32_t ClientManager::ListVaults(bool select) const {
+//  int32_t VaultManager::ListVaults(bool select) const {
 //    fs::path path((GetSystemAppDir() / "config.txt"));
 //
 //    std::string content;
@@ -1039,7 +1015,7 @@ void ClientManager::StopAllVaults() {
 //  }
 */
 
-bool ClientManager::ObtainBootstrapInformation(protobuf::ClientManagerConfig& config) {
+bool VaultManager::ObtainBootstrapInformation(protobuf::VaultManagerConfig& config) {
   protobuf::Bootstrap* bootstrap_list(config.mutable_bootstrap_endpoints());
 
   protobuf::Bootstrap end_points;
@@ -1077,30 +1053,27 @@ bool ClientManager::ObtainBootstrapInformation(protobuf::ClientManagerConfig& co
   return true;
 }
 
-void ClientManager::LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points) {
+void VaultManager::LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points) {
   int max_index(end_points.bootstrap_contacts_size());
   std::lock_guard<std::mutex> lock(config_file_mutex_);
   endpoints_.clear();
   for (int n(0); n < max_index; ++n) {
     std::string ip(end_points.bootstrap_contacts(n).ip());
-    uint16_t port(static_cast<uint16_t>(end_points.bootstrap_contacts(n).port()));
+    Port port(static_cast<Port>(end_points.bootstrap_contacts(n).port()));
     endpoints_.push_back(std::make_pair(ip, port));
   }
 }
 
-bool ClientManager::StartVaultProcess(VaultInfoPtr& vault_info) {
+bool VaultManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   Process process;
 #ifdef TESTING
   fs::path executable_path(detail::GetPathToVault());
   if (executable_path.empty())
     executable_path = fs::path(".");
-  std::string user_id;
 #ifdef MAIDSAFE_WIN32
   TCHAR file_name[MAX_PATH];
   if (GetModuleFileName(NULL, file_name, MAX_PATH))
     executable_path = fs::path(file_name).parent_path();
-#else
-  user_id = detail::GetUserId();
 #endif
 #else
   fs::path executable_path(GetAppInstallDir());
@@ -1118,8 +1091,6 @@ bool ClientManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   process.AddArgument("--identity_index " + std::to_string(vault_info->identity_index));
 // process.AddArgument("--log_folder ./dummy_vault_logfiles");
 //   process.AddArgument("--log_routing I");
-//  if (!user_id.empty())
-//    process.AddArgument("--usr_id " + user_id);
 #endif
 
   LOG(kInfo) << "Process Name: " << process.name();
@@ -1134,8 +1105,8 @@ bool ClientManager::StartVaultProcess(VaultInfoPtr& vault_info) {
   return true;
 }
 
-bool ClientManager::ReadFileToClientManagerConfig(const fs::path& file_path,
-                                                        protobuf::ClientManagerConfig& config) {
+bool VaultManager::ReadFileToVaultManagerConfig(const fs::path& file_path,
+                                                        protobuf::VaultManagerConfig& config) {
   std::string config_content;
   {
     std::lock_guard<std::mutex> lock(config_file_mutex_);
@@ -1155,7 +1126,7 @@ bool ClientManager::ReadFileToClientManagerConfig(const fs::path& file_path,
   return true;
 }
 
-bool ClientManager::AddBootstrapEndPoint(const std::string& ip, uint16_t port) {
+bool VaultManager::AddBootstrapEndPoint(const std::string& ip, Port port) {
   std::unique_lock<std::mutex> lock(config_file_mutex_);
   auto it(std::find_if(endpoints_.begin(), endpoints_.end(),
                                                [&ip, &port](const EndPoint & element)->bool {
@@ -1169,8 +1140,8 @@ bool ClientManager::AddBootstrapEndPoint(const std::string& ip, uint16_t port) {
       endpoints_.erase(itr);
     }
     lock.unlock();
-    protobuf::ClientManagerConfig config;
-    if (!ReadFileToClientManagerConfig(config_file_path_, config)) {
+    protobuf::VaultManagerConfig config;
+    if (!ReadFileToVaultManagerConfig(config_file_path_, config)) {
       // TODO(Team): Should have counter for failures to trigger recreation?
       LOG(kError) << "Failed to read & parse config file " << config_file_path_;
       return false;
@@ -1196,10 +1167,10 @@ bool ClientManager::AddBootstrapEndPoint(const std::string& ip, uint16_t port) {
   return true;
 }
 
-bool ClientManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
+bool VaultManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
                                                      bool existing_vault) {
-  protobuf::ClientManagerConfig config;
-  if (!ReadFileToClientManagerConfig(config_file_path_, config)) {
+  protobuf::VaultManagerConfig config;
+  if (!ReadFileToVaultManagerConfig(config_file_path_, config)) {
     LOG(kError) << "Failed to read config file to amend details of vault ID "
                 << Base64Substr(vault_info->pmid->name().value);
     return false;
@@ -1243,6 +1214,6 @@ bool ClientManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info
   return true;
 }
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe

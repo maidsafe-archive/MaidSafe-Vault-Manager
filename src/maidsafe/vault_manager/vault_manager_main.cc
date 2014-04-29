@@ -38,8 +38,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/client_manager/client_manager.h"
-#include "maidsafe/client_manager/utils.h"
+#include "maidsafe/vault_manager/vault_manager.h"
+#include "maidsafe/vault_manager/utils.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -50,8 +50,8 @@ std::mutex g_mutex;
 std::condition_variable g_cond_var;
 bool g_shutdown_service(false);
 
-void ShutDownClientManager(int /*signal*/) {
-  std::cout << "Stopping client_manager." << std::endl;
+void ShutDownVaultManager(int /*signal*/) {
+  std::cout << "Stopping vault_manager." << std::endl;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_shutdown_service = true;
@@ -62,13 +62,13 @@ void ShutDownClientManager(int /*signal*/) {
 #ifdef MAIDSAFE_WIN32
 
 enum {
-  kMaidSafeClientManagerStdException = 0x1,
+  kMaidSafeVaultManagerStdException = 0x1,
   kMaidSafeVaultServiceUnknownException
 };
 
 SERVICE_STATUS g_service_status;
 SERVICE_STATUS_HANDLE g_service_status_handle;
-wchar_t g_service_name[22] = L"ClientManager";
+wchar_t g_service_name[22] = L"VaultManager";
 
 void StopService(DWORD exit_code, DWORD error_code) {
   g_service_status.dwCurrentState = SERVICE_STOPPED;
@@ -80,17 +80,17 @@ void StopService(DWORD exit_code, DWORD error_code) {
 void ControlHandler(DWORD request) {
   switch (request) {
     case SERVICE_CONTROL_STOP:
-      LOG(kInfo) << "MaidSafe ClientManager SERVICE_CONTROL_STOP received - stopping.";
+      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_STOP received - stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownClientManager(0);
+      ShutDownVaultManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     case SERVICE_CONTROL_SHUTDOWN:
-      LOG(kInfo) << "MaidSafe ClientManager SERVICE_CONTROL_SHUTDOWN received - stopping.";
+      LOG(kInfo) << "MaidSafe VaultManager SERVICE_CONTROL_SHUTDOWN received - stopping.";
       g_service_status.dwWin32ExitCode = 0;
       g_service_status.dwCurrentState = SERVICE_STOPPED;
-      ShutDownClientManager(0);
+      ShutDownVaultManager(0);
       SetServiceStatus(g_service_status_handle, &g_service_status);
       return;
     default:
@@ -114,7 +114,7 @@ void ServiceMain() {
   assert(g_service_status_handle != SERVICE_STATUS_HANDLE(0));
 
   try {
-    maidsafe::client_manager::ClientManager client_manager;
+    maidsafe::vault_manager::VaultManager vault_manager;
     std::unique_lock<std::mutex> lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
@@ -124,7 +124,7 @@ void ServiceMain() {
   }
   catch (const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
-    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeClientManagerStdException);
+    StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultManagerStdException);
     return;
   }
   catch (...) {
@@ -138,7 +138,7 @@ BOOL CtrlHandler(DWORD control_type) {
     case CTRL_C_EVENT:
     case CTRL_CLOSE_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-      ShutDownClientManager(0);
+      ShutDownVaultManager(0);
       return TRUE;
     default:
       return FALSE;
@@ -193,14 +193,14 @@ void HandleProgramOptions(int argc, char** argv) {
   }
 
 #ifdef TESTING
-  uint16_t port(maidsafe::client_manager::ClientManager::kDefaultPort() + 100);
+  Port port(maidsafe::vault_manager::VaultManager::kDefaultPort() + 100);
   if (variables_map.count("port") != 0) {
     if (variables_map.at("port").as<int>() < 1025 ||
-        variables_map.at("port").as<int>() > std::numeric_limits<uint16_t>::max()) {
+        variables_map.at("port").as<int>() > std::numeric_limits<Port>::max()) {
       LOG(kError) << "port must lie in range [1025, 65535]";
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     }
-    port = static_cast<uint16_t>(variables_map["port"].as<int>());
+    port = static_cast<Port>(variables_map["port"].as<int>());
   }
 
   fs::path root_dir, path_to_vault;
@@ -212,7 +212,7 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("bootstrap_ips") != 0)
     booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
-  maidsafe::client_manager::detail::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
+  maidsafe::vault_manager::detail::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
                                                                    booststrap_ips);
 #endif
 }
@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
   try {
     HandleProgramOptions(argc, argv);
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
-      maidsafe::client_manager::ClientManager client_manager;
+      maidsafe::vault_manager::VaultManager vault_manager;
       std::unique_lock<std::mutex> lock(g_mutex);
       g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
     } else {
@@ -250,13 +250,13 @@ int main(int argc, char** argv) {
 #else
   //  try {
   HandleProgramOptions(argc, argv);
-  maidsafe::client_manager::ClientManager client_manager;
-  std::cout << "Successfully started client_mgr" << std::endl;
-  signal(SIGINT, ShutDownClientManager);
-  signal(SIGTERM, ShutDownClientManager);
+  maidsafe::vault_manager::VaultManager vault_manager;
+  std::cout << "Successfully started vault_manager" << std::endl;
+  signal(SIGINT, ShutDownVaultManager);
+  signal(SIGTERM, ShutDownVaultManager);
   std::unique_lock<std::mutex> lock(g_mutex);
   g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
-  std::cout << "Successfully stopped client_mgr" << std::endl;
+  std::cout << "Successfully stopped vault_manager" << std::endl;
   //  }
   //  catch(const std::exception& e) {
   //    LOG(kError) << "Error: " << e.what();

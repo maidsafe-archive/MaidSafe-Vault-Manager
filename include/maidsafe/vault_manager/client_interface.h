@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_CLIENT_MANAGER_CLIENT_CONTROLLER_H_
-#define MAIDSAFE_CLIENT_MANAGER_CLIENT_CONTROLLER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
+#define MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 
 #include <condition_variable>
 #include <cstdint>
@@ -42,17 +42,17 @@
 
 namespace maidsafe {
 
-namespace client_manager {
+namespace vault_manager {
 
 class LocalTcpTransport;
 
 typedef boost::signals2::signal<void(const std::string&)> OnNewVersionAvailable;
-typedef std::pair<std::string, uint16_t> EndPoint;
+typedef std::pair<std::string, Port> EndPoint;
 
-class ClientController {
+class ClientInterface {
  public:
-  ClientController(std::function<void(const std::string&)> on_new_version_available_slot);
-  ~ClientController();
+  ClientInterface(std::function<void(const std::string&)> on_new_version_available_slot);
+  ~ClientInterface();
 
   std::vector<boost::asio::ip::udp::endpoint> BootstrapEndpoints();
 
@@ -65,20 +65,20 @@ class ClientController {
   bool StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
                  const Identity& identity);
 
-  // Blocking call which attempts to set the ClientManager's update interval.  The limits are
-  // defined in ClientManager::kMinUpdateInterval() and ClientManager::kMaxUpdateInterval().
+  // Blocking call which attempts to set the VaultManager's update interval.  The limits are
+  // defined in VaultManager::kMinUpdateInterval() and VaultManager::kMaxUpdateInterval().
   bool SetUpdateInterval(const boost::posix_time::seconds& update_interval);
 
-  // Blocking call which returns the ClientManager's current interval between update checks.  If
+  // Blocking call which returns the VaultManager's current interval between update checks.  If
   // the call fails, boost::posix_time::pos_infin is returned.
   boost::posix_time::time_duration GetUpdateInterval();
 
-  // Blocking call to retrieve the latest bootstrap nodes from the ClientManager.
+  // Blocking call to retrieve the latest bootstrap nodes from the VaultManager.
   bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(
-      uint16_t test_client_manager_port, boost::filesystem::path test_env_root_dir,
+      Port test_vault_manager_port, boost::filesystem::path test_env_root_dir,
       boost::filesystem::path path_to_vault,
       std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
 #endif
@@ -91,11 +91,11 @@ class ClientController {
     kFailed
   };
 
-  ClientController(const ClientController&);
-  ClientController& operator=(const ClientController&);
+  ClientInterface(const ClientInterface&);
+  ClientInterface& operator=(const ClientInterface&);
   bool FindNextAcceptingPort(TransportPtr requesting_transport);
-  bool ConnectToClientManager(std::string& path_to_new_installer);
-  void HandleRegisterResponse(const std::string& message, uint16_t client_manager_port,
+  bool ConnectToVaultManager(std::string& path_to_new_installer);
+  void HandleRegisterResponse(const std::string& message, Port vault_manager_port,
                               std::mutex& mutex, std::condition_variable& condition_variable,
                               State& state, std::string& path_to_new_installer);
   template <typename ResponseType>
@@ -106,14 +106,14 @@ class ClientController {
   void HandleUpdateIntervalResponse(
       const std::string& message,
       const std::function<void(boost::posix_time::time_duration)>& callback);  // NOLINT
-  void HandleReceivedRequest(const std::string& message, uint16_t peer_port);
+  void HandleReceivedRequest(const std::string& message, Port peer_port);
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
   void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
                                std::function<void(bool)> callback);  // NOLINT (Philip)
 
-  uint16_t client_manager_port_, local_port_;
+  Port vault_manager_port_, local_port_;
   OnNewVersionAvailable on_new_version_available_;
   std::vector<boost::asio::ip::udp::endpoint> bootstrap_nodes_;
   std::map<passport::Pmid::Name, bool> joining_vaults_;
@@ -123,8 +123,8 @@ class ClientController {
   TransportPtr receiving_transport_;
 };
 
-}  // namespace client_manager
+}  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_CLIENT_MANAGER_CLIENT_CONTROLLER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
