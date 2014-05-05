@@ -16,52 +16,40 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
-#define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_CLIENT_CONNECTIONS_H_
+#define MAIDSAFE_VAULT_MANAGER_CLIENT_CONNECTIONS_H_
 
-#include <cstdint>
-#include <functional>
+#include <map>
 #include <memory>
-#include <string>
+#include <mutex>
 #include <utility>
+
+#include "maidsafe/common/rsa.h"
+#include "maidsafe/passport/types.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
 class TcpConnection;
-
-typedef uint16_t Port;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
-typedef std::function<void(TcpConnectionPtr, std::string)> MessageReceivedFunctor;
-typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
-typedef std::function<void(TcpConnectionPtr)> ConnectionClosedFunctor;
 
-extern const std::string kConfigFilename;
-extern const std::string kChunkstoreDirname;
-extern const std::string kBootstrapFilename;
-extern const unsigned kMaxRangeAboveDefaultPort;
+class ClientConnections {
+ public:
+  typedef passport::PublicMaid::Name MaidName;
+  void Add(TcpConnectionPtr connection);
+  void Validate(TcpConnectionPtr connection, const asymm::PlainText& plain_text,
+                const asymm::Signature& signature, const passport::PublicMaid& maid);
+  void Remove(TcpConnectionPtr connection);
+  MaidName FindValidated(TcpConnectionPtr connection) const;
 
-enum class MessageType : int32_t {
-  kTakeOwnershipRequest = 1,
-  kTakeOwnershipResponse,
-  kVaultIdentityRequest,
-  kVaultIdentityResponse,
-  kVaultJoinedNetwork,
-  kVaultJoinedNetworkAck,
-  kVaultJoinConfirmation,
-  kVaultJoinConfirmationAck,
-  kVaultShutdownRequest,
-  kVaultShutdownResponse,
-  kVaultShutdownResponseAck,
-  kSendEndpointToVaultManagerRequest,
-  kSendEndpointToVaultManagerResponse
+ private:
+  mutable std::mutex mutex_;
+  std::map<TcpConnectionPtr, MaidName, std::owner_less<TcpConnectionPtr>> clients_;
 };
-
-typedef std::pair<std::string, MessageType> MessageAndType;
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_CLIENT_CONNECTIONS_H_

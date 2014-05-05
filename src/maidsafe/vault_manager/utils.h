@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -29,7 +29,6 @@
 #include "maidsafe/common/crypto.h"
 
 #include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/local_tcp_transport.h"
 
 namespace maidsafe {
 
@@ -45,24 +44,11 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
 void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                   const protobuf::VaultInfo& protobuf_vault_info, VaultInfo& vault_info);
 
-std::string WrapMessage(const MessageAndType& message_and_type);
+void SetExecutablePath(const boost::filesystem::path& executable_path, VaultInfo& vault_info);
 
-MessageAndType UnwrapMessage(const std::string& wrapped_message);
+std::string WrapMessage(MessageAndType message_and_type);
 
-
-
-
-
-
-//// Returns a string which can be used as the --vmid argument of the PD vault.
-//std::string GenerateVmidParameter(uint32_t process_index, Port vault_manager_port);
-//
-//// Parses a --vmid argument of the PD vault into its constituent parts.
-//void ParseVmidParameter(const std::string& vault_manager_identifier, uint32_t& process_index,
-//                        Port& vault_manager_port);
-
-Port StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
-                                  OnMessageReceived::slot_type on_message_received_slot);
+MessageAndType UnwrapMessage(std::string wrapped_message);
 
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_vault_manager_port,

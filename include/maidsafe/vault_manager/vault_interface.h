@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -63,10 +63,10 @@ class VaultInterface {
   void HandleReceivedRequest(const std::string& message, Port peer_port);
   void HandleVaultShutdownRequest(const std::string& request, std::string& response);
   void HandleSendEndpointToVaultManagerResponse(
-      const std::string& message, std::function<void(bool)> callback);  // NOLINT (Philip)
+      const std::string& message, std::function<void(bool)> callback);
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
-                               std::function<void(bool)> callback);  // NOLINT (Philip)
+                               std::function<void(bool)> callback);
   uint32_t process_index_;
   Port vault_manager_port_, local_port_;
   std::unique_ptr<passport::Pmid> pmid_;

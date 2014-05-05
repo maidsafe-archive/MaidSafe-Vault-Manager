@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -24,16 +24,17 @@
 //#include "boost/filesystem/path.hpp"
 //#include "boost/filesystem/operations.hpp"
 //
-//#include "maidsafe/common/application_support_directories.h"
-//#include "maidsafe/common/log.h"
-//#include "maidsafe/common/utils.h"
-//
-//#include "maidsafe/passport/passport.h"
-//
+#include "maidsafe/common/application_support_directories.h"
+#include "maidsafe/common/error.h"
+#include "maidsafe/common/log.h"
+#include "maidsafe/common/process.h"
+#include "maidsafe/common/utils.h"
+
+#include "maidsafe/passport/passport.h"
+
 //#include "maidsafe/vault_manager/controller_messages.pb.h"
-//#include "maidsafe/vault_manager/local_tcp_transport.h"
-//#include "maidsafe/vault_manager/return_codes.h"
-//#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
 
 namespace fs = boost::filesystem;
@@ -44,18 +45,33 @@ namespace vault_manager {
 
 namespace {
 
-fs::path GetConfigFilePath() {
+fs::path GetPath(const fs::path& p) {
 #ifdef TESTING
-  return (GetTestEnvironmentRootDir().empty() ? GetUserAppDir() : GetTestEnvironmentRootDir()) /
+  return (GetTestEnvironmentRootDir().empty() ? GetUserAppDir() : GetTestEnvironmentRootDir()) / p;
 #else
-  return GetSystemAppSupportDir() /
+  return GetSystemAppSupportDir() / p;
 #endif
-      kConfigFilename;
+}
+
+fs::path GetConfigFilePath() {
+  return GetPath(kConfigFilename);
+}
+
+fs::path GetDefaultChunkstorePath() {
+  return GetPath(kChunkstoreDirname);
+}
+
+fs::path GetVaultExecutablePath() {
+#ifdef TESTING
+  if (!GetPathToVault().empty())
+    return GetPathToVault();
+#endif
+  return process::GetOtherExecutablePath(fs::path{ "vault" });
 }
 
 Port GetInitialLocalPort() {
 #ifdef TESTING
-  return GetTestVaultManagerPort() == 0 ? kDefaultPort() + 100 : GetTestVaultManagerPort();
+  return GetTestVaultManagerPort() == 0 ? kLivePort + 100 : GetTestVaultManagerPort();
 #else
   return kDefaultPort();
 #endif
@@ -66,199 +82,111 @@ Port GetInitialLocalPort() {
 VaultManager::VaultManager()
     : symm_key_(),
       symm_iv_(),
-      process_manager_(),
-      local_port_(GetInitialLocalPort()),
       config_file_path_(GetConfigFilePath()),
-
-
-
-      vault_infos_(),
-      vault_infos_mutex_(),
-      client_ports_and_versions_(),
-      client_ports_mutex_(),
-      endpoints_(),
-      config_file_mutex_(),
-      need_to_stop_(false),
+      vault_executable_path_(GetVaultExecutablePath()),
       asio_service_(3),
-      update_interval_(kMinUpdateInterval()),
-      update_mutex_(),
-      update_timer_(asio_service_.service()),
-      transport_(/*std::make_shared<LocalTcpTransport>(asio_service_.service())*/ nullptr),
-      maid_(passport::Anmaid()),
-      initial_contact_memory_(maid_) {
-  //  WriteFile(GetUserAppDir() / "ServiceVersion.txt", kApplicationVersion());
-  //  passport::Anmaid anmaid;
-  //  passport::Maid maid(anmaid);
-  //  passport::Pmid pmid(maid);
-  //  auto pmid_owner_ptr = std::make_shared<PmidSharedMemoryOwner>(pmid.name(), [] (std::string)
-  // {});
-  //  auto maid_owner_ptr = std::make_shared<MaidSharedMemoryOwner>(maid.name(), [] (std::string)
-  // {});
-  //  auto pmid_user_ptr = std::make_shared<PmidSharedMemoryUser>(pmid.name(), [] (std::string) {});
-  //  auto maid_user_ptr = std::make_shared<MaidSharedMemoryUser>(maid.name(), [] (std::string) {});
-  //  Initialise();
-}
-
-void VaultManager::Initialise() {
-  transport_->on_message_received().connect([this](
-      const std::string & message, Port peer_port) { HandleReceivedMessage(message, peer_port); });
-  transport_->on_error().connect([](const int & error) {
-    LOG(kError) << "Transport reported error code: " << error;
-  });
-
+      listener_(asio_service_.service(),
+          [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
+          GetInitialLocalPort()),
+      process_manager_(),
+      client_connection_() {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path_, error_code) ||
-      error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    LOG(kInfo) << "VaultManager failed to find existing config file in " << config_file_path_;
-    while (!CreateConfigFile()) {
-      if (need_to_stop_)
-        return;
-      LOG(kError) << "Will retry to create new config file at " << config_file_path_;
-      Sleep(std::chrono::milliseconds(100));
-    }
+    error_code.value() == boost::system::errc::no_such_file_or_directory) {
+    CreateConfigFile();
   }
-
-  while (!ListenForMessages()) {
-    if (need_to_stop_)
-      return;
-    LOG(kError) << "VaultManager failed to create a listening port. Shutting down.";
-    Sleep(std::chrono::seconds(1));
-  }
-
-  UpdateExecutor();
-
   ReadConfigFileAndStartVaults();
-
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this](const boost::system::error_code &
-                                  ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
-
   LOG(kInfo) << "VaultManager started";
 }
 
 VaultManager::~VaultManager() {
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
-  //  need_to_stop_ = true;
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
-  //  process_manager_.LetAllProcessesDie();
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
-  //  StopAllVaults();
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
-  //  {
-  //    std::lock_guard<std::mutex> lock(update_mutex_);
-  //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
-  //    update_timer_.cancel();
-  //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
-  //  }
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
-  //  transport_->StopListening();
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
-  //  asio_service_.Stop();
-  //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
+                                                                                                      //  need_to_stop_ = true;
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
+                                                                                                      //  process_manager_.LetAllProcessesDie();
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
+                                                                                                      //  StopAllVaults();
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
+                                                                                                      //  {
+                                                                                                      //    std::lock_guard<std::mutex> lock(update_mutex_);
+                                                                                                      //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
+                                                                                                      //    update_timer_.cancel();
+                                                                                                      //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
+                                                                                                      //  }
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
+                                                                                                      //  transport_->StopListening();
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
+                                                                                                      //  asio_service_.Stop();
+                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
 }
 
-bool VaultManager::CreateConfigFile() {
+void VaultManager::CreateConfigFile() {
+  symm_key_ = crypto::AES256Key{ RandomString(crypto::AES256_KeySize) };
+  symm_iv_ = crypto::AES256InitialisationVector{ RandomString(crypto::AES256_IVSize) };
   protobuf::VaultManagerConfig config;
-  config.set_update_interval(update_interval_.total_seconds());
+  config.set_aes256key(symm_key_.string());
+  config.set_aes256iv(symm_iv_.string());
 
-  int count(0);
-  while (!ObtainBootstrapInformation(config) && count++ < 10) {
-    LOG(kError) << "Failed to obtain bootstrap information from server.";
-    //    return false;
-  }
   boost::system::error_code error_code;
-  std::lock_guard<std::mutex> lock(config_file_mutex_);
   if (!fs::exists(config_file_path_.parent_path(), error_code)) {
     if (!fs::create_directories(config_file_path_.parent_path(), error_code) || error_code) {
       LOG(kError) << "Failed to create directories for config file " << config_file_path_ << ": "
                   << error_code.message();
-      return false;
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
     }
   }
 
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to create config file " << config_file_path_;
-    return false;
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
   LOG(kInfo) << "Created config file " << config_file_path_;
-
-  return true;
 }
 
-bool VaultManager::ReadConfigFileAndStartVaults() {
-  std::string content;
-  {
-    std::lock_guard<std::mutex> lock(config_file_mutex_);
-    if (!ReadFile(config_file_path_, &content)) {
-      LOG(kError) << "Failed to read config file " << config_file_path_;
-      return false;
-    }
-  }
+void VaultManager::ReadConfigFileAndStartVaults() {
+  NonEmptyString content{ ReadFile(config_file_path_) };
+
   protobuf::VaultManagerConfig config;
-  if (!config.ParseFromString(content)) {
+  if (!config.ParseFromString(content.string())) {
     LOG(kError) << "Failed to parse config file " << config_file_path_;
-    return false;
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
   }
 
-  update_interval_ = bptime::seconds(config.update_interval());
+  symm_key_ = crypto::AES256Key{ config.aes256key() };
+  symm_iv_ = crypto::AES256InitialisationVector{ config.aes256iv() };
 
-  protobuf::Bootstrap end_points(config.bootstrap_endpoints());
-
-  LoadBootstrapEndpoints(end_points);
-
-  for (int i(0); i != config.vault_info_size(); ++i) {
-    VaultInfoPtr vault_info(new VaultInfo);
-    vault_info->FromProtobuf(config.vault_info(i));
-    if (vault_info->requested_to_run) {
-      if (!StartVaultProcess(vault_info))
-        LOG(kError) << "Failed to start vault ID" << Base64Substr(vault_info->pmid->name().value);
+  if (config.vault_info_size()) {
+    for (int i(0); i != config.vault_info_size(); ++i) {
+      VaultInfo vault_info;
+      FromProtobuf(symm_key_, symm_iv_, config.vault_info(i), vault_info);
+      SetExecutablePath(vault_executable_path_, vault_info);
+      process_manager_.AddProcess(std::move(vault_info));
     }
+  } else {
+    // If the config file is empty
+    VaultInfo vault_info;
+    vault_info.chunkstore_path = GetDefaultChunkstorePath();
+    SetExecutablePath(vault_executable_path_, vault_info);
+    process_manager_.AddProcess(std::move(vault_info));
   }
-
-  return true;
 }
 
-bool VaultManager::WriteConfigFile() {
+void VaultManager::WriteConfigFile() const {
   protobuf::VaultManagerConfig config;
-  {
-    std::lock_guard<std::mutex> lock(update_mutex_);
-    config.set_update_interval(update_interval_.total_seconds());
+  config.set_aes256key(symm_key_.string());
+  config.set_aes256iv(symm_iv_.string());
+  process_manager_.WriteToConfigFile(symm_key_, symm_iv_, config);
+
+  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
+    LOG(kError) << "Failed to write config file " << config_file_path_;
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
   }
-  {
-    std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-    for (auto& vault_info : vault_infos_) {
-      protobuf::VaultInfo* pb_vault_info = config.add_vault_info();
-      vault_info->ToProtobuf(pb_vault_info);
-    }
-  }
-  {
-    std::lock_guard<std::mutex> lock(config_file_mutex_);
-    if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-      LOG(kError) << "Failed to write config file " << config_file_path_;
-      return false;
-    }
-  }
-  return true;
 }
 
-bool VaultManager::ListenForMessages() {
-  int result(0);
-  Port local(local_port_);
-  transport_->StartListening(local, result);
-  while (result != kSuccess) {
-    ++local;
-    if (local > local_port_ + kMaxRangeAboveDefaultPort()) {
-      LOG(kError) << "Listening failed on all ports in range " << local_port_ << " - "
-                  << local_port_ + kMaxRangeAboveDefaultPort();
-      return false;
-    }
-    transport_->StartListening(local, result);
-  }
-  local_port_ = local;
-  LOG(kInfo) << "Listening on " << local_port_;
-  return true;
-}
 
+
+
+/*
 void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
   MessageType type;
   std::string payload;
@@ -644,39 +572,6 @@ void VaultManager::HandleBootstrapRequest(const std::string& request, std::strin
       detail::WrapMessage(MessageType::kBootstrapResponse, bootstrap_response.SerializeAsString());
 }
 
-bool VaultManager::SetUpdateInterval(const bptime::time_duration& update_interval) {
-  if (update_interval < kMinUpdateInterval() || update_interval > kMaxUpdateInterval()) {
-    LOG(kError) << "Invalid update interval of " << update_interval;
-    return false;
-  }
-  std::lock_guard<std::mutex> lock(update_mutex_);
-  update_interval_ = update_interval;
-  //  update_timer_.expires_from_now(update_interval_);
-  //  update_timer_.async_wait([this] (const boost::system::error_code& ec) { CheckForUpdates(ec);
-  // });  // NOLINT (Fraser)
-  return true;
-}
-
-bptime::time_duration VaultManager::GetUpdateInterval() const {
-  std::lock_guard<std::mutex> lock(update_mutex_);
-  return update_interval_;
-}
-
-void VaultManager::CheckForUpdates(const boost::system::error_code& ec) {
-  if (ec) {
-    if (ec != boost::asio::error::operation_aborted) {
-      LOG(kError) << ec.message();
-      return;
-    }
-  }
-
-  UpdateExecutor();
-
-  update_timer_.expires_from_now(update_interval_);
-  update_timer_.async_wait([this](const boost::system::error_code &
-                                  ec) { CheckForUpdates(ec); });  // NOLINT (Fraser)
-}
-
 // NOTE: vault_info_mutex_ must be locked when calling this function.
 void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name,
                                                  bool join_result) {
@@ -690,7 +585,7 @@ void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_na
   std::mutex local_mutex;
   std::condition_variable local_cond_var;
   bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
+  std::function<void(bool)> callback = [&](bool result) {
       {
         std::lock_guard<std::mutex> lock(local_mutex);
         local_result = result;
@@ -708,7 +603,7 @@ void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_na
 
   request_transport->on_message_received().connect([this, callback](
       const std::string & message,
-      Port /*vault_manager_port*/) { HandleVaultJoinConfirmationAck(message, callback); });
+      Port /*vault_manager_port*//*) { HandleVaultJoinConfirmationAck(message, callback); });
   request_transport->on_error().connect([this, callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
@@ -728,7 +623,7 @@ void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_na
 }
 
 void VaultManager::HandleVaultJoinConfirmationAck(
-    const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
+    const std::string& message, std::function<void(bool)> callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -742,155 +637,6 @@ void VaultManager::HandleVaultJoinConfirmationAck(
   protobuf::VaultJoinConfirmationAck ack;
   ack.ParseFromString(payload);
   callback(ack.ack());
-}
-
-void VaultManager::SendNewVersionAvailable(Port client_port) {
-  protobuf::NewVersionAvailable new_version_available;
-  std::mutex local_mutex;
-  std::condition_variable local_cond_var;
-  bool done(false), local_result(false);
-  std::function<void(bool)> callback = [&](bool result) {  // NOLINT (Dan)
-      {
-        std::lock_guard<std::mutex> lock(local_mutex);
-        local_result = result;
-        done = true;
-      }
-      local_cond_var.notify_one();
-  };
-  TransportPtr request_transport(std::make_shared<LocalTcpTransport>(asio_service_.service()));
-  int result(0);
-  request_transport->Connect(client_port, result);
-  if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to client.";
-    callback(false);
-  }
-  request_transport->on_message_received().connect([this, callback](
-      const std::string & message,
-      Port /*vault_manager_port*/) { HandleNewVersionAvailableAck(message, callback); });
-  request_transport->on_error().connect([this, callback](const int & error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(false);
-  });
-  new_version_available.set_new_version_filepath(latest_local_installer_path_.string());
-  LOG(kVerbose) << "Sending new version available to client on port " << client_port;
-  request_transport->Send(detail::WrapMessage(MessageType::kNewVersionAvailable,
-                                              new_version_available.SerializeAsString()),
-                          client_port);
-
-  std::unique_lock<std::mutex> lock(local_mutex);
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10), [&] { return done; })) {
-    LOG(kError) << "Timed out waiting for reply.";
-    return;
-  }
-  if (!local_result) {
-    LOG(kError) << "Failed to confirm joining of vault to client.";
-    return;
-  }
-
-  {
-    std::lock_guard<std::mutex> lock(client_ports_mutex_);
-    auto client_itr(client_ports_and_versions_.find(client_port));
-    if (client_itr == client_ports_and_versions_.end()) {
-      LOG(kError) << "Client is not registered with VaultManager.";
-      return;
-    }
-    (*client_itr).second = VersionToInt(download_manager_.latest_local_version());
-  }
-}
-
-void VaultManager::HandleNewVersionAvailableAck(
-    const std::string& message, std::function<void(bool)> callback) {  // NOLINT (Philip)
-  MessageType type;
-  std::string payload;
-  if (!detail::UnwrapMessage(message, type, payload)) {
-    LOG(kError) << "Failed to handle incoming message.";
-    return;
-  }
-  if (type != MessageType::kNewVersionAvailableAck) {
-    LOG(kError) << "Incoming message is of incorrect type.";
-    return;
-  }
-  protobuf::NewVersionAvailableAck ack;
-  ack.ParseFromString(payload);
-  callback(true);
-}
-
-#if defined MAIDSAFE_LINUX
-bool VaultManager::IsInstaller(const fs::path& path) {
-  return path.extension() == ".deb" && path.stem().string().length() > 8 &&
-         path.stem().string().substr(0, 9) == "Client";
-}
-#else
-bool VaultManager::IsInstaller(const fs::path& path) {
-  return path.extension() == ".exe" && path.stem().string().substr(0, 9) == "Client";
-}
-#endif
-
-void VaultManager::UpdateExecutor() {
-  std::vector<fs::path> updated_files;
-  if (download_manager_.Update(updated_files) != kSuccess) {
-    LOG(kVerbose) << "No update identified in the server.";
-    return;  // failed or no updates.
-  }
-
-  auto it(std::find_if(updated_files.begin(),
-                       updated_files.end(), [&](const fs::path & path)
-                                                ->bool { return IsInstaller(path); }));  // NOLINT
-  if (it != updated_files.end()) {
-    latest_local_installer_path_ = *it;
-    LOG(kInfo) << "Found new installer at " << latest_local_installer_path_;
-  } else {
-    LOG(kInfo) << "No new installer";
-  }
-
-  it = (std::find_if(updated_files.begin(), updated_files.end(), [&](const fs::path & path)->bool {
-    return path.stem() == detail::kVaultName;
-  }));
-  fs::path new_local_vault_path;
-  if (it != updated_files.end()) {
-    new_local_vault_path = *it;
-    LOG(kInfo) << "Found new vault exe at " << new_local_vault_path;
-  } else {
-    LOG(kInfo) << "No new vault exe.";
-  }
-
-  //    WriteConfigFile();
-  // #if defined MAIDSAFE_LINUX
-  //  std::string command("dpkg -i " + latest_local_installer_path_.string());
-  //  int result(system(command.c_str()));
-  //  if (result != 0)
-  //    LOG(kError) << "Update failed: failed to run installer.  Result: " << result;
-  // #elif defined MAIDSAFE_APPLE
-  //  // TODO(Phil#5#): 2012-09-04 - FIND INSTALLER IN UPDATED FILES
-  //  //  RUN INSTALLER SOMEHOW
-  // #endif
-
-  // Notify out-of-date clients
-  std::map<Port, int> client_ports_and_versions_copy;
-  {
-    std::lock_guard<std::mutex> lock(client_ports_mutex_);
-    client_ports_and_versions_copy = client_ports_and_versions_;
-  }
-
-  for (auto entry : client_ports_and_versions_copy) {
-    if (entry.second < VersionToInt(download_manager_.latest_remote_version()))
-      SendNewVersionAvailable(entry.first);
-  }
-
-  if (!new_local_vault_path.empty()) {
-    StopAllVaults();
-    boost::system::error_code error_code;
-    fs::rename(new_local_vault_path, GetAppInstallDir() / detail::kVaultName, error_code);
-    if (error_code)
-      LOG(kError) << "Failed to move new vault executable.";
-
-    {
-      std::lock_guard<std::mutex> lock(vault_infos_mutex_);
-      vault_infos_.clear();
-    }
-    if (!ReadConfigFileAndStartVaults())
-      LOG(kError) << "Failed to restart vaults.";
-  }
 }
 
 bool VaultManager::InTestMode() const {
@@ -1013,7 +759,7 @@ void VaultManager::StopAllVaults() {
 //
 //    return 0;
 //  }
-*/
+*//*
 
 bool VaultManager::ObtainBootstrapInformation(protobuf::VaultManagerConfig& config) {
   protobuf::Bootstrap* bootstrap_list(config.mutable_bootstrap_endpoints());
@@ -1094,7 +840,7 @@ bool VaultManager::StartVaultProcess(VaultInfoPtr& vault_info) {
 #endif
 
   LOG(kInfo) << "Process Name: " << process.name();
-  vault_info->process_index = process_manager_.AddProcess(process, local_port_);
+  vault_info->process_index = process_manager_.AddProcess(process, listener_.ListeningPort());
   if (vault_info->process_index == ProcessManager::kInvalidIndex()) {
     LOG(kError) << "Error starting vault with ID: " << Base64Substr(vault_info->pmid->name().value);
     return false;
@@ -1212,7 +958,7 @@ bool VaultManager::AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info,
   }
 
   return true;
-}
+}*/
 
 }  // namespace vault_manager
 

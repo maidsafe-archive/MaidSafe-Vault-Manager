@@ -22,41 +22,41 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/path.hpp"
+#include "boost/process/child.hpp"
 
-#include "maidsafe/common/process.h"
 #include "maidsafe/passport/types.h"
+
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
 struct VaultInfo {
-  VaultInfo()
-    : process_info(0),
-      pmid(),
-      chunkstore_path(),
-      owner_name(),
-      vault_port(0),
-      client_port(0),
-      joined_network(false),
-#ifdef TESTING
-      identity_index(-1),
-#endif
-      label() {}
+  VaultInfo();
+  VaultInfo(VaultInfo&& other);
+  VaultInfo& operator=(VaultInfo other);
 
-  process::ProcessInfo process_info;
   std::unique_ptr<passport::Pmid> pmid;
   boost::filesystem::path chunkstore_path;
-  std::unique_ptr<passport::PublicMaid::Name> owner_name;
-  uint16_t vault_port, client_port;
+  passport::PublicMaid::Name owner_name;
   bool joined_network;
+  std::string label;
+  boost::process::child process;
+  std::vector<std::string> process_args;
+  TcpConnectionPtr tcp_connection;
 #ifdef TESTING
   int identity_index;
 #endif
-  std::string label;
+
+ private:
+  VaultInfo(const VaultInfo&) = delete;
 };
+
+void swap(VaultInfo& lhs, VaultInfo& rhs);
 
 }  // namespace vault_manager
 

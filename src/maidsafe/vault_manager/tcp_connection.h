@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -19,62 +19,76 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_TCP_CONNECTION_H_
 #define MAIDSAFE_VAULT_MANAGER_TCP_CONNECTION_H_
 
-#include <memory>
+#include <array>
+#include <cstdint>
+#include <deque>
 #include <string>
 #include <vector>
 
-#include "boost/asio/deadline_timer.hpp"
+#include "boost/asio/buffer.hpp"
 #include "boost/asio/io_service.hpp"
-#include "boost/asio/ip/tcp.hpp"
 #include "boost/asio/strand.hpp"
-#include "boost/date_time/posix_time/posix_time_duration.hpp"
+#include "boost/asio/ip/tcp.hpp"
+
+#include "maidsafe/common/error.h"
+
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-class LocalTcpTransport;
+class TcpListener;
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
  public:
-  explicit TcpConnection(const std::shared_ptr<LocalTcpTransport>& local_tcp_transport);
-  ~TcpConnection() {}
+  typedef uint32_t DataSize;
+  // Constructor used when accepting an incoming connection.
+  explicit TcpConnection(boost::asio::io_service& io_service);
+  // Constructor used to attempt to connect to 'remote_port' on loopback address.
+  TcpConnection(boost::asio::io_service& io_service, MessageReceivedFunctor on_message_received,
+                ConnectionClosedFunctor connection_closed_functor, uint16_t remote_port);
 
-  int Connect(uint16_t remote_port);
-  void Close();
-  void StartReceiving();
-  void StartSending(const std::string& data);
+  // Only required for instances created using the first c'tor.  Should only be called once per
+  // TcpConnection instance.
+  void Start(MessageReceivedFunctor on_message_received,
+             ConnectionClosedFunctor on_connection_closed);
 
-  boost::asio::ip::tcp::socket& Socket() { return socket_; }
+  void Send(std::string data);
+
+  static size_t MaxMessageSize() { return 1024 * 1024; }  // bytes
+
+  friend class TcpListener;
 
  private:
-  TcpConnection(const TcpConnection&);
-  TcpConnection& operator=(const TcpConnection&);
+  TcpConnection(const TcpConnection&) = delete;
+  TcpConnection(TcpConnection&&) = delete;
+  TcpConnection& operator=(TcpConnection) = delete;
 
-  // Maximum number of bytes to read at a time
-  static int32_t kMaxTransportChunkSize() { return 65536; }
+  struct ReceivingMessage {
+    std::array<char, 4> size_buffer;
+    std::vector<char> data_buffer;
+  };
 
-  void DoClose();
-  void DoStartReceiving();
-  void DoStartSending();
+  struct SendingMessage {
+    std::array<char, 4> size_buffer;
+    std::string data;
+  };
 
-  void StartReadSize();
-  void HandleReadSize(const boost::system::error_code& ec);
+  void Close();
 
-  void StartReadData();
-  void HandleReadData(const boost::system::error_code& ec, size_t length);
+  void ReadSize();
+  void ReadData();
 
-  void StartWrite();
-  void HandleWrite(const boost::system::error_code& ec);
+  void DoSend();
+  SendingMessage EncodeData(std::string data) const;
 
-  void DispatchMessage();
-  void EncodeData(const std::string& data);
-
-  std::weak_ptr<LocalTcpTransport> transport_;
-  boost::asio::io_service::strand strand_;
   boost::asio::ip::tcp::socket socket_;
-  std::vector<unsigned char> size_buffer_, data_buffer_;
-  size_t data_size_, data_received_;
+  MessageReceivedFunctor on_message_received_;
+  ConnectionClosedFunctor on_connection_closed_;
+  ReceivingMessage receiving_message_;
+  std::deque<SendingMessage> send_queue_;
+  boost::asio::io_service::strand strand_;
 };
 
 }  // namespace vault_manager

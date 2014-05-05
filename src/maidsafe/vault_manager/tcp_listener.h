@@ -16,14 +16,22 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
-#define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
+#define MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
 
-#include <cstdint>
+//#include <cstdint>
 #include <functional>
 #include <memory>
-#include <string>
-#include <utility>
+//#include <set>
+//#include <string>
+//#include <mutex>
+//#include <condition_variable>
+//
+#include "boost/asio/io_service.hpp"
+#include "boost/asio/strand.hpp"
+#include "boost/asio/ip/tcp.hpp"
+
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
@@ -31,37 +39,32 @@ namespace vault_manager {
 
 class TcpConnection;
 
-typedef uint16_t Port;
-typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
-typedef std::function<void(TcpConnectionPtr, std::string)> MessageReceivedFunctor;
-typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
-typedef std::function<void(TcpConnectionPtr)> ConnectionClosedFunctor;
+class TcpListener {
+ public:
+  TcpListener(boost::asio::io_service& io_service, NewConnectionFunctor on_new_connection,
+              Port desired_port);
+  ~TcpListener();
+  Port ListeningPort() const;
 
-extern const std::string kConfigFilename;
-extern const std::string kChunkstoreDirname;
-extern const std::string kBootstrapFilename;
-extern const unsigned kMaxRangeAboveDefaultPort;
+ private:
+  TcpListener(const TcpListener&) = delete;
+  TcpListener(TcpListener&&) = delete;
+  TcpListener& operator=(TcpListener) = delete;
 
-enum class MessageType : int32_t {
-  kTakeOwnershipRequest = 1,
-  kTakeOwnershipResponse,
-  kVaultIdentityRequest,
-  kVaultIdentityResponse,
-  kVaultJoinedNetwork,
-  kVaultJoinedNetworkAck,
-  kVaultJoinConfirmation,
-  kVaultJoinConfirmationAck,
-  kVaultShutdownRequest,
-  kVaultShutdownResponse,
-  kVaultShutdownResponseAck,
-  kSendEndpointToVaultManagerRequest,
-  kSendEndpointToVaultManagerResponse
+  void StartListening(Port port);
+  void HandleAccept(TcpConnectionPtr accepted_connection,
+                    const boost::system::error_code& ec);
+
+  void StopListening();
+
+  boost::asio::io_service& io_service_;
+  NewConnectionFunctor on_new_connection_;
+  boost::asio::ip::tcp::acceptor acceptor_;
+  boost::asio::io_service::strand strand_;
 };
-
-typedef std::pair<std::string, MessageType> MessageAndType;
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_

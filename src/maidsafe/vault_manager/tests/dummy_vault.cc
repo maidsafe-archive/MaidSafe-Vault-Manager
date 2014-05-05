@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
       endpoint.port(3658);
       vault_interface.SendEndpointToVaultManager(endpoint);
       std::unique_lock<std::mutex> lock(mutex);
-      cond_var.wait(lock, [] { return g_check_finished; });  // NOLINT (Fraser)
+      cond_var.wait(lock, [] { return g_check_finished; });
     }
 
     if (variables_map.count("runtime")) {

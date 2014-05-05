@@ -23,8 +23,9 @@ namespace maidsafe {
 namespace vault_manager {
 
 const std::string kConfigFilename("vault_manager_config.dat");
+const std::string kChunkstoreDirname("chunkstore");
 const std::string kBootstrapFilename("bootstrap.dat");
-const uint16_t kMaxRangeAboveDefaultPort(10);
+const unsigned kMaxRangeAboveDefaultPort(100);
 
 }  // namespace vault_manager
 

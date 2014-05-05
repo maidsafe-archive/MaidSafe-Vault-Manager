@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -19,124 +19,41 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 
+#include <future>
 #include <mutex>
-#include <condition_variable>
-#include <cstdint>
-#include <limits>
-#include <string>
 #include <vector>
 
-#include "boost/filesystem/path.hpp"
-#include "boost/thread/thread.hpp"
-
 #include "boost/process/child.hpp"
+
+#include "maidsafe/common/crypto.h"
+
+#include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/vault_info.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-typedef uint32_t ProcessIndex;
-
-enum class ProcessStatus {
-  kRunning = 1,
-  kStopped = 2,
-  kCrashed = 3,
-  kError = 4
-};
-
-/*enum ProcessInstruction {
-  kRun = 1,
-  kStop = 2,
-  kTerminate = 3,
-  kInvalid = 4
-};
-
-enum class TerminateStatus {
-  kTerminate = 1,
-  kNoTerminate = 2
-};
-
-enum class StopStatus {
-  kStop = 1,
-  kNoStop = 2
-};
-
-
-struct ProcessManagerStruct {
-  ProcessInstruction instruction;
-};*/
-
-class Process {
- public:
-  Process() : args_(), name_() {}
-  bool SetExecutablePath(const boost::filesystem::path& executable_path);
-  void AddArgument(const std::string& argument) { args_.push_back(argument); }
-  std::string name() const { return name_; }
-  std::vector<std::string> args() const { return args_; }
-
- private:
-  std::vector<std::string> args_;
-  std::string name_;
-};
+namespace protobuf { class VaultManagerConfig; }
+struct VaultInfo;
 
 class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  ProcessIndex AddProcess(Process process, Port port);
-  size_t NumberOfProcesses() const;
-  size_t NumberOfLiveProcesses() const;
-  size_t NumberOfSleepingProcesses() const;
-  void StartProcess(ProcessIndex index);
-  void LetProcessDie(ProcessIndex index);
-  void LetAllProcessesDie();
-  void WaitForProcesses();
-  void KillProcess(ProcessIndex index);
-  void StopProcess(ProcessIndex index);
-  void RestartProcess(ProcessIndex index);
-  ProcessStatus GetProcessStatus(ProcessIndex index);
-  bool WaitForProcessToStop(ProcessIndex index);
-  static ProcessIndex kInvalidIndex() { return std::numeric_limits<ProcessIndex>::max(); }
+  void WriteToConfigFile(const crypto::AES256Key& symm_key,
+                         const crypto::AES256InitialisationVector& symm_iv,
+                         protobuf::VaultManagerConfig& config) const;
+  void AddProcess(VaultInfo vault_info);
 
  private:
-  struct ProcessInfo {
-    ProcessInfo()
-        : process(),
-          thread(),
-          index(0),
-          port(0),
-          restart_count(0),
-          done(false),
-          status(ProcessStatus::kStopped),
-#ifdef MAIDSAFE_WIN32
-          child(PROCESS_INFORMATION()) {
-    }
-#else
-    child(0) {}
-#endif
-    ProcessInfo(ProcessInfo&& other);
-    ProcessInfo& operator=(ProcessInfo&& other);
-    Process process;
-    boost::thread thread;
-    ProcessIndex index;
-    Port port;
-    int32_t restart_count;
-    bool done;
-    ProcessStatus status;
-    boost::process::child child;
-  };
+  ProcessManager(const ProcessManager&) = delete;
+  ProcessManager& operator=(ProcessManager) = delete;
 
-  ProcessManager(const ProcessManager&);
-  ProcessManager& operator=(const ProcessManager&);
-  std::vector<ProcessInfo>::iterator FindProcess(ProcessIndex index);
-  void RunProcess(ProcessIndex index, bool restart, bool logging);
-  void TerminateAll();
-  bool SetProcessStatus(ProcessIndex index, const ProcessStatus& status);
+  std::future<void> StopProcess(const VaultInfo& vault_info);
 
-  std::vector<ProcessInfo> processes_;
-  ProcessIndex current_max_id_;
+  std::vector<VaultInfo> vaults_;
   mutable std::mutex mutex_;
-  std::condition_variable cond_var_;
 };
 
 }  // namespace vault_manager

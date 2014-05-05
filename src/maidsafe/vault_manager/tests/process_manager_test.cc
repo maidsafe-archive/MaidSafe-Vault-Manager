@@ -508,7 +508,3 @@ TEST_F(ProcessManagerTest, BEH_StartManyDifferentProcesses) {
 }  // namespace vault_manager
 
 }  // namespace maidsafe
-
-int main(int argc, char** argv) {
-  return maidsafe::test::ExecuteMain(argc, argv);
-}

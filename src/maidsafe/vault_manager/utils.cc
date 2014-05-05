@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -18,24 +18,25 @@
 
 #include "maidsafe/vault_manager/utils.h"
 
+#include <algorithm>
 //#include <cstdint>
 //#include <iterator>
 #include <mutex>
 //#include <set>
 //
+#include "boost/filesystem/operations.hpp"
 //#include "boost/tokenizer.hpp"
 //
-//#include "maidsafe/common/on_scope_exit.h"
-//#include "maidsafe/common/log.h"
+#include "maidsafe/common/error.h"
+#include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
+//#include "maidsafe/common/on_scope_exit.h"
 //#include "maidsafe/common/utils.h"
-//#include "maidsafe/passport/passport.h"
-//
-//#include "maidsafe/vault_manager/controller_messages.pb.h"
-//#include "maidsafe/vault_manager/vault_manager.h"
-//#include "maidsafe/vault_manager/process_manager.h"
-//#include "maidsafe/vault_manager/vault_info.h"
-//#include "maidsafe/vault_manager/vault_info.pb.h"
+#include "maidsafe/passport/passport.h"
+
+#include "maidsafe/vault_manager/interprocess_messages.pb.h"
+#include "maidsafe/vault_manager/vault_info.pb.h"
+#include "maidsafe/vault_manager/vault_info.h"
 
 namespace fs = boost::filesystem;
 
@@ -63,8 +64,8 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
   protobuf_vault_info->set_pmid(
       passport::EncryptPmid(*vault_info.pmid, symm_key, symm_iv)->string());
   protobuf_vault_info->set_chunkstore_path(vault_info.chunkstore_path.string());
-  if ((*vault_info.owner_name)->IsInitialised())
-    protobuf_vault_info->set_owner_name((*vault_info.owner_name)->string());
+  if (vault_info.owner_name->IsInitialised())
+    protobuf_vault_info->set_owner_name(vault_info.owner_name->string());
   protobuf_vault_info->set_label(vault_info.label);
 }
 
@@ -74,41 +75,48 @@ void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector
       crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv));
   vault_info.chunkstore_path = protobuf_vault_info.chunkstore_path();
   if (protobuf_vault_info.has_owner_name()) {
-    vault_info.owner_name = maidsafe::make_unique<passport::PublicMaid::Name>(
-        Identity{ protobuf_vault_info.owner_name() });
+    vault_info.owner_name =
+        passport::PublicMaid::Name{ Identity{ protobuf_vault_info.owner_name() } };
   }
   vault_info.label = protobuf_vault_info.label();
 }
 
+void SetExecutablePath(const boost::filesystem::path& executable_path, VaultInfo& vault_info) {
+  boost::system::error_code ec;
+  if (!fs::exists(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  if (!fs::is_regular_file(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " is not a regular file.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  if (fs::is_symlink(executable_path, ec) || ec) {
+    LOG(kError) << executable_path << " is a symlink.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  LOG(kVerbose) << "Vault executable found at " << executable_path;
+  vault_info.process_args.push_back(executable_path.string());
+  // Executable path must be the first argument
+  if (vault_info.process_args.size() > 1U)
+    std::iter_swap(std::begin(vault_info.process_args), --std::end(vault_info.process_args));
+}
 
-
-
-
-
-
-
-
-
-std::string WrapMessage(const MessageType& message_type, const std::string& payload) {
+std::string WrapMessage(MessageAndType message_and_type) {
   protobuf::WrapperMessage wrapper_message;
-  wrapper_message.set_type(static_cast<int>(message_type));
-  wrapper_message.set_payload(payload);
+  wrapper_message.set_payload(message_and_type.first);
+  wrapper_message.set_type(static_cast<int32_t>(message_and_type.second));
   return wrapper_message.SerializeAsString();
 }
 
-bool UnwrapMessage(const std::string& wrapped_message, MessageType& message_type,
-                   std::string& payload) {
+MessageAndType UnwrapMessage(std::string wrapped_message) {
   protobuf::WrapperMessage wrapper;
-  if (wrapper.ParseFromString(wrapped_message) && wrapper.IsInitialized()) {
-    message_type = static_cast<MessageType>(wrapper.type());
-    payload = wrapper.payload();
-    return true;
-  } else {
+  if (!wrapper.ParseFromString(wrapped_message)) {
     LOG(kError) << "Failed to unwrap message";
-    message_type = static_cast<MessageType>(0);
-    payload.clear();
-    return false;
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
   }
+
+  return std::make_pair(wrapper.payload(), static_cast<MessageType>(wrapper.type()));
 }
 
 //std::string GenerateVmidParameter(ProcessIndex process_index, Port vault_manager_port) {
@@ -168,9 +176,9 @@ void StartControllerListeningPort(std::shared_ptr<LocalTcpTransport> transport,
   }
 
   transport->on_message_received().connect(on_message_received_slot);
-  transport->on_error().connect([](const int & err) {
+  transport->on_error().connect([](const int& err) {
     LOG(kError) << "Transport error: " << err;
-  });  // NOLINT (Fraser)
+  });
 }
 
 #ifdef TESTING

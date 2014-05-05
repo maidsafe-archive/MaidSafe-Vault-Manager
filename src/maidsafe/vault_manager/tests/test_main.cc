@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,18 +16,6 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-package maidsafe.vault_manager.protobuf;
+#include "maidsafe/common/test.h"
 
-message VaultInfo {
-  required bytes pmid = 1;
-  required bytes chunkstore_path = 2;
-  optional bytes owner_name = 3;
-  optional bytes label = 4;
-}
-
-message VaultManagerConfig {
-  required bytes AES256Key = 1;
-  required bytes AES256IV = 2;
-  repeated VaultInfo vault_info = 3;
-  optional bytes vault_permissions = 4;
-}
+int main(int argc, char** argv) { return maidsafe::test::ExecuteMain(argc, argv); }

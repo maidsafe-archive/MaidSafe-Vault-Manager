@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -19,27 +19,28 @@
 #include "maidsafe/vault_manager/process_manager.h"
 
 #include <algorithm>
-#include <chrono>
-
-#include "boost/filesystem/fstream.hpp"
-#include "boost/filesystem/operations.hpp"
-#include "boost/process/child.hpp"
+//#include <chrono>
+//
+//#include "boost/filesystem/fstream.hpp"
+//#include "boost/filesystem/operations.hpp"
 #include "boost/process/execute.hpp"
 #include "boost/process/initializers.hpp"
 #include "boost/process/wait_for_exit.hpp"
 #include "boost/process/terminate.hpp"
-#include "boost/system/error_code.hpp"
-
-#include "boost/iostreams/device/file_descriptor.hpp"
-
+//#include "boost/system/error_code.hpp"
+//
+//#include "boost/iostreams/device/file_descriptor.hpp"
+//
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/process.h"
-#include "maidsafe/common/rsa.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/controller_messages.pb.h"
-#include "maidsafe/vault_manager/local_tcp_transport.h"
-#include "maidsafe/vault_manager/utils.h"
+//#include "maidsafe/common/rsa.h"
+//#include "maidsafe/common/utils.h"
+//
+//#include "maidsafe/vault_manager/controller_messages.pb.h"
+//#include "maidsafe/vault_manager/local_tcp_transport.h"
+//#include "maidsafe/vault_manager/utils.h"
+//#include "maidsafe/vault_manager/vault_info.pb.h"
 
 namespace bp = boost::process;
 namespace fs = boost::filesystem;
@@ -48,90 +49,69 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-bool Process::SetExecutablePath(const fs::path& executable_path) {
-  boost::system::error_code ec;
-  if (!fs::exists(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
+namespace {
+
+bool IsRunning(const VaultInfo& vault_info) {
+  try {
+#ifdef MAIDSAFE_WIN32
+    return process::IsRunning(vault_info.process.process_handle());
+#else
+    return process::IsRunning(vault_info.process.pid);
+#endif
+  }
+  catch (const std::exception& e) {
+    LOG(kInfo) << boost::diagnostic_information(e);
     return false;
   }
-  if (!fs::is_regular_file(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " is not a regular file.  " << (ec ? ec.message() : "");
-    return false;
+}
+
+}  // unnamed namespace
+
+ProcessManager::ProcessManager() : vaults_(), mutex_() {}
+
+ProcessManager::~ProcessManager() {
+  std::vector<std::future<void>> process_stops;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::for_each(std::begin(vaults_), std::end(vaults_),
+                  [this, &process_stops](const VaultInfo& vault_info) {
+                    process_stops.emplace_back(StopProcess(vault_info));
+                  });
   }
-  if (fs::is_symlink(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " is a symlink.  " << (ec ? ec.message() : "");
-    return false;
+  for (auto& process_stop : process_stops) {
+    try {
+      process_stop.get();
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << "Vault process failed to stop: " << boost::diagnostic_information(e);
+    }
   }
-  LOG(kInfo) << "Executable found at " << executable_path.string();
-  name_ = executable_path.string();
-  args_.push_back(name_);
-  return true;
 }
 
-ProcessManager::ProcessInfo::ProcessInfo(ProcessManager::ProcessInfo&& other)
-    : process(std::move(other.process)),
-      thread(std::move(other.thread)),
-      index(std::move(other.index)),
-      port(std::move(other.port)),
-      restart_count(std::move(other.restart_count)),
-      done(std::move(other.done)),
-      status(std::move(other.status)),
-      child(std::move(other.child)) {}
-
-ProcessManager::ProcessInfo& ProcessManager::ProcessInfo::operator=(
-    ProcessManager::ProcessInfo&& other) {
-  process = std::move(other.process);
-  thread = std::move(other.thread);
-  index = std::move(other.index);
-  port = std::move(other.port);
-  restart_count = std::move(other.restart_count);
-  done = std::move(other.done);
-  status = std::move(other.status);
-  child = std::move(other.child);
-  return *this;
-}
-
-ProcessManager::ProcessManager() : processes_(), current_max_id_(0), mutex_(), cond_var_() {}
-
-ProcessManager::~ProcessManager() { TerminateAll(); }
-
-ProcessIndex ProcessManager::AddProcess(Process process, Port port) {
-  if (process.name().empty()) {
-    LOG(kError) << "Invalid process - executable path empty.";
-    return kInvalidIndex();
+void ProcessManager::AddProcess(VaultInfo vault_info) {
+  if (vault_info.chunkstore_path.empty() || vault_info.process_args.empty()) {
+    LOG(kError) << "Can't add vault process - chunkstore and/or command line args are empty.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  ProcessInfo info;
-  info.index = ++current_max_id_;
-  info.done = false;
-  info.status = ProcessStatus::kStopped;
-  info.restart_count = 0;
-  info.port = port;
-  LOG(kVerbose) << "Restart count on init: " << info.restart_count;
-  process.AddArgument("--vmid");
-  process.AddArgument(detail::GenerateVmidParameter(info.index, info.port));
-  info.process = process;
+  if (IsRunning(vault_info)) {
+    LOG(kError) << "Can't add vault process - already running.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
+  vault_info.process = bp::execute(
+      bp::initializers::run_exe(fs::path{ vault_info.process_args.front() }),
+      bp::initializers::set_cmd_line(process::ConstructCommandLine(vault_info.process_args)),
+      bp::initializers::throw_on_error(),
+      bp::initializers::inherit_env());
+
   std::lock_guard<std::mutex> lock(mutex_);
-  processes_.push_back(std::move(info));
-  return info.index;
+  vaults_.emplace_back(vault_info);
 }
 
-size_t ProcessManager::NumberOfProcesses() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return processes_.size();
-}
-
-size_t ProcessManager::NumberOfLiveProcesses() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return std::count_if(processes_.begin(), processes_.end(), [](const ProcessInfo & process_info) {
-    return !process_info.done && process_info.thread.joinable();
+std::future<void> ProcessManager::StopProcess(const VaultInfo& vault_info) {
+  send vault_info.tcp_connection-> close message
+  return std::async([]() {
   });
-}
-
-size_t ProcessManager::NumberOfSleepingProcesses() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return std::count_if(processes_.begin(), processes_.end(), [](const ProcessInfo & process_info) {
-    return !process_info.done;
-  });  // NOLINT (Fraser)
 }
 
 std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {
@@ -149,7 +129,7 @@ void ProcessManager::StartProcess(ProcessIndex index) {
   (*itr).restart_count = 0;
   LOG(kInfo) << "StartProcess: AddStatus. ID: " << index;
   (*itr).thread =
-      std::move(boost::thread([=] { RunProcess(index, false, false); }));  // NOLINT (Fraser)
+      std::move(boost::thread([=] { RunProcess(index, false, false); }));
 }
 
 void ProcessManager::RunProcess(ProcessIndex index, bool restart, bool logging) {
@@ -297,7 +277,7 @@ bool ProcessManager::WaitForProcessToStop(ProcessIndex index) {
     return false;
   if (cond_var_.wait_for(lock, std::chrono::seconds(5), [&]()->bool {
         return (*itr).status != ProcessStatus::kRunning;
-      }))  // NOLINT (Philip)
+      }))
     return true;
   LOG(kError) << "Wait for process " << index << " to stop timed out. Terminating...";
   lock.unlock();

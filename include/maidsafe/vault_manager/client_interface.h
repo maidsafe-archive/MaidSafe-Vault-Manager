@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -65,14 +65,6 @@ class ClientInterface {
   bool StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
                  const Identity& identity);
 
-  // Blocking call which attempts to set the VaultManager's update interval.  The limits are
-  // defined in VaultManager::kMinUpdateInterval() and VaultManager::kMaxUpdateInterval().
-  bool SetUpdateInterval(const boost::posix_time::seconds& update_interval);
-
-  // Blocking call which returns the VaultManager's current interval between update checks.  If
-  // the call fails, boost::posix_time::pos_infin is returned.
-  boost::posix_time::time_duration GetUpdateInterval();
-
   // Blocking call to retrieve the latest bootstrap nodes from the VaultManager.
   bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
 
@@ -100,18 +92,18 @@ class ClientInterface {
                               State& state, std::string& path_to_new_installer);
   template <typename ResponseType>
   void HandleStartStopVaultResponse(const std::string& message,
-                                    const std::function<void(bool)>& callback);  // NOLINT
+                                    const std::function<void(bool)>& callback);
   boost::posix_time::time_duration SetOrGetUpdateInterval(
       const boost::posix_time::time_duration& update_interval);
   void HandleUpdateIntervalResponse(
       const std::string& message,
-      const std::function<void(boost::posix_time::time_duration)>& callback);  // NOLINT
+      const std::function<void(boost::posix_time::time_duration)>& callback);
   void HandleReceivedRequest(const std::string& message, Port peer_port);
   void HandleNewVersionAvailable(const std::string& request, std::string& response);
   void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
   void HandleBootstrapResponse(const std::string& message,
                                std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
-                               std::function<void(bool)> callback);  // NOLINT (Philip)
+                               std::function<void(bool)> callback);
 
   Port vault_manager_port_, local_port_;
   OnNewVersionAvailable on_new_version_available_;

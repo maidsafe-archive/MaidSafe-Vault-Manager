@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -55,7 +55,7 @@ boost::asio::ip::udp::endpoint GetEndpoint(const std::string& ip, Port port) {
 }  // namespace
 
 typedef std::function<void()> VoidFunction;
-typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
+typedef std::function<void(bool)> VoidFunctionBoolParam;
 
 namespace bai = boost::asio::ip;
 
@@ -135,7 +135,7 @@ void VaultInterface::ConfirmJoin() {
                           vault_manager_port_);
 
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
-                               [&] { return done; }))  // NOLINT (Fraser)
+                               [&] { return done; }))
     LOG(kError) << "Timed out waiting for reply.";
 }
 
@@ -194,7 +194,7 @@ bool VaultInterface::GetBootstrapNodes(
       detail::WrapMessage(MessageType::kBootstrapRequest, request.SerializeAsString()),
       vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
-                               [&] { return done; })) {  // NOLINT (Philip)
+                               [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
@@ -279,7 +279,7 @@ bool VaultInterface::SendEndpointToVaultManager(
                                               request.SerializeAsString()),
                           vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
-                               [&] { return done; })) {  // NOLINT (Philip)
+                               [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }

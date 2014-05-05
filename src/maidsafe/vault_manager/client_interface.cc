@@ -1,4 +1,4 @@
-/*  Copyright 2013 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -43,8 +43,6 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace vault_manager {
-
-typedef std::function<void(bool)> VoidFunctionBoolParam;  // NOLINT (Philip)
 
 ClientInterface::ClientInterface(
     std::function<void(const std::string&)> on_new_version_available_slot)
@@ -211,7 +209,7 @@ void ClientInterface::HandleRegisterResponse(const std::string& message,
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(boost::asio::ip::address::from_string(response.bootstrap_endpoint_ip(n)));
       endpoint.port(
-          static_cast<unsigned short>(response.bootstrap_endpoint_port(n)));  // NOLINT (FRASER)
+          static_cast<unsigned short>(response.bootstrap_endpoint_port(n)));
       bootstrap_nodes_.push_back(endpoint);
     }
     catch (...) {
@@ -247,7 +245,7 @@ bool ClientInterface::StartVault(const passport::Pmid& pmid,
 #ifdef TESTING
   start_vault_request.set_identity_index(detail::IdentityIndex());
 #endif
-  std::function<void(bool)> callback =  // NOLINT (Fraser)
+  std::function<void(bool)> callback =
       [&](bool result) {
     {
       std::lock_guard<std::mutex> lock(local_mutex);
@@ -311,7 +309,7 @@ bool ClientInterface::StopVault(const asymm::PlainText& data, const asymm::Signa
   stop_vault_request.set_signature(signature.string());
   stop_vault_request.set_identity(identity.string());
 
-  std::function<void(bool)> callback =  // NOLINT (Fraser)
+  std::function<void(bool)> callback =
       [&](bool result) {
     {
       std::lock_guard<std::mutex> lock(local_mutex);
@@ -354,7 +352,7 @@ bool ClientInterface::StopVault(const asymm::PlainText& data, const asymm::Signa
 
 template <typename ResponseType>
 void ClientInterface::HandleStartStopVaultResponse(
-    const std::string& message, const std::function<void(bool)>& callback) {  // NOLINT
+    const std::string& message, const std::function<void(bool)>& callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {
@@ -371,74 +369,6 @@ void ClientInterface::HandleStartStopVaultResponse(
   }
 
   callback(vault_response.result());
-}
-
-bool ClientInterface::SetUpdateInterval(const bptime::seconds& update_interval) {
-  if (update_interval < VaultManager::kMinUpdateInterval() ||
-      update_interval > VaultManager::kMaxUpdateInterval()) {
-    LOG(kError) << "Cannot set update interval to " << update_interval << "  It must be in range ["
-                << VaultManager::kMinUpdateInterval() << ", "
-                << VaultManager::kMaxUpdateInterval() << "]";
-    return false;
-  }
-  return SetOrGetUpdateInterval(update_interval) == update_interval;
-}
-
-bptime::time_duration ClientInterface::GetUpdateInterval() {
-  return SetOrGetUpdateInterval(bptime::pos_infin);
-}
-
-bptime::time_duration ClientInterface::SetOrGetUpdateInterval(
-    const bptime::time_duration& update_interval) {
-  std::mutex local_mutex;
-  std::condition_variable local_cond_var;
-  bptime::time_duration returned_result(bptime::neg_infin);
-  protobuf::UpdateIntervalRequest update_interval_request;
-  if (!update_interval.is_pos_infinity())
-    update_interval_request.set_new_update_interval(update_interval.total_seconds());
-
-  std::function<void(bptime::time_duration)> callback = [&](bptime::time_duration update_interval) {
-    {
-      std::lock_guard<std::mutex> lock(local_mutex);
-      returned_result = update_interval;
-    }
-    local_cond_var.notify_one();
-  };
-
-  TransportPtr request_transport(new LocalTcpTransport(asio_service_.service()));
-  int result(0);
-  request_transport->Connect(vault_manager_port_, result);
-  if (result != kSuccess) {
-    LOG(kError) << "Failed to connect request transport to VaultManager.";
-    return bptime::pos_infin;
-  }
-  request_transport->on_message_received().connect([this, callback](
-      const std::string & message, Port /*vault_manager_port*/) {  // NOLINT
-                                                     HandleUpdateIntervalResponse(message,
-                                                                                  callback);
-  });
-  request_transport->on_error().connect([this, callback](const int & error) {
-    LOG(kError) << "Transport reported error code " << error;
-    callback(bptime::pos_infin);
-  });
-
-  std::unique_lock<std::mutex> lock(local_mutex);
-  LOG(kVerbose) << "Sending request to " << (update_interval.is_pos_infinity() ? "get" : "set")
-                << " update interval to VaultManager on port " << vault_manager_port_;
-  request_transport->Send(detail::WrapMessage(MessageType::kUpdateIntervalRequest,
-                                              update_interval_request.SerializeAsString()),
-                          vault_manager_port_);
-
-  if (!local_cond_var.wait_for(lock, std::chrono::seconds(10),
-                               [&] { return !returned_result.is_neg_infinity(); })) {
-    LOG(kError) << "Timed out waiting for reply.";
-    return bptime::pos_infin;
-  }
-
-  if (returned_result.is_pos_infinity())
-    LOG(kError) << "Failed to " << (update_interval.is_pos_infinity() ? "get" : "set")
-                << " update interval.";
-  return returned_result;
 }
 
 bool ClientInterface::GetBootstrapNodes(
@@ -480,7 +410,7 @@ bool ClientInterface::GetBootstrapNodes(
       detail::WrapMessage(MessageType::kBootstrapRequest, request.SerializeAsString()),
       vault_manager_port_);
   if (!local_cond_var.wait_for(lock, std::chrono::seconds(3),
-                               [&] { return done; })) {  // NOLINT (Philip)
+                               [&] { return done; })) {
     LOG(kError) << "Timed out waiting for reply.";
     return false;
   }
@@ -516,7 +446,7 @@ void ClientInterface::HandleBootstrapResponse(
       boost::asio::ip::udp::endpoint endpoint;
       endpoint.address(
           boost::asio::ip::address::from_string(bootstrap_response.bootstrap_endpoint_ip(i)));
-      endpoint.port(static_cast<unsigned short>(   // NOLINT (Fraser)
+      endpoint.port(static_cast<unsigned short>( 
           bootstrap_response.bootstrap_endpoint_port(i)));
       bootstrap_endpoints.push_back(endpoint);
     }
@@ -530,7 +460,7 @@ void ClientInterface::HandleBootstrapResponse(
 
 void ClientInterface::HandleUpdateIntervalResponse(
     const std::string& message,
-    const std::function<void(bptime::time_duration)>& callback) {  // NOLINT
+    const std::function<void(bptime::time_duration)>& callback) {
   MessageType type;
   std::string payload;
   if (!detail::UnwrapMessage(message, type, payload)) {

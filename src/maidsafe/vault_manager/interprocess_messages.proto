@@ -21,9 +21,19 @@ package maidsafe.vault_manager.protobuf;
 // All following messages are serialised into the payload field, and the message type added.
 message WrapperMessage {
   required int32 type = 1;
-  required bytes payload = 2;
+  optional bytes payload = 2;
   optional bytes message_signature = 3;
 }
+
+
+
+
+
+
+
+
+
+
 
 // VaultManager receives this from a Client looking for the correct port and echos it back.
 message ClientRegistrationRequest {
