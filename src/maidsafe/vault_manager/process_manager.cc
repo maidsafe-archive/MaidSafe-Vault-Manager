@@ -119,7 +119,7 @@ void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {
 
 std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
   vault_info.stop_process = true;
-  SendVaultShutdownRequest(vault_info);
+  SendVaultShutdownRequest(vault_info.tcp_connection);
   return std::async([&]() {
 
   });

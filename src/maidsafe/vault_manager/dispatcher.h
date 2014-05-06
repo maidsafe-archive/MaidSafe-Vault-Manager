@@ -19,13 +19,16 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_DISPATCHER_H_
 #define MAIDSAFE_VAULT_MANAGER_DISPATCHER_H_
 
+#include <memory>
+
 namespace maidsafe {
 
 namespace vault_manager {
 
-struct VaultInfo;
+class TcpConnection;
+typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 
-void SendVaultShutdownRequest(VaultInfo& vault_info);
+void SendVaultShutdownRequest(TcpConnectionPtr connection);
 
 }  // namespace vault_manager
 

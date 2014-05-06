@@ -27,9 +27,8 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-void SendVaultShutdownRequest(VaultInfo& vault_info) {
-  vault_info.tcp_connection->Send(
-      WrapMessage(std::make_pair(std::string{}, MessageType::kVaultShutdownRequest)));
+void SendVaultShutdownRequest(TcpConnectionPtr connection) {
+  connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kVaultShutdownRequest)));
 }
 
 }  //  namespace vault_manager

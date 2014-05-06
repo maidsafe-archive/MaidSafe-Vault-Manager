@@ -23,10 +23,10 @@
 #include <string>
 #include <vector>
 
-#include "boost/asio/ip/udp.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
 
@@ -54,11 +54,11 @@ MessageAndType UnwrapMessage(std::string wrapped_message);
 void SetTestEnvironmentVariables(Port test_vault_manager_port,
                                  const boost::filesystem::path& test_env_root_dir,
                                  const boost::filesystem::path& path_to_vault,
-                                 std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
+                                 routing::BootstrapContacts bootstrap_contacts);
 Port GetTestVaultManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
-std::vector<boost::asio::ip::udp::endpoint> GetBootstrapIps();
+routing::BootstrapContacts GetBootstrapContacts();
 void SetIdentityIndex(int identity_index);
 int IdentityIndex();
 bool UsingDefaultEnvironment();

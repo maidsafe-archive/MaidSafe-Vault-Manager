@@ -25,6 +25,8 @@
 #include <string>
 #include <utility>
 
+#include "maidsafe/common/type_macros.h"
+
 namespace maidsafe {
 
 namespace vault_manager {
@@ -42,21 +44,22 @@ extern const std::string kChunkstoreDirname;
 extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
 
-enum class MessageType : int32_t {
-  kTakeOwnershipRequest = 1,
-  kTakeOwnershipResponse,
-  kVaultIdentityRequest,
-  kVaultIdentityResponse,
-  kVaultJoinedNetwork,
-  kVaultJoinedNetworkAck,
-  kVaultJoinConfirmation,
-  kVaultJoinConfirmationAck,
-  kVaultShutdownRequest,
-  kVaultShutdownResponse,
-  kVaultShutdownResponseAck,
-  kSendEndpointToVaultManagerRequest,
-  kSendEndpointToVaultManagerResponse
-};
+DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
+    (VaultStarted)
+    (VaultStartedResponse)
+    (VaultShutdownRequest)
+ /*   (TakeOwnershipRequest)
+    (TakeOwnershipResponse)
+    (VaultIdentityRequest)
+    (VaultIdentityResponse)
+    (VaultJoinedNetwork)
+    (VaultJoinedNetworkAck)
+    (VaultJoinConfirmation)
+    (VaultJoinConfirmationAck)
+    (VaultShutdownResponse)
+    (VaultShutdownResponseAck)
+    (SendEndpointToVaultManagerRequest)
+    (SendEndpointToVaultManagerResponse)*/)
 
 typedef std::pair<std::string, MessageType> MessageAndType;
 

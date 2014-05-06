@@ -19,14 +19,9 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
 #define MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
 
-//#include <cstdint>
 #include <functional>
 #include <memory>
-//#include <set>
-//#include <string>
-//#include <mutex>
-//#include <condition_variable>
-//
+
 #include "boost/asio/io_service.hpp"
 #include "boost/asio/strand.hpp"
 #include "boost/asio/ip/tcp.hpp"

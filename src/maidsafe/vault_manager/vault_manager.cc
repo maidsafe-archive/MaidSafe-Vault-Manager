@@ -193,54 +193,57 @@ void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
   connection->Start(on_message, on_closed);
 }
 
-void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection, const std::string& message) {
-
+void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
+                                         const std::string& wrapped_message) {
+  try {
+    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
+    LOG(kVerbose) << "Received " << message_and_type.second;
+    std::string response;
+    switch (message_and_type.second) {
+      case MessageType::kVaultStarted:
+        HandleVaultStarted(connection, message_and_type.first, response);
+        break;
+      //case MessageType::kClientRegistrationRequest:
+      //  HandleClientRegistrationRequest(payload, response);
+      //  break;
+      //case MessageType::kStartVaultRequest:
+      //  HandleStartVaultRequest(payload, response);
+      //  break;
+      //case MessageType::kVaultIdentityRequest:
+      //  HandleVaultIdentityRequest(payload, response);
+      //  break;
+      //case MessageType::kVaultJoinedNetwork:
+      //  HandleVaultJoinedNetworkRequest(payload, response);
+      //  break;
+      //case MessageType::kStopVaultRequest:
+      //  HandleStopVaultRequest(payload, response);
+      //  break;
+      //case MessageType::kUpdateIntervalRequest:
+      //  HandleUpdateIntervalRequest(payload, response);
+      //  break;
+      //case MessageType::kSendEndpointToVaultManagerRequest:
+      //  HandleSendEndpointToVaultManagerRequest(payload, response);
+      //  break;
+      //case MessageType::kBootstrapRequest:
+      //  HandleBootstrapRequest(payload, response);
+      //  break;
+      default:
+        return;
+    }
+    if (!response.empty())
+      connection->Send(response);
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
+  }
 }
 
+void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& /*request*/,
+                                      std::string& /*response*/) {
   process_manager_.HandleNewConnection(connection);
+}
 
 /*
-void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_port) {
-  MessageType type;
-  std::string payload;
-  if (!detail::UnwrapMessage(message, type, payload)) {
-    LOG(kError) << "Failed to handle incoming message.";
-    return;
-  }
-
-  LOG(kVerbose) << "HandleReceivedMessage: message type " << static_cast<int>(type) << " received.";
-  std::string response;
-  switch (type) {
-    case MessageType::kClientRegistrationRequest:
-      HandleClientRegistrationRequest(payload, response);
-      break;
-    case MessageType::kStartVaultRequest:
-      HandleStartVaultRequest(payload, response);
-      break;
-    case MessageType::kVaultIdentityRequest:
-      HandleVaultIdentityRequest(payload, response);
-      break;
-    case MessageType::kVaultJoinedNetwork:
-      HandleVaultJoinedNetworkRequest(payload, response);
-      break;
-    case MessageType::kStopVaultRequest:
-      HandleStopVaultRequest(payload, response);
-      break;
-    case MessageType::kUpdateIntervalRequest:
-      HandleUpdateIntervalRequest(payload, response);
-      break;
-    case MessageType::kSendEndpointToVaultManagerRequest:
-      HandleSendEndpointToVaultManagerRequest(payload, response);
-      break;
-    case MessageType::kBootstrapRequest:
-      HandleBootstrapRequest(payload, response);
-      break;
-    default:
-      return;
-  }
-  transport_->Send(response, peer_port);
-}
-
 void VaultManager::HandleClientRegistrationRequest(const std::string& request,
                                                        std::string& response) {
   protobuf::ClientRegistrationRequest client_request;

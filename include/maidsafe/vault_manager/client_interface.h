@@ -19,100 +19,85 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 #define MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 
-#include <condition_variable>
-#include <cstdint>
-#include <functional>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <utility>
-#include <vector>
+//#include <condition_variable>
+//#include <cstdint>
+//#include <functional>
+#include <future>
+//#include <map>
+//#include <memory>
+//#include <mutex>
+//#include <string>
+//#include <utility>
+//#include <vector>
 
-#include "boost/asio/ip/udp.hpp"
-#include "boost/date_time/posix_time/posix_time_duration.hpp"
 #include "boost/filesystem/path.hpp"
-#include "boost/signals2/connection.hpp"
-#include "boost/signals2/signal.hpp"
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
-
 #include "maidsafe/passport/types.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
+
+#include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/tcp_connection.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-class LocalTcpTransport;
-
-typedef boost::signals2::signal<void(const std::string&)> OnNewVersionAvailable;
-typedef std::pair<std::string, Port> EndPoint;
-
 class ClientInterface {
  public:
-  ClientInterface(std::function<void(const std::string&)> on_new_version_available_slot);
+  ClientInterface(const passport::Maid& maid, AsioService& asio_service);
   ~ClientInterface();
 
-  std::vector<boost::asio::ip::udp::endpoint> BootstrapEndpoints();
+  std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
-  // Blocking call to start a vault with the specified identity information and account name.
-  bool StartVault(const passport::Pmid& pmid, const passport::Maid::Name& account_name,
-                  const boost::filesystem::path& chunkstore);
+  std::future<passport::Pmid::Name> StartVault(const std::string& label,
+                                               const boost::filesystem::path& chunkstore);
 
-  // Blocking call to stop the vault with the specified identity. For authentication, provide data
-  // signed wth the vault's private key.
-  bool StopVault(const asymm::PlainText& data, const asymm::Signature& signature,
-                 const Identity& identity);
-
-  // Blocking call to retrieve the latest bootstrap nodes from the VaultManager.
-  bool GetBootstrapNodes(std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints);
+  std::future<passport::Pmid::Name> TakeOwnership(const std::string& label,
+                                                  const boost::filesystem::path& chunkstore);
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(
       Port test_vault_manager_port, boost::filesystem::path test_env_root_dir,
       boost::filesystem::path path_to_vault,
-      std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips);
+      routing::BootstrapContacts bootstrap_contacts);
 #endif
 
  private:
-  typedef std::shared_ptr<LocalTcpTransport> TransportPtr;
-  enum State {
-    kInitialising,
-    kVerified,
-    kFailed
-  };
+  ClientInterface(const ClientInterface&) = delete;
+  ClientInterface(ClientInterface&&) = delete;
+  ClientInterface& operator=(ClientInterface) = delete;
 
-  ClientInterface(const ClientInterface&);
-  ClientInterface& operator=(const ClientInterface&);
-  bool FindNextAcceptingPort(TransportPtr requesting_transport);
-  bool ConnectToVaultManager(std::string& path_to_new_installer);
-  void HandleRegisterResponse(const std::string& message, Port vault_manager_port,
-                              std::mutex& mutex, std::condition_variable& condition_variable,
-                              State& state, std::string& path_to_new_installer);
-  template <typename ResponseType>
-  void HandleStartStopVaultResponse(const std::string& message,
-                                    const std::function<void(bool)>& callback);
-  boost::posix_time::time_duration SetOrGetUpdateInterval(
-      const boost::posix_time::time_duration& update_interval);
-  void HandleUpdateIntervalResponse(
-      const std::string& message,
-      const std::function<void(boost::posix_time::time_duration)>& callback);
-  void HandleReceivedRequest(const std::string& message, Port peer_port);
-  void HandleNewVersionAvailable(const std::string& request, std::string& response);
-  void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
-  void HandleBootstrapResponse(const std::string& message,
-                               std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
-                               std::function<void(bool)> callback);
+  //enum State {
+  //  kInitialising,
+  //  kVerified,
+  //  kFailed
+  //};
 
-  Port vault_manager_port_, local_port_;
-  OnNewVersionAvailable on_new_version_available_;
-  std::vector<boost::asio::ip::udp::endpoint> bootstrap_nodes_;
-  std::map<passport::Pmid::Name, bool> joining_vaults_;
-  std::mutex joining_vaults_mutex_;
-  std::condition_variable joining_vaults_conditional_;
-  AsioService asio_service_;
-  TransportPtr receiving_transport_;
+  //bool FindNextAcceptingPort(TransportPtr requesting_transport);
+  //bool ConnectToVaultManager(std::string& path_to_new_installer);
+  //void HandleRegisterResponse(const std::string& message, Port vault_manager_port,
+  //                            std::mutex& mutex, std::condition_variable& condition_variable,
+  //                            State& state, std::string& path_to_new_installer);
+  //template <typename ResponseType>
+  //void HandleStartStopVaultResponse(const std::string& message,
+  //                                  const std::function<void(bool)>& callback);
+  //boost::posix_time::time_duration SetOrGetUpdateInterval(
+  //    const boost::posix_time::time_duration& update_interval);
+  //void HandleUpdateIntervalResponse(
+  //    const std::string& message,
+  //    const std::function<void(boost::posix_time::time_duration)>& callback);
+  //void HandleReceivedRequest(const std::string& message, Port peer_port);
+  //void HandleNewVersionAvailable(const std::string& request, std::string& response);
+  //void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
+  //void HandleBootstrapResponse(const std::string& message,
+  //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
+  //                             std::function<void(bool)> callback);
+
+  passport::Maid maid_;
+  AsioService& asio_service_;
+  TcpConnection tcp_connection_;
 };
 
 }  // namespace vault_manager

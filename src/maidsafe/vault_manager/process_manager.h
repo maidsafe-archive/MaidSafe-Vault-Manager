@@ -35,6 +35,8 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+typedef uint64_t ProcessId;
+
 namespace protobuf { class VaultManagerConfig; }
 struct VaultInfo;
 

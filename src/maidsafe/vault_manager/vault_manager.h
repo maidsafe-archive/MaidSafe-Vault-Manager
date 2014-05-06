@@ -71,41 +71,39 @@ class VaultManager {
 
   // Client and vault request handling
   void HandleNewConnection(TcpConnectionPtr connection);
-  void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& message);
-  void HandleVaultStarted(const std::string& request);
+  void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& wrapped_message);
+  void HandleVaultStarted(TcpConnectionPtr connection, const std::string& request,
+                          std::string& response);
 
 
 
 
-  void HandleClientRegistrationRequest(const std::string& request, std::string& response);
-  void HandleStartVaultRequest(const std::string& request, std::string& response);
-  void HandleVaultIdentityRequest(const std::string& request, std::string& response);
-  void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
-  void HandleStopVaultRequest(const std::string& request, std::string& response);
-  void HandleSendEndpointToVaultManagerRequest(const std::string& request,
-                                                   std::string& response);
-  void HandleBootstrapRequest(const std::string& request, std::string& response);
+  //void HandleClientRegistrationRequest(const std::string& request, std::string& response);
+  //void HandleStartVaultRequest(const std::string& request, std::string& response);
+  //void HandleVaultIdentityRequest(const std::string& request, std::string& response);
+  //void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
+  //void HandleStopVaultRequest(const std::string& request, std::string& response);
+  //void HandleSendEndpointToVaultManagerRequest(const std::string& request,
+  //                                                 std::string& response);
+  //void HandleBootstrapRequest(const std::string& request, std::string& response);
 
-  // Requests to vault
-  void SendVaultShutdownRequest(const Identity& identity);
+  //// Requests to client
+  //// NOTE: vault_info_mutex_ must be locked when calling this function.
+  //void SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name, bool join_result);
+  //void SendNewVersionAvailable(Port client_port);
 
-  // Requests to client
-  // NOTE: vault_info_mutex_ must be locked when calling this function.
-  void SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name, bool join_result);
-  void SendNewVersionAvailable(Port client_port);
+  //// Response handling from client
+  //void HandleVaultJoinConfirmationAck(const std::string& message,
+  //                                    std::function<void(bool)> callback);
+  //void HandleNewVersionAvailableAck(const std::string& message,
+  //                                  std::function<void(bool)> callback);
 
-  // Response handling from client
-  void HandleVaultJoinConfirmationAck(const std::string& message,
-                                      std::function<void(bool)> callback);
-  void HandleNewVersionAvailableAck(const std::string& message,
-                                    std::function<void(bool)> callback);
-
-  // General
-  bool InTestMode() const;
-  void RestartVault(const passport::Pmid::Name& pmid_name);
-  bool StopVault(const passport::Pmid::Name& pmid_name, const asymm::PlainText& data,
-                 const asymm::Signature& signature, bool permanent);
-  void StopAllVaults();
+  //// General
+  //bool InTestMode() const;
+  //void RestartVault(const passport::Pmid::Name& pmid_name);
+  //bool StopVault(const passport::Pmid::Name& pmid_name, const asymm::PlainText& data,
+  //               const asymm::Signature& signature, bool permanent);
+  //void StopAllVaults();
   //bool ObtainBootstrapInformation(protobuf::VaultManagerConfig& config);
   //void LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points);
   //bool AddBootstrapEndPoint(const std::string& ip, Port port);
