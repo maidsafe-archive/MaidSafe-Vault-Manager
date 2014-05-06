@@ -79,7 +79,7 @@ void TcpConnection::Close() {
   strand_.dispatch([this] {
     boost::system::error_code ignored_ec;
     socket_.close(ignored_ec);
-    on_connection_closed_(shared_from_this());
+    on_connection_closed_();
   });
 }
 
@@ -129,10 +129,7 @@ void TcpConnection::ReadData() {
     // Dispatch the message outside the strand.
     std::string data{ std::begin(receiving_message_.data_buffer),
                       std::end(receiving_message_.data_buffer) };
-    strand_.get_io_service().post([this, data] {
-      on_message_received_(shared_from_this(), std::move(data));
-    });
-
+    strand_.get_io_service().post([=] { on_message_received_(std::move(data)); });
     strand_.dispatch([this] { ReadSize(); });
   }));
 }

@@ -36,6 +36,7 @@ VaultInfo::VaultInfo()
       process(0),
 #endif
       process_args(),
+      stop_process(false),
       tcp_connection(),
 #ifdef TESTING
       identity_index(-1) {}
@@ -49,6 +50,7 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       label(std::move(other.label)),
       process(std::move(other.process)),
       process_args(std::move(other.process_args)),
+      stop_process(std::move(other.stop_process)),
       tcp_connection(std::move(other.tcp_connection)),
 #ifdef TESTING
       identity_index(std::move(other.identity_index)) {}
@@ -68,6 +70,7 @@ void swap(VaultInfo& lhs, VaultInfo& rhs){
   swap(lhs.label, rhs.label);
   swap(lhs.process, rhs.process);
   swap(lhs.process_args, rhs.process_args);
+  swap(lhs.stop_process, rhs.stop_process);
   swap(lhs.tcp_connection, rhs.tcp_connection);
 #ifdef TESTING
   swap(lhs.identity_index, rhs.identity_index);

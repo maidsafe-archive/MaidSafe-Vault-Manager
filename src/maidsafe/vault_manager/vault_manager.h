@@ -71,15 +71,12 @@ class VaultManager {
 
   // Client and vault request handling
   void HandleNewConnection(TcpConnectionPtr connection);
-
-  // General
-  void StartVaultProcess(VaultInfo vault_info);
-
+  void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& message);
+  void HandleVaultStarted(const std::string& request);
 
 
 
-  // Client and vault request handling
-  void HandleReceivedMessage(const std::string& message, Port peer_port);
+
   void HandleClientRegistrationRequest(const std::string& request, std::string& response);
   void HandleStartVaultRequest(const std::string& request, std::string& response);
   void HandleVaultIdentityRequest(const std::string& request, std::string& response);

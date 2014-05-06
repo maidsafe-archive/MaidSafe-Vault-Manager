@@ -47,6 +47,7 @@ struct VaultInfo {
   std::string label;
   boost::process::child process;
   std::vector<std::string> process_args;
+  bool stop_process;
   TcpConnectionPtr tcp_connection;
 #ifdef TESTING
   int identity_index;

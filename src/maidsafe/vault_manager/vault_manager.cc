@@ -183,8 +183,21 @@ void VaultManager::WriteConfigFile() const {
   }
 }
 
+void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
+  MessageReceivedFunctor on_message{ [=](const std::string& message) {
+    HandleReceivedMessage(connection, message);
+  } };
+  ConnectionClosedFunctor on_closed{ [=] {
+    process_manager_.HandleConnectionClosed(connection);
+  } };
+  connection->Start(on_message, on_closed);
+}
 
+void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection, const std::string& message) {
 
+}
+
+  process_manager_.HandleNewConnection(connection);
 
 /*
 void VaultManager::HandleReceivedMessage(const std::string& message, Port peer_port) {

@@ -37,6 +37,7 @@
 //#include "maidsafe/common/rsa.h"
 //#include "maidsafe/common/utils.h"
 //
+#include "maidsafe/vault_manager/dispatcher.h"
 //#include "maidsafe/vault_manager/controller_messages.pb.h"
 //#include "maidsafe/vault_manager/local_tcp_transport.h"
 //#include "maidsafe/vault_manager/utils.h"
@@ -67,14 +68,14 @@ bool IsRunning(const VaultInfo& vault_info) {
 
 }  // unnamed namespace
 
-ProcessManager::ProcessManager() : vaults_(), mutex_() {}
+ProcessManager::ProcessManager() : vaults_(), mutex_(), cond_var_() {}
 
 ProcessManager::~ProcessManager() {
   std::vector<std::future<void>> process_stops;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     std::for_each(std::begin(vaults_), std::end(vaults_),
-                  [this, &process_stops](const VaultInfo& vault_info) {
+                  [this, &process_stops](VaultInfo& vault_info) {
                     process_stops.emplace_back(StopProcess(vault_info));
                   });
   }
@@ -97,23 +98,34 @@ void ProcessManager::AddProcess(VaultInfo vault_info) {
     LOG(kError) << "Can't add vault process - already running.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
-
-  vault_info.process = bp::execute(
-      bp::initializers::run_exe(fs::path{ vault_info.process_args.front() }),
-      bp::initializers::set_cmd_line(process::ConstructCommandLine(vault_info.process_args)),
-      bp::initializers::throw_on_error(),
-      bp::initializers::inherit_env());
-
   std::lock_guard<std::mutex> lock(mutex_);
-  vaults_.emplace_back(vault_info);
+  auto itr(vaults_.emplace(std::end(vaults_), std::move(vault_info)));
+  StartProcess(itr);
 }
 
-std::future<void> ProcessManager::StopProcess(const VaultInfo& vault_info) {
-  send vault_info.tcp_connection-> close message
-  return std::async([]() {
+void ProcessManager::HandleNewConnection(TcpConnectionPtr connection) {
+
+}
+
+void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {
+  if (!itr->stop_process) {
+    itr->process = bp::execute(
+        bp::initializers::run_exe(fs::path{ itr->process_args.front() }),
+        bp::initializers::set_cmd_line(process::ConstructCommandLine(itr->process_args)),
+        bp::initializers::throw_on_error(),
+        bp::initializers::inherit_env());
+  }
+}
+
+std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
+  vault_info.stop_process = true;
+  SendVaultShutdownRequest(vault_info);
+  return std::async([&]() {
+
   });
 }
 
+/*
 std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {
   return std::find_if(processes_.begin(), processes_.end(), [index](ProcessInfo & process_info) {
     return (process_info.index == index);
@@ -306,7 +318,7 @@ void ProcessManager::TerminateAll() {
   }
   processes_.clear();
 }
-
+*/
 }  // namespace vault_manager
 
 }  // namespace maidsafe

@@ -19,6 +19,7 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 
+#include <condition_variable>
 #include <future>
 #include <mutex>
 #include <vector>
@@ -45,15 +46,19 @@ class ProcessManager {
                          const crypto::AES256InitialisationVector& symm_iv,
                          protobuf::VaultManagerConfig& config) const;
   void AddProcess(VaultInfo vault_info);
+  void HandleNewConnection(TcpConnectionPtr connection);
+  void HandleConnectionClosed(TcpConnectionPtr connection);
 
  private:
   ProcessManager(const ProcessManager&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
 
-  std::future<void> StopProcess(const VaultInfo& vault_info);
+  void StartProcess(std::vector<VaultInfo>::iterator itr);
+  std::future<void> StopProcess(VaultInfo& vault_info);
 
   std::vector<VaultInfo> vaults_;
   mutable std::mutex mutex_;
+  std::condition_variable cond_var_;
 };
 
 }  // namespace vault_manager

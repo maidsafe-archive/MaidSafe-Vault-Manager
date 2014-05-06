@@ -33,9 +33,9 @@ class TcpConnection;
 
 typedef uint16_t Port;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
-typedef std::function<void(TcpConnectionPtr, std::string)> MessageReceivedFunctor;
+typedef std::function<void(std::string)> MessageReceivedFunctor;
 typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
-typedef std::function<void(TcpConnectionPtr)> ConnectionClosedFunctor;
+typedef std::function<void()> ConnectionClosedFunctor;
 
 extern const std::string kConfigFilename;
 extern const std::string kChunkstoreDirname;

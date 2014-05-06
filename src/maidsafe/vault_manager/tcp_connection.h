@@ -40,7 +40,7 @@ namespace vault_manager {
 
 class TcpListener;
 
-class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
+class TcpConnection {
  public:
   typedef uint32_t DataSize;
   // Constructor used when accepting an incoming connection.
