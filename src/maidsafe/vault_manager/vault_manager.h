@@ -31,7 +31,6 @@
 //
 #include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/crypto.h"
 
 #include "maidsafe/passport/types.h"
@@ -112,7 +111,6 @@ class VaultManager {
   crypto::AES256Key symm_key_;
   crypto::AES256InitialisationVector symm_iv_;
   boost::filesystem::path config_file_path_, vault_executable_path_;
-  AsioService asio_service_;
   TcpListener listener_;
   ProcessManager process_manager_;
   TcpConnectionPtr client_connection_;

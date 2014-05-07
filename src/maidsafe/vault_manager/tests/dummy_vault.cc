@@ -82,25 +82,25 @@ int main(int argc, char* argv[]) {
     std::string vault_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "dummy_vault: Starting VaultInterface: " << usr_id;
-      maidsafe::vault_manager::VaultInterface vault_interface(usr_id, [&] { StopHandler(); });
-      std::unique_ptr<maidsafe::passport::Pmid> pmid;
-      std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
-      vault_interface.GetIdentity(pmid, bootstrap_endpoints);
-      LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().value);
-      LOG(kInfo) << "Validation Token: "
-                 << maidsafe::Base64Substr(pmid->validation_token().string());
-      LOG(kInfo) << "Public Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
-      LOG(kInfo) << "Private Key: "
-                 << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
-      vault_interface.ConfirmJoin();
+      //maidsafe::vault_manager::VaultInterface vault_interface(usr_id, [&] { StopHandler(); });
+      //std::unique_ptr<maidsafe::passport::Pmid> pmid;
+      //std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
+      //vault_interface.GetIdentity(pmid, bootstrap_endpoints);
+      //LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().value);
+      //LOG(kInfo) << "Validation Token: "
+      //           << maidsafe::Base64Substr(pmid->validation_token().string());
+      //LOG(kInfo) << "Public Key: "
+      //           << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
+      //LOG(kInfo) << "Private Key: "
+      //           << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
+      //vault_interface.ConfirmJoin();
 
-      boost::asio::ip::udp::endpoint endpoint;
-      endpoint.address(boost::asio::ip::address::from_string("127.0.0.46"));
-      endpoint.port(3658);
-      vault_interface.SendEndpointToVaultManager(endpoint);
-      std::unique_lock<std::mutex> lock(mutex);
-      cond_var.wait(lock, [] { return g_check_finished; });
+      //boost::asio::ip::udp::endpoint endpoint;
+      //endpoint.address(boost::asio::ip::address::from_string("127.0.0.46"));
+      //endpoint.port(3658);
+      //vault_interface.SendEndpointToVaultManager(endpoint);
+      //std::unique_lock<std::mutex> lock(mutex);
+      //cond_var.wait(lock, [] { return g_check_finished; });
     }
 
     if (variables_map.count("runtime")) {

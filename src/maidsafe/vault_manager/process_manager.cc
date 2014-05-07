@@ -107,6 +107,10 @@ void ProcessManager::HandleNewConnection(TcpConnectionPtr connection) {
 
 }
 
+void ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
+
+}
+
 void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {
   if (!itr->stop_process) {
     itr->process = bp::execute(
@@ -124,6 +128,13 @@ std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
 
   });
 }
+
+void ProcessManager::WriteToConfigFile(const crypto::AES256Key& /*symm_key*/,
+                                       const crypto::AES256InitialisationVector& /*symm_iv*/,
+                                       protobuf::VaultManagerConfig& /*config*/) const {
+
+}
+
 
 /*
 std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {

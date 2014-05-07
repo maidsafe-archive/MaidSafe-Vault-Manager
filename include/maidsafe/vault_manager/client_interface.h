@@ -20,11 +20,11 @@
 #define MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 
 //#include <condition_variable>
-//#include <cstdint>
+#include <cstdint>
 //#include <functional>
 #include <future>
 //#include <map>
-//#include <memory>
+#include <memory>
 //#include <mutex>
 //#include <string>
 //#include <utility>
@@ -37,12 +37,11 @@
 #include "maidsafe/passport/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/tcp_connection.h"
-
 namespace maidsafe {
 
 namespace vault_manager {
+
+class TcpConnection;
 
 class ClientInterface {
  public:
@@ -59,7 +58,7 @@ class ClientInterface {
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(
-      Port test_vault_manager_port, boost::filesystem::path test_env_root_dir,
+      uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
       boost::filesystem::path path_to_vault,
       routing::BootstrapContacts bootstrap_contacts);
 #endif
@@ -97,7 +96,7 @@ class ClientInterface {
 
   passport::Maid maid_;
   AsioService& asio_service_;
-  TcpConnection tcp_connection_;
+  std::unique_ptr<TcpConnection> tcp_connection_;
 };
 
 }  // namespace vault_manager

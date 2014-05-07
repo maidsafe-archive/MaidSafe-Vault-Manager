@@ -18,6 +18,8 @@
 
 #include "maidsafe/vault_manager/tcp_connection.h"
 
+#include <condition_variable>
+
 #include "boost/asio/error.hpp"
 #include "boost/asio/read.hpp"
 #include "boost/asio/write.hpp"
@@ -33,53 +35,78 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-TcpConnection::TcpConnection(boost::asio::io_service& io_service)
-    : socket_(io_service),
+  int t(0);
+
+TcpConnection::TcpConnection(AsioService& asio_service)
+    : io_service_(asio_service.service()),
+      socket_close_flag_(),
+      is_open_(false),
+      socket_(io_service_),
       on_message_received_(),
       on_connection_closed_(),
       receiving_message_(),
-      send_queue_(),
-      strand_(io_service) {
+      send_queue_() {
   static_assert((sizeof(DataSize)) == 4, "DataSize must be 4 bytes.");
-  assert(socket_.is_open());
+  assert(!socket_.is_open());
+  if (asio_service.ThreadCount() != 1U) {
+    LOG(kError) << "This must be a single-threaded io_service, or an asio strand will be required.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
 }
 
-TcpConnection::TcpConnection(boost::asio::io_service& io_service,
+TcpConnection::TcpConnection(AsioService& asio_service,
                              MessageReceivedFunctor on_message_received,
                              ConnectionClosedFunctor on_connection_closed, uint16_t remote_port)
-    : socket_(io_service),
+    : io_service_(asio_service.service()),
+      socket_close_flag_(),
+      is_open_(false),
+      socket_(io_service_),
       on_message_received_(on_message_received),
       on_connection_closed_(on_connection_closed),
       receiving_message_(),
-      send_queue_(),
-      strand_(io_service) {
+      send_queue_() {
+  if (asio_service.ThreadCount() != 1U) {
+    LOG(kError) << "This must be a single-threaded io_service, or an asio strand will be required.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
   try {
     socket_.connect(ip::tcp::endpoint(ip::address_v6::loopback(), remote_port));
-    assert(socket_.is_open());
+    if (!socket_.is_open())
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
+    is_open_ = true;
   }
   catch (const boost::system::system_error& error) {
     LOG(kError) << "Failed to connect to " << remote_port << ": " << error.what();
     throw;
   }
-  strand_.dispatch([this] { ReadSize(); });
+  io_service_.dispatch([this] { ReadSize(); });
+}
+
+TcpConnection::~TcpConnection() {
+  io_service_.dispatch([this] { Close(); });
+  while (is_open_)
+    std::this_thread::yield();
+  if (on_connection_closed_)
+    on_connection_closed_();
 }
 
 void TcpConnection::Start(MessageReceivedFunctor on_message_received,
                           ConnectionClosedFunctor on_connection_closed) {
+  is_open_ = true;
   if (on_message_received_) {
     LOG(kError) << "Already started.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
   on_message_received_ = on_message_received;
   on_connection_closed_ = on_connection_closed;
-  strand_.dispatch([this] { ReadSize(); });
+  io_service_.dispatch([this] { ReadSize(); });
 }
 
 void TcpConnection::Close() {
-  strand_.dispatch([this] {
+  std::call_once(socket_close_flag_, [this] {
     boost::system::error_code ignored_ec;
     socket_.close(ignored_ec);
-    on_connection_closed_();
+    is_open_ = false;
   });
 }
 
@@ -87,14 +114,8 @@ void TcpConnection::ReadSize() {
   asio::async_read(socket_, asio::buffer(receiving_message_.size_buffer),
                    [this](const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
-      //if (ec == asio::error::eof) {
-      //  /*Sleep(std::chrono::milliseconds(10));*/
-      //  return strand_.post(std::bind(&TcpConnection::ReadSize, shared_from_this()));
-      //} else {
-        if (ec != asio::error::connection_reset)
-          LOG(kError) << ec.message();
-        return Close();
-      //}
+      LOG(kInfo) << ec.message();
+      return Close();
     }
     assert(bytes_transferred == 4U);
     static_cast<void>(bytes_transferred);
@@ -117,7 +138,7 @@ void TcpConnection::ReadSize() {
 }
 
 void TcpConnection::ReadData() {
-  asio::async_read(socket_, asio::buffer(receiving_message_.data_buffer), strand_.wrap(
+  asio::async_read(socket_, asio::buffer(receiving_message_.data_buffer), io_service_.wrap(
                    [this](const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
       LOG(kError) << "Failed to read message body: " << ec.message();
@@ -129,14 +150,14 @@ void TcpConnection::ReadData() {
     // Dispatch the message outside the strand.
     std::string data{ std::begin(receiving_message_.data_buffer),
                       std::end(receiving_message_.data_buffer) };
-    strand_.get_io_service().post([=] { on_message_received_(std::move(data)); });
-    strand_.dispatch([this] { ReadSize(); });
+    io_service_.post([=] { on_message_received_(std::move(data)); });
+    io_service_.dispatch([this] { ReadSize(); });
   }));
 }
 
 void TcpConnection::Send(std::string data) {
   SendingMessage message{ EncodeData(std::move(data)) };
-  strand_.post([this, message] {
+  io_service_.post([this, message] {
     bool currently_sending{ !send_queue_.empty() };
     send_queue_.emplace_back(std::move(message));
     if (!currently_sending)
@@ -148,13 +169,14 @@ void TcpConnection::DoSend() {
   std::array<asio::const_buffer, 2> buffers;
   buffers[0] = asio::buffer(send_queue_.front().size_buffer);
   buffers[1] = asio::buffer(send_queue_.front().data.data(), send_queue_.front().data.size());
-  asio::async_write(socket_, buffers, strand_.wrap(
+  asio::async_write(socket_, buffers, io_service_.wrap(
                     [this](const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
       LOG(kError) << "Failed to send message: " << ec.message();
       return Close();
     }
-    assert(bytes_transferred == send_queue_.front().data.size());
+    assert(bytes_transferred ==
+           send_queue_.front().size_buffer.size() + send_queue_.front().data.size());
     static_cast<void>(bytes_transferred);
 
     send_queue_.pop_front();

@@ -34,12 +34,11 @@
 #include "maidsafe/passport/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/tcp_connection.h"
-
 namespace maidsafe {
 
 namespace vault_manager {
+
+class TcpConnection;
 
 class VaultInterface {
  public:
@@ -68,7 +67,7 @@ class VaultInterface {
   //                             std::function<void(bool)> callback);
 
   AsioService& asio_service_;
-  TcpConnection tcp_connection_;
+  std::unique_ptr<TcpConnection> tcp_connection_;
 };
 
 }  // namespace vault_manager

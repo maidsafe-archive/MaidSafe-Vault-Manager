@@ -20,16 +20,18 @@
 #define MAIDSAFE_VAULT_MANAGER_TCP_CONNECTION_H_
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <deque>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "boost/asio/buffer.hpp"
 #include "boost/asio/io_service.hpp"
-#include "boost/asio/strand.hpp"
 #include "boost/asio/ip/tcp.hpp"
 
+#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/error.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -44,10 +46,11 @@ class TcpConnection {
  public:
   typedef uint32_t DataSize;
   // Constructor used when accepting an incoming connection.
-  explicit TcpConnection(boost::asio::io_service& io_service);
+  explicit TcpConnection(AsioService& asio_service);
   // Constructor used to attempt to connect to 'remote_port' on loopback address.
-  TcpConnection(boost::asio::io_service& io_service, MessageReceivedFunctor on_message_received,
+  TcpConnection(AsioService& asio_service, MessageReceivedFunctor on_message_received,
                 ConnectionClosedFunctor connection_closed_functor, uint16_t remote_port);
+  ~TcpConnection();
 
   // Only required for instances created using the first c'tor.  Should only be called once per
   // TcpConnection instance.
@@ -83,12 +86,14 @@ class TcpConnection {
   void DoSend();
   SendingMessage EncodeData(std::string data) const;
 
+  boost::asio::io_service& io_service_;
+  std::once_flag socket_close_flag_;
+  std::atomic<bool> is_open_;
   boost::asio::ip::tcp::socket socket_;
   MessageReceivedFunctor on_message_received_;
   ConnectionClosedFunctor on_connection_closed_;
   ReceivingMessage receiving_message_;
   std::deque<SendingMessage> send_queue_;
-  boost::asio::io_service::strand strand_;
 };
 
 }  // namespace vault_manager

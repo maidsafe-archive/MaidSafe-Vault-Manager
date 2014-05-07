@@ -28,17 +28,7 @@ namespace vault_manager {
 
 namespace test {
 
-TEST(UtilsTest, DISABLED_BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
-
-TEST(UtilsTest, BEH_GenerateVmidParameter) {
-  EXPECT_EQ("0_0", GenerateVmidParameter(0, 0));
-  EXPECT_EQ("0_65535", GenerateVmidParameter(0, 65535));
-  EXPECT_EQ("1_65535", GenerateVmidParameter(1, 65535));
-  EXPECT_EQ("1000_65535", GenerateVmidParameter(1000, 65535));
-  EXPECT_EQ("1000_0", GenerateVmidParameter(1000, 0));
-}
-
-TEST(UtilsTest, DISABLED_BEH_ParseVmidParameter) { GTEST_FAIL() << "Needs test"; }
+TEST(UtilsTest, BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
 
 }  // namespace test
 

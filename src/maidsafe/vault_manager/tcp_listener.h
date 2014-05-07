@@ -22,10 +22,9 @@
 #include <functional>
 #include <memory>
 
-#include "boost/asio/io_service.hpp"
-#include "boost/asio/strand.hpp"
 #include "boost/asio/ip/tcp.hpp"
 
+#include "maidsafe/common/asio_service.h"
 #include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
@@ -36,8 +35,7 @@ class TcpConnection;
 
 class TcpListener {
  public:
-  TcpListener(boost::asio::io_service& io_service, NewConnectionFunctor on_new_connection,
-              Port desired_port);
+  TcpListener(NewConnectionFunctor on_new_connection, Port desired_port);
   ~TcpListener();
   Port ListeningPort() const;
 
@@ -52,10 +50,9 @@ class TcpListener {
 
   void StopListening();
 
-  boost::asio::io_service& io_service_;
   NewConnectionFunctor on_new_connection_;
+  AsioService asio_service_;
   boost::asio::ip::tcp::acceptor acceptor_;
-  boost::asio::io_service::strand strand_;
 };
 
 }  // namespace vault_manager

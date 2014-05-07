@@ -193,7 +193,8 @@ void HandleProgramOptions(int argc, char** argv) {
   }
 
 #ifdef TESTING
-  Port port(maidsafe::vault_manager::VaultManager::kDefaultPort() + 100);
+  typedef maidsafe::vault_manager::Port Port;
+  Port port(maidsafe::kLivePort + 100);
   if (variables_map.count("port") != 0) {
     if (variables_map.at("port").as<int>() < 1025 ||
         variables_map.at("port").as<int>() > std::numeric_limits<Port>::max()) {
@@ -212,8 +213,8 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("bootstrap_ips") != 0)
     booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
-  maidsafe::vault_manager::detail::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
-                                                                   booststrap_ips);
+  maidsafe::vault_manager::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
+                                                       booststrap_ips);
 #endif
 }
 

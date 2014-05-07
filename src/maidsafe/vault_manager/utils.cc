@@ -113,8 +113,8 @@ MessageAndType UnwrapMessage(std::string wrapped_message) {
 }
 
 #ifdef TESTING
-void SetTestEnvironmentVariables(Port test_vault_manager_port, fs::path test_env_root_dir,
-                                 fs::path path_to_vault,
+void SetTestEnvironmentVariables(Port test_vault_manager_port, const fs::path& test_env_root_dir,
+                                 const fs::path& path_to_vault,
                                  routing::BootstrapContacts bootstrap_contacts) {
   std::call_once(test_env_flag, [=] {
     g_test_vault_manager_port = test_vault_manager_port;

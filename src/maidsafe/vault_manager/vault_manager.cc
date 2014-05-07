@@ -84,9 +84,7 @@ VaultManager::VaultManager()
       symm_iv_(),
       config_file_path_(GetConfigFilePath()),
       vault_executable_path_(GetVaultExecutablePath()),
-      asio_service_(3),
-      listener_(asio_service_.service(),
-          [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
+      listener_([this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialLocalPort()),
       process_manager_(),
       client_connection_() {

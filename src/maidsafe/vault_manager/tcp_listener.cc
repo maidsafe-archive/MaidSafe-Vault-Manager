@@ -18,6 +18,7 @@
 
 #include "maidsafe/vault_manager/tcp_listener.h"
 
+#include <condition_variable>
 #include <limits>
 
 #include "maidsafe/common/error.h"
@@ -32,22 +33,20 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-TcpListener::TcpListener(asio::io_service& io_service, NewConnectionFunctor on_new_connection,
-                         Port desired_port)
-    : io_service_(io_service),
-      on_new_connection_(on_new_connection),
-      acceptor_(io_service),
-      strand_(io_service) {
+TcpListener::TcpListener(NewConnectionFunctor on_new_connection, Port desired_port)
+    : on_new_connection_(on_new_connection),
+      asio_service_(1),
+      acceptor_(asio_service_.service()) {
   unsigned attempts{ 0 };
   while (attempts <= kMaxRangeAboveDefaultPort &&
-         desired_port + attempts <= std::numeric_limits<Port>::max()) {
+         desired_port + attempts <= std::numeric_limits<Port>::max() && !acceptor_.is_open()) {
     try {
       StartListening(static_cast<Port>(desired_port + attempts));
-      ++attempts;
     }
     catch (const std::exception& e) {
       LOG(kWarning) << "Failed to start listening on port " << desired_port + attempts << ": "
                     << e.what();
+      ++attempts;
     }
   }
   if (!acceptor_.is_open()) {
@@ -58,7 +57,9 @@ TcpListener::TcpListener(asio::io_service& io_service, NewConnectionFunctor on_n
 }
 
 TcpListener::~TcpListener() {
-  StopListening();
+  asio_service_.service().dispatch([this] { StopListening(); });
+  while (!asio_service_.service().stopped())
+    std::this_thread::yield();
 }
 
 Port TcpListener::ListeningPort() const {
@@ -88,44 +89,43 @@ void TcpListener::StartListening(Port port) {
   acceptor_.bind(endpoint);
   acceptor_.listen(asio::socket_base::max_connections);
 
-  TcpConnectionPtr connection{ std::make_shared<TcpConnection>(io_service_) };
+  TcpConnectionPtr connection{ std::make_shared<TcpConnection>(asio_service_) };
 
   // The connection object is kept alive in the acceptor handler until HandleAccept() is called.
-  acceptor_.async_accept(connection->socket_,
-                         strand_.wrap([this, connection](const boost::system::error_code& error) {
-    HandleAccept(connection, error);
-  }));
+  acceptor_.async_accept(connection->socket_, asio_service_.service().wrap(
+      [this, connection](const boost::system::error_code& error) {
+        HandleAccept(connection, error);
+      }));
 
   cleanup_on_error.Release();
 }
 
 void TcpListener::HandleAccept(TcpConnectionPtr accepted_connection,
                                const boost::system::error_code& ec) {
-  if (!acceptor_.is_open())
-    return accepted_connection->Close();
+  if (!acceptor_.is_open() || asio_service_.service().stopped())
+    return;
 
   if (ec)
     LOG(kWarning) << "Error while accepting connection: " << ec.message();
   else
     on_new_connection_(accepted_connection);
 
-  TcpConnectionPtr connection{ std::make_shared<TcpConnection>(io_service_) };
+  TcpConnectionPtr connection{ std::make_shared<TcpConnection>(asio_service_) };
 
   // The connection object is kept alive in the acceptor handler until HandleAccept() is called.
-  acceptor_.async_accept(connection->socket_,
-                         strand_.wrap([this, connection](const boost::system::error_code& error) {
-    HandleAccept(connection, error);
-  }));
+  acceptor_.async_accept(connection->socket_, asio_service_.service().wrap(
+      [this, connection](const boost::system::error_code& error) {
+        HandleAccept(connection, error);
+      }));
 }
 
 void TcpListener::StopListening() {
-  strand_.dispatch([this] {
-    boost::system::error_code ec;
-    if (acceptor_.is_open())
-      acceptor_.close(ec);
-    if (ec.value() != 0)
-      LOG(kError) << "Acceptor close error: " << ec.message();
-  });
+  boost::system::error_code ec;
+  if (acceptor_.is_open())
+    acceptor_.close(ec);
+  if (ec.value() != 0)
+    LOG(kError) << "Acceptor close error: " << ec.message();
+  asio_service_.service().stop();
 }
 
 }  // namespace vault_manager
