@@ -27,6 +27,7 @@ namespace vault_manager {
 VaultInfo::VaultInfo()
     : pmid(),
       chunkstore_path(),
+      max_disk_usage(0),
       owner_name(),
       joined_network(false),
       label(),
@@ -45,6 +46,7 @@ VaultInfo::VaultInfo()
 VaultInfo::VaultInfo(VaultInfo&& other)
     : pmid(std::move(other.pmid)),
       chunkstore_path(std::move(other.chunkstore_path)),
+      max_disk_usage(std::move(other.max_disk_usage)),
       owner_name(std::move(other.owner_name)),
       joined_network(std::move(other.joined_network)),
       label(std::move(other.label)),
@@ -65,6 +67,7 @@ void swap(VaultInfo& lhs, VaultInfo& rhs){
   using std::swap;
   swap(lhs.pmid, rhs.pmid);
   swap(lhs.chunkstore_path, rhs.chunkstore_path);
+  swap(lhs.max_disk_usage, rhs.max_disk_usage);
   swap(lhs.owner_name, rhs.owner_name);
   swap(lhs.joined_network, rhs.joined_network);
   swap(lhs.label, rhs.label);

@@ -29,10 +29,9 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
-
 #include "maidsafe/passport/passport.h"
 
-//#include "maidsafe/vault_manager/controller_messages.pb.h"
+#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
@@ -75,6 +74,14 @@ Port GetInitialLocalPort() {
 #else
   return kDefaultPort();
 #endif
+}
+
+template <typename ProtobufMessage>
+ProtobufMessage Parse(const std::string& serialised_message) {
+  ProtobufMessage protobuf_message;
+  if (!protobuf_message.ParseFromString(serialised_message))
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
+  return protobuf_message;
 }
 
 }  // unnamed namespace
@@ -173,7 +180,7 @@ void VaultManager::WriteConfigFile() const {
   protobuf::VaultManagerConfig config;
   config.set_aes256key(symm_key_.string());
   config.set_aes256iv(symm_iv_.string());
-  process_manager_.WriteToConfigFile(symm_key_, symm_iv_, config);
+  process_manager_.AddVaultsDetailsToConfig(symm_key_, symm_iv_, config);
 
   if (!WriteFile(config_file_path_, config.SerializeAsString())) {
     LOG(kError) << "Failed to write config file " << config_file_path_;
@@ -196,10 +203,9 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
     LOG(kVerbose) << "Received " << message_and_type.second;
-    std::string response;
     switch (message_and_type.second) {
       case MessageType::kVaultStarted:
-        HandleVaultStarted(connection, message_and_type.first, response);
+        HandleVaultStarted(connection, message_and_type.first);
         break;
       //case MessageType::kClientRegistrationRequest:
       //  HandleClientRegistrationRequest(payload, response);
@@ -228,17 +234,16 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
       default:
         return;
     }
-    if (!response.empty())
-      connection->Send(response);
   }
   catch (const std::exception& e) {
     LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
   }
 }
 
-void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& /*request*/,
-                                      std::string& /*response*/) {
-  process_manager_.HandleNewConnection(connection);
+void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& request,
+                                      std::string& response) {
+  protobuf::VaultStarted vault_started_message{ Parse<protobuf::VaultStarted>(request) };
+  process_manager_.HandleNewConnection(connection, { vault_started_message.process_id() });
 }
 
 /*

@@ -20,7 +20,8 @@
 
 #include <algorithm>
 //#include <chrono>
-//
+#include <type_traits>
+
 //#include "boost/filesystem/fstream.hpp"
 //#include "boost/filesystem/operations.hpp"
 #include "boost/process/execute.hpp"
@@ -28,11 +29,11 @@
 #include "boost/process/wait_for_exit.hpp"
 #include "boost/process/terminate.hpp"
 //#include "boost/system/error_code.hpp"
-//
 //#include "boost/iostreams/device/file_descriptor.hpp"
 //
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/process.h"
 //#include "maidsafe/common/rsa.h"
 //#include "maidsafe/common/utils.h"
@@ -40,8 +41,8 @@
 #include "maidsafe/vault_manager/dispatcher.h"
 //#include "maidsafe/vault_manager/controller_messages.pb.h"
 //#include "maidsafe/vault_manager/local_tcp_transport.h"
-//#include "maidsafe/vault_manager/utils.h"
-//#include "maidsafe/vault_manager/vault_info.pb.h"
+#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/vault_info.pb.h"
 
 namespace bp = boost::process;
 namespace fs = boost::filesystem;
@@ -68,12 +69,16 @@ bool IsRunning(const VaultInfo& vault_info) {
 
 }  // unnamed namespace
 
-ProcessManager::ProcessManager() : vaults_(), mutex_(), cond_var_() {}
+ProcessManager::ProcessManager() : vaults_(), mutex_(), cond_var_() {
+  static_assert(std::is_same<ProcessId, process::ProcessId>::value,
+                "process::ProcessId is statically checked as being of suitable size for holding a "
+                "pid_t or DWORD, so vault_manager::ProcessId should use the same type.");
+}
 
 ProcessManager::~ProcessManager() {
   std::vector<std::future<void>> process_stops;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock{ mutex_ };
     std::for_each(std::begin(vaults_), std::end(vaults_),
                   [this, &process_stops](VaultInfo& vault_info) {
                     process_stops.emplace_back(StopProcess(vault_info));
@@ -89,6 +94,15 @@ ProcessManager::~ProcessManager() {
   }
 }
 
+void ProcessManager::AddVaultsDetailsToConfig(const crypto::AES256Key& symm_key,
+                                              const crypto::AES256InitialisationVector& symm_iv,
+                                              protobuf::VaultManagerConfig& config) const {
+  config.clear_vault_info();
+  std::lock_guard<std::mutex> lock(mutex_);
+  for (const auto& vault : vaults_)
+    ToProtobuf(symm_key, symm_iv, vault, config.add_vault_info());
+}
+
 void ProcessManager::AddProcess(VaultInfo vault_info) {
   if (vault_info.chunkstore_path.empty() || vault_info.process_args.empty()) {
     LOG(kError) << "Can't add vault process - chunkstore and/or command line args are empty.";
@@ -98,13 +112,27 @@ void ProcessManager::AddProcess(VaultInfo vault_info) {
     LOG(kError) << "Can't add vault process - already running.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  // emplace offers strong exception guarantee - only need to cover subsequent calls.
   auto itr(vaults_.emplace(std::end(vaults_), std::move(vault_info)));
+  on_scope_exit strong_guarantee{ [this, itr] { vaults_.erase(itr); } };
   StartProcess(itr);
+  strong_guarantee.Release();
 }
 
-void ProcessManager::HandleNewConnection(TcpConnectionPtr connection) {
-
+void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
+                                         crypto::AES256Key symm_key,
+                                         crypto::AES256InitialisationVector symm_iv) {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, process_id](const VaultInfo& vault) {
+                          return GetProcessId(vault.process) == process_id;
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Failed to find vault with process ID " << process_id << " in child processes.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+  itr->tcp_connection = connection;
 }
 
 void ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
@@ -129,12 +157,17 @@ std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
   });
 }
 
-void ProcessManager::WriteToConfigFile(const crypto::AES256Key& /*symm_key*/,
-                                       const crypto::AES256InitialisationVector& /*symm_iv*/,
-                                       protobuf::VaultManagerConfig& /*config*/) const {
 
+
+
+
+ProcessId ProcessManager::GetProcessId(const boost::process::child& child) const {
+#ifdef MAIDSAFE_WIN32
+  return static_cast<ProcessId>(child.proc_info.dwProcessId);
+#else
+  return static_cast<ProcessId>(child.pid);
+#endif
 }
-
 
 /*
 std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {

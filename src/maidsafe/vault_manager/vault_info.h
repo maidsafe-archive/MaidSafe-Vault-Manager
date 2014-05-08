@@ -27,6 +27,7 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
 
+#include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -42,6 +43,7 @@ struct VaultInfo {
 
   std::unique_ptr<passport::Pmid> pmid;
   boost::filesystem::path chunkstore_path;
+  DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   bool joined_network;
   std::string label;

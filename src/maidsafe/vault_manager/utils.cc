@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
 #include <mutex>
 
 #include "boost/filesystem/operations.hpp"
@@ -57,6 +58,8 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
   protobuf_vault_info->set_pmid(
       passport::EncryptPmid(*vault_info.pmid, symm_key, symm_iv)->string());
   protobuf_vault_info->set_chunkstore_path(vault_info.chunkstore_path.string());
+  if (vault_info.max_disk_usage != 0U)
+    protobuf_vault_info->set_max_disk_usage(vault_info.max_disk_usage.data);
   if (vault_info.owner_name->IsInitialised())
     protobuf_vault_info->set_owner_name(vault_info.owner_name->string());
   protobuf_vault_info->set_label(vault_info.label);
@@ -67,6 +70,8 @@ void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector
   vault_info.pmid = make_unique<passport::Pmid>(passport::DecryptPmid(
       crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv));
   vault_info.chunkstore_path = protobuf_vault_info.chunkstore_path();
+  if (protobuf_vault_info.has_max_disk_usage())
+    vault_info.max_disk_usage = DiskUsage{ protobuf_vault_info.max_disk_usage() };
   if (protobuf_vault_info.has_owner_name()) {
     vault_info.owner_name =
         passport::PublicMaid::Name{ Identity{ protobuf_vault_info.owner_name() } };

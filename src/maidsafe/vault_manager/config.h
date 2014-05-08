@@ -48,6 +48,7 @@ DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (VaultStarted)
     (VaultStartedResponse)
     (VaultShutdownRequest)
+    (MaxDiskUsageUpdate)
  /*   (TakeOwnershipRequest)
     (TakeOwnershipResponse)
     (VaultIdentityRequest)

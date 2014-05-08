@@ -44,19 +44,25 @@ class ProcessManager {
  public:
   ProcessManager();
   ~ProcessManager();
-  void WriteToConfigFile(const crypto::AES256Key& symm_key,
-                         const crypto::AES256InitialisationVector& symm_iv,
-                         protobuf::VaultManagerConfig& config) const;
+  void AddVaultsDetailsToConfig(const crypto::AES256Key& symm_key,
+                                const crypto::AES256InitialisationVector& symm_iv,
+                                protobuf::VaultManagerConfig& config) const;
+  // Provides strong exception guarantee.
   void AddProcess(VaultInfo vault_info);
-  void HandleNewConnection(TcpConnectionPtr connection);
+  // Provides strong exception guarantee.
+  void HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
+                           crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv);
   void HandleConnectionClosed(TcpConnectionPtr connection);
 
  private:
   ProcessManager(const ProcessManager&) = delete;
+  ProcessManager(ProcessManager&&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
 
   void StartProcess(std::vector<VaultInfo>::iterator itr);
   std::future<void> StopProcess(VaultInfo& vault_info);
+
+  ProcessId GetProcessId(const boost::process::child& child) const;
 
   std::vector<VaultInfo> vaults_;
   mutable std::mutex mutex_;

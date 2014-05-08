@@ -21,14 +21,24 @@
 
 #include <memory>
 
+#include "maidsafe/common/crypto.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
+
 namespace maidsafe {
 
 namespace vault_manager {
 
 class TcpConnection;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
+struct VaultInfo;
+
+void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
+                              crypto::AES256InitialisationVector symm_iv,
+                              const routing::BootstrapContacts& bootstrap_contacts);
 
 void SendVaultShutdownRequest(TcpConnectionPtr connection);
+
+void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usage);
 
 }  // namespace vault_manager
 
