@@ -63,19 +63,19 @@ class VaultManager {
   VaultManager(VaultManager&&) = delete;
   VaultManager operator=(VaultManager) = delete;
 
-  // Config file handling
-  void WriteConfigFile() const;
-
-  // Client and vault request handling
   void HandleNewConnection(TcpConnectionPtr connection);
   void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& wrapped_message);
+
+  void HandleValidateConnectionRequest(TcpConnectionPtr connection, const std::string& request);
+  void HandleChallengeResponse(TcpConnectionPtr connection, const std::string& request);
+  void HandleStartVaultRequest(TcpConnectionPtr connection, const std::string& request);
+  void HandleTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& request);
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& request);
 
 
 
 
   //void HandleClientRegistrationRequest(const std::string& request, std::string& response);
-  //void HandleStartVaultRequest(const std::string& request, std::string& response);
   //void HandleVaultIdentityRequest(const std::string& request, std::string& response);
   //void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
   //void HandleStopVaultRequest(const std::string& request, std::string& response);

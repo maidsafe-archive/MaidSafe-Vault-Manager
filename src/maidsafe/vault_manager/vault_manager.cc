@@ -143,6 +143,8 @@ void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
     process_manager_.HandleConnectionClosed(connection);
   } };
   connection->Start(on_message, on_closed);
+
+  add connection to container of pending connections
 }
 
 void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
@@ -151,14 +153,23 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
     LOG(kVerbose) << "Received " << message_and_type.second;
     switch (message_and_type.second) {
+      case MessageType::kValidateConnectionRequest:
+        HandleValidateConnectionRequest(connection, message_and_type.first);
+        break;
+      case MessageType::kChallengeResponse:
+        HandleChallengeResponse(connection, message_and_type.first);
+        break;
+      case MessageType::kStartVaultRequest:
+        HandleStartVaultRequest(connection, message_and_type.first);
+        break;
+      case MessageType::kTakeOwnershipRequest:
+        HandleTakeOwnershipRequest(connection, message_and_type.first);
+        break;
       case MessageType::kVaultStarted:
         HandleVaultStarted(connection, message_and_type.first);
         break;
       //case MessageType::kClientRegistrationRequest:
       //  HandleClientRegistrationRequest(payload, response);
-      //  break;
-      //case MessageType::kStartVaultRequest:
-      //  HandleStartVaultRequest(payload, response);
       //  break;
       //case MessageType::kVaultIdentityRequest:
       //  HandleVaultIdentityRequest(payload, response);
@@ -187,14 +198,45 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
   }
 }
 
-void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& request) {
-  protobuf::VaultStarted vault_started_message{ Parse<protobuf::VaultStarted>(request) };
+void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
+                                           const std::string& request) {
+  protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(request) };
+  VaultInfo vault_info;
+  vault_info.chunkstore_path = start_vault_message.chunkstore_path();
+  vault_info.max_disk_usage = start_vault_message.max_disk_usage();
+  SetExecutablePath(kVaultExecutablePath_, vault_info);
+  process_manager_.AddProcess(std::move(vault_info));
+
+
 
   process_manager_.HandleNewConnection(connection, { vault_started_message.process_id() },
       config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
       routing::ReadBootstrapFile(kBootstrapFilePath_));
 
   config_file_handler_.WriteConfigFile(process_manager_);
+}
+
+void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
+                                              const std::string& request) {
+  protobuf::TakeOwnershipRequest take_ownership_request{ Parse<protobuf::VaultStarted>(request) };
+
+  process_manager_.HandleNewConnection(connection, { vault_started_message.process_id() },
+    config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
+    routing::ReadBootstrapFile(kBootstrapFilePath_));
+
+  config_file_handler_.WriteConfigFile(process_manager_);
+}
+
+void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& request) {
+  protobuf::VaultStarted vault_started{ Parse<protobuf::VaultStarted>(request) };
+
+  process_manager_.HandleNewConnection(connection, { vault_started.process_id() },
+      config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
+      routing::ReadBootstrapFile(kBootstrapFilePath_));
+
+  config_file_handler_.WriteConfigFile(process_manager_);
+
+  find corresponding client connection and send StartVaultResponse
 }
 
 /*

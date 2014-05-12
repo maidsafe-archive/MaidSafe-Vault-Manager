@@ -51,13 +51,12 @@ class ClientInterface {
 
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
-  std::future<passport::PmidAndSigner> StartVault(const std::string& label,
-                                                  const boost::filesystem::path& chunkstore,
-                                                  DiskUsage max_disk_usage);
-
   std::future<passport::PmidAndSigner> TakeOwnership(const std::string& label,
                                                      const boost::filesystem::path& chunkstore,
                                                      DiskUsage max_disk_usage);
+
+  std::future<passport::PmidAndSigner> StartVault(const boost::filesystem::path& chunkstore,
+                                                  DiskUsage max_disk_usage);
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(

@@ -45,13 +45,19 @@ extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
 
 DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
+    (ValidateConnectionRequest)
+    (Challenge)
+    (ChallengeResponse)
+    (ConnectionValidated)
+    (StartVaultRequest)
+    (StartVaultResponse)
+    (TakeOwnershipRequest)
+    (TakeOwnershipResponse)
     (VaultStarted)
     (VaultStartedResponse)
     (VaultShutdownRequest)
     (MaxDiskUsageUpdate)
- /*   (TakeOwnershipRequest)
-    (TakeOwnershipResponse)
-    (VaultIdentityRequest)
+ /*   (VaultIdentityRequest)
     (VaultIdentityResponse)
     (VaultJoinedNetwork)
     (VaultJoinedNetworkAck)
