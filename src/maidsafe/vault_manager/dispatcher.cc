@@ -36,7 +36,8 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
   message.set_pmid(passport::EncryptPmid(*vault_info.pmid, symm_key, symm_iv)->string());
   message.set_chunkstore_path(vault_info.chunkstore_path.string());
   message.set_max_disk_usage(vault_info.max_disk_usage.data);
-  message.set_serialised_bootstrap_contacts(routing::Serialise(bootstrap_contacts));
+  message.set_serialised_bootstrap_contacts(
+      routing::SerialiseBootstrapContacts(bootstrap_contacts));
   vault_info.tcp_connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                                              MessageType::kVaultStartedResponse)));
 }

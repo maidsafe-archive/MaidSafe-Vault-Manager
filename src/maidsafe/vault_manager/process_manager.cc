@@ -122,7 +122,8 @@ void ProcessManager::AddProcess(VaultInfo vault_info) {
 
 void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
                                          crypto::AES256Key symm_key,
-                                         crypto::AES256InitialisationVector symm_iv) {
+                                         crypto::AES256InitialisationVector symm_iv,
+                                         const routing::BootstrapContacts& bootstrap_contacts) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, process_id](const VaultInfo& vault) {
@@ -133,6 +134,7 @@ void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId 
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
   itr->tcp_connection = connection;
+  SendVaultStartedResponse(*itr, symm_key, symm_iv, bootstrap_contacts);
 }
 
 void ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {

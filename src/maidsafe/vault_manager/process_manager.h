@@ -27,6 +27,7 @@
 #include "boost/process/child.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/vault_info.h"
@@ -51,7 +52,8 @@ class ProcessManager {
   void AddProcess(VaultInfo vault_info);
   // Provides strong exception guarantee.
   void HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
-                           crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv);
+                           crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
+                           const routing::BootstrapContacts& bootstrap_contacts);
   void HandleConnectionClosed(TcpConnectionPtr connection);
 
  private:

@@ -32,10 +32,10 @@
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"
-
 #include "maidsafe/passport/types.h"
 
 #include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/config_file_handler.h"
 #include "maidsafe/vault_manager/process_manager.h"
 #include "maidsafe/vault_manager/tcp_listener.h"
 #include "maidsafe/vault_manager/vault_info.h"
@@ -44,7 +44,7 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-namespace protobuf { class VaultManagerConfig; }
+//namespace protobuf { class VaultManagerConfig; }
 
 class TcpConnection;
 
@@ -55,7 +55,7 @@ class TcpConnection;
 // * Maintains the bootstrap list (peer contacts known to its vault(s)).
 class VaultManager {
  public:
-  explicit VaultManager();
+  VaultManager();
   ~VaultManager();
 
  private:
@@ -64,15 +64,12 @@ class VaultManager {
   VaultManager operator=(VaultManager) = delete;
 
   // Config file handling
-  void CreateConfigFile();
-  void ReadConfigFileAndStartVaults();
   void WriteConfigFile() const;
 
   // Client and vault request handling
   void HandleNewConnection(TcpConnectionPtr connection);
   void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& wrapped_message);
-  void HandleVaultStarted(TcpConnectionPtr connection, const std::string& request,
-                          std::string& response);
+  void HandleVaultStarted(TcpConnectionPtr connection, const std::string& request);
 
 
 
@@ -108,9 +105,8 @@ class VaultManager {
   //bool AddBootstrapEndPoint(const std::string& ip, Port port);
   //bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 
-  crypto::AES256Key symm_key_;
-  crypto::AES256InitialisationVector symm_iv_;
-  boost::filesystem::path config_file_path_, vault_executable_path_;
+  const boost::filesystem::path kVaultExecutablePath_, kBootstrapFilePath_;
+  ConfigFileHandler config_file_handler_;
   TcpListener listener_;
   ProcessManager process_manager_;
   TcpConnectionPtr client_connection_;

@@ -20,16 +20,16 @@
 
 //#include <chrono>
 //#include <iostream>
-//
-//#include "boost/filesystem/path.hpp"
-//#include "boost/filesystem/operations.hpp"
-//
+
+#include "boost/filesystem/operations.hpp"
+
 #include "maidsafe/common/application_support_directories.h"
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
@@ -54,6 +54,10 @@ fs::path GetPath(const fs::path& p) {
 
 fs::path GetConfigFilePath() {
   return GetPath(kConfigFilename);
+}
+
+fs::path GetBootstrapFilePath() {
+  return GetPath(kBootstrapFilename);
 }
 
 fs::path GetDefaultChunkstorePath() {
@@ -87,20 +91,26 @@ ProtobufMessage Parse(const std::string& serialised_message) {
 }  // unnamed namespace
 
 VaultManager::VaultManager()
-    : symm_key_(),
-      symm_iv_(),
-      config_file_path_(GetConfigFilePath()),
-      vault_executable_path_(GetVaultExecutablePath()),
+    : config_file_handler_(GetConfigFilePath()),
+      kVaultExecutablePath_(GetVaultExecutablePath()),
+      kBootstrapFilePath_(GetBootstrapFilePath()),
       listener_([this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialLocalPort()),
       process_manager_(),
       client_connection_() {
-  boost::system::error_code error_code;
-  if (!fs::exists(config_file_path_, error_code) ||
-    error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    CreateConfigFile();
+  std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
+  if (vaults.empty()) {
+    VaultInfo vault_info;
+    vault_info.chunkstore_path = GetDefaultChunkstorePath();
+    SetExecutablePath(kVaultExecutablePath_, vault_info);
+    process_manager_.AddProcess(std::move(vault_info));
   }
-  ReadConfigFileAndStartVaults();
+  else {
+    for (auto& vault_info : vaults) {
+      SetExecutablePath(kVaultExecutablePath_, vault_info);
+      process_manager_.AddProcess(std::move(vault_info));
+    }
+  }
   LOG(kInfo) << "VaultManager started";
 }
 
@@ -123,69 +133,6 @@ VaultManager::~VaultManager() {
                                                                                                       //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
                                                                                                       //  asio_service_.Stop();
                                                                                                       //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
-}
-
-void VaultManager::CreateConfigFile() {
-  symm_key_ = crypto::AES256Key{ RandomString(crypto::AES256_KeySize) };
-  symm_iv_ = crypto::AES256InitialisationVector{ RandomString(crypto::AES256_IVSize) };
-  protobuf::VaultManagerConfig config;
-  config.set_aes256key(symm_key_.string());
-  config.set_aes256iv(symm_iv_.string());
-
-  boost::system::error_code error_code;
-  if (!fs::exists(config_file_path_.parent_path(), error_code)) {
-    if (!fs::create_directories(config_file_path_.parent_path(), error_code) || error_code) {
-      LOG(kError) << "Failed to create directories for config file " << config_file_path_ << ": "
-                  << error_code.message();
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
-    }
-  }
-
-  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-    LOG(kError) << "Failed to create config file " << config_file_path_;
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
-  }
-  LOG(kInfo) << "Created config file " << config_file_path_;
-}
-
-void VaultManager::ReadConfigFileAndStartVaults() {
-  NonEmptyString content{ ReadFile(config_file_path_) };
-
-  protobuf::VaultManagerConfig config;
-  if (!config.ParseFromString(content.string())) {
-    LOG(kError) << "Failed to parse config file " << config_file_path_;
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
-  }
-
-  symm_key_ = crypto::AES256Key{ config.aes256key() };
-  symm_iv_ = crypto::AES256InitialisationVector{ config.aes256iv() };
-
-  if (config.vault_info_size()) {
-    for (int i(0); i != config.vault_info_size(); ++i) {
-      VaultInfo vault_info;
-      FromProtobuf(symm_key_, symm_iv_, config.vault_info(i), vault_info);
-      SetExecutablePath(vault_executable_path_, vault_info);
-      process_manager_.AddProcess(std::move(vault_info));
-    }
-  } else {
-    // If the config file is empty
-    VaultInfo vault_info;
-    vault_info.chunkstore_path = GetDefaultChunkstorePath();
-    SetExecutablePath(vault_executable_path_, vault_info);
-    process_manager_.AddProcess(std::move(vault_info));
-  }
-}
-
-void VaultManager::WriteConfigFile() const {
-  protobuf::VaultManagerConfig config;
-  config.set_aes256key(symm_key_.string());
-  config.set_aes256iv(symm_iv_.string());
-  process_manager_.AddVaultsDetailsToConfig(symm_key_, symm_iv_, config);
-
-  if (!WriteFile(config_file_path_, config.SerializeAsString())) {
-    LOG(kError) << "Failed to write config file " << config_file_path_;
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::filesystem_io_error));
-  }
 }
 
 void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
@@ -240,10 +187,14 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
   }
 }
 
-void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& request,
-                                      std::string& response) {
+void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& request) {
   protobuf::VaultStarted vault_started_message{ Parse<protobuf::VaultStarted>(request) };
-  process_manager_.HandleNewConnection(connection, { vault_started_message.process_id() });
+
+  process_manager_.HandleNewConnection(connection, { vault_started_message.process_id() },
+      config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
+      routing::ReadBootstrapFile(kBootstrapFilePath_));
+
+  config_file_handler_.WriteConfigFile(process_manager_);
 }
 
 /*

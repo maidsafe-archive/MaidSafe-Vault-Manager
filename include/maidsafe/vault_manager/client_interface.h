@@ -34,7 +34,8 @@
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
-#include "maidsafe/passport/types.h"
+#include "maidsafe/common/types.h"
+#include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 namespace maidsafe {
@@ -50,11 +51,13 @@ class ClientInterface {
 
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
-  std::future<passport::Pmid::Name> StartVault(const std::string& label,
-                                               const boost::filesystem::path& chunkstore);
+  std::future<passport::PmidAndSigner> StartVault(const std::string& label,
+                                                  const boost::filesystem::path& chunkstore,
+                                                  DiskUsage max_disk_usage);
 
-  std::future<passport::Pmid::Name> TakeOwnership(const std::string& label,
-                                                  const boost::filesystem::path& chunkstore);
+  std::future<passport::PmidAndSigner> TakeOwnership(const std::string& label,
+                                                     const boost::filesystem::path& chunkstore,
+                                                     DiskUsage max_disk_usage);
 
 #ifdef TESTING
   static void SetTestEnvironmentVariables(
