@@ -137,7 +137,7 @@ void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId 
   SendVaultStartedResponse(*itr, symm_key, symm_iv, bootstrap_contacts);
 }
 
-void ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
+void ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {
 
 }
 

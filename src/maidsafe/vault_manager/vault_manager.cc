@@ -91,9 +91,9 @@ ProtobufMessage Parse(const std::string& serialised_message) {
 }  // unnamed namespace
 
 VaultManager::VaultManager()
-    : config_file_handler_(GetConfigFilePath()),
-      kVaultExecutablePath_(GetVaultExecutablePath()),
+    : kVaultExecutablePath_(GetVaultExecutablePath()),
       kBootstrapFilePath_(GetBootstrapFilePath()),
+      config_file_handler_(GetConfigFilePath()),
       listener_([this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialLocalPort()),
       process_manager_(),
@@ -573,7 +573,7 @@ void VaultManager::SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_na
 
   request_transport->on_message_received().connect([this, callback](
       const std::string & message,
-      Port /*vault_manager_port*//*) { HandleVaultJoinConfirmationAck(message, callback); });
+      Port vault_manager_port) { HandleVaultJoinConfirmationAck(message, callback); });
   request_transport->on_error().connect([this, callback](const int & error) {
     LOG(kError) << "Transport reported error code " << error;
     callback(false);
@@ -686,7 +686,6 @@ void VaultManager::StopAllVaults() {
   });
 }
 
-/*
 //  void VaultManager::EraseVault(const std::string& account_name) {
 //    if (index < static_cast<int32_t>(processes_.size())) {
 //      auto itr(processes_.begin() + (index - 1));
@@ -729,7 +728,7 @@ void VaultManager::StopAllVaults() {
 //
 //    return 0;
 //  }
-*//*
+
 
 bool VaultManager::ObtainBootstrapInformation(protobuf::VaultManagerConfig& config) {
   protobuf::Bootstrap* bootstrap_list(config.mutable_bootstrap_endpoints());

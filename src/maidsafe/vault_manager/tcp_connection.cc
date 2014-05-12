@@ -156,7 +156,7 @@ void TcpConnection::ReadData() {
 }
 
 void TcpConnection::Send(std::string data) {
-  SendingMessage message{ EncodeData(std::move(data)) };
+  SendingMessage message(EncodeData(std::move(data)));
   io_service_.post([this, message] {
     bool currently_sending{ !send_queue_.empty() };
     send_queue_.emplace_back(std::move(message));
