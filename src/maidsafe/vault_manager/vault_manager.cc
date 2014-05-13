@@ -239,6 +239,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
   passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
   protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(message) };
   VaultInfo vault_info;
+  vault_info.label = NonEmptyString{ start_vault_message.label() };
   vault_info.chunkstore_path = start_vault_message.chunkstore_path();
   vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
   vault_info.owner_name = client_name;
@@ -249,9 +250,15 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
 
 void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
                                               const std::string& message) {
+  passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
   protobuf::TakeOwnershipRequest take_ownership_request{
       Parse<protobuf::TakeOwnershipRequest>(message) };
-
+  VaultInfo vault_info;
+  vault_info.label = NonEmptyString{ take_ownership_request.label() };
+  vault_info.chunkstore_path = take_ownership_request.chunkstore_path();
+  vault_info.max_disk_usage = DiskUsage{ take_ownership_request.max_disk_usage() };
+  vault_info.owner_name = client_name;
+  process_manager_.AssignOwner(connection, std::move(vault_info));
   config_file_handler_.WriteConfigFile(process_manager_);
 }
 

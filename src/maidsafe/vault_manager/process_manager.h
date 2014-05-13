@@ -27,6 +27,8 @@
 #include "boost/process/child.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/types.h"
+#include "maidsafe/passport/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -50,10 +52,14 @@ class ProcessManager {
                                 protobuf::VaultManagerConfig& config) const;
   // Provides strong exception guarantee.
   void AddProcess(VaultInfo vault_info);
-  // Provides strong exception guarantee.
-  void HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
-                           crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
-                           const routing::BootstrapContacts& bootstrap_contacts);
+  // Provides strong exception guarantee.  Returns the owner name, which could be uninitialised if
+  // the vault is unowned.
+  passport::PublicMaid::Name HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
+      crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
+      const routing::BootstrapContacts& bootstrap_contacts);
+  // Provides strong exception guarantee.  Restarts vault if 'vault_info.chunkstore_path' is
+  // different from current one.
+  void AssignOwner(TcpConnectionPtr client_connection, VaultInfo vault_info);
   bool HandleConnectionClosed(TcpConnectionPtr connection);
 
  private:

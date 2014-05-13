@@ -26,25 +26,11 @@
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.h"
 
+namespace fs = boost::filesystem;
+
 namespace maidsafe {
 
 namespace vault_manager {
-
-namespace {
-
-void SetVaultKeys(const passport::PmidAndSigner& pmid_and_signer,
-                  protobuf::VaultKeys* proto_vault_keys) {
-  crypto::AES256Key symm_key{ RandomString(crypto::AES256_KeySize) };
-  crypto::AES256InitialisationVector symm_iv{ RandomString(crypto::AES256_IVSize) };
-  proto_vault_keys->set_aes256key(symm_key.string());
-  proto_vault_keys->set_aes256iv(symm_iv.string());
-  proto_vault_keys->set_encrypted_anpmid(
-      passport::EncryptAnpmid(pmid_and_signer.second, symm_key, symm_iv)->string());
-  proto_vault_keys->set_encrypted_pmid(
-      passport::EncryptPmid(pmid_and_signer.first, symm_key, symm_iv)->string());
-}
-
-}  // unnamed namespace
 
 void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challenge) {
   protobuf::Challenge message;
@@ -63,49 +49,47 @@ void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMa
                    MessageType::kChallengeResponse)));
 }
 
-void SendStartVaultRequest(TcpConnectionPtr connection,
-                           const boost::filesystem::path& chunkstore_path,
-                           DiskUsage max_disk_usage) {
+void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                           const fs::path& chunkstore_path, DiskUsage max_disk_usage) {
   protobuf::StartVaultRequest message;
+  message.set_label(vault_label.string());
   message.set_chunkstore_path(chunkstore_path.string());
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kStartVaultRequest)));
 }
 
-void SendStartVaultResponse(TcpConnectionPtr connection,
-                            const passport::PmidAndSigner& pmid_and_signer,
-                            const maidsafe_error* const error) {
-  protobuf::StartVaultResponse message;
-  if (error)
-    message.set_serialised_maidsafe_error(Serialise(*error).data);
-  else
-    SetVaultKeys(pmid_and_signer, message.mutable_vault_keys());
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                   MessageType::kStartVaultResponse)));
-}
-
-void SendTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& vault_label,
-                              const boost::filesystem::path& chunkstore_path,
-                              DiskUsage max_disk_usage) {
+void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                              const fs::path& chunkstore_path, DiskUsage max_disk_usage) {
   protobuf::TakeOwnershipRequest message;
-  message.set_label(vault_label);
+  message.set_label(vault_label.string());
   message.set_chunkstore_path(chunkstore_path.string());
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kTakeOwnershipRequest)));
 }
 
-void SendTakeOwnershipResponse(TcpConnectionPtr connection,
-                               const passport::PmidAndSigner& pmid_and_signer,
-                               const maidsafe_error* const error) {
-  protobuf::TakeOwnershipResponse message;
-  if (error)
+void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                              const passport::PmidAndSigner* const pmid_and_signer,
+                              const maidsafe_error* const error) {
+  protobuf::VaultRunningResponse message;
+  if (error) {
+    assert(!pmid_and_signer);
     message.set_serialised_maidsafe_error(Serialise(*error).data);
-  else
-    SetVaultKeys(pmid_and_signer, message.mutable_vault_keys());
+  } else {
+    assert(pmid_and_signer);
+    message.mutable_vault_keys()->set_label(vault_label.string());
+    crypto::AES256Key symm_key{ RandomString(crypto::AES256_KeySize) };
+    crypto::AES256InitialisationVector symm_iv{ RandomString(crypto::AES256_IVSize) };
+    message.mutable_vault_keys()->set_aes256key(symm_key.string());
+    message.mutable_vault_keys()->set_aes256iv(symm_iv.string());
+    message.mutable_vault_keys()->set_encrypted_anpmid(
+        passport::EncryptAnpmid(pmid_and_signer->second, symm_key, symm_iv)->string());
+    message.mutable_vault_keys()->set_encrypted_pmid(
+        passport::EncryptPmid(pmid_and_signer->first, symm_key, symm_iv)->string());
+  }
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                   MessageType::kTakeOwnershipResponse)));
+                   MessageType::kVaultRunningResponse)));
 }
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,

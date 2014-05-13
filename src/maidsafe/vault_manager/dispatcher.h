@@ -42,21 +42,17 @@ void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challeng
 void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMaid& public_maid,
                            const asymm::Signature& signature);
 
-void SendStartVaultRequest(TcpConnectionPtr connection,
+void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& chunkstore_path,
                            DiskUsage max_disk_usage);
 
-void SendStartVaultResponse(TcpConnectionPtr connection,
-                            const passport::PmidAndSigner& pmid_and_signer,
-                            const maidsafe_error* const error = nullptr);
-
-void SendTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& vault_label,
+void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
                               const boost::filesystem::path& chunkstore_path,
                               DiskUsage max_disk_usage);
 
-void SendTakeOwnershipResponse(TcpConnectionPtr connection,
-                               const passport::PmidAndSigner& pmid_and_signer,
-                               const maidsafe_error* const error = nullptr);
+void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                              const passport::PmidAndSigner* const pmid_and_signer,
+                              const maidsafe_error* const error = nullptr);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,

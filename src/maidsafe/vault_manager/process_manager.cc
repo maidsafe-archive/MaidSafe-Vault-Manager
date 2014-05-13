@@ -120,10 +120,9 @@ void ProcessManager::AddProcess(VaultInfo vault_info) {
   strong_guarantee.Release();
 }
 
-void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
-                                         crypto::AES256Key symm_key,
-                                         crypto::AES256InitialisationVector symm_iv,
-                                         const routing::BootstrapContacts& bootstrap_contacts) {
+passport::PublicMaid::Name ProcessManager::HandleNewConnection(TcpConnectionPtr connection,
+    ProcessId process_id, crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
+    const routing::BootstrapContacts& bootstrap_contacts) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, process_id](const VaultInfo& vault) {
@@ -135,6 +134,19 @@ void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId 
   }
   itr->tcp_connection = connection;
   SendVaultStartedResponse(*itr, symm_key, symm_iv, bootstrap_contacts);
+  return itr->owner_name;
+}
+
+void ProcessManager::AssignOwner(TcpConnectionPtr client_connection, VaultInfo vault_info) {
+  find vault info
+  if chunkstore path is non - empty or is different, stop vault and restart - don't send response - it will go when HandleNewConnection is called
+    return false
+  if max_usage > 0, send request to vault
+  return true;
+  // If this returns true, we can notify the client of the success.  If it returned false, the
+  // vault has been restarted and the client will be notified when the vault re-establishes an
+  // IPC connection.
+  SendVaultRunningResponse(connection, vault_label, );
 }
 
 bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {

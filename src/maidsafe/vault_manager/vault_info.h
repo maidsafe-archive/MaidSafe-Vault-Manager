@@ -46,7 +46,7 @@ struct VaultInfo {
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   bool joined_network;
-  std::string label;
+  NonEmptyString label;
   boost::process::child process;
   std::vector<std::string> process_args;
   bool stop_process;

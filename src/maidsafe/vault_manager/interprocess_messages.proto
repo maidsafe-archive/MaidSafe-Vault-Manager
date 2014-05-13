@@ -41,21 +41,9 @@ message ChallengeResponse {
 // VaultManager starts a vault.  The new vault will send a VaultStarted to the VaultManager which
 // will trigger the StartVaultResponse in reply this message.
 message StartVaultRequest {
-  required bytes chunkstore_path = 1;
-  required uint64 max_disk_usage = 2;
-}
-
-message VaultKeys {
-  required bytes AES256Key = 1;
-  required bytes AES256IV = 2;
-  required bytes encrypted_anpmid = 3;
-  required bytes encrypted_pmid = 4;
-}
-
-// VaultManager to Client
-message StartVaultResponse {
-  optional bytes serialised_maidsafe_error = 1;
-  optional VaultKeys vault_keys = 2;
+  required bytes label = 1;
+  required bytes chunkstore_path = 2;
+  required uint64 max_disk_usage = 3;
 }
 
 // Client to VaultManager
@@ -66,7 +54,14 @@ message TakeOwnershipRequest {
 }
 
 // VaultManager to Client
-message TakeOwnershipResponse {
+message VaultRunningResponse {
+  message VaultKeys {
+    required bytes label = 1;
+    required bytes AES256Key = 2;
+    required bytes AES256IV = 3;
+    required bytes encrypted_anpmid = 4;
+    required bytes encrypted_pmid = 5;
+  }
   optional bytes serialised_maidsafe_error = 1;
   optional VaultKeys vault_keys = 2;
 }
