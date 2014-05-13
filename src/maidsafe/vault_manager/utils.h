@@ -19,10 +19,13 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_UTILS_H_
 #define MAIDSAFE_VAULT_MANAGER_UTILS_H_
 
+#include <future>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "boost/asio/steady_timer.hpp"
+#include "boost/asio/error.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"
@@ -37,6 +40,33 @@ namespace vault_manager {
 class LocalTcpTransport;
 struct VaultInfo;
 namespace protobuf { class VaultInfo; }
+
+template <typename ResultType>
+struct PromiseAndTimer {
+  PromiseAndTimer(boost::asio::io_service& io_service);
+  std::future<ResultType> AddRequest();
+  void AddResponse(const ResultType& result);
+
+  bool promise_set;
+  std::promise<ResultType> promise;
+  boost::asio::steady_timer timer;
+};
+
+template <typename ResultType>
+PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service)
+    : promise(),
+      timer(io_service, std::chrono::seconds(10)) {}
+
+template <typename ResultType>
+std::future<ResultType> PromiseAndTimer<ResultType>::AddRequest() {
+  timer.expires_from_now(std::chrono::seconds(10));
+  timer.async_wait([this](boost::system::error_code error_code) {
+                     std::cout << "async_wait called " << error_code.message() << std::endl;
+                     if (!error_code)
+                       promise.set_exception(std::make_exception_ptr(error_code));
+                   });
+  return promise.get_future();
+}
 
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info);

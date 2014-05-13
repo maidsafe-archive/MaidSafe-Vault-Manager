@@ -47,8 +47,8 @@ class VaultInterface {
 
   void GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
                    routing::BootstrapContacts& bootstrap_endpoints);
-  void ConfirmJoin();
-  bool SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
+//  void ConfirmJoin();
+  void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
 
  private:
   VaultInterface(const VaultInterface&) = delete;
@@ -65,8 +65,10 @@ class VaultInterface {
   //void HandleBootstrapResponse(const std::string& message,
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
+  void HandleReceivedMessage(const std::string& wrapped_message);
 
-  AsioService& asio_service_;
+  AsioService asio_service_;
+  std::function<void()> stop_callback_;
   std::unique_ptr<TcpConnection> tcp_connection_;
 };
 

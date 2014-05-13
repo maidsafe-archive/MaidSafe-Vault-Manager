@@ -27,14 +27,16 @@
 //#include "maidsafe/common/config.h"
 //#include "maidsafe/common/error.h"
 //#include "maidsafe/common/log.h"
-//#include "maidsafe/common/utils.h"
+#include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/utils.h"
 //
 //#include "maidsafe/passport/types.h"
 //#include "maidsafe/passport/passport.h"
 //#include "maidsafe/vault_manager/controller_messages.pb.h"
 //#include "maidsafe/vault_manager/local_tcp_transport.h"
 //#include "maidsafe/vault_manager/return_codes.h"
-//#include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/utils.h"
 //#include "maidsafe/vault_manager/vault_manager.h"
 
 namespace fs = boost::filesystem;
@@ -53,6 +55,43 @@ namespace {
 //}
 
 }  // namespace
+
+
+VaultInterface::VaultInterface(std::function<void()> stop_callback)
+    : asio_service_(1),
+      stop_callback_(stop_callback),
+      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
+                                                           [this](std::string message) {
+                                                             HandleReceivedMessage(message);
+                                                           },
+                                                           [this]() {
+                                                              // FIXME
+                                                           },
+                                                           kLivePort)) {}
+
+
+
+VaultInterface::~VaultInterface() {}
+
+
+
+
+
+void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
+  try {
+    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
+    LOG(kVerbose) << "Received " << message_and_type.second;
+    switch (message_and_type.second) {
+      default:
+        return;
+    }
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
+  }
+}
+
+
 
 //typedef std::function<void()> VoidFunction;
 //typedef std::function<void(bool)> VoidFunctionBoolParam;

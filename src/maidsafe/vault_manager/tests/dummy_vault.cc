@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     std::string vault_manager_id = variables_map["vmid"].as<std::string>();
     if (!variables_map.count("nocontroller")) {
       LOG(kInfo) << "dummy_vault: Starting VaultInterface: " << usr_id;
-      //maidsafe::vault_manager::VaultInterface vault_interface(usr_id, [&] { StopHandler(); });
+      maidsafe::vault_manager::VaultInterface vault_interface([&] { StopHandler(); });
       //std::unique_ptr<maidsafe::passport::Pmid> pmid;
       //std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
       //vault_interface.GetIdentity(pmid, bootstrap_endpoints);

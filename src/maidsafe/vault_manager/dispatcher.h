@@ -24,6 +24,7 @@
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/process.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
@@ -53,6 +54,8 @@ void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString&
 void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString& vault_label,
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error = nullptr);
+
+void SendVaultStarted(process::ProcessId process_id);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,

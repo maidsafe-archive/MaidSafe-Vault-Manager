@@ -49,10 +49,10 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-ClientInterface::ClientInterface(const passport::Maid& maid, AsioService& asio_service)
+ClientInterface::ClientInterface(const passport::Maid& maid)
     : maid_(maid),
-      asio_service_(asio_service),
-      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service,
+      asio_service_(1),
+      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
                                                            [this](std::string message) {
                                                              HandleReceivedMessage(message);
                                                            },
@@ -62,12 +62,21 @@ ClientInterface::ClientInterface(const passport::Maid& maid, AsioService& asio_s
                                                            kLivePort)) {}
 
 
+
+std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
+  bootstrap_contacts_promise_and_timer_ =
+      maidsafe::make_unique<PromiseAndTimer<routing::BootstrapContacts>>(asio_service_.service());
+  return bootstrap_contacts_promise_and_timer_->AddRequest();
+}
+
+
+
 void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
     LOG(kVerbose) << "Received " << message_and_type.second;
     switch (message_and_type.second) {
-      case MessageType::kTakeOwnershipResponse:
+      case MessageType::kVaultRunningResponse:
 //        HandleTakeOwnershipResponse(message_and_type.first);
         break;
       default:
@@ -489,7 +498,7 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
 //      boost::asio::ip::udp::endpoint endpoint;
 //      endpoint.address(
 //          boost::asio::ip::address::from_string(bootstrap_response.bootstrap_endpoint_ip(i)));
-//      endpoint.port(static_cast<unsigned short>( 
+//      endpoint.port(static_cast<unsigned short>(
 //          bootstrap_response.bootstrap_endpoint_port(i)));
 //      bootstrap_endpoints.push_back(endpoint);
 //    }

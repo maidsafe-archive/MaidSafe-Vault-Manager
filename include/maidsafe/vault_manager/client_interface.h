@@ -38,6 +38,8 @@
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/vault_manager/utils.h"
+
 namespace maidsafe {
 
 namespace vault_manager {
@@ -46,7 +48,7 @@ class TcpConnection;
 
 class ClientInterface {
  public:
-  ClientInterface(const passport::Maid& maid, AsioService& asio_service);
+  explicit ClientInterface(const passport::Maid& maid);
   ~ClientInterface();
 
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
@@ -98,8 +100,9 @@ class ClientInterface {
   void HandleReceivedMessage(const std::string& wrapped_message);
 
   passport::Maid maid_;
-  AsioService& asio_service_;
+  AsioService asio_service_;
   std::unique_ptr<TcpConnection> tcp_connection_;
+  std::unique_ptr<PromiseAndTimer<routing::BootstrapContacts>> bootstrap_contacts_promise_and_timer_;
 };
 
 }  // namespace vault_manager
