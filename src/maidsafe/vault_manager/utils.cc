@@ -56,7 +56,9 @@ int g_identity_index(0);
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info) {
   protobuf_vault_info->set_pmid(
-      passport::EncryptPmid(*vault_info.pmid, symm_key, symm_iv)->string());
+      passport::EncryptPmid(vault_info.pmid_and_signer->first, symm_key, symm_iv)->string());
+  protobuf_vault_info->set_anpmid(
+      passport::EncryptAnpmid(vault_info.pmid_and_signer->second, symm_key, symm_iv)->string());
   protobuf_vault_info->set_chunkstore_path(vault_info.chunkstore_path.string());
   protobuf_vault_info->set_label(vault_info.label.string());
   if (vault_info.max_disk_usage != 0U)
@@ -67,8 +69,11 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
 
 void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                   const protobuf::VaultInfo& protobuf_vault_info, VaultInfo& vault_info) {
-  vault_info.pmid = make_unique<passport::Pmid>(passport::DecryptPmid(
-      crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv));
+  vault_info.pmid_and_signer = maidsafe::make_unique<passport::PmidAndSigner>(std::make_pair(
+    passport::DecryptPmid(
+        crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv),
+    passport::DecryptAnpmid(
+        crypto::CipherText{ NonEmptyString{ protobuf_vault_info.anpmid() } }, symm_key, symm_iv)));
   vault_info.chunkstore_path = protobuf_vault_info.chunkstore_path();
   vault_info.label = NonEmptyString{ protobuf_vault_info.label() };
   if (protobuf_vault_info.has_max_disk_usage())

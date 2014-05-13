@@ -20,10 +20,11 @@ package maidsafe.vault_manager.protobuf;
 
 message VaultInfo {
   required bytes pmid = 1;
-  required bytes chunkstore_path = 2;
-  required bytes label = 3;
-  optional uint64 max_disk_usage = 4;
-  optional bytes owner_name = 5;
+  required bytes anpmid = 2;
+  required bytes chunkstore_path = 3;
+  required bytes label = 4;
+  optional uint64 max_disk_usage = 5;
+  optional bytes owner_name = 6;
 }
 
 message VaultManagerConfig {

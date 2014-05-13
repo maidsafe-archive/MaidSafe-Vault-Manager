@@ -236,37 +236,61 @@ void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
 
 void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
                                            const std::string& message) {
-  passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
-  protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(message) };
+  maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
-  vault_info.label = NonEmptyString{ start_vault_message.label() };
-  vault_info.chunkstore_path = start_vault_message.chunkstore_path();
-  vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
-  vault_info.owner_name = client_name;
-  SetExecutablePath(kVaultExecutablePath_, vault_info);
-  process_manager_.AddProcess(std::move(vault_info));
-  config_file_handler_.WriteConfigFile(process_manager_);
+  try {
+    passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
+    protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(message) };
+    vault_info.label = NonEmptyString{ start_vault_message.label() };
+    vault_info.chunkstore_path = start_vault_message.chunkstore_path();
+    vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
+    vault_info.owner_name = client_name;
+    SetExecutablePath(kVaultExecutablePath_, vault_info);
+    process_manager_.AddProcess(std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_);
+    return;
+  }
+  catch (const maidsafe_error& e) {
+    LOG(kWarning) << e.what();
+    error = e;
+  }
+  catch (const std::exception& e) {
+    LOG(kWarning) << e.what();
+  }
+  SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
 void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
                                               const std::string& message) {
-  passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
-  protobuf::TakeOwnershipRequest take_ownership_request{
-      Parse<protobuf::TakeOwnershipRequest>(message) };
+  maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
-  vault_info.label = NonEmptyString{ take_ownership_request.label() };
-  vault_info.chunkstore_path = take_ownership_request.chunkstore_path();
-  vault_info.max_disk_usage = DiskUsage{ take_ownership_request.max_disk_usage() };
-  vault_info.owner_name = client_name;
-  process_manager_.AssignOwner(connection, std::move(vault_info));
-  config_file_handler_.WriteConfigFile(process_manager_);
+  try {
+    passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
+    protobuf::TakeOwnershipRequest take_ownership_request{
+        Parse<protobuf::TakeOwnershipRequest>(message) };
+    vault_info.label = NonEmptyString{ take_ownership_request.label() };
+    vault_info.chunkstore_path = take_ownership_request.chunkstore_path();
+    vault_info.max_disk_usage = DiskUsage{ take_ownership_request.max_disk_usage() };
+    vault_info.owner_name = client_name;
+    process_manager_.AssignOwner(connection, std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_);
+    return;
+  }
+  catch (const maidsafe_error& e) {
+    LOG(kWarning) << e.what();
+    error = e;
+  }
+  catch (const std::exception& e) {
+    LOG(kWarning) << e.what();
+  }
+  SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ Parse<protobuf::VaultStarted>(message) };
 
-  process_manager_.HandleNewConnection(connection, { vault_started.process_id() },
+  process_manager_.HandleVaultStarted(connection, { vault_started.process_id() },
       config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
       routing::ReadBootstrapFile(kBootstrapFilePath_));
 

@@ -113,14 +113,23 @@ void ProcessManager::AddProcess(VaultInfo vault_info) {
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
   std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, &vault_info](const VaultInfo& vault) {
+                          return vault.label == vault_info.label;
+                        }));
+  if (itr != std::end(vaults_)) {
+    LOG(kError) << "Vault process with label " << vault_info.label.string() << " already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
   // emplace offers strong exception guarantee - only need to cover subsequent calls.
-  auto itr(vaults_.emplace(std::end(vaults_), std::move(vault_info)));
+  itr = vaults_.emplace(std::end(vaults_), std::move(vault_info));
   on_scope_exit strong_guarantee{ [this, itr] { vaults_.erase(itr); } };
   StartProcess(itr);
   strong_guarantee.Release();
 }
 
-passport::PublicMaid::Name ProcessManager::HandleNewConnection(TcpConnectionPtr connection,
+passport::PublicMaid::Name ProcessManager::HandleVaultStarted(TcpConnectionPtr connection,
     ProcessId process_id, crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
     const routing::BootstrapContacts& bootstrap_contacts) {
   std::lock_guard<std::mutex> lock{ mutex_ };
@@ -138,19 +147,35 @@ passport::PublicMaid::Name ProcessManager::HandleNewConnection(TcpConnectionPtr 
 }
 
 void ProcessManager::AssignOwner(TcpConnectionPtr client_connection, VaultInfo vault_info) {
-  find vault info
-  if chunkstore path is non - empty or is different, stop vault and restart - don't send response - it will go when HandleNewConnection is called
-    return false
-  if max_usage > 0, send request to vault
-  return true;
-  // If this returns true, we can notify the client of the success.  If it returned false, the
-  // vault has been restarted and the client will be notified when the vault re-establishes an
-  // IPC connection.
-  SendVaultRunningResponse(connection, vault_label, );
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, &vault_info](const VaultInfo& vault) {
+                          return vault.label == vault_info.label;
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Vault process with label " << vault_info.label.string() << " doesn't exist.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+
+  if (vault_info.chunkstore_path != itr->chunkstore_path) {
+    // TODO(Fraser#5#): 2014-05-13 - Handle sending a "MoveChunkstoreRequest" to avoid stopping then
+    //                               restarting the vault.
+    SendVaultShutdownRequest(itr->tcp_connection);
+    itr->chunkstore_path = vault_info.chunkstore_path;
+    itr->max_disk_usage = vault_info.max_disk_usage;
+    return;
+  }
+
+  if (vault_info.max_disk_usage != itr->max_disk_usage && vault_info.max_disk_usage != 0U) {
+    SendMaxDiskUsageUpdate(itr->tcp_connection, vault_info.max_disk_usage);
+    itr->max_disk_usage = vault_info.max_disk_usage;
+  }
+
+  SendVaultRunningResponse(client_connection, vault_info.label, itr->pmid_and_signer.get());
 }
 
 bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {
-  return false;
+                                                                                            return false;
 }
 
 void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {

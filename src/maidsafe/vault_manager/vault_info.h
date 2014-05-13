@@ -28,7 +28,7 @@
 #include "boost/process/child.hpp"
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/passport/types.h"
+#include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/config.h"
 
@@ -41,7 +41,7 @@ struct VaultInfo {
   VaultInfo(VaultInfo&& other);
   VaultInfo& operator=(VaultInfo other);
 
-  std::unique_ptr<passport::Pmid> pmid;
+  std::unique_ptr<passport::PmidAndSigner> pmid_and_signer;
   boost::filesystem::path chunkstore_path;
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;

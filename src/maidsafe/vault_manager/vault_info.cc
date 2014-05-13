@@ -25,7 +25,7 @@ namespace maidsafe {
 namespace vault_manager {
 
 VaultInfo::VaultInfo()
-    : pmid(),
+    : pmid_and_signer(),
       chunkstore_path(),
       max_disk_usage(0),
       owner_name(),
@@ -44,7 +44,7 @@ VaultInfo::VaultInfo()
 #endif
 
 VaultInfo::VaultInfo(VaultInfo&& other)
-    : pmid(std::move(other.pmid)),
+    : pmid_and_signer(std::move(other.pmid_and_signer)),
       chunkstore_path(std::move(other.chunkstore_path)),
       max_disk_usage(std::move(other.max_disk_usage)),
       owner_name(std::move(other.owner_name)),
@@ -65,7 +65,7 @@ VaultInfo& VaultInfo::operator=(VaultInfo other) {
 
 void swap(VaultInfo& lhs, VaultInfo& rhs){
   using std::swap;
-  swap(lhs.pmid, rhs.pmid);
+  swap(lhs.pmid_and_signer, rhs.pmid_and_signer);
   swap(lhs.chunkstore_path, rhs.chunkstore_path);
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
   swap(lhs.owner_name, rhs.owner_name);

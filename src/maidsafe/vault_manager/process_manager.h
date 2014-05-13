@@ -54,7 +54,7 @@ class ProcessManager {
   void AddProcess(VaultInfo vault_info);
   // Provides strong exception guarantee.  Returns the owner name, which could be uninitialised if
   // the vault is unowned.
-  passport::PublicMaid::Name HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
+  passport::PublicMaid::Name HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id,
       crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
       const routing::BootstrapContacts& bootstrap_contacts);
   // Provides strong exception guarantee.  Restarts vault if 'vault_info.chunkstore_path' is

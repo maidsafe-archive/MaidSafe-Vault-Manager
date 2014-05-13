@@ -31,7 +31,7 @@
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
-#include "maidsafe/passport/types.h"
+#include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 namespace maidsafe {
