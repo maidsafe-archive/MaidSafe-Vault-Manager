@@ -25,16 +25,6 @@ message WrapperMessage {
   optional bytes message_signature = 3;
 }
 
-message ReturnCode {
-  required int32 error_value = 1;
-  required bytes error_category_name = 2;
-}
-
-// Client to VaultManager
-message ValidateConnectionRequest {
-  required bytes public_maid = 1;
-}
-
 // VaultManager to Client
 message Challenge {
   required bytes plaintext = 1;
@@ -42,10 +32,10 @@ message Challenge {
 
 // Client to VaultManager
 message ChallengeResponse {
-  required bytes signature = 1;
+  required bytes public_maid_name = 1;
+  required bytes public_maid_value = 2;
+  required bytes signature = 3;
 }
-
-
 
 // Client to VaultManager
 // VaultManager starts a vault.  The new vault will send a VaultStarted to the VaultManager which
@@ -55,11 +45,17 @@ message StartVaultRequest {
   required uint64 max_disk_usage = 2;
 }
 
+message VaultKeys {
+  required bytes AES256Key = 1;
+  required bytes AES256IV = 2;
+  required bytes encrypted_anpmid = 3;
+  required bytes encrypted_pmid = 4;
+}
+
 // VaultManager to Client
 message StartVaultResponse {
-  optional ReturnCode return_code = 1;
-  optional bytes serialised_anpmid = 2;
-  optional bytes serialised_pmid = 3;
+  optional bytes serialised_maidsafe_error = 1;
+  optional VaultKeys vault_keys = 2;
 }
 
 // Client to VaultManager
@@ -71,9 +67,8 @@ message TakeOwnershipRequest {
 
 // VaultManager to Client
 message TakeOwnershipResponse {
-  optional ReturnCode return_code = 1;
-  optional bytes serialised_anpmid = 2;
-  optional bytes serialised_pmid = 3;
+  optional bytes serialised_maidsafe_error = 1;
+  optional VaultKeys vault_keys = 2;
 }
 
 // Vault to VaultManager

@@ -72,7 +72,7 @@ TcpConnection::TcpConnection(AsioService& asio_service,
   try {
     socket_.connect(ip::tcp::endpoint(ip::address_v6::loopback(), remote_port));
     if (!socket_.is_open())
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
+      BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
     is_open_ = true;
   }
   catch (const boost::system::system_error& error) {
@@ -187,7 +187,7 @@ void TcpConnection::DoSend() {
 
 TcpConnection::SendingMessage TcpConnection::EncodeData(std::string data) const {
   if (data.size() > MaxMessageSize())
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_string_size));
+    BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::ipc_message_too_large));
 
   SendingMessage message;
   for (int i = 0; i != 4; ++i)

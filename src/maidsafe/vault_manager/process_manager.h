@@ -54,7 +54,7 @@ class ProcessManager {
   void HandleNewConnection(TcpConnectionPtr connection, ProcessId process_id,
                            crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                            const routing::BootstrapContacts& bootstrap_contacts);
-  void HandleConnectionClosed(TcpConnectionPtr connection);
+  bool HandleConnectionClosed(TcpConnectionPtr connection);
 
  private:
   ProcessManager(const ProcessManager&) = delete;

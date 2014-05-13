@@ -137,8 +137,8 @@ void ProcessManager::HandleNewConnection(TcpConnectionPtr connection, ProcessId 
   SendVaultStartedResponse(*itr, symm_key, symm_iv, bootstrap_contacts);
 }
 
-void ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {
-
+bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {
+  return false;
 }
 
 void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {

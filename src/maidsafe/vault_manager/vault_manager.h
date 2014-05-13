@@ -25,6 +25,7 @@
 //#include <functional>
 //#include <map>
 #include <memory>
+#include <set>
 //#include <string>
 //#include <utility>
 //#include <vector>
@@ -34,6 +35,7 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/passport/types.h"
 
+#include "maidsafe/vault_manager/client_connections.h"
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/config_file_handler.h"
 #include "maidsafe/vault_manager/process_manager.h"
@@ -64,13 +66,19 @@ class VaultManager {
   VaultManager operator=(VaultManager) = delete;
 
   void HandleNewConnection(TcpConnectionPtr connection);
+  void HandleConnectionClosed(TcpConnectionPtr connection);
   void HandleReceivedMessage(TcpConnectionPtr connection, const std::string& wrapped_message);
 
-  void HandleValidateConnectionRequest(TcpConnectionPtr connection, const std::string& request);
-  void HandleChallengeResponse(TcpConnectionPtr connection, const std::string& request);
-  void HandleStartVaultRequest(TcpConnectionPtr connection, const std::string& request);
-  void HandleTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& request);
-  void HandleVaultStarted(TcpConnectionPtr connection, const std::string& request);
+  // Messages from Client
+  void HandleValidateConnectionRequest(TcpConnectionPtr connection);
+  void HandleChallengeResponse(TcpConnectionPtr connection, const std::string& message);
+  void HandleStartVaultRequest(TcpConnectionPtr connection, const std::string& message);
+  void HandleTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& message);
+
+  // Messages from Vault
+  void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);
+
+  void RemoveFromNewConnections(TcpConnectionPtr connection);
 
 
 
@@ -108,8 +116,10 @@ class VaultManager {
   const boost::filesystem::path kVaultExecutablePath_, kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
   TcpListener listener_;
+  mutable std::mutex new_connections_mutex_;
+  std::set<TcpConnectionPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
   ProcessManager process_manager_;
-  TcpConnectionPtr client_connection_;
+  ClientConnections client_connections_;
 };
 
 }  // namespace vault_manager

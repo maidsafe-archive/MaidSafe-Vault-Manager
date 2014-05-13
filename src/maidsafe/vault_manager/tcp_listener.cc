@@ -52,7 +52,7 @@ TcpListener::TcpListener(NewConnectionFunctor on_new_connection, Port desired_po
   if (!acceptor_.is_open()) {
     LOG(kError) << "Failed to start listening on any port in the range [" << desired_port
                 << ", " << desired_port + attempts << "]";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
+    BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_listen));
   }
 }
 

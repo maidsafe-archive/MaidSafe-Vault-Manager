@@ -20,56 +20,59 @@
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/on_scope_exit.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-void ClientConnections::Add(TcpConnectionPtr connection) {
+void ClientConnections::Add(TcpConnectionPtr connection, const asymm::PlainText& challenge) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  if (!clients_.emplace(connection, MaidName{}).second) {
-    LOG(kError) << "This client TCP connection has already been added.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-  }
+  assert(clients_.find(connection) == std::end(clients_));
+  bool result{ unvalidated_clients_.emplace(connection, challenge).second };
+  assert(result);
+  static_cast<void>(result);
 }
 
-void ClientConnections::Validate(TcpConnectionPtr connection, const asymm::PlainText& plain_text,
-                                 const asymm::Signature& signature,
-                                 const passport::PublicMaid& maid) {
+void ClientConnections::Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
+                                 const asymm::Signature& signature) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  auto itr(clients_.find(connection));
-  if (itr == std::end(clients_)) {
-    LOG(kError) << "Client TCP connection not found.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  auto itr(unvalidated_clients_.find(connection));
+  if (itr == std::end(unvalidated_clients_)) {
+    LOG(kError) << "Unvalidated Client TCP connection not found.";
+    BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
   }
-  if (itr->second->IsInitialised()) {
-    LOG(kError) << "Client TCP connection already validated.";
-    clients_.erase(itr);
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::unable_to_handle_request));
-  }
-  if (!asymm::CheckSignature(plain_text, signature, maid.public_key())) {
+
+  on_scope_exit cleanup{ [this, itr] { unvalidated_clients_.erase(itr); } };
+
+  if (!asymm::CheckSignature(itr->second, signature, maid.public_key())) {
     LOG(kError) << "Client TCP connection validation failed.";
-    clients_.erase(itr);
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
   }
-  itr->second = maid.name();
+
+  bool result{ clients_.emplace(connection, maid.name()).second };
+  assert(result);
+  static_cast<void>(result);
 }
 
-void ClientConnections::Remove(TcpConnectionPtr connection) {
+bool ClientConnections::Remove(TcpConnectionPtr connection) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  if (!clients_.erase(connection))
-    LOG(kWarning) << "Client TCP connection not found.";
+  return clients_.erase(connection) == 1U || unvalidated_clients_.erase(connection) == 1U;
 }
 
 ClientConnections::MaidName ClientConnections::FindValidated(TcpConnectionPtr connection) const {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(clients_.find(connection));
   if (itr == std::end(clients_)) {
-    LOG(kError) << "Client TCP connection not found.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    auto unvalidated_itr(unvalidated_clients_.find(connection));
+    if (unvalidated_itr == std::end(unvalidated_clients_)) {
+      LOG(kError) << "Client TCP connection not found.";
+      BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
+    } else {
+      LOG(kWarning) << "Client TCP connection found, but not yet validated.";
+      BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::unvalidated_client));
+    }
   }
-  if (!itr->second->IsInitialised())
-    LOG(kInfo) << "Client TCP connection found, but not yet validated.";
   return itr->second;
 }
 

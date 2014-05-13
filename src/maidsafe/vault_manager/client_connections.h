@@ -37,14 +37,16 @@ typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 class ClientConnections {
  public:
   typedef passport::PublicMaid::Name MaidName;
-  void Add(TcpConnectionPtr connection);
-  void Validate(TcpConnectionPtr connection, const asymm::PlainText& plain_text,
-                const asymm::Signature& signature, const passport::PublicMaid& maid);
-  void Remove(TcpConnectionPtr connection);
+  void Add(TcpConnectionPtr connection, const asymm::PlainText& challenge);
+  void Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
+                const asymm::Signature& signature);
+  bool Remove(TcpConnectionPtr connection);
   MaidName FindValidated(TcpConnectionPtr connection) const;
 
  private:
   mutable std::mutex mutex_;
+  std::map<TcpConnectionPtr, asymm::PlainText, std::owner_less<TcpConnectionPtr>>
+      unvalidated_clients_;
   std::map<TcpConnectionPtr, MaidName, std::owner_less<TcpConnectionPtr>> clients_;
 };
 

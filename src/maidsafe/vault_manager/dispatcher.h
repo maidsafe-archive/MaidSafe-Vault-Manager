@@ -21,7 +21,12 @@
 
 #include <memory>
 
+#include "boost/filesystem/path.hpp"
+
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/rsa.h"
+#include "maidsafe/common/types.h"
+#include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 namespace maidsafe {
@@ -31,6 +36,27 @@ namespace vault_manager {
 class TcpConnection;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 struct VaultInfo;
+
+void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challenge);
+
+void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMaid& public_maid,
+                           const asymm::Signature& signature);
+
+void SendStartVaultRequest(TcpConnectionPtr connection,
+                           const boost::filesystem::path& chunkstore_path,
+                           DiskUsage max_disk_usage);
+
+void SendStartVaultResponse(TcpConnectionPtr connection,
+                            const passport::PmidAndSigner& pmid_and_signer,
+                            const maidsafe_error* const error = nullptr);
+
+void SendTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& vault_label,
+                              const boost::filesystem::path& chunkstore_path,
+                              DiskUsage max_disk_usage);
+
+void SendTakeOwnershipResponse(TcpConnectionPtr connection,
+                               const passport::PmidAndSigner& pmid_and_signer,
+                               const maidsafe_error* const error = nullptr);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
