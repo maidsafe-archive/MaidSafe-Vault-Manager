@@ -198,12 +198,19 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
   }
 }
 
+void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr /*connection*/,
+                                                   const std::string& /*request*/) {}
+
+void VaultManager::HandleChallengeResponse(TcpConnectionPtr /*connection*/,
+                                           const std::string& /*request*/) {}
+
+
 void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
                                            const std::string& request) {
   protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(request) };
   VaultInfo vault_info;
   vault_info.chunkstore_path = start_vault_message.chunkstore_path();
-  vault_info.max_disk_usage = start_vault_message.max_disk_usage();
+  vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
   SetExecutablePath(kVaultExecutablePath_, vault_info);
   process_manager_.AddProcess(std::move(vault_info));
 

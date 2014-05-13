@@ -95,6 +95,7 @@ class ClientInterface {
   //void HandleBootstrapResponse(const std::string& message,
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
+  void HandleReceivedMessage(const std::string& wrapped_message);
 
   passport::Maid maid_;
   AsioService& asio_service_;

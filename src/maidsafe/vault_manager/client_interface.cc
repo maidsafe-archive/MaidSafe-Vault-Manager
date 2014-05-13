@@ -18,6 +18,14 @@
 
 #include "maidsafe/vault_manager/client_interface.h"
 
+#include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/utils.h"
+
+
+#include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/utils.h"
+
+
 //#include <chrono>
 //#include <limits>
 //
@@ -26,7 +34,6 @@
 //#include "maidsafe/common/config.h"
 //#include "maidsafe/common/error.h"
 //#include "maidsafe/common/log.h"
-//#include "maidsafe/common/utils.h"
 //
 //#include "maidsafe/passport/passport.h"
 //
@@ -41,6 +48,40 @@ namespace fs = boost::filesystem;
 namespace maidsafe {
 
 namespace vault_manager {
+
+ClientInterface::ClientInterface(const passport::Maid& maid, AsioService& asio_service)
+    : maid_(maid),
+      asio_service_(asio_service),
+      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service,
+                                                           [this](std::string message) {
+                                                             HandleReceivedMessage(message);
+                                                           },
+                                                           [this]() {
+                                                              // FIXME
+                                                           },
+                                                           kLivePort)) {}
+
+
+void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
+  try {
+    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
+    LOG(kVerbose) << "Received " << message_and_type.second;
+    switch (message_and_type.second) {
+      case MessageType::kTakeOwnershipResponse:
+//        HandleTakeOwnershipResponse(message_and_type.first);
+        break;
+      default:
+        return;
+    }
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
+  }
+}
+
+
+
+
 
 //ClientInterface::ClientInterface(
 //    std::function<void(const std::string&)> on_new_version_available_slot)
@@ -76,6 +117,10 @@ namespace vault_manager {
 //}
 //
 //ClientInterface::~ClientInterface() { receiving_transport_->StopListening(); }
+
+
+
+
 //
 //#ifdef TESTING
 //void ClientInterface::SetTestEnvironmentVariables(
