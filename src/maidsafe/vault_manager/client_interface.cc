@@ -63,11 +63,11 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
 
 
 
-std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
-  bootstrap_contacts_promise_and_timer_ =
-      maidsafe::make_unique<PromiseAndTimer<routing::BootstrapContacts>>(asio_service_.service());
-  return bootstrap_contacts_promise_and_timer_->AddRequest();
-}
+//std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
+//  bootstrap_contacts_promise_and_timer_ =
+//      maidsafe::make_unique<PromiseAndTimer<routing::BootstrapContacts>>(asio_service_.service());
+//  return bootstrap_contacts_promise_and_timer_->AddRequest();
+//}
 
 
 

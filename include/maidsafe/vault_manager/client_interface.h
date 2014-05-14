@@ -102,7 +102,6 @@ class ClientInterface {
   passport::Maid maid_;
   AsioService asio_service_;
   std::unique_ptr<TcpConnection> tcp_connection_;
-  std::unique_ptr<PromiseAndTimer<routing::BootstrapContacts>> bootstrap_contacts_promise_and_timer_;
 };
 
 }  // namespace vault_manager

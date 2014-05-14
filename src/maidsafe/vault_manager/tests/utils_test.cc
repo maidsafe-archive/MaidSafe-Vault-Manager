@@ -31,16 +31,6 @@ namespace test {
 
 TEST(UtilsTest, BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
 
-
-TEST(UtilsTest, BEH_PromiseAndTimer) {
-  AsioService asio_service(1);
-  PromiseAndTimer<bool> promise_and_timer(asio_service.service());
-  auto future = promise_and_timer.AddRequest();
-  promise_and_timer.promise.set_value(true);
-  EXPECT_TRUE(future.get());
-  // TODO (Prakash) extend test
-}
-
 }  // namespace test
 
 }  // namespace vault_manager
