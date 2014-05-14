@@ -26,6 +26,7 @@
 #include "maidsafe/common/application_support_directories.h"
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
@@ -34,6 +35,7 @@
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/vault_manager/tcp_listener.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
 
@@ -92,32 +94,35 @@ ProtobufMessage Parse(const std::string& serialised_message) {
 }  // unnamed namespace
 
 VaultManager::VaultManager()
-    : kVaultExecutablePath_(GetVaultExecutablePath()),
-      kBootstrapFilePath_(GetBootstrapFilePath()),
+    : kBootstrapFilePath_(GetBootstrapFilePath()),
       config_file_handler_(GetConfigFilePath()),
-      listener_([this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
-          GetInitialLocalPort()),
+      listener_(maidsafe::make_unique<TcpListener>(
+          [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
+          GetInitialLocalPort())),
       new_connections_mutex_(),
       new_connections_(),
-      process_manager_(),
+      process_manager_(GetVaultExecutablePath(), listener_->ListeningPort()),
       client_connections_() {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
     VaultInfo vault_info;
     vault_info.chunkstore_path = GetDefaultChunkstorePath();
-    SetExecutablePath(kVaultExecutablePath_, vault_info);
     process_manager_.AddProcess(std::move(vault_info));
   }
   else {
-    for (auto& vault_info : vaults) {
-      SetExecutablePath(kVaultExecutablePath_, vault_info);
+    for (auto& vault_info : vaults)
       process_manager_.AddProcess(std::move(vault_info));
-    }
   }
   LOG(kInfo) << "VaultManager started";
 }
 
 VaultManager::~VaultManager() {
+  listener_.reset();
+  process_manager_.GetAll();
+  foreach
+    send stop
+    process_manager_.Stop(vault)
+
                                                                                                       //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
                                                                                                       //  need_to_stop_ = true;
                                                                                                       //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
@@ -156,7 +161,10 @@ void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   // 'new_connections_' to 'process_manager_' or 'client_connections_' concurrently with the
   // connection closing.
   std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-  if (process_manager_.HandleConnectionClosed(connection) || client_connections_.Remove(connection))
+  std::unique_ptr<std::future<void>> vault_stop_future{ process_manager_.StopProcess(connection) };
+  if (vault_stop_future)
+    return vault_stop_future.get();
+  if (client_connections_.Remove(connection))
     return;
   size_t result{ new_connections_.erase(connection) };
   assert(result);
@@ -247,7 +255,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     vault_info.owner_name = client_name;
     SetExecutablePath(kVaultExecutablePath_, vault_info);
     process_manager_.AddProcess(std::move(vault_info));
-    config_file_handler_.WriteConfigFile(process_manager_);
+    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
     return;
   }
   catch (const maidsafe_error& e) {
@@ -268,12 +276,24 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
     passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
     protobuf::TakeOwnershipRequest take_ownership_request{
         Parse<protobuf::TakeOwnershipRequest>(message) };
-    vault_info.label = NonEmptyString{ take_ownership_request.label() };
-    vault_info.chunkstore_path = take_ownership_request.chunkstore_path();
-    vault_info.max_disk_usage = DiskUsage{ take_ownership_request.max_disk_usage() };
-    vault_info.owner_name = client_name;
-    process_manager_.AssignOwner(connection, std::move(vault_info));
-    config_file_handler_.WriteConfigFile(process_manager_);
+    NonEmptyString label{ take_ownership_request.label() };
+    fs::path new_chunkstore_path{ take_ownership_request.chunkstore_path() };
+    DiskUsage new_max_disk_usage{ take_ownership_request.max_disk_usage() };
+    VaultInfo vault_info{ process_manager_.Find(label) };
+
+    if (vault_info.chunkstore_path != new_chunkstore_path) {
+      vault_info.chunkstore_path = new_chunkstore_path;
+      vault_info.max_disk_usage = new_max_disk_usage;
+      vault_info.owner_name = client_name;
+      return ChangeChunkstorePath(std::move(vault_info));
+    }
+
+    if (vault_info.max_disk_usage != new_max_disk_usage && new_max_disk_usage != 0U)
+      SendMaxDiskUsageUpdate(vault_info.tcp_connection, new_max_disk_usage);
+
+    process_manager_.AssignOwner(client_name, label, new_max_disk_usage);
+    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+    SendVaultRunningResponse(connection, label, vault_info.pmid_and_signer.get());
     return;
   }
   catch (const maidsafe_error& e) {
@@ -286,13 +306,25 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
+void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
+  // TODO(Fraser#5#): 2014-05-13 - Handle sending a "MoveChunkstoreRequest" to avoid stopping then
+  //                               restarting the vault.
+  SendVaultShutdownRequest(vault_info.tcp_connection);
+  vault_info.chunkstore_path = new_chunkstore_path;
+  vault_info.max_disk_usage = new_max_disk_usage;
+  vault_info.owner_name = client_name;
+  // once stopped, do process_manager_.AddProcess(std::move(vault_info)); config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+}
+
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ Parse<protobuf::VaultStarted>(message) };
+  VaultInfo vault_info{
+      process_manager_.HandleVaultStarted(connection, { vault_started.process_id() } };
 
-  process_manager_.HandleVaultStarted(connection, { vault_started.process_id() },
-      config_file_handler_.SymmKey(), config_file_handler_.SymmIv(),
-      routing::ReadBootstrapFile(kBootstrapFilePath_));
+  // Send vault its credentials
+  SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
+      config_file_handler_.SymmIv(), routing::ReadBootstrapFile(kBootstrapFilePath_));
 
   find corresponding client connection and send StartVaultResponse
 }

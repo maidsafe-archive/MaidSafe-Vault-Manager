@@ -19,17 +19,15 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 
-#include <condition_variable>
 #include <future>
 #include <mutex>
 #include <vector>
 
+#include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
 
-#include "maidsafe/common/crypto.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/vault_info.h"
@@ -40,41 +38,51 @@ namespace vault_manager {
 
 typedef uint64_t ProcessId;
 
-namespace protobuf { class VaultManagerConfig; }
-struct VaultInfo;
-
+// All functions provide the strong exception guarantee.
 class ProcessManager {
  public:
-  ProcessManager();
+  ProcessManager(boost::filesystem::path vault_executable_path, Port listening_port);
   ~ProcessManager();
-  void AddVaultsDetailsToConfig(const crypto::AES256Key& symm_key,
-                                const crypto::AES256InitialisationVector& symm_iv,
-                                protobuf::VaultManagerConfig& config) const;
-  // Provides strong exception guarantee.
-  void AddProcess(VaultInfo vault_info);
-  // Provides strong exception guarantee.  Returns the owner name, which could be uninitialised if
-  // the vault is unowned.
-  passport::PublicMaid::Name HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id,
-      crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
-      const routing::BootstrapContacts& bootstrap_contacts);
-  // Provides strong exception guarantee.  Restarts vault if 'vault_info.chunkstore_path' is
-  // different from current one.
-  void AssignOwner(TcpConnectionPtr client_connection, VaultInfo vault_info);
-  bool HandleConnectionClosed(TcpConnectionPtr connection);
+  std::vector<VaultInfo> GetAll() const;
+  void AddProcess(VaultInfo info);
+  VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);
+  void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
+                   DiskUsage max_disk_usage);
+  // If the process doesn't exist, a default-constructed unique_ptr (i.e. null) is returned.
+  std::unique_ptr<std::future<void>> StopProcess(TcpConnectionPtr connection);
+  VaultInfo Find(const NonEmptyString& label) const;
 
  private:
   ProcessManager(const ProcessManager&) = delete;
   ProcessManager(ProcessManager&&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
 
-  void StartProcess(std::vector<VaultInfo>::iterator itr);
-  std::future<void> StopProcess(VaultInfo& vault_info);
+  struct Child {
+    Child();
+    explicit Child(VaultInfo info);
+    Child(Child&& other);
+    Child& operator=(Child other);
+    VaultInfo info;
+    boost::process::child process;
+    std::vector<std::string> process_args;
+    bool stop_process;
+  private:
+    Child(const Child&) = delete;
+  };
+  friend void swap(Child& lhs, Child& rhs);
 
-  ProcessId GetProcessId(const boost::process::child& child) const;
+  void StartProcess(std::vector<Child>::iterator itr);
+  std::future<void> StopProcess(Child& vault);
 
-  std::vector<VaultInfo> vaults_;
+  std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
+  std::vector<Child>::iterator DoFind(const NonEmptyString& label);
+  ProcessId GetProcessId(const Child& vault) const;
+  bool IsRunning(const Child& vault) const;
+
+  const boost::filesystem::path kVaultExecutablePath_;
+  const Port kListeningPort_;
+  std::vector<Child> vaults_;
   mutable std::mutex mutex_;
-  std::condition_variable cond_var_;
 };
 
 }  // namespace vault_manager

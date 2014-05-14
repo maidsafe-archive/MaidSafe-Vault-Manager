@@ -39,7 +39,6 @@
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/config_file_handler.h"
 #include "maidsafe/vault_manager/process_manager.h"
-#include "maidsafe/vault_manager/tcp_listener.h"
 #include "maidsafe/vault_manager/vault_info.h"
 
 namespace maidsafe {
@@ -49,6 +48,7 @@ namespace vault_manager {
 //namespace protobuf { class VaultManagerConfig; }
 
 class TcpConnection;
+class TcpListener;
 
 // The VaultManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file.
@@ -79,6 +79,7 @@ class VaultManager {
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);
 
   void RemoveFromNewConnections(TcpConnectionPtr connection);
+  void ChangeChunkstorePath(VaultInfo vault_info);
 
 
 
@@ -113,9 +114,9 @@ class VaultManager {
   //bool AddBootstrapEndPoint(const std::string& ip, Port port);
   //bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
 
-  const boost::filesystem::path kVaultExecutablePath_, kBootstrapFilePath_;
+  const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
-  TcpListener listener_;
+  std::unique_ptr<TcpListener> listener_;
   mutable std::mutex new_connections_mutex_;
   std::set<TcpConnectionPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
   ProcessManager process_manager_;

@@ -27,7 +27,6 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
 
-#include "maidsafe/vault_manager/process_manager.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
@@ -121,11 +120,12 @@ std::vector<VaultInfo> ConfigFileHandler::ReadConfigFile() const {
   return vaults;
 }
 
-void ConfigFileHandler::WriteConfigFile(const ProcessManager& process_manager) const {
+void ConfigFileHandler::WriteConfigFile(std::vector<VaultInfo> vaults) const {
   protobuf::VaultManagerConfig config;
   config.set_aes256key(kSymmKey_.string());
   config.set_aes256iv(kSymmIv_.string());
-  process_manager.AddVaultsDetailsToConfig(kSymmKey_, kSymmIv_, config);
+  for (const auto& vault : vaults)
+    ToProtobuf(kSymmKey_, kSymmIv_, vault, config.add_vault_info());
 
   std::string serialised_contents{ config.SerializeAsString() };
   std::lock_guard<std::mutex> lock{ mutex_ };

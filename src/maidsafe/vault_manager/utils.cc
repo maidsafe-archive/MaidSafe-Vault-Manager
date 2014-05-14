@@ -84,27 +84,6 @@ void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector
   }
 }
 
-void SetExecutablePath(const boost::filesystem::path& executable_path, VaultInfo& vault_info) {
-  boost::system::error_code ec;
-  if (!fs::exists(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " doesn't exist.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-  }
-  if (!fs::is_regular_file(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " is not a regular file.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-  }
-  if (fs::is_symlink(executable_path, ec) || ec) {
-    LOG(kError) << executable_path << " is a symlink.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-  }
-  LOG(kVerbose) << "Vault executable found at " << executable_path;
-  vault_info.process_args.push_back(executable_path.string());
-  // Executable path must be the first argument
-  if (vault_info.process_args.size() > 1U)
-    std::iter_swap(std::begin(vault_info.process_args), --std::end(vault_info.process_args));
-}
-
 std::string WrapMessage(MessageAndType message_and_type) {
   protobuf::WrapperMessage wrapper_message;
   wrapper_message.set_payload(message_and_type.first);

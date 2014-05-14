@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/process/child.hpp"
 
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
@@ -38,25 +37,20 @@ namespace vault_manager {
 
 struct VaultInfo {
   VaultInfo();
+  VaultInfo(const VaultInfo&);
   VaultInfo(VaultInfo&& other);
   VaultInfo& operator=(VaultInfo other);
 
-  std::unique_ptr<passport::PmidAndSigner> pmid_and_signer;
+  std::shared_ptr<passport::PmidAndSigner> pmid_and_signer;
   boost::filesystem::path chunkstore_path;
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   bool joined_network;
   NonEmptyString label;
-  boost::process::child process;
-  std::vector<std::string> process_args;
-  bool stop_process;
-  TcpConnectionPtr tcp_connection;
 #ifdef TESTING
   int identity_index;
 #endif
-
- private:
-  VaultInfo(const VaultInfo&) = delete;
+  TcpConnectionPtr tcp_connection;
 };
 
 void swap(VaultInfo& lhs, VaultInfo& rhs);

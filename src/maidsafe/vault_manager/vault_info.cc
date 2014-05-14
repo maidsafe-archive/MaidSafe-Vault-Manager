@@ -31,17 +31,22 @@ VaultInfo::VaultInfo()
       owner_name(),
       joined_network(false),
       label(),
-#ifdef MAIDSAFE_WIN32
-      process(PROCESS_INFORMATION()),
-#else
-      process(0),
-#endif
-      process_args(),
-      stop_process(false),
-      tcp_connection(),
 #ifdef TESTING
-      identity_index(-1) {}
+      identity_index(-1),
 #endif
+      tcp_connection() {}
+
+VaultInfo::VaultInfo(const VaultInfo& other)
+    : pmid_and_signer(other.pmid_and_signer),
+      chunkstore_path(other.chunkstore_path),
+      max_disk_usage(other.max_disk_usage),
+      owner_name(other.owner_name),
+      joined_network(other.joined_network),
+      label(other.label),
+#ifdef TESTING
+      identity_index(other.identity_index),
+#endif
+      tcp_connection(other.tcp_connection) {}
 
 VaultInfo::VaultInfo(VaultInfo&& other)
     : pmid_and_signer(std::move(other.pmid_and_signer)),
@@ -50,20 +55,17 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       owner_name(std::move(other.owner_name)),
       joined_network(std::move(other.joined_network)),
       label(std::move(other.label)),
-      process(std::move(other.process)),
-      process_args(std::move(other.process_args)),
-      stop_process(std::move(other.stop_process)),
-      tcp_connection(std::move(other.tcp_connection)),
 #ifdef TESTING
-      identity_index(std::move(other.identity_index)) {}
+      identity_index(std::move(other.identity_index)),
 #endif
+      tcp_connection(std::move(other.tcp_connection)) {}
 
 VaultInfo& VaultInfo::operator=(VaultInfo other) {
   swap(*this, other);
   return *this;
 }
 
-void swap(VaultInfo& lhs, VaultInfo& rhs){
+void swap(VaultInfo& lhs, VaultInfo& rhs) {
   using std::swap;
   swap(lhs.pmid_and_signer, rhs.pmid_and_signer);
   swap(lhs.chunkstore_path, rhs.chunkstore_path);
@@ -71,13 +73,10 @@ void swap(VaultInfo& lhs, VaultInfo& rhs){
   swap(lhs.owner_name, rhs.owner_name);
   swap(lhs.joined_network, rhs.joined_network);
   swap(lhs.label, rhs.label);
-  swap(lhs.process, rhs.process);
-  swap(lhs.process_args, rhs.process_args);
-  swap(lhs.stop_process, rhs.stop_process);
-  swap(lhs.tcp_connection, rhs.tcp_connection);
 #ifdef TESTING
   swap(lhs.identity_index, rhs.identity_index);
 #endif
+  swap(lhs.tcp_connection, rhs.tcp_connection);
 }
 
 }  // namespace vault_manager

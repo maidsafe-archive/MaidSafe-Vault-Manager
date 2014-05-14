@@ -74,8 +74,6 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
 void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                   const protobuf::VaultInfo& protobuf_vault_info, VaultInfo& vault_info);
 
-void SetExecutablePath(const boost::filesystem::path& executable_path, VaultInfo& vault_info);
-
 std::string WrapMessage(MessageAndType message_and_type);
 
 MessageAndType UnwrapMessage(std::string wrapped_message);

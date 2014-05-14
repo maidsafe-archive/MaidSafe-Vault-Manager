@@ -19,28 +19,20 @@
 #include "maidsafe/vault_manager/process_manager.h"
 
 #include <algorithm>
-//#include <chrono>
 #include <type_traits>
 
-//#include "boost/filesystem/fstream.hpp"
-//#include "boost/filesystem/operations.hpp"
 #include "boost/process/execute.hpp"
 #include "boost/process/initializers.hpp"
 #include "boost/process/wait_for_exit.hpp"
 #include "boost/process/terminate.hpp"
-//#include "boost/system/error_code.hpp"
-//#include "boost/iostreams/device/file_descriptor.hpp"
-//
+
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/process.h"
-//#include "maidsafe/common/rsa.h"
-//#include "maidsafe/common/utils.h"
-//
-#include "maidsafe/vault_manager/dispatcher.h"
-//#include "maidsafe/vault_manager/controller_messages.pb.h"
-//#include "maidsafe/vault_manager/local_tcp_transport.h"
+#include "maidsafe/common/utils.h"
+
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
 
@@ -53,26 +45,108 @@ namespace vault_manager {
 
 namespace {
 
-bool IsRunning(const VaultInfo& vault_info) {
-  try {
-#ifdef MAIDSAFE_WIN32
-    return process::IsRunning(vault_info.process.process_handle());
-#else
-    return process::IsRunning(vault_info.process.pid);
+bool ConnectionsEqual(const TcpConnectionPtr& lhs, const TcpConnectionPtr& rhs) {
+  return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
+}
+
+void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& existing_vault) {
+  if (new_vault.pmid_and_signer && existing_vault.pmid_and_signer &&
+      new_vault.pmid_and_signer->first.name() == existing_vault.pmid_and_signer->first.name()) {
+    LOG(kError) << "Vault process with Pmid "
+                << DebugId(new_vault.pmid_and_signer->first.name().value) << " already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
+  if (new_vault.chunkstore_path == existing_vault.chunkstore_path) {
+    LOG(kError) << "Vault process with chunkstore path " << new_vault.chunkstore_path
+                << " already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
+  if (new_vault.label == existing_vault.label) {
+    LOG(kError) << "Vault process with label " << new_vault.label.string() << " already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
+  if (ConnectionsEqual(new_vault.tcp_connection, existing_vault.tcp_connection)) {
+    LOG(kError) << "Vault process with this tcp_connection already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
+#ifdef TESTING
+  if (new_vault.identity_index == existing_vault.identity_index) {
+    LOG(kError) << "Vault process with identity_index " << new_vault.identity_index
+                << " already exists.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
 #endif
-  }
-  catch (const std::exception& e) {
-    LOG(kInfo) << boost::diagnostic_information(e);
-    return false;
-  }
 }
 
 }  // unnamed namespace
 
-ProcessManager::ProcessManager() : vaults_(), mutex_(), cond_var_() {
+ProcessManager::Child::Child()
+    : info(),
+#ifdef MAIDSAFE_WIN32
+      process(PROCESS_INFORMATION()),
+#else
+      process(0),
+#endif
+      process_args(),
+      stop_process(false) {}
+
+ProcessManager::Child::Child(VaultInfo info)
+    : info(std::move(info)),
+#ifdef MAIDSAFE_WIN32
+      process(PROCESS_INFORMATION()),
+#else
+      process(0),
+#endif
+      process_args(),
+      stop_process(false) {}
+
+ProcessManager::Child::Child(Child&& other)
+    : info(std::move(other.info)),
+      process(std::move(other.process)),
+      process_args(std::move(other.process_args)),
+      stop_process(std::move(other.stop_process)) {}
+
+ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
+  swap(*this, other);
+  return *this;
+}
+
+void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
+  using std::swap;
+  swap(lhs.info, rhs.info);
+  swap(lhs.process, rhs.process);
+  swap(lhs.process_args, rhs.process_args);
+  swap(lhs.stop_process, rhs.stop_process);
+}
+
+
+
+ProcessManager::ProcessManager(fs::path vault_executable_path, Port listening_port)
+    : kListeningPort_(listening_port),
+      kVaultExecutablePath_(vault_executable_path),
+      vaults_(),
+      mutex_() {
   static_assert(std::is_same<ProcessId, process::ProcessId>::value,
                 "process::ProcessId is statically checked as being of suitable size for holding a "
                 "pid_t or DWORD, so vault_manager::ProcessId should use the same type.");
+  boost::system::error_code ec;
+  if (!fs::exists(kVaultExecutablePath_, ec) || ec) {
+    LOG(kError) << kVaultExecutablePath_ << " doesn't exist.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  if (!fs::is_regular_file(kVaultExecutablePath_, ec) || ec) {
+    LOG(kError) << kVaultExecutablePath_ << " is not a regular file.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  if (fs::is_symlink(kVaultExecutablePath_, ec) || ec) {
+    LOG(kError) << kVaultExecutablePath_ << " is a symlink.  " << (ec ? ec.message() : "");
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  LOG(kVerbose) << "Vault executable found at " << kVaultExecutablePath_;
 }
 
 ProcessManager::~ProcessManager() {
@@ -80,8 +154,8 @@ ProcessManager::~ProcessManager() {
   {
     std::lock_guard<std::mutex> lock{ mutex_ };
     std::for_each(std::begin(vaults_), std::end(vaults_),
-                  [this, &process_stops](VaultInfo& vault_info) {
-                    process_stops.emplace_back(StopProcess(vault_info));
+                  [this, &process_stops](Child& vault) {
+                    process_stops.emplace_back(StopProcess(vault));
                   });
   }
   for (auto& process_stop : process_stops) {
@@ -94,103 +168,81 @@ ProcessManager::~ProcessManager() {
   }
 }
 
-void ProcessManager::AddVaultsDetailsToConfig(const crypto::AES256Key& symm_key,
-                                              const crypto::AES256InitialisationVector& symm_iv,
-                                              protobuf::VaultManagerConfig& config) const {
-  config.clear_vault_info();
+std::vector<VaultInfo> ProcessManager::GetAll() const {
+  std::vector<VaultInfo> all_vaults;
   std::lock_guard<std::mutex> lock(mutex_);
   for (const auto& vault : vaults_)
-    ToProtobuf(symm_key, symm_iv, vault, config.add_vault_info());
+    all_vaults.push_back(vault.info);
+  return all_vaults;
 }
 
-void ProcessManager::AddProcess(VaultInfo vault_info) {
-  if (vault_info.chunkstore_path.empty() || vault_info.process_args.empty()) {
-    LOG(kError) << "Can't add vault process - chunkstore and/or command line args are empty.";
+void ProcessManager::AddProcess(VaultInfo info) {
+  if (info.chunkstore_path.empty()) {
+    LOG(kError) << "Can't add vault process - chunkstore path is empty.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  if (IsRunning(vault_info)) {
-    LOG(kError) << "Can't add vault process - already running.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
-  }
   std::lock_guard<std::mutex> lock{ mutex_ };
-  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, &vault_info](const VaultInfo& vault) {
-                          return vault.label == vault_info.label;
-                        }));
-  if (itr != std::end(vaults_)) {
-    LOG(kError) << "Vault process with label " << vault_info.label.string() << " already exists.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
-  }
+  for (const auto& vault : vaults_)
+    CheckNewVaultDoesntConflict(info, vault.info);
 
   // emplace offers strong exception guarantee - only need to cover subsequent calls.
-  itr = vaults_.emplace(std::end(vaults_), std::move(vault_info));
+  auto itr(vaults_.emplace(std::end(vaults_), std::move(info)));
   on_scope_exit strong_guarantee{ [this, itr] { vaults_.erase(itr); } };
   StartProcess(itr);
   strong_guarantee.Release();
 }
 
-passport::PublicMaid::Name ProcessManager::HandleVaultStarted(TcpConnectionPtr connection,
-    ProcessId process_id, crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
-    const routing::BootstrapContacts& bootstrap_contacts) {
+VaultInfo ProcessManager::HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, process_id](const VaultInfo& vault) {
-                          return GetProcessId(vault.process) == process_id;
+                        [this, process_id](const Child& vault) {
+                          return GetProcessId(vault) == process_id;
                         }));
   if (itr == std::end(vaults_)) {
     LOG(kError) << "Failed to find vault with process ID " << process_id << " in child processes.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
-  itr->tcp_connection = connection;
-  SendVaultStartedResponse(*itr, symm_key, symm_iv, bootstrap_contacts);
-  return itr->owner_name;
+  itr->info.tcp_connection = connection;
+  return itr->info;
 }
 
-void ProcessManager::AssignOwner(TcpConnectionPtr client_connection, VaultInfo vault_info) {
+void ProcessManager::AssignOwner(const NonEmptyString& label,
+                                 const passport::PublicMaid::Name& owner_name,
+                                 DiskUsage max_disk_usage) {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(DoFind(label));
+  itr->info.owner_name = owner_name;
+  itr->info.max_disk_usage = max_disk_usage;
+}
+
+std::unique_ptr<std::future<void>> ProcessManager::StopProcess(TcpConnectionPtr connection) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, &vault_info](const VaultInfo& vault) {
-                          return vault.label == vault_info.label;
+                        [this, connection](const Child& vault) {
+                          return ConnectionsEqual(vault.info.tcp_connection, connection);
                         }));
   if (itr == std::end(vaults_)) {
-    LOG(kError) << "Vault process with label " << vault_info.label.string() << " doesn't exist.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+    LOG(kWarning) << "Vault process doesn't exist.";
+    return nullptr;
   }
-
-  if (vault_info.chunkstore_path != itr->chunkstore_path) {
-    // TODO(Fraser#5#): 2014-05-13 - Handle sending a "MoveChunkstoreRequest" to avoid stopping then
-    //                               restarting the vault.
-    SendVaultShutdownRequest(itr->tcp_connection);
-    itr->chunkstore_path = vault_info.chunkstore_path;
-    itr->max_disk_usage = vault_info.max_disk_usage;
-    return;
-  }
-
-  if (vault_info.max_disk_usage != itr->max_disk_usage && vault_info.max_disk_usage != 0U) {
-    SendMaxDiskUsageUpdate(itr->tcp_connection, vault_info.max_disk_usage);
-    itr->max_disk_usage = vault_info.max_disk_usage;
-  }
-
-  SendVaultRunningResponse(client_connection, vault_info.label, itr->pmid_and_signer.get());
+  return std::move(maidsafe::make_unique<std::future<void>>(StopProcess(*itr)));
 }
 
-bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr /*connection*/) {
-                                                                                            return false;
-}
-
-void ProcessManager::StartProcess(std::vector<VaultInfo>::iterator itr) {
+void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
+  std::vector<std::string> args{ 1, kVaultExecutablePath_.string() };
+  args.emplace_back("--vm_port " + std::to_string(kListeningPort_));
+  args.insert(std::end(args), std::begin(itr->process_args), std::end(itr->process_args));
   if (!itr->stop_process) {
     itr->process = bp::execute(
-        bp::initializers::run_exe(fs::path{ itr->process_args.front() }),
-        bp::initializers::set_cmd_line(process::ConstructCommandLine(itr->process_args)),
+        bp::initializers::run_exe(kVaultExecutablePath_),
+        bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
         bp::initializers::throw_on_error(),
         bp::initializers::inherit_env());
   }
 }
 
-std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
-  vault_info.stop_process = true;
-  SendVaultShutdownRequest(vault_info.tcp_connection);
+std::future<void> ProcessManager::StopProcess(Child& vault) {
+  vault.stop_process = true;
   return std::async([&]() {
 
   });
@@ -198,14 +250,56 @@ std::future<void> ProcessManager::StopProcess(VaultInfo& vault_info) {
 
 
 
+VaultInfo ProcessManager::Find(const NonEmptyString& label) const {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  return DoFind(label)->info;
+}
 
+std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
+    const NonEmptyString& label) const {
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, &label](const Child& vault) {
+                          return vault.info.label == label;
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Vault process with label " << label.string() << " doesn't exist.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+  return itr;
+}
 
-ProcessId ProcessManager::GetProcessId(const boost::process::child& child) const {
+std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(const NonEmptyString& label) {
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, &label](const Child& vault) {
+                          return vault.info.label == label;
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Vault process with label " << label.string() << " doesn't exist.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+  return itr;
+}
+
+ProcessId ProcessManager::GetProcessId(const Child& vault) const {
 #ifdef MAIDSAFE_WIN32
-  return static_cast<ProcessId>(child.proc_info.dwProcessId);
+  return static_cast<ProcessId>(vault.process.proc_info.dwProcessId);
 #else
-  return static_cast<ProcessId>(child.pid);
+  return static_cast<ProcessId>(vault.process.pid);
 #endif
+}
+
+bool ProcessManager::IsRunning(const Child& vault) const {
+  try {
+#ifdef MAIDSAFE_WIN32
+    return process::IsRunning(vault.process.process_handle());
+#else
+    return process::IsRunning(vault.process.pid);
+#endif
+  }
+  catch (const std::exception& e) {
+    LOG(kInfo) << boost::diagnostic_information(e);
+    return false;
+  }
 }
 
 /*

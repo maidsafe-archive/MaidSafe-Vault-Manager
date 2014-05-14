@@ -31,14 +31,13 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class ProcessManager;
 struct VaultInfo;
 
 class ConfigFileHandler {
  public:
   explicit ConfigFileHandler(boost::filesystem::path config_file_path);
   std::vector<VaultInfo> ReadConfigFile() const;
-  void WriteConfigFile(const ProcessManager& process_manager) const;
+  void WriteConfigFile(std::vector<VaultInfo> vaults) const;
   const crypto::AES256Key& SymmKey() const { return kSymmKey_; }
   const crypto::AES256InitialisationVector& SymmIv() const { return kSymmIv_; }
 
