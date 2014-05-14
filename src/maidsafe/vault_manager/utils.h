@@ -41,6 +41,19 @@ class LocalTcpTransport;
 struct VaultInfo;
 namespace protobuf { class VaultInfo; }
 
+namespace detail {
+
+template <typename T>
+T Parse(const std::string& serialised_message) {
+  return T::need_to_specialise;
+}
+
+template <>
+routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message);
+
+}  // namespace detail
+
+
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info);
 

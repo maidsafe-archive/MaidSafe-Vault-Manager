@@ -19,32 +19,35 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_RPC_HELPER_H_
 #define MAIDSAFE_VAULT_MANAGER_RPC_HELPER_H_
 
+#include <boost/exception/diagnostic_information.hpp>
+
 #include <future>
 #include <memory>
 #include <string>
 
+
 #include "boost/asio/steady_timer.hpp"
 #include "boost/asio/error.hpp"
-#include <boost/exception/diagnostic_information.hpp>
+
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 
 #include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/utils.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-class LocalTcpTransport;
-struct VaultInfo;
-namespace protobuf { class VaultInfo; }
-
 namespace detail {
 
 template <typename ResultType>
 struct PromiseAndTimer {
-  PromiseAndTimer(boost::asio::io_service& io_service);
+  explicit PromiseAndTimer(boost::asio::io_service& io_service);
+  void ParseAndSetValue(const std::string& message);
+  void SetException(std::exception_ptr exception);
+
   std::promise<ResultType> promise;
   Timer timer;
   std::once_flag once_flag;
@@ -52,17 +55,28 @@ struct PromiseAndTimer {
 
 template <typename ResultType>
 PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service)
-      : promise(),
-        timer(io_service, kRpcTimeout),
-        once_flag() {}
+    : promise(),
+      timer(io_service, kRpcTimeout),
+      once_flag() {}
+
+template <typename ResultType>
+void PromiseAndTimer<ResultType>::ParseAndSetValue(const std::string& message) {
+  ResultType result(detail::Parse<ResultType>(message));
+  std::call_once(once_flag, [&]() { promise.set_value(result); });
 }
+
+template <typename ResultType>
+void PromiseAndTimer<ResultType>::SetException(std::exception_ptr exception) {
+  std::call_once(once_flag, [&]() { promise.set_exception(exception); });
+}
+
+}  // namespace detail
 
 template <typename ResultType>
 std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& call_back,
                                             boost::asio::io_service& io_service,
                                             std::mutex& mutex) {
-  std::shared_ptr<detail::PromiseAndTimer<ResultType>> promise_and_timer =
-      std::make_shared<detail::PromiseAndTimer<ResultType>>(io_service);
+  auto promise_and_timer = std::make_shared<detail::PromiseAndTimer<ResultType>>(io_service);
   {
     std::lock_guard<std::mutex> lock{ mutex };
     if (call_back) {
@@ -71,24 +85,18 @@ std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& ca
         LOG(kVerbose) << "Invoking chained functor";
         call_back_copy(message);
         try {
-          ResultType result(message);
-            std::call_once(promise_and_timer->once_flag,
-                           [&]() { promise_and_timer->promise.set_value(result); });
+          promise_and_timer->ParseAndSetValue(message);
         }
         catch (std::exception& e) {
           LOG(kError) << boost::diagnostic_information(e);
-          std::call_once(promise_and_timer->once_flag, [&]() {
-              promise_and_timer->promise.set_exception(std::current_exception());
-            });
+          promise_and_timer->SetException(std::current_exception());
         }
         promise_and_timer->timer.cancel();
       };
     } else {
       call_back = [=](std::string message) {
         LOG(kVerbose) << "Invoking functor";
-        ResultType result(message);
-        std::call_once(promise_and_timer->once_flag,
-                       [&]() { promise_and_timer->promise.set_value(result); });
+        promise_and_timer->ParseAndSetValue(message);
         promise_and_timer->timer.cancel();
       };
     }
@@ -104,10 +112,7 @@ std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& ca
       if (call_back) {
         call_back = nullptr;
       }
-      std::call_once(promise_and_timer->once_flag, [&]() {
-          promise_and_timer->promise.set_exception(
-                      std::make_exception_ptr((MakeError(RoutingErrors::timed_out))));        // FIXME
-      });
+      promise_and_timer->SetException(std::make_exception_ptr((MakeError(RoutingErrors::timed_out))));  // FIXME
     }
   });
   return promise_and_timer->promise.get_future();

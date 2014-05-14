@@ -53,6 +53,16 @@ int g_identity_index(0);
 
 }  // unnamed namespace
 
+
+namespace detail {
+
+template <>
+routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message) {
+  return routing::ParseBootstrapContacts(serialised_message);
+}
+
+}  // namspace detail
+
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info) {
   protobuf_vault_info->set_pmid(
