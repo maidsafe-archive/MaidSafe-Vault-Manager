@@ -48,7 +48,8 @@ extern const std::string kConfigFilename;
 extern const std::string kChunkstoreDirname;
 extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
-extern const std::chrono::milliseconds kRpcTimeout;
+extern const std::chrono::seconds kRpcTimeout;
+extern const std::chrono::seconds kVaultStopTimeout;
 
 DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (ValidateConnectionRequest)

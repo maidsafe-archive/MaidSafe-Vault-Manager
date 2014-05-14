@@ -23,9 +23,8 @@
 //#include <mutex>
 //#include <cstdint>
 //#include <functional>
-//#include <map>
+#include <map>
 #include <memory>
-#include <set>
 //#include <string>
 //#include <utility>
 //#include <vector>
@@ -119,9 +118,9 @@ class VaultManager {
   ConfigFileHandler config_file_handler_;
   std::unique_ptr<TcpListener> listener_;
   mutable std::mutex new_connections_mutex_;
-  std::set<TcpConnectionPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
-  ProcessManager process_manager_;
+  std::map<TcpConnectionPtr, TimerPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
   std::unique_ptr<AsioService> asio_service_;
+  ProcessManager process_manager_;
   ClientConnections client_connections_;
 };
 

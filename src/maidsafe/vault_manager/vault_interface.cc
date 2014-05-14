@@ -81,10 +81,10 @@ void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
     LOG(kVerbose) << "Received " << message_and_type.second;
-    switch (message_and_type.second) {
-      default:
-        return;
-    }
+    //switch (message_and_type.second) {
+    //  default:
+    //    return;
+    //}
   }
   catch (const std::exception& e) {
     LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);

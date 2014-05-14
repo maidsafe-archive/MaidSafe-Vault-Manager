@@ -19,13 +19,22 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_PROCESS_MANAGER_H_
 
+#include <functional>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <vector>
 
+#include "boost/asio/io_service.hpp"
+#ifdef MAIDSAFE_WIN32
+#include "boost/asio/windows/object_handle.hpp"
+#else
+#include "boost/asio/signal_set.hpp"
+#endif
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
 
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
@@ -38,18 +47,21 @@ namespace vault_manager {
 
 typedef uint64_t ProcessId;
 
+enum class ProcessStatus { kBeforeStarted, kRunning, kStopping, kStopped };
+
 // All functions provide the strong exception guarantee.
 class ProcessManager {
  public:
-  ProcessManager(boost::filesystem::path vault_executable_path, Port listening_port);
-  ~ProcessManager();
+  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
+                 Port listening_port);
+  ~ProcessManager() { assert(vaults_.empty()); }
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info);
   VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);
   void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
                    DiskUsage max_disk_usage);
-  // If the process doesn't exist, a default-constructed unique_ptr (i.e. null) is returned.
-  std::unique_ptr<std::future<void>> StopProcess(TcpConnectionPtr connection);
+  // Returns false if the process doesn't exist.
+  bool StopProcess(TcpConnectionPtr connection, std::function<void(maidsafe_error, int)> functor);
   VaultInfo Find(const NonEmptyString& label) const;
 
  private:
@@ -58,27 +70,34 @@ class ProcessManager {
   ProcessManager& operator=(ProcessManager) = delete;
 
   struct Child {
-    Child();
-    explicit Child(VaultInfo info);
+    Child(VaultInfo info, boost::asio::io_service &io_service);
     Child(Child&& other);
     Child& operator=(Child other);
     VaultInfo info;
-    boost::process::child process;
+    std::function<void(maidsafe_error, int)> on_exit;
     std::vector<std::string> process_args;
-    bool stop_process;
-  private:
+    ProcessStatus status;
+    boost::process::child process;
+#ifdef MAIDSAFE_WIN32
+    boost::asio::windows::object_handle handle;
+#else
+    std::unique_ptr<boost::asio::signal_set> signal_set;
+#endif
+   private:
     Child(const Child&) = delete;
   };
   friend void swap(Child& lhs, Child& rhs);
 
   void StartProcess(std::vector<Child>::iterator itr);
-  std::future<void> StopProcess(Child& vault);
+  void StopProcess(Child& vault);
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
+  void OnProcessExit(const NonEmptyString& label, int exit_code);
 
+  boost::asio::io_service &io_service_;
   const boost::filesystem::path kVaultExecutablePath_;
   const Port kListeningPort_;
   std::vector<Child> vaults_;

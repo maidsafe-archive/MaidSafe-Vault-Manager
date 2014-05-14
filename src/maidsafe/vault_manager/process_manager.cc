@@ -23,10 +23,10 @@
 
 #include "boost/process/execute.hpp"
 #include "boost/process/initializers.hpp"
-#include "boost/process/wait_for_exit.hpp"
+#include "boost/process/mitigate.hpp"
 #include "boost/process/terminate.hpp"
+#include "boost/process/wait_for_exit.hpp"
 
-#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/on_scope_exit.h"
@@ -84,31 +84,30 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
 
 }  // unnamed namespace
 
-ProcessManager::Child::Child()
-    : info(),
-#ifdef MAIDSAFE_WIN32
-      process(PROCESS_INFORMATION()),
-#else
-      process(0),
-#endif
-      process_args(),
-      stop_process(false) {}
-
-ProcessManager::Child::Child(VaultInfo info)
+ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service)
     : info(std::move(info)),
+      on_exit(),
+      process_args(),
+      status(ProcessStatus::kBeforeStarted),
 #ifdef MAIDSAFE_WIN32
       process(PROCESS_INFORMATION()),
+      handle(io_service) {}
 #else
       process(0),
+      signal_set(maidsafe::make_unique<boost::asio::signal_set>(io_service_, SIGCHLD)) {}
 #endif
-      process_args(),
-      stop_process(false) {}
 
 ProcessManager::Child::Child(Child&& other)
     : info(std::move(other.info)),
-      process(std::move(other.process)),
+      on_exit(std::move(other.on_exit)),
       process_args(std::move(other.process_args)),
-      stop_process(std::move(other.stop_process)) {}
+      status(std::move(other.status)),
+      process(std::move(other.process)),
+#ifdef MAIDSAFE_WIN32
+      handle(std::move(other.handle)) {}
+#else
+      signal_set(std::move(other.signal_set)) {}
+#endif
 
 ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
   swap(*this, other);
@@ -118,15 +117,23 @@ ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
 void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
   using std::swap;
   swap(lhs.info, rhs.info);
-  swap(lhs.process, rhs.process);
+  swap(lhs.on_exit, rhs.on_exit);
   swap(lhs.process_args, rhs.process_args);
-  swap(lhs.stop_process, rhs.stop_process);
+  swap(lhs.status, rhs.status);
+  swap(lhs.process, rhs.process);
+#ifdef MAIDSAFE_WIN32
+  swap(lhs.handle, rhs.handle);
+#else
+  swap(lhs.signal_set, rhs.signal_set);
+#endif
 }
 
 
 
-ProcessManager::ProcessManager(fs::path vault_executable_path, Port listening_port)
-    : kListeningPort_(listening_port),
+ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vault_executable_path,
+                               Port listening_port)
+    : io_service_(io_service),
+      kListeningPort_(listening_port),
       kVaultExecutablePath_(vault_executable_path),
       vaults_(),
       mutex_() {
@@ -149,25 +156,6 @@ ProcessManager::ProcessManager(fs::path vault_executable_path, Port listening_po
   LOG(kVerbose) << "Vault executable found at " << kVaultExecutablePath_;
 }
 
-ProcessManager::~ProcessManager() {
-  std::vector<std::future<void>> process_stops;
-  {
-    std::lock_guard<std::mutex> lock{ mutex_ };
-    std::for_each(std::begin(vaults_), std::end(vaults_),
-                  [this, &process_stops](Child& vault) {
-                    process_stops.emplace_back(StopProcess(vault));
-                  });
-  }
-  for (auto& process_stop : process_stops) {
-    try {
-      process_stop.get();
-    }
-    catch (const std::exception& e) {
-      LOG(kError) << "Vault process failed to stop: " << boost::diagnostic_information(e);
-    }
-  }
-}
-
 std::vector<VaultInfo> ProcessManager::GetAll() const {
   std::vector<VaultInfo> all_vaults;
   std::lock_guard<std::mutex> lock(mutex_);
@@ -186,7 +174,7 @@ void ProcessManager::AddProcess(VaultInfo info) {
     CheckNewVaultDoesntConflict(info, vault.info);
 
   // emplace offers strong exception guarantee - only need to cover subsequent calls.
-  auto itr(vaults_.emplace(std::end(vaults_), std::move(info)));
+  auto itr(vaults_.emplace(std::end(vaults_), Child{ info, io_service_ }));
   on_scope_exit strong_guarantee{ [this, itr] { vaults_.erase(itr); } };
   StartProcess(itr);
   strong_guarantee.Release();
@@ -215,7 +203,8 @@ void ProcessManager::AssignOwner(const NonEmptyString& label,
   itr->info.max_disk_usage = max_disk_usage;
 }
 
-std::unique_ptr<std::future<void>> ProcessManager::StopProcess(TcpConnectionPtr connection) {
+bool ProcessManager::StopProcess(TcpConnectionPtr connection,
+                                 std::function<void(maidsafe_error, int)> functor) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, connection](const Child& vault) {
@@ -223,32 +212,81 @@ std::unique_ptr<std::future<void>> ProcessManager::StopProcess(TcpConnectionPtr 
                         }));
   if (itr == std::end(vaults_)) {
     LOG(kWarning) << "Vault process doesn't exist.";
-    return nullptr;
+    return false;
   }
-  return std::move(maidsafe::make_unique<std::future<void>>(StopProcess(*itr)));
+  itr->on_exit = functor;
+  StopProcess(*itr);
+  return true;
 }
 
 void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
+  if (itr->status != ProcessStatus::kBeforeStarted) {
+    LOG(kError) << "Process has already been started.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
+  }
+
   std::vector<std::string> args{ 1, kVaultExecutablePath_.string() };
   args.emplace_back("--vm_port " + std::to_string(kListeningPort_));
   args.insert(std::end(args), std::begin(itr->process_args), std::end(itr->process_args));
-  if (!itr->stop_process) {
-    itr->process = bp::execute(
-        bp::initializers::run_exe(kVaultExecutablePath_),
-        bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
-        bp::initializers::throw_on_error(),
-        bp::initializers::inherit_env());
-  }
+
+  NonEmptyString label{ itr->info.label };
+
+#ifndef MAIDSAFE_WIN32
+  itr->signal_set->async_wait([this, label](const boost::system::error_code&, int) {
+    int exit_code;
+    wait(&exit_code);
+    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
+  });
+#endif
+
+  itr->process = bp::execute(
+      bp::initializers::run_exe(kVaultExecutablePath_),
+      bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
+#ifndef MAIDSAFE_WIN32
+      bp::notify_io_service(io_service_),
+#endif
+      bp::initializers::throw_on_error(),
+      bp::initializers::inherit_env());
+
+  itr->status = ProcessStatus::kRunning;
+
+#ifdef MAIDSAFE_WIN32
+  itr->handle.assign(itr->process.process_handle());
+  HANDLE native_handle{ itr->handle.native_handle() };
+  itr->handle.async_wait([this, label, native_handle](const boost::system::error_code&) {
+    DWORD exit_code;
+    GetExitCodeProcess(native_handle, &exit_code);
+    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
+  });
+#endif
+
 }
 
-std::future<void> ProcessManager::StopProcess(Child& vault) {
-  vault.stop_process = true;
-  return std::async([&]() {
-
+void ProcessManager::StopProcess(Child& vault) {
+  vault.status = ProcessStatus::kStopping;
+  NonEmptyString label{ vault.info.label };
+  TimerPtr timer{ std::make_shared<Timer>(io_service_, kVaultStopTimeout) };
+  timer->async_wait([this, label, timer](const boost::system::error_code& error_code) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Vault termination timer cancelled OK.";
+      return;
+    }
+    LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
+    std::function<void(maidsafe_error, int)> on_exit;
+    maidsafe_error error{ MakeError(CommonErrors::success) };
+    try {
+      std::lock_guard<std::mutex> lock{ mutex_ };
+      auto itr(DoFind(label));
+      on_exit = itr->on_exit;
+      bp::terminate(itr->process);
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << "Error while terminating vault: " << boost::diagnostic_information(e);
+    }
+    if (on_exit)
+      on_exit(MakeError(VaultManagerErrors::vault_terminated), -1);
   });
 }
-
-
 
 VaultInfo ProcessManager::Find(const NonEmptyString& label) const {
   std::lock_guard<std::mutex> lock{ mutex_ };
@@ -299,6 +337,25 @@ bool ProcessManager::IsRunning(const Child& vault) const {
   catch (const std::exception& e) {
     LOG(kInfo) << boost::diagnostic_information(e);
     return false;
+  }
+}
+
+void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code) {
+  std::function<void(maidsafe_error, int)> on_exit;
+  {
+    std::lock_guard<std::mutex> lock{ mutex_ };
+    auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                   [this, &label](const Child& vault) { return vault.info.label == label; }));
+    if (child_itr == std::end(vaults_))
+      return;
+    on_exit = child_itr->on_exit;
+    vaults_.erase(child_itr);
+  }
+  if (on_exit) {
+    if (exit_code == 0)
+      on_exit(MakeError(CommonErrors::success), exit_code);
+    else
+      on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
   }
 }
 

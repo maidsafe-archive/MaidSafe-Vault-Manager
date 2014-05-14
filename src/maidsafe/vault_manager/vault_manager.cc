@@ -18,9 +18,6 @@
 
 #include "maidsafe/vault_manager/vault_manager.h"
 
-//#include <chrono>
-//#include <iostream>
-
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/application_support_directories.h"
@@ -101,8 +98,9 @@ VaultManager::VaultManager()
           GetInitialLocalPort())),
       new_connections_mutex_(),
       new_connections_(),
-      process_manager_(GetVaultExecutablePath(), listener_->ListeningPort()),
       asio_service_(maidsafe::make_unique<AsioService>(1)),
+      process_manager_(asio_service_->service(), GetVaultExecutablePath(),
+                       listener_->ListeningPort()),
       client_connections_(asio_service_->service()) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
@@ -120,35 +118,37 @@ VaultManager::VaultManager()
 VaultManager::~VaultManager() {
   listener_.reset();
   asio_service_.reset();
-  process_manager_.GetAll();
-  foreach
-    send stop
-    process_manager_.Stop(vault)
-
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 1" << std::endl;
-                                                                                                      //  need_to_stop_ = true;
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 2" << std::endl;
-                                                                                                      //  process_manager_.LetAllProcessesDie();
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 3" << std::endl;
-                                                                                                      //  StopAllVaults();
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 4" << std::endl;
-                                                                                                      //  {
-                                                                                                      //    std::lock_guard<std::mutex> lock(update_mutex_);
-                                                                                                      //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 5" << std::endl;
-                                                                                                      //    update_timer_.cancel();
-                                                                                                      //    std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 6" << std::endl;
-                                                                                                      //  }
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 7" << std::endl;
-                                                                                                      //  transport_->StopListening();
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 8" << std::endl;
-                                                                                                      //  asio_service_.Stop();
-                                                                                                      //  std::cout << "~~~~~~~~~~~~~~~~~~~~~~ 9" << std::endl;
+  std::vector<VaultInfo> all_vaults{ process_manager_.GetAll() };
+  std::vector<std::future<void>> process_stops;
+  std::for_each(std::begin(all_vaults), std::end(all_vaults),
+                [this, &process_stops](const VaultInfo& vault) {
+                  SendVaultShutdownRequest(vault.tcp_connection);
+                  process_stops.emplace_back(process_manager_.StopProcess(vault.tcp_connection));
+                });
+  for (auto& process_stop : process_stops) {
+    try {
+      process_stop.get();
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << "Vault process failed to stop: " << boost::diagnostic_information(e);
+    }
+  }
 }
 
 void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
   {
     std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-    bool result{ new_connections_.emplace(connection).second };
+    TimerPtr timer{ std::make_shared<Timer>(asio_service_->service(), kRpcTimeout) };
+    timer->async_wait([=](const boost::system::error_code& error_code) {
+      if (error_code && error_code == boost::asio::error::operation_aborted) {
+        LOG(kVerbose) << "New connection timer cancelled OK.";
+      } else {
+        LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
+        std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
+        new_connections_.erase(connection);
+      }
+    });
+    bool result{ new_connections_.emplace(connection, timer).second };
     assert(result);
     static_cast<void>(result);
   }
@@ -164,8 +164,10 @@ void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   // connection closing.
   std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
   std::unique_ptr<std::future<void>> vault_stop_future{ process_manager_.StopProcess(connection) };
-  if (vault_stop_future)
-    return vault_stop_future.get();
+  if (vault_stop_future) {
+    vault_stop_future.get();
+    return;
+  }
   if (client_connections_.Remove(connection))
     return;
   size_t result{ new_connections_.erase(connection) };
@@ -294,7 +296,7 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
     if (vault_info.max_disk_usage != new_max_disk_usage && new_max_disk_usage != 0U)
       SendMaxDiskUsageUpdate(vault_info.tcp_connection, new_max_disk_usage);
 
-    process_manager_.AssignOwner(client_name, label, new_max_disk_usage);
+    process_manager_.AssignOwner(label, client_name, new_max_disk_usage);
     config_file_handler_.WriteConfigFile(process_manager_.GetAll());
     SendVaultRunningResponse(connection, label, vault_info.pmid_and_signer.get());
     return;
@@ -313,9 +315,8 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
   // TODO(Fraser#5#): 2014-05-13 - Handle sending a "MoveChunkstoreRequest" to avoid stopping then
   //                               restarting the vault.
   SendVaultShutdownRequest(vault_info.tcp_connection);
-  vault_info.chunkstore_path = new_chunkstore_path;
-  vault_info.max_disk_usage = new_max_disk_usage;
-  vault_info.owner_name = client_name;
+  { process_manager_.StopProcess(vault_info.tcp_connection) };
+
   // once stopped, do process_manager_.AddProcess(std::move(vault_info)); config_file_handler_.WriteConfigFile(process_manager_.GetAll());
 }
 

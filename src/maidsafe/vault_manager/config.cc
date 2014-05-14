@@ -26,7 +26,8 @@ const std::string kConfigFilename("vault_manager_config.dat");
 const std::string kChunkstoreDirname("chunkstore");
 const std::string kBootstrapFilename("bootstrap.dat");
 const unsigned kMaxRangeAboveDefaultPort(100);
-extern const std::chrono::milliseconds kRpcTimeout(2000);
+const std::chrono::seconds kRpcTimeout(2);
+const std::chrono::seconds kVaultStopTimeout(10);
 
 }  // namespace vault_manager
 
