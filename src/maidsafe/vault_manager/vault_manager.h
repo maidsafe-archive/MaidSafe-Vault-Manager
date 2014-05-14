@@ -32,6 +32,7 @@
 //
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/passport/types.h"
 
@@ -120,6 +121,7 @@ class VaultManager {
   mutable std::mutex new_connections_mutex_;
   std::set<TcpConnectionPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
   ProcessManager process_manager_;
+  std::unique_ptr<AsioService> asio_service_;
   ClientConnections client_connections_;
 };
 

@@ -26,10 +26,23 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+ClientConnections::ClientConnections(boost::asio::io_service& io_service)
+    : io_service_(io_service), mutex_(), unvalidated_clients_(), clients_() {}
+
 void ClientConnections::Add(TcpConnectionPtr connection, const asymm::PlainText& challenge) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   assert(clients_.find(connection) == std::end(clients_));
-  bool result{ unvalidated_clients_.emplace(connection, challenge).second };
+  TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
+  timer->async_wait([=](const boost::system::error_code& error_code) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Client connection timer cancelled OK.";
+    } else {
+      LOG(kWarning) << "Timed out waiting for Client to validate.";
+      std::lock_guard<std::mutex> lock{ mutex_ };
+      unvalidated_clients_.erase(connection);
+    }
+  });
+  bool result{ unvalidated_clients_.emplace(connection, std::make_pair(challenge, timer)).second };
   assert(result);
   static_cast<void>(result);
 }
@@ -45,7 +58,7 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
 
   on_scope_exit cleanup{ [this, itr] { unvalidated_clients_.erase(itr); } };
 
-  if (!asymm::CheckSignature(itr->second, signature, maid.public_key())) {
+  if (!asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
     LOG(kError) << "Client TCP connection validation failed.";
     BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
   }

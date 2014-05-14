@@ -24,8 +24,12 @@
 #include <mutex>
 #include <utility>
 
+#include "boost/asio/io_service.hpp"
+
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/types.h"
+
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
@@ -37,6 +41,7 @@ typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 class ClientConnections {
  public:
   typedef passport::PublicMaid::Name MaidName;
+  explicit ClientConnections(boost::asio::io_service& io_service);
   void Add(TcpConnectionPtr connection, const asymm::PlainText& challenge);
   void Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
                 const asymm::Signature& signature);
@@ -44,9 +49,10 @@ class ClientConnections {
   MaidName FindValidated(TcpConnectionPtr connection) const;
 
  private:
+  boost::asio::io_service& io_service_;
   mutable std::mutex mutex_;
-  std::map<TcpConnectionPtr, asymm::PlainText, std::owner_less<TcpConnectionPtr>>
-      unvalidated_clients_;
+  std::map<TcpConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
+           std::owner_less<TcpConnectionPtr>> unvalidated_clients_;
   std::map<TcpConnectionPtr, MaidName, std::owner_less<TcpConnectionPtr>> clients_;
 };
 

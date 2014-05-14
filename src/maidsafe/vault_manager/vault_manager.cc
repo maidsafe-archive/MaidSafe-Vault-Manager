@@ -102,7 +102,8 @@ VaultManager::VaultManager()
       new_connections_mutex_(),
       new_connections_(),
       process_manager_(GetVaultExecutablePath(), listener_->ListeningPort()),
-      client_connections_() {
+      asio_service_(maidsafe::make_unique<AsioService>(1)),
+      client_connections_(asio_service_->service()) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
     VaultInfo vault_info;
@@ -118,6 +119,7 @@ VaultManager::VaultManager()
 
 VaultManager::~VaultManager() {
   listener_.reset();
+  asio_service_.reset();
   process_manager_.GetAll();
   foreach
     send stop
@@ -226,8 +228,10 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
 void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) {
   RemoveFromNewConnections(connection);
   asymm::PlainText challenge{ RandomString((RandomUint32() % 100) + 100) };
+
   client_connections_.Add(connection, challenge);
   SendChallenge(connection, challenge);
+
 }
 
 void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
@@ -253,7 +257,6 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     vault_info.chunkstore_path = start_vault_message.chunkstore_path();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
     vault_info.owner_name = client_name;
-    SetExecutablePath(kVaultExecutablePath_, vault_info);
     process_manager_.AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_.GetAll());
     return;

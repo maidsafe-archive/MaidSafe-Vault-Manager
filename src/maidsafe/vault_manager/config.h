@@ -19,11 +19,14 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
 #define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+
+#include "boost/asio/steady_timer.hpp"
 
 #include "maidsafe/common/type_macros.h"
 
@@ -38,11 +41,14 @@ typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 typedef std::function<void(std::string)> MessageReceivedFunctor;
 typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
 typedef std::function<void()> ConnectionClosedFunctor;
+typedef boost::asio::steady_timer Timer;
+typedef std::shared_ptr<Timer> TimerPtr;
 
 extern const std::string kConfigFilename;
 extern const std::string kChunkstoreDirname;
 extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
+extern const std::chrono::milliseconds kRpcTimeout;
 
 DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (ValidateConnectionRequest)
