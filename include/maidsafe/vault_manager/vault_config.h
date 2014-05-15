@@ -31,6 +31,7 @@
 
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 

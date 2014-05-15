@@ -46,7 +46,7 @@ namespace protobuf { class VaultInfo; }
 namespace detail {
 
 template <typename T>
-T Parse(const std::string& serialised_message) {
+T Parse(const std::string& /*message*/) {
   return T::need_to_specialise;
 }
 

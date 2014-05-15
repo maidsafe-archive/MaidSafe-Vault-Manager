@@ -55,7 +55,7 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error = nullptr);
 
-void SendVaultStarted(process::ProcessId process_id);
+void SendVaultStarted(TcpConnection& connection);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,

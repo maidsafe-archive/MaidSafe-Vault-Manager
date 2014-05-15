@@ -33,7 +33,6 @@ VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
       max_disk_usage(max_disk_usage_in),
       bootstrap_contacts(bootstrap_contacts_in) {}
 
-
 VaultConfig::VaultConfig(const VaultConfig& other)
     : pmid(other.pmid),
       chunkstore_path(other.chunkstore_path),

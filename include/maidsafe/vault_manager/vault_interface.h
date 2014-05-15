@@ -50,7 +50,7 @@ class VaultInterface {
   VaultConfig GetConfiguration();
 
   // Doesn't throw.
-  int WaitForExit();
+  void WaitForExit();
 
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
 
@@ -70,13 +70,19 @@ class VaultInterface {
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
   void HandleReceivedMessage(const std::string& wrapped_message);
+  void OnConnectionClosed();
+  void NotifyExit();
+
   void HandleVaultStartedResponse(const std::string& message);
+  void HandleVaultShutdownRequest();
+
 
   AsioService asio_service_;
   std::mutex mutex_;
-  std::unique_ptr<TcpConnection> tcp_connection_;
   std::mutex cv_mutex_;
   std::condition_variable condition_;
+  bool shutdown_;
+  std::unique_ptr<TcpConnection> tcp_connection_;
   std::function<void(std::string)> on_vault_started_response_;
   VaultConfig vault_config_;
 };

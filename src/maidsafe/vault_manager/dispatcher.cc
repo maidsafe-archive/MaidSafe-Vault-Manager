@@ -18,6 +18,7 @@
 
 #include "maidsafe/vault_manager/dispatcher.h"
 
+#include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
 
@@ -104,6 +105,13 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
       routing::SerialiseBootstrapContacts(bootstrap_contacts));
   vault_info.tcp_connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                                              MessageType::kVaultStartedResponse)));
+}
+
+void SendVaultStarted(TcpConnection& connection) {
+  protobuf::VaultStarted message;
+  message.set_process_id(process::GetProcessId());
+  connection.Send(WrapMessage(std::make_pair(message.SerializeAsString(),
+                                             MessageType::kVaultStarted)));
 }
 
 void SendVaultShutdownRequest(TcpConnectionPtr connection) {
