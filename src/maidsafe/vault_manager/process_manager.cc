@@ -279,7 +279,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
       bp::initializers::run_exe(kVaultExecutablePath_),
       bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
 #ifndef MAIDSAFE_WIN32
-      bp::notify_io_service(io_service_),
+      bp::initializers::notify_io_service(io_service_),
 #endif
       bp::initializers::throw_on_error(),
       bp::initializers::inherit_env());
