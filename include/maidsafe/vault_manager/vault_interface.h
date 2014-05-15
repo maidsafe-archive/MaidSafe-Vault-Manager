@@ -63,9 +63,9 @@ class VaultInterface {
 
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
 
-  friend void KillConnection(VaultInterface& vault_interface);
-  friend void SendInvalidMessage(VaultInterface& vault_interface);
-  friend void StopProcess(VaultInterface& vault_interface);
+  friend void test::KillConnection(VaultInterface& vault_interface);
+  friend void test::SendInvalidMessage(VaultInterface& vault_interface);
+  friend void test::StopProcess(VaultInterface& vault_interface);
 
  private:
   VaultInterface(const VaultInterface&) = delete;

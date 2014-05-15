@@ -24,6 +24,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/vault_config.h"
 #include "maidsafe/vault_manager/vault_interface.h"
 
 
@@ -55,6 +56,8 @@ void StopProcess(VaultInterface& vault_interface) {
 
 int main(int argc, char* argv[]) {
   using maidsafe::vault_manager::VaultInterface;
+  using maidsafe::vault_manager::TestType;
+
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unused_options.size() != 1U)
