@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,108 +16,69 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include <string>
-#include <mutex>
-#include <condition_variable>
+#include <chrono>
+#include <cstdint>
+#include <future>
 
-#include "boost/asio/ip/udp.hpp"
-#include "boost/program_options.hpp"
-
+#include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/common/rsa.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/vault_manager/vault_interface.h"
 
-namespace po = boost::program_options;
+using maidsafe::vault_manager::VaultInterface;
 
-namespace {
+namespace test {
 
-bool g_check_finished(false);
-
-std::mutex mutex;
-std::condition_variable cond_var;
-
-void StopHandler() {
-  LOG(kInfo) << "Process stopping, asked to stop by parent.";
-  {
-    std::lock_guard<std::mutex> lock(mutex);
-    g_check_finished = true;
-  }
-  cond_var.notify_all();
+void KillConnection(VaultInterface& vault_interface) {
+  maidsafe::Sleep(std::chrono::seconds(1));
+  vault_interface.tcp_connection_.reset();
 }
 
-}  // unnamed namespace
+void SendInvalidMessage(VaultInterface& vault_interface) {
+  vault_interface.tcp_connection_->Send("Rubbish");
+}
+
+void StopProcess(VaultInterface& vault_interface) {
+  maidsafe::Sleep(std::chrono::seconds(1));
+  vault_interface.HandleVaultShutdownRequest();
+}
+
+}  // namespace test
 
 int main(int argc, char* argv[]) {
-  maidsafe::log::Logging::Instance().Initialise(argc, argv);
-  LOG(kInfo) << "Starting dummy_vault.";
-  po::options_description options_description("Allowed options");
-  options_description.add_options()("help", "produce help message")(
-      "runtime", po::value<int>(), "Set runtime in seconds then crash")(
-      "nocrash", "set no crash on runtime ended")(
-      "vmid", po::value<std::string>(), "vaults manager ID")("nocontroller",
-                                                             "set to use no vault controller")(
-      "usr_id", po::value<std::string>()->default_value("client"),
-      "user id if running in non-win OS and from inside a process");
   try {
-    po::variables_map variables_map;
-    po::store(
-        po::command_line_parser(argc, argv).options(options_description).allow_unregistered().run(),
-        variables_map);
-    po::notify(variables_map);
+    auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
+    if (unused_options.size() != 1U)
+      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+    uint16_t port{ std::to_string(std::string{ &unused[0] }) };
+    VaultInterface vault_interface{ port };
 
-    if (variables_map.count("help")) {
-      std::cout << options_description;
-      return -1;
+    std::future<void> worker;
+    VaultInterface::Configuration config{ vault_interface.GetConfiguration() };
+    switch (config.test_type) {
+      case TestType::kKillConnection:
+        worker = std::async{ std::launch::async, [&] { KillConnection(vault_interface); } };
+        break;
+      case TestType::kSendInvalidMessage:
+        worker = std::async{ std::launch::async, [&] { SendInvalidMessage(vault_interface); } };
+        break;
+      case TestType::kStopProcess:
+        worker = std::async{ std::launch::async, [&] { StopProcess(vault_interface); } };
+        break;
+      default:
+        BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     }
-    if (!variables_map.count("vmid")) {
-      LOG(kError) << "dummy_vault: You must supply a vaults manager ID";
-      return -2;
-    }
-    std::string usr_id("client");
-    if (variables_map.count("usr_id"))
-      usr_id = variables_map.at("usr_id").as<std::string>();
-
-    std::string vault_manager_id = variables_map["vmid"].as<std::string>();
-    if (!variables_map.count("nocontroller")) {
-      LOG(kInfo) << "dummy_vault: Starting VaultInterface: " << usr_id;
-      maidsafe::vault_manager::VaultInterface vault_interface([&] { StopHandler(); });
-      //std::unique_ptr<maidsafe::passport::Pmid> pmid;
-      //std::vector<boost::asio::ip::udp::endpoint> bootstrap_endpoints;
-      //vault_interface.GetIdentity(pmid, bootstrap_endpoints);
-      //LOG(kInfo) << "dummy_vault: Identity: " << maidsafe::Base64Substr(pmid->name().value);
-      //LOG(kInfo) << "Validation Token: "
-      //           << maidsafe::Base64Substr(pmid->validation_token().string());
-      //LOG(kInfo) << "Public Key: "
-      //           << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->public_key()));
-      //LOG(kInfo) << "Private Key: "
-      //           << maidsafe::Base64Substr(maidsafe::asymm::EncodeKey(pmid->private_key()));
-      //vault_interface.ConfirmJoin();
-
-      //boost::asio::ip::udp::endpoint endpoint;
-      //endpoint.address(boost::asio::ip::address::from_string("127.0.0.46"));
-      //endpoint.port(3658);
-      //vault_interface.SendEndpointToVaultManager(endpoint);
-      //std::unique_lock<std::mutex> lock(mutex);
-      //cond_var.wait(lock, [] { return g_check_finished; });
-    }
-
-    if (variables_map.count("runtime")) {
-      int runtime = variables_map["runtime"].as<int>();
-      LOG(kInfo) << "Running for " << runtime << " seconds.";
-      maidsafe::Sleep(std::chrono::seconds(runtime));
-      if (variables_map.count("nocrash")) {
-        g_check_finished = true;
-        LOG(kInfo) << "dummy_vault: Process finishing normally. ";
-        return 0;
-      } else {
-        return -4;
-      }
-    }
+    int result{ vault_interface.WaitForExit() };
+    worker.get();
+    return result;
+  }
+  catch (const maidsafe_error& error) {
+    LOG(kError) << "This is only designed to be invoked by VaultManager.";
+    return maidsafe::ErrorToInt(error);
   }
   catch (const std::exception& e) {
-    LOG(kError) << "Error: " << e.what();
-    return -5;
+    LOG(kError) << "This is only designed to be invoked by VaultManager: " << e.what();
+    return maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
   }
 }
