@@ -38,8 +38,17 @@ namespace maidsafe {
 namespace vault_manager {
 
 class TcpConnection;
+class VaultInterface;
 
 typedef uint16_t Port;
+
+namespace test {
+
+void KillConnection(VaultInterface& vault_interface);
+void SendInvalidMessage(VaultInterface& vault_interface);
+void StopProcess(VaultInterface& vault_interface);
+
+}  // namespace test
 
 class VaultInterface {
  public:
@@ -53,6 +62,10 @@ class VaultInterface {
   void WaitForExit();
 
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
+
+  friend void KillConnection(VaultInterface& vault_interface);
+  friend void SendInvalidMessage(VaultInterface& vault_interface);
+  friend void StopProcess(VaultInterface& vault_interface);
 
  private:
   VaultInterface(const VaultInterface&) = delete;

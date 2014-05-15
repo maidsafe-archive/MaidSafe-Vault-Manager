@@ -26,7 +26,10 @@
 
 #include "maidsafe/vault_manager/vault_interface.h"
 
-using maidsafe::vault_manager::VaultInterface;
+
+namespace maidsafe {
+
+namespace vault_manager {
 
 namespace test {
 
@@ -46,7 +49,12 @@ void StopProcess(VaultInterface& vault_interface) {
 
 }  // namespace test
 
+}  // namespace vault_manager
+
+}  // namespace maidsafe
+
 int main(int argc, char* argv[]) {
+  using maidsafe::vault_manager::VaultInterface;
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unused_options.size() != 1U)
