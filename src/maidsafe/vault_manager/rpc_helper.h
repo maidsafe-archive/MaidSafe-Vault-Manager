@@ -19,16 +19,16 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_RPC_HELPER_H_
 #define MAIDSAFE_VAULT_MANAGER_RPC_HELPER_H_
 
-#include <boost/exception/diagnostic_information.hpp>
-
+#include <functional>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 
-
-#include "boost/asio/steady_timer.hpp"
 #include "boost/asio/error.hpp"
-
+#include "boost/asio/io_service.hpp"
+#include "boost/asio/steady_timer.hpp"
+#include "boost/exception/diagnostic_information.hpp"
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
@@ -47,6 +47,8 @@ struct PromiseAndTimer {
   explicit PromiseAndTimer(boost::asio::io_service& io_service);
   void ParseAndSetValue(const std::string& message);
   void SetException(std::exception_ptr exception);
+  void SetException(maidsafe_error error);
+  void SetException(boost::system::error_code error_code);
 
   std::promise<ResultType> promise;
   Timer timer;
@@ -61,13 +63,25 @@ PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::ParseAndSetValue(const std::string& message) {
-  ResultType result(detail::Parse<ResultType>(message));
-  std::call_once(once_flag, [&]() { promise.set_value(result); });
+  ResultType result(Parse<ResultType>(message));
+  std::call_once(once_flag, [&] { promise.set_value(result); });
 }
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::SetException(std::exception_ptr exception) {
-  std::call_once(once_flag, [&]() { promise.set_exception(exception); });
+  std::call_once(once_flag, [&] { promise.set_exception(exception); });
+}
+
+template <typename ResultType>
+void PromiseAndTimer<ResultType>::SetException(maidsafe_error error) {
+  std::call_once(once_flag, [&] { promise.set_exception(std::make_exception_ptr(error)); });
+}
+
+template <typename ResultType>
+void PromiseAndTimer<ResultType>::SetException(boost::system::error_code error_code) {
+  std::call_once(once_flag, [&] {
+      promise.set_exception(std::make_exception_ptr(boost::system::system_error(error_code)));
+  });
 }
 
 }  // namespace detail
@@ -79,41 +93,33 @@ std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& ca
   auto promise_and_timer = std::make_shared<detail::PromiseAndTimer<ResultType>>(io_service);
   {
     std::lock_guard<std::mutex> lock{ mutex };
-    if (call_back) {
-      auto call_back_copy(call_back);
-      call_back = [=](std::string message) {
-        LOG(kVerbose) << "Invoking chained functor";
+    auto call_back_copy(call_back);
+    call_back = [=](std::string message) {
+      if (call_back_copy)
         call_back_copy(message);
-        try {
-          promise_and_timer->ParseAndSetValue(message);
-        }
-        catch (std::exception& e) {
-          LOG(kError) << boost::diagnostic_information(e);
-          promise_and_timer->SetException(std::current_exception());
-        }
-        promise_and_timer->timer.cancel();
-      };
-    } else {
-      call_back = [=](std::string message) {
-        LOG(kVerbose) << "Invoking functor";
+      try {
         promise_and_timer->ParseAndSetValue(message);
-        promise_and_timer->timer.cancel();
-      };
-    }
-  }
-
-  promise_and_timer->timer.async_wait([=, &call_back, &mutex](const boost::system::error_code&
-                                                                error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
-      LOG(kVerbose) << "Timer cancelled";
-    } else {
-      LOG(kVerbose) << "Timer expired - i.e. timeout";
-      std::lock_guard<std::mutex> lock{ mutex };
-      if (call_back) {
-        call_back = nullptr;
       }
-      promise_and_timer->SetException(std::make_exception_ptr((MakeError(RoutingErrors::timed_out))));  // FIXME
+      catch (const std::exception& e) {
+        LOG(kError) << boost::diagnostic_information(e);
+        promise_and_timer->SetException(std::current_exception());
+      }
+      promise_and_timer->timer.cancel();
+    };
+  }
+  promise_and_timer->timer.async_wait([=, &call_back, &mutex](const boost::system::error_code& ec) {
+    if (ec && ec == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Timer cancelled";
+      return;
     }
+    LOG(kVerbose) << "Timer expired - i.e. timed out";
+    std::lock_guard<std::mutex> lock{ mutex };
+    if (call_back)
+      call_back = nullptr;
+    if (ec)
+      promise_and_timer->SetException(ec);
+    else
+      promise_and_timer->SetException(MakeError(VaultManagerErrors::timed_out));
   });
   return promise_and_timer->promise.get_future();
 }

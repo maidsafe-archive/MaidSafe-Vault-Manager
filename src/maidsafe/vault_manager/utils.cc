@@ -57,7 +57,8 @@ int g_identity_index(0);
 namespace detail {
 
 template <>
-routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message) {
+routing::BootstrapContacts Parse<routing::BootstrapContacts>(
+    const std::string& serialised_message) {
   return routing::ParseBootstrapContacts(serialised_message);
 }
 

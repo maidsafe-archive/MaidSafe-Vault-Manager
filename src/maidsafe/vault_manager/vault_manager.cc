@@ -117,22 +117,13 @@ VaultManager::VaultManager()
 
 VaultManager::~VaultManager() {
   listener_.reset();
-  asio_service_.reset();
   std::vector<VaultInfo> all_vaults{ process_manager_.GetAll() };
-  std::vector<std::future<void>> process_stops;
   std::for_each(std::begin(all_vaults), std::end(all_vaults),
-                [this, &process_stops](const VaultInfo& vault) {
+                [this](const VaultInfo& vault) {
                   SendVaultShutdownRequest(vault.tcp_connection);
-                  process_stops.emplace_back(process_manager_.StopProcess(vault.tcp_connection));
+                  process_manager_.StopProcess(vault.tcp_connection);
                 });
-  for (auto& process_stop : process_stops) {
-    try {
-      process_stop.get();
-    }
-    catch (const std::exception& e) {
-      LOG(kError) << "Vault process failed to stop: " << boost::diagnostic_information(e);
-    }
-  }
+  asio_service_.reset();
 }
 
 void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
@@ -163,16 +154,9 @@ void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   // 'new_connections_' to 'process_manager_' or 'client_connections_' concurrently with the
   // connection closing.
   std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-  std::unique_ptr<std::future<void>> vault_stop_future{ process_manager_.StopProcess(connection) };
-  if (vault_stop_future) {
-    vault_stop_future.get();
+  if (process_manager_.HandleConnectionClosed(connection) || client_connections_.Remove(connection))
     return;
-  }
-  if (client_connections_.Remove(connection))
-    return;
-  size_t result{ new_connections_.erase(connection) };
-  assert(result);
-  static_cast<void>(result);
+  new_connections_.erase(connection);
 }
 
 void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
@@ -315,22 +299,32 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
   // TODO(Fraser#5#): 2014-05-13 - Handle sending a "MoveChunkstoreRequest" to avoid stopping then
   //                               restarting the vault.
   SendVaultShutdownRequest(vault_info.tcp_connection);
-  { process_manager_.StopProcess(vault_info.tcp_connection) };
-
-  // once stopped, do process_manager_.AddProcess(std::move(vault_info)); config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+  ProcessManager::OnExitFunctor on_exit{ [this, vault_info](maidsafe_error error, int exit_code) {
+    LOG(kVerbose) << "Process returned " << exit_code << " with error message: " << error.what();
+    process_manager_.AddProcess(std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+  } };
+  process_manager_.StopProcess(vault_info.tcp_connection, on_exit);
 }
 
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ Parse<protobuf::VaultStarted>(message) };
   VaultInfo vault_info{
-      process_manager_.HandleVaultStarted(connection, { vault_started.process_id() } };
+      process_manager_.HandleVaultStarted(connection, { vault_started.process_id() }) };
 
   // Send vault its credentials
   SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
       config_file_handler_.SymmIv(), routing::ReadBootstrapFile(kBootstrapFilePath_));
 
-  find corresponding client connection and send StartVaultResponse
+  // If the corresponding client is connected, send it the credentials too
+  if (vault_info.owner_name->IsInitialised()) {
+    try {
+      TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+      SendVaultRunningResponse(client, vault_info.label, vault_info.pmid_and_signer.get());
+    }
+    catch (const std::exception&) {}  // We don't care if the client isn't connected.
+  }
 }
 
 /*

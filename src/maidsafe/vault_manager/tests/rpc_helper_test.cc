@@ -35,55 +35,33 @@ namespace vault_manager {
 
 namespace test {
 
-
 TEST(RpcHelperTest, BEH_SetResponseCallback) {
   AsioService asio_service(1);
+  boost::asio::io_service& io_service{ asio_service.service() };
   std::function<void(std::string)> call_back;
   std::mutex mutex;
-  routing::BootstrapContacts bootstrap_contacts;
-  routing::BootstrapContact bootstrap_contact(maidsafe::GetLocalIp(),
-                                              maidsafe::test::GetRandomPort());
-  bootstrap_contacts.push_back(bootstrap_contact);
+  typedef routing::BootstrapContacts BootstrapList;
+  BootstrapList bootstrap_list{ 1, { maidsafe::GetLocalIp(), maidsafe::test::GetRandomPort() } };
 
-  std::future<routing::BootstrapContacts>
-      future1{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
+  std::vector<std::future<BootstrapList>> futures;
+  for (int i(0); i < 3; ++i)
+    futures.emplace_back(SetResponseCallback<BootstrapList>(call_back, io_service, mutex));
 
-  std::future<routing::BootstrapContacts>
-      future2{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
-  std::future<routing::BootstrapContacts>
-      future3{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
+  for (auto& future : futures)
+    EXPECT_THROW(future.get(), maidsafe_error) << "must have failed";
 
+  futures.clear();
+  for (int i(0); i < 3; ++i)
+    futures.emplace_back(SetResponseCallback<BootstrapList>(call_back, io_service, mutex));
 
-  EXPECT_THROW(future1.get(), maidsafe_error) << "must have failed";
-  EXPECT_THROW(future2.get(), maidsafe_error) << "must have failed";
-  EXPECT_THROW(future3.get(), maidsafe_error) << "must have failed";
-
-  std::future<routing::BootstrapContacts>
-      future4{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
-  std::future<routing::BootstrapContacts>
-      future5{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
-  std::future<routing::BootstrapContacts>
-      future6{ SetResponseCallback<routing::BootstrapContacts>(call_back,
-                                                               asio_service.service(),
-                                                               mutex) };
   std::thread t([&]() {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    call_back(routing::SerialiseBootstrapContacts(bootstrap_contacts));
+    Sleep(std::chrono::milliseconds(100));
+    call_back(routing::SerialiseBootstrapContacts(bootstrap_list));
   });
 
-  EXPECT_EQ(future4.get(), bootstrap_contacts);
-  EXPECT_EQ(future5.get(), bootstrap_contacts);
-  EXPECT_EQ(future6.get(), bootstrap_contacts);
+  for (auto& future : futures)
+    EXPECT_EQ(future.get(), bootstrap_list);
+
   t.join();
 }
 

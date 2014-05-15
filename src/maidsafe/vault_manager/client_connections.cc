@@ -89,6 +89,19 @@ ClientConnections::MaidName ClientConnections::FindValidated(TcpConnectionPtr co
   return itr->second;
 }
 
+TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(clients_), std::end(clients_),
+                        [&maid_name](const std::pair<TcpConnectionPtr, MaidName> client) {
+                          return client.second == maid_name;
+                        }));
+  if (itr == std::end(clients_)) {
+    LOG(kWarning) << "Client TCP connection not found.";
+    BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
+  }
+  return itr->first;
+}
+
 }  //  namespace vault_manager
 
 }  //  namespace maidsafe

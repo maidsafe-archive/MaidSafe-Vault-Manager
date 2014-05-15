@@ -28,6 +28,7 @@ const std::string kBootstrapFilename("bootstrap.dat");
 const unsigned kMaxRangeAboveDefaultPort(100);
 const std::chrono::seconds kRpcTimeout(2);
 const std::chrono::seconds kVaultStopTimeout(10);
+const int kMaxVaultRestarts(5);
 
 }  // namespace vault_manager
 

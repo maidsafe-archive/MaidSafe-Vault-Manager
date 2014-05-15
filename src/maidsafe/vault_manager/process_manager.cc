@@ -84,9 +84,11 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
 
 }  // unnamed namespace
 
-ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service)
+ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service, int restarts)
     : info(std::move(info)),
       on_exit(),
+      timer(maidsafe::make_unique<Timer>(io_service)),
+      restart_count(restarts),
       process_args(),
       status(ProcessStatus::kBeforeStarted),
 #ifdef MAIDSAFE_WIN32
@@ -94,12 +96,14 @@ ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service
       handle(io_service) {}
 #else
       process(0),
-      signal_set(maidsafe::make_unique<boost::asio::signal_set>(io_service_, SIGCHLD)) {}
+      signal_set(maidsafe::make_unique<boost::asio::signal_set>(io_service, SIGCHLD)) {}
 #endif
 
 ProcessManager::Child::Child(Child&& other)
     : info(std::move(other.info)),
       on_exit(std::move(other.on_exit)),
+      timer(std::move(other.timer)),
+      restart_count(std::move(other.restart_count)),
       process_args(std::move(other.process_args)),
       status(std::move(other.status)),
       process(std::move(other.process)),
@@ -118,6 +122,8 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
   using std::swap;
   swap(lhs.info, rhs.info);
   swap(lhs.on_exit, rhs.on_exit);
+  swap(lhs.timer, rhs.timer);
+  swap(lhs.restart_count, rhs.restart_count);
   swap(lhs.process_args, rhs.process_args);
   swap(lhs.status, rhs.status);
   swap(lhs.process, rhs.process);
@@ -164,9 +170,13 @@ std::vector<VaultInfo> ProcessManager::GetAll() const {
   return all_vaults;
 }
 
-void ProcessManager::AddProcess(VaultInfo info) {
+void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
   if (info.chunkstore_path.empty()) {
     LOG(kError) << "Can't add vault process - chunkstore path is empty.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  if (restart_count > kMaxVaultRestarts) {
+    LOG(kError) << "Can't add vault process - too many restarts.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   std::lock_guard<std::mutex> lock{ mutex_ };
@@ -174,7 +184,7 @@ void ProcessManager::AddProcess(VaultInfo info) {
     CheckNewVaultDoesntConflict(info, vault.info);
 
   // emplace offers strong exception guarantee - only need to cover subsequent calls.
-  auto itr(vaults_.emplace(std::end(vaults_), Child{ info, io_service_ }));
+  auto itr(vaults_.emplace(std::end(vaults_), Child{ info, io_service_, restart_count }));
   on_scope_exit strong_guarantee{ [this, itr] { vaults_.erase(itr); } };
   StartProcess(itr);
   strong_guarantee.Release();
@@ -190,7 +200,9 @@ VaultInfo ProcessManager::HandleVaultStarted(TcpConnectionPtr connection, Proces
     LOG(kError) << "Failed to find vault with process ID " << process_id << " in child processes.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
+  itr->timer->cancel();
   itr->info.tcp_connection = connection;
+  itr->status = ProcessStatus::kRunning;
   return itr->info;
 }
 
@@ -203,8 +215,22 @@ void ProcessManager::AssignOwner(const NonEmptyString& label,
   itr->info.max_disk_usage = max_disk_usage;
 }
 
-bool ProcessManager::StopProcess(TcpConnectionPtr connection,
-                                 std::function<void(maidsafe_error, int)> functor) {
+void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor) {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, connection](const Child& vault) {
+                          return ConnectionsEqual(vault.info.tcp_connection, connection);
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kWarning) << "Vault process doesn't exist.";
+    return;
+  }
+  itr->on_exit = on_exit_functor;
+  itr->status = ProcessStatus::kStopping;
+  StopProcess(*itr);
+}
+
+bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, connection](const Child& vault) {
@@ -214,8 +240,18 @@ bool ProcessManager::StopProcess(TcpConnectionPtr connection,
     LOG(kWarning) << "Vault process doesn't exist.";
     return false;
   }
-  itr->on_exit = functor;
-  StopProcess(*itr);
+  // Set the timer to stop the process without setting the status to kStopping.  This will cause the
+  // vault to be restarted unless it is explicitly stopped before the timer expires.
+  NonEmptyString label{ itr->info.label };
+  itr->timer->expires_from_now(kRpcTimeout);
+  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Connection closed timer cancelled OK.";
+      return;
+    }
+    LOG(kWarning) << "Timed out after connection closed; restarting the vault.";
+    OnProcessExit(label, -1, true);
+  });
   return true;
 }
 
@@ -248,7 +284,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
       bp::initializers::throw_on_error(),
       bp::initializers::inherit_env());
 
-  itr->status = ProcessStatus::kRunning;
+  itr->status = ProcessStatus::kStarting;
 
 #ifdef MAIDSAFE_WIN32
   itr->handle.assign(itr->process.process_handle());
@@ -260,31 +296,27 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   });
 #endif
 
+  itr->timer->expires_from_now(kRpcTimeout);
+  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "New process timer cancelled OK.";
+      return;
+    }
+    LOG(kWarning) << "Timed out waiting for new process to connect via TCP.";
+    OnProcessExit(label, -1, true);
+  });
 }
 
 void ProcessManager::StopProcess(Child& vault) {
-  vault.status = ProcessStatus::kStopping;
   NonEmptyString label{ vault.info.label };
-  TimerPtr timer{ std::make_shared<Timer>(io_service_, kVaultStopTimeout) };
-  timer->async_wait([this, label, timer](const boost::system::error_code& error_code) {
+  vault.timer->expires_from_now(kVaultStopTimeout);
+  vault.timer->async_wait([this, label](const boost::system::error_code& error_code) {
     if (error_code && error_code == boost::asio::error::operation_aborted) {
       LOG(kVerbose) << "Vault termination timer cancelled OK.";
       return;
     }
     LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
-    std::function<void(maidsafe_error, int)> on_exit;
-    maidsafe_error error{ MakeError(CommonErrors::success) };
-    try {
-      std::lock_guard<std::mutex> lock{ mutex_ };
-      auto itr(DoFind(label));
-      on_exit = itr->on_exit;
-      bp::terminate(itr->process);
-    }
-    catch (const std::exception& e) {
-      LOG(kError) << "Error while terminating vault: " << boost::diagnostic_information(e);
-    }
-    if (on_exit)
-      on_exit(MakeError(VaultManagerErrors::vault_terminated), -1);
+    OnProcessExit(label, -1, true);
   });
 }
 
@@ -340,8 +372,10 @@ bool ProcessManager::IsRunning(const Child& vault) const {
   }
 }
 
-void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code) {
-  std::function<void(maidsafe_error, int)> on_exit;
+void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate) {
+  OnExitFunctor on_exit;
+  VaultInfo vault_info;
+  int restart_count(-1);
   {
     std::lock_guard<std::mutex> lock{ mutex_ };
     auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
@@ -349,210 +383,38 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code) {
     if (child_itr == std::end(vaults_))
       return;
     on_exit = child_itr->on_exit;
+    if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
+      restart_count = child_itr->restart_count;
+      vault_info = child_itr->info;
+      vault_info.tcp_connection.reset();
+    }
+
+    if (terminate)
+      TerminateProcess(child_itr);
+
     vaults_.erase(child_itr);
   }
+
   if (on_exit) {
-    if (exit_code == 0)
+    if (terminate)
+      on_exit(MakeError(VaultManagerErrors::vault_terminated), -1);
+    else if (exit_code == 0)
       on_exit(MakeError(CommonErrors::success), exit_code);
     else
       on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
   }
+
+  if (restart_count >= 0 && restart_count <= kMaxVaultRestarts)
+    AddProcess(std::move(vault_info), restart_count);
 }
 
-/*
-std::vector<ProcessManager::ProcessInfo>::iterator ProcessManager::FindProcess(ProcessIndex index) {
-  return std::find_if(processes_.begin(), processes_.end(), [index](ProcessInfo & process_info) {
-    return (process_info.index == index);
-  });
+void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
+  boost::system::error_code ec;
+  bp::terminate(itr->process, ec);
+  if (ec)
+    LOG(kError) << "Error while terminating vault: " << ec.message();
 }
 
-void ProcessManager::StartProcess(ProcessIndex index) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return;
-  (*itr).done = false;
-  (*itr).restart_count = 0;
-  LOG(kInfo) << "StartProcess: AddStatus. ID: " << index;
-  (*itr).thread =
-      std::move(boost::thread([=] { RunProcess(index, false, false); }));
-}
-
-void ProcessManager::RunProcess(ProcessIndex index, bool restart, bool logging) {
-  std::string process_name;
-  std::vector<std::string> process_args;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto itr = FindProcess(index);
-    if (itr == processes_.end()) {
-      LOG(kError) << "RunProcess: process with specified VMID cannot be found";
-      return;
-    }
-    process_name = (*itr).process.name();
-    process_args = (*itr).process.args();
-  }
-
-  if (restart) {
-    Sleep(std::chrono::milliseconds(600));
-    // SetInstruction(id, ProcessInstruction::kRun);
-    //    if (logging) {
-    //      log::FilterMap filter;
-    //      filter["*"] = log::kVerbose;
-    //      log::Logging::instance().SetFilter(filter);
-    //      log::Logging::instance().SetAsync(true);
-    //    }
-  }
-  boost::system::error_code error_code;
-  // TODO(Fraser#5#): 2012-08-29 - Handle logging to a file.  See:
-  // http://www.highscore.de/boost/process0.5/boost_process/tutorial.html#boost_process.tutorial.setting_up_standard_streams
-  // NOLINT (Fraser)
-  SetProcessStatus(index, ProcessStatus::kRunning);
-  bp::child child(bp::execute(
-      bp::initializers::run_exe(process_name),
-      bp::initializers::set_cmd_line(process::ConstructCommandLine(process_args)),
-      bp::initializers::set_on_error(error_code),
-      bp::initializers::inherit_env()));
-  boost::system::error_code error;
-  auto exit_code = wait_for_exit(child, error);
-  if (error) {
-    LOG(kError) << "Error waiting for child to exit: " << error.message();
-  }
-  SetProcessStatus(index, ProcessStatus::kStopped);
-  LOG(kInfo) << "Process " << index << " has completed with exit code " << exit_code;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto itr(FindProcess(index));
-    LOG(kInfo) << "Restart count = " << (*itr).restart_count;
-    if ((*itr).done)
-      return;
-
-    if ((*itr).restart_count > 4) {
-      LOG(kInfo) << "A process " << (*itr).index << " is consistently failing. Stopping..."
-                 << " Restart count = " << (*itr).restart_count;
-      return;
-    }
-
-    if ((*itr).restart_count < 3) {
-      ++(*itr).restart_count;
-      logging = false;
-    } else {
-      ++(*itr).restart_count;
-      logging = true;
-    }
-  }
-  RunProcess(index, true, logging);
-}
-
-void ProcessManager::LetProcessDie(ProcessIndex index) {
-  LOG(kVerbose) << "LetProcessDie: ID: " << index;
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return;
-  (*itr).done = true;
-}
-
-void ProcessManager::LetAllProcessesDie() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto& process : processes_)
-    process.done = true;
-}
-
-void ProcessManager::WaitForProcesses() {
-  bool done(false);
-  boost::thread thread;
-  while (!done) {
-    done = true;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      for (auto& process : processes_) {
-        if (!process.done) {
-          done = false;
-          break;
-        }
-        if (process.thread.joinable()) {
-          thread = std::move(process.thread);
-          done = false;
-          break;
-        }
-      }
-    }
-    thread.join();
-    Sleep(std::chrono::milliseconds(100));
-  }
-}
-
-void ProcessManager::KillProcess(ProcessIndex index) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return;
-  (*itr).done = true;
-  bp::terminate((*itr).child);
-}
-
-void ProcessManager::StopProcess(ProcessIndex index) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return;
-  (*itr).done = true;
-}
-
-void ProcessManager::RestartProcess(ProcessIndex index) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return;
-  (*itr).done = false;
-  // SetInstruction(id, ProcessInstruction::kTerminate);
-}
-
-ProcessStatus ProcessManager::GetProcessStatus(ProcessIndex index) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return ProcessStatus::kError;
-  return (*itr).status;
-}
-
-bool ProcessManager::WaitForProcessToStop(ProcessIndex index) {
-  std::unique_lock<std::mutex> lock(mutex_);
-  auto itr = FindProcess(index);
-  if (itr == processes_.end())
-    return false;
-  if (cond_var_.wait_for(lock, std::chrono::seconds(5), [&]()->bool {
-        return (*itr).status != ProcessStatus::kRunning;
-      }))
-    return true;
-  LOG(kError) << "Wait for process " << index << " to stop timed out. Terminating...";
-  lock.unlock();
-  KillProcess(index);
-  return true;
-}
-
-bool ProcessManager::SetProcessStatus(ProcessIndex index, const ProcessStatus& status) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto itr = FindProcess(index);
-    if (itr == processes_.end())
-      return false;
-    (*itr).status = status;
-  }
-  cond_var_.notify_all();
-  return true;
-}
-
-void ProcessManager::TerminateAll() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto& process : processes_) {
-    LOG(kInfo) << "Terminating: " << process.index << ", port: " << process.port;
-    if (process.thread.joinable() && process.status == ProcessStatus::kRunning)
-      process.thread.join();
-  }
-  processes_.clear();
-}
-*/
 }  // namespace vault_manager
 
 }  // namespace maidsafe

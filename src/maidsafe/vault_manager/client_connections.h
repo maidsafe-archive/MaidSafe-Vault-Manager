@@ -47,6 +47,7 @@ class ClientConnections {
                 const asymm::Signature& signature);
   bool Remove(TcpConnectionPtr connection);
   MaidName FindValidated(TcpConnectionPtr connection) const;
+  TcpConnectionPtr FindValidated(MaidName maid_name) const;
 
  private:
   boost::asio::io_service& io_service_;

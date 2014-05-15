@@ -47,21 +47,23 @@ namespace vault_manager {
 
 typedef uint64_t ProcessId;
 
-enum class ProcessStatus { kBeforeStarted, kRunning, kStopping, kStopped };
+enum class ProcessStatus { kBeforeStarted, kStarting, kRunning, kStopping };
 
 // All functions provide the strong exception guarantee.
 class ProcessManager {
  public:
+  typedef std::function<void(maidsafe_error, int)> OnExitFunctor;
   ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
                  Port listening_port);
   ~ProcessManager() { assert(vaults_.empty()); }
   std::vector<VaultInfo> GetAll() const;
-  void AddProcess(VaultInfo info);
+  void AddProcess(VaultInfo info, int restart_count = 0);
   VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);
   void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
                    DiskUsage max_disk_usage);
+  void StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor = nullptr);
   // Returns false if the process doesn't exist.
-  bool StopProcess(TcpConnectionPtr connection, std::function<void(maidsafe_error, int)> functor);
+  bool HandleConnectionClosed(TcpConnectionPtr connection);
   VaultInfo Find(const NonEmptyString& label) const;
 
  private:
@@ -70,11 +72,13 @@ class ProcessManager {
   ProcessManager& operator=(ProcessManager) = delete;
 
   struct Child {
-    Child(VaultInfo info, boost::asio::io_service &io_service);
+    Child(VaultInfo info, boost::asio::io_service &io_service, int restarts);
     Child(Child&& other);
     Child& operator=(Child other);
     VaultInfo info;
-    std::function<void(maidsafe_error, int)> on_exit;
+    OnExitFunctor on_exit;
+    std::unique_ptr<Timer> timer;
+    int restart_count;
     std::vector<std::string> process_args;
     ProcessStatus status;
     boost::process::child process;
@@ -95,7 +99,8 @@ class ProcessManager {
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
-  void OnProcessExit(const NonEmptyString& label, int exit_code);
+  void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
+  void TerminateProcess(std::vector<Child>::iterator itr);
 
   boost::asio::io_service &io_service_;
   const boost::filesystem::path kVaultExecutablePath_;

@@ -50,6 +50,7 @@ extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
 extern const std::chrono::seconds kRpcTimeout;
 extern const std::chrono::seconds kVaultStopTimeout;
+extern const int kMaxVaultRestarts;
 
 DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (ValidateConnectionRequest)
