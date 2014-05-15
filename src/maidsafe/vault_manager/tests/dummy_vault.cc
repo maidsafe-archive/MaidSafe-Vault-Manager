@@ -27,55 +27,28 @@
 #include "maidsafe/vault_manager/vault_config.h"
 #include "maidsafe/vault_manager/vault_interface.h"
 
-
-namespace maidsafe {
-
-namespace vault_manager {
-
-namespace test {
-
-void KillConnection(VaultInterface& vault_interface) {
-  maidsafe::Sleep(std::chrono::seconds(1));
-  vault_interface.tcp_connection_.reset();
-}
-
-void SendInvalidMessage(VaultInterface& vault_interface) {
-  vault_interface.tcp_connection_->Send("Rubbish");
-}
-
-void StopProcess(VaultInterface& vault_interface) {
-  maidsafe::Sleep(std::chrono::seconds(1));
-  vault_interface.HandleVaultShutdownRequest();
-}
-
-}  // namespace test
-
-}  // namespace vault_manager
-
-}  // namespace maidsafe
-
 int main(int argc, char* argv[]) {
-  using maidsafe::vault_manager::VaultInterface;
-  using maidsafe::vault_manager::TestType;
-
+  using maidsafe::vault_manager::VaultConfig;
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
-    if (unused_options.size() != 1U)
+    if (unuseds.size() != 1U)
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
-    uint16_t port{ std::to_string(std::string{ &unused[0] }) };
-    VaultInterface vault_interface{ port };
+    uint16_t port{ static_cast<uint16_t>(std::stoi(std::string{ &unuseds[0][0] } )) };
+    maidsafe::vault_manager::VaultInterface vault_interface{ port };
 
     std::future<void> worker;
-    VaultInterface::Configuration config{ vault_interface.GetConfiguration() };
+    VaultConfig config{ vault_interface.GetConfiguration() };
     switch (config.test_type) {
-      case TestType::kKillConnection:
-        worker = std::async{ std::launch::async, [&] { KillConnection(vault_interface); } };
+      case VaultConfig::TestType::kNone:
         break;
-      case TestType::kSendInvalidMessage:
-        worker = std::async{ std::launch::async, [&] { SendInvalidMessage(vault_interface); } };
+      case VaultConfig::TestType::kKillConnection:
+        worker = std::async{ std::launch::async, [&] { vault_interface.KillConnection(); } };
         break;
-      case TestType::kStopProcess:
-        worker = std::async{ std::launch::async, [&] { StopProcess(vault_interface); } };
+      case VaultConfig::TestType::kSendInvalidMessage:
+        worker = std::async{ std::launch::async, [&] { vault_interface.SendInvalidMessage(); } };
+        break;
+      case VaultConfig::TestType::kStopProcess:
+        worker = std::async{ std::launch::async, [&] { vault_interface.StopProcess(); } };
         break;
       default:
         BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
@@ -84,7 +57,7 @@ int main(int argc, char* argv[]) {
     worker.get();
     return result;
   }
-  catch (const maidsafe_error& error) {
+  catch (const maidsafe::maidsafe_error& error) {
     LOG(kError) << "This is only designed to be invoked by VaultManager.";
     return maidsafe::ErrorToInt(error);
   }

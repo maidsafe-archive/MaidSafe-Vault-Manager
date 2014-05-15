@@ -57,6 +57,9 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
 
 void SendVaultStarted(TcpConnection& connection);
 
+void SendBootstrapContact(TcpConnection& connection,
+                          const routing::BootstrapContact& bootstrap_contact);
+
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts);

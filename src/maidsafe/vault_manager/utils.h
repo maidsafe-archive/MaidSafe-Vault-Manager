@@ -54,7 +54,8 @@ template <>
 routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message);
 
 template <>
-VaultConfig Parse<VaultConfig>(const std::string& serialised_message);
+std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(
+    const std::string& serialised_message);
 
 }  // namespace detail
 

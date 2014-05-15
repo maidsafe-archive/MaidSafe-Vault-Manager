@@ -27,39 +27,32 @@ namespace vault_manager {
 VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
                          const boost::filesystem::path& chunkstore_path_in,
                          const DiskUsage& max_disk_usage_in,
-                         routing::BootstrapContacts bootstrap_contacts_in
-#ifdef TESTING
-                         , TestType test_type_in
-#endif
-                         )
+                         routing::BootstrapContacts bootstrap_contacts_in)
     : pmid(pmid_in),
       chunkstore_path(chunkstore_path_in),
       max_disk_usage(max_disk_usage_in),
-      bootstrap_contacts(bootstrap_contacts_in)
 #ifdef TESTING
-      , test_type(test_type_in)
+      test_type(TestType::kNone),
 #endif
-  {}
+      bootstrap_contacts(bootstrap_contacts_in) {}
 
 VaultConfig::VaultConfig(const VaultConfig& other)
     : pmid(other.pmid),
       chunkstore_path(other.chunkstore_path),
       max_disk_usage(other.max_disk_usage),
-      bootstrap_contacts(other.bootstrap_contacts)
 #ifdef TESTING
-      , test_type(other.test_type)
+      test_type(other.test_type),
 #endif
-  {}
+      bootstrap_contacts(other.bootstrap_contacts) {}
 
 VaultConfig::VaultConfig(VaultConfig&& other)
     : pmid(std::move(other.pmid)),
       chunkstore_path(std::move(other.chunkstore_path)),
       max_disk_usage(std::move(other.max_disk_usage)),
-      bootstrap_contacts(std::move(other.bootstrap_contacts))
 #ifdef TESTING
-      , test_type(std::move(other.test_type))
+      test_type(std::move(other.test_type)),
 #endif
-  {}
+      bootstrap_contacts(std::move(other.bootstrap_contacts)) {}
 
 VaultConfig& VaultConfig::operator=(VaultConfig other) {
   swap(*this, other);
@@ -71,10 +64,10 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
   swap(lhs.pmid, rhs.pmid);
   swap(lhs.chunkstore_path, rhs.chunkstore_path);
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
-  swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
 #ifdef TESTING
-  swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
+  swap(lhs.test_type, rhs.test_type);
 #endif
+  swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
 }
 
 }  // namespace vault_manager

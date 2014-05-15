@@ -64,6 +64,7 @@ DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (VaultStartedResponse)
     (VaultShutdownRequest)
     (MaxDiskUsageUpdate)
+    (BootstrapContact)
  /*   (VaultIdentityRequest)
     (VaultIdentityResponse)
     (VaultJoinedNetwork)

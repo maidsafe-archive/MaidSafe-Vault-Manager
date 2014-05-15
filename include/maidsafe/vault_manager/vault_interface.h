@@ -20,7 +20,7 @@
 #define MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_
 
 #include <condition_variable>
-//#include <cstdint>
+#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
@@ -42,30 +42,23 @@ class VaultInterface;
 
 typedef uint16_t Port;
 
-namespace test {
-
-void KillConnection(VaultInterface& vault_interface);
-void SendInvalidMessage(VaultInterface& vault_interface);
-void StopProcess(VaultInterface& vault_interface);
-
-}  // namespace test
-
 class VaultInterface {
  public:
   explicit VaultInterface(Port vault_manager_port);
-
   ~VaultInterface();
 
-  VaultConfig GetConfiguration();
+  VaultConfig GetConfiguration() const;
 
   // Doesn't throw.
-  void WaitForExit();
+  int WaitForExit();
 
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
 
-  friend void test::KillConnection(VaultInterface& vault_interface);
-  friend void test::SendInvalidMessage(VaultInterface& vault_interface);
-  friend void test::StopProcess(VaultInterface& vault_interface);
+#ifdef TESTING
+  void KillConnection();
+  void SendInvalidMessage();
+  void StopProcess();
+#endif
 
  private:
   VaultInterface(const VaultInterface&) = delete;
@@ -84,20 +77,16 @@ class VaultInterface {
   //                             std::function<void(bool)> callback);
   void HandleReceivedMessage(const std::string& wrapped_message);
   void OnConnectionClosed();
-  void NotifyExit();
 
   void HandleVaultStartedResponse(const std::string& message);
   void HandleVaultShutdownRequest();
 
-
   AsioService asio_service_;
-  std::mutex mutex_;
-  std::mutex cv_mutex_;
-  std::condition_variable condition_;
-  bool shutdown_;
+  std::promise<int> exit_code_promise_;
+  std::once_flag exit_code_flag_;
   std::unique_ptr<TcpConnection> tcp_connection_;
   std::function<void(std::string)> on_vault_started_response_;
-  VaultConfig vault_config_;
+  const VaultConfig kVaultConfig_;
 };
 
 }  // namespace vault_manager

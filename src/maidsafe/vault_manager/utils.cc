@@ -62,7 +62,7 @@ routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& 
 }
 
 template <>
-VaultConfig Parse<VaultConfig>(const std::string& message) {
+std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::string& message) {
   protobuf::VaultStartedResponse
       vault_started_response{ ParseProto<protobuf::VaultStartedResponse>(message) };
   passport::Pmid pmid = { passport::DecryptPmid(
@@ -73,7 +73,8 @@ VaultConfig Parse<VaultConfig>(const std::string& message) {
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
   routing::BootstrapContacts bootstrap_contacts(
           routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
-  return VaultConfig(pmid, chunkstore_path, max_disk_usage, bootstrap_contacts);
+  return maidsafe::make_unique<VaultConfig>(pmid, chunkstore_path, max_disk_usage,
+                                            bootstrap_contacts);
 }
 
 }  // namspace detail

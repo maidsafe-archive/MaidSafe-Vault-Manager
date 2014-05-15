@@ -30,25 +30,11 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-#ifdef TESTING
-enum class TestType : int {
-  kKillConnection = 0,
-  kSendInvalidMessage,
-  kStopProcess,
-  kNone
-};
-#endif
-
 struct VaultConfig {
   VaultConfig(const passport::Pmid& pmid_in,
               const boost::filesystem::path& chunkstore_path_in,
               const DiskUsage& max_disk_usage_in,
-              routing::BootstrapContacts bootstrap_contacts_in
-#ifdef TESTING
-              , TestType test_type_in = TestType::kNone
-#endif
-             );
-
+              routing::BootstrapContacts bootstrap_contacts_in);
   VaultConfig(const VaultConfig&);
   VaultConfig(VaultConfig&& other);
   VaultConfig& operator=(VaultConfig other);
@@ -56,8 +42,14 @@ struct VaultConfig {
   passport::Pmid pmid;
   boost::filesystem::path chunkstore_path;
   DiskUsage max_disk_usage;
+#ifdef TESTING
+  enum class TestType : int32_t {
+    kNone,
+    kKillConnection,
+    kSendInvalidMessage,
+    kStopProcess } test_type;
+#endif
   routing::BootstrapContacts bootstrap_contacts;
-  TestType test_type;
 };
 
 void swap(VaultConfig& lhs, VaultConfig& rhs);

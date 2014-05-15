@@ -64,7 +64,7 @@ PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::ParseAndSetValue(const std::string& message) {
   ResultType result(Parse<ResultType>(message));
-  std::call_once(once_flag, [&] { promise.set_value(result); });
+  std::call_once(once_flag, [&] { promise.set_value(std::move(result)); });
 }
 
 template <typename ResultType>

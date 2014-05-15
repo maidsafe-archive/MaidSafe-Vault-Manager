@@ -49,48 +49,42 @@ namespace vault_manager {
 
 VaultInterface::VaultInterface(Port vault_manager_port)
     : asio_service_(1),
-      mutex_(),
-      cv_mutex_(),
-      condition_(),
-      shutdown_(false),
+      exit_code_promise_(),
+      exit_code_flag_(),
       tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
           [this](std::string message) { HandleReceivedMessage(message); },
           [this]() { OnConnectionClosed(); },
           vault_manager_port)),
       on_vault_started_response_(),
-      vault_config_([this]()->VaultConfig {
+      kVaultConfig_([this]()->VaultConfig {
                       SendVaultStarted(*tcp_connection_);
-                      return (SetResponseCallback<VaultConfig>(on_vault_started_response_,
-                          asio_service_.service(), mutex_)).get();
-                    } ()) {
-  LOG(kVerbose) << "Connected to Vault manager at port : " << vault_manager_port;
-}
-
-void VaultInterface::WaitForExit() {
-  std::unique_lock<std::mutex> lock(cv_mutex_);
-  while (!shutdown_)
-    condition_.wait(lock);
-}
-
-void VaultInterface::OnConnectionClosed() {
-  LOG(kError) << "Lost connection to Vault Manager";
-  NotifyExit();
-}
-
-void VaultInterface::NotifyExit() {
-  {
-    std::unique_lock<std::mutex> lock(cv_mutex_);
-    shutdown_ = true;
-  }
-  condition_.notify_one();
-}
-
-VaultConfig VaultInterface::GetConfiguration() {
-  return vault_config_;
+                      std::mutex mutex;
+                      return *SetResponseCallback<std::unique_ptr<VaultConfig>>(
+                          on_vault_started_response_, asio_service_.service(), mutex).get();
+                    }()) {
+  LOG(kVerbose) << "Connected to VaultManager which is listening on port " << vault_manager_port;
 }
 
 VaultInterface::~VaultInterface() {}
 
+VaultConfig VaultInterface::GetConfiguration() const {
+  return kVaultConfig_;
+}
+
+int VaultInterface::WaitForExit() {
+  return exit_code_promise_.get_future().get();
+}
+
+void VaultInterface::SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact) {
+  SendBootstrapContact(*tcp_connection_, contact);
+}
+
+void VaultInterface::OnConnectionClosed() {
+  LOG(kError) << "Lost connection to Vault Manager";
+  std::call_once(exit_code_flag_, [this] {
+      exit_code_promise_.set_value(ErrorToInt(MakeError(VaultManagerErrors::connection_aborted)));
+  });
+}
 
 void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
   try {
@@ -123,8 +117,7 @@ void VaultInterface::HandleVaultStartedResponse(const std::string& message) {
 
 void VaultInterface::HandleVaultShutdownRequest() {
   LOG(kInfo) << "Received  ShutdownRequest from Vault Manager";
-  tcp_connection_.reset();
-  NotifyExit();
+  std::call_once(exit_code_flag_, [this] { exit_code_promise_.set_value(0); });
 }
 
 //typedef std::function<void()> VoidFunction;
@@ -493,6 +486,22 @@ void VaultInterface::HandleVaultShutdownRequest() {
 //  vault_shutdown_response.set_process_index(process_index_);
 //  stop_callback_();
 //}
+
+#ifdef TESTING
+void VaultInterface::KillConnection() {
+  maidsafe::Sleep(std::chrono::seconds(1));
+  tcp_connection_.reset();
+}
+
+void VaultInterface::SendInvalidMessage() {
+  tcp_connection_->Send("Rubbish");
+}
+
+void VaultInterface::StopProcess() {
+  maidsafe::Sleep(std::chrono::seconds(1));
+  HandleVaultShutdownRequest();
+}
+#endif
 
 }  // namespace vault_manager
 

@@ -86,6 +86,11 @@ message MaxDiskUsageUpdate {
   required uint64 max_disk_usage = 1;
 }
 
+// Vault to VaultManager and VaultManager to Client
+message BootstrapContact {
+  required bytes serialised_contact = 1;
+}
+
 
 
 
