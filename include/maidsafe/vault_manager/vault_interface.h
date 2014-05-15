@@ -19,20 +19,19 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_INTERFACE_H_
 
-//#include <condition_variable>
+#include <condition_variable>
 //#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
-//#include <mutex>
-//#include <string>
-//#include <utility>
-//#include <vector>
+#include <mutex>
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
+
+#include "maidsafe/vault_manager/vault_config.h"
 
 namespace maidsafe {
 
@@ -40,11 +39,15 @@ namespace vault_manager {
 
 class TcpConnection;
 
+typedef uint16_t Port;
+
 class VaultInterface {
  public:
   explicit VaultInterface(Port vault_manager_port);
 
   ~VaultInterface();
+
+  VaultConfig GetConfiguration();
 
   // Doesn't throw.
   int WaitForExit();
@@ -56,8 +59,6 @@ class VaultInterface {
   VaultInterface(VaultInterface&&) = delete;
   VaultInterface& operator=(VaultInterface) = delete;
 
-  void GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
-                   routing::BootstrapContacts& bootstrap_endpoints);
   //void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   //void RequestVaultIdentity(Port listening_port);
   //void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
@@ -69,10 +70,15 @@ class VaultInterface {
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
   void HandleReceivedMessage(const std::string& wrapped_message);
+  void HandleVaultStartedResponse(const std::string& message);
 
   AsioService asio_service_;
-  std::function<void()> stop_callback_;
+  std::mutex mutex_;
   std::unique_ptr<TcpConnection> tcp_connection_;
+  std::mutex cv_mutex_;
+  std::condition_variable condition_;
+  std::function<void(std::string)> on_vault_started_response_;
+  VaultConfig vault_config_;
 };
 
 }  // namespace vault_manager

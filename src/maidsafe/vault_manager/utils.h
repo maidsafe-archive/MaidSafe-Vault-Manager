@@ -32,6 +32,8 @@
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/vault_config.h"
+
 
 namespace maidsafe {
 
@@ -51,8 +53,19 @@ T Parse(const std::string& serialised_message) {
 template <>
 routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message);
 
+template <>
+VaultConfig Parse<VaultConfig>(const std::string& serialised_message);
+
 }  // namespace detail
 
+
+template <typename ProtobufMessage>
+ProtobufMessage ParseProto(const std::string& serialised_message) {
+  ProtobufMessage protobuf_message;
+  if (!protobuf_message.ParseFromString(serialised_message))
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
+  return protobuf_message;
+}
 
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info);

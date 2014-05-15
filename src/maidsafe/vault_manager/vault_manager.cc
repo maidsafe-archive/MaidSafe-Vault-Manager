@@ -80,14 +80,6 @@ Port GetInitialLocalPort() {
 #endif
 }
 
-template <typename ProtobufMessage>
-ProtobufMessage Parse(const std::string& serialised_message) {
-  ProtobufMessage protobuf_message;
-  if (!protobuf_message.ParseFromString(serialised_message))
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
-  return protobuf_message;
-}
-
 }  // unnamed namespace
 
 VaultManager::VaultManager()
@@ -222,8 +214,8 @@ void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) 
 
 void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
                                            const std::string& message) {
-  protobuf::ChallengeResponse challenge_response{ Parse<protobuf::ChallengeResponse>(message) };
-  passport::PublicMaid maid{ 
+  protobuf::ChallengeResponse challenge_response{ ParseProto<protobuf::ChallengeResponse>(message) };
+  passport::PublicMaid maid{
       passport::PublicMaid::Name{ Identity{ challenge_response.public_maid_name() } },
       passport::PublicMaid::serialised_type{ NonEmptyString{
           challenge_response.public_maid_value() } } };
@@ -238,7 +230,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
   VaultInfo vault_info;
   try {
     passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
-    protobuf::StartVaultRequest start_vault_message{ Parse<protobuf::StartVaultRequest>(message) };
+    protobuf::StartVaultRequest start_vault_message{ ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
     vault_info.chunkstore_path = start_vault_message.chunkstore_path();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
@@ -264,7 +256,7 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
   try {
     passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
     protobuf::TakeOwnershipRequest take_ownership_request{
-        Parse<protobuf::TakeOwnershipRequest>(message) };
+        ParseProto<protobuf::TakeOwnershipRequest>(message) };
     NonEmptyString label{ take_ownership_request.label() };
     fs::path new_chunkstore_path{ take_ownership_request.chunkstore_path() };
     DiskUsage new_max_disk_usage{ take_ownership_request.max_disk_usage() };
@@ -309,7 +301,7 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
 
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
   RemoveFromNewConnections(connection);
-  protobuf::VaultStarted vault_started{ Parse<protobuf::VaultStarted>(message) };
+  protobuf::VaultStarted vault_started{ ParseProto<protobuf::VaultStarted>(message) };
   VaultInfo vault_info{
       process_manager_.HandleVaultStarted(connection, { vault_started.process_id() }) };
 

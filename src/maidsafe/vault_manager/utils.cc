@@ -57,12 +57,27 @@ int g_identity_index(0);
 namespace detail {
 
 template <>
-routing::BootstrapContacts Parse<routing::BootstrapContacts>(
-    const std::string& serialised_message) {
-  return routing::ParseBootstrapContacts(serialised_message);
+routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& message) {
+  return routing::ParseBootstrapContacts(message);
+}
+
+template <>
+VaultConfig Parse<VaultConfig>(const std::string& message) {
+  protobuf::VaultStartedResponse
+      vault_started_response{ ParseProto<protobuf::VaultStartedResponse>(message) };
+  passport::Pmid pmid = { passport::DecryptPmid(
+      crypto::CipherText{ NonEmptyString{ vault_started_response.encrypted_pmid() } },
+      crypto::AES256Key{ vault_started_response.aes256key() },
+      crypto::AES256InitialisationVector{ vault_started_response.aes256iv() }) };
+  boost::filesystem::path chunkstore_path(vault_started_response.chunkstore_path());
+  DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
+  routing::BootstrapContacts bootstrap_contacts(
+          routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
+  return VaultConfig(pmid, chunkstore_path, max_disk_usage, bootstrap_contacts);
 }
 
 }  // namspace detail
+
 
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info) {

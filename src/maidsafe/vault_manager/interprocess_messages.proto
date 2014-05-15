@@ -73,10 +73,12 @@ message VaultStarted {
 
 // VaultManager to Vault
 message VaultStartedResponse {
-  required bytes pmid = 1;
-  required bytes chunkstore_path = 2;
-  required uint64 max_disk_usage = 3;
-  required bytes serialised_bootstrap_contacts = 4;
+  required bytes AES256Key = 1;
+  required bytes AES256IV = 2;
+  required bytes encrypted_pmid = 3;
+  required bytes chunkstore_path = 4;
+  required uint64 max_disk_usage = 5;
+  required bytes serialised_bootstrap_contacts = 6;
 }
 
 // Client to VaultManager and VaultManager to Vault

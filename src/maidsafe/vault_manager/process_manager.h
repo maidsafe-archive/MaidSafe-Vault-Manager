@@ -103,8 +103,8 @@ class ProcessManager {
   void TerminateProcess(std::vector<Child>::iterator itr);
 
   boost::asio::io_service &io_service_;
-  const boost::filesystem::path kVaultExecutablePath_;
   const Port kListeningPort_;
+  const boost::filesystem::path kVaultExecutablePath_;
   std::vector<Child> vaults_;
   mutable std::mutex mutex_;
 };

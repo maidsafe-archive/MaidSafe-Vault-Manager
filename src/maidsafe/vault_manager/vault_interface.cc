@@ -35,6 +35,8 @@
 //#include "maidsafe/vault_manager/controller_messages.pb.h"
 //#include "maidsafe/vault_manager/local_tcp_transport.h"
 //#include "maidsafe/vault_manager/return_codes.h"
+
+#include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 //#include "maidsafe/vault_manager/vault_manager.h"
@@ -45,36 +47,30 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-namespace {
-
-//boost::asio::ip::udp::endpoint GetEndpoint(const std::string& ip, Port port) {
-//  boost::asio::ip::udp::endpoint ep;
-//  ep.port(port);
-//  ep.address(boost::asio::ip::address::from_string(ip));
-//  return ep;
-//}
-
-}  // namespace
-
-
-VaultInterface::VaultInterface(std::function<void()> stop_callback)
+VaultInterface::VaultInterface(Port vault_manager_port)
     : asio_service_(1),
-      stop_callback_(stop_callback),
+      mutex_(),
       tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
                                                            [this](std::string message) {
                                                              HandleReceivedMessage(message);
                                                            },
                                                            [this]() {
-                                                              // FIXME
+                                                              // FIXME OnConnectionClosed()
                                                            },
-                                                           kLivePort)) {}
+                                                           vault_manager_port)),
+      cv_mutex_(),
+      condition_(),
+      on_vault_started_response_(),
+      vault_config_(SetResponseCallback<VaultConfig>(on_vault_started_response_,
+                                                      asio_service_.service(), mutex_).get()) {
+  LOG(kVerbose) << "Connected to Vault manager at port : " << vault_manager_port;
+}
 
-
+VaultConfig VaultInterface::GetConfiguration() {
+  return vault_config_;
+}
 
 VaultInterface::~VaultInterface() {}
-
-
-
 
 
 void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
@@ -91,7 +87,13 @@ void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
   }
 }
 
-
+void VaultInterface::HandleVaultStartedResponse(const std::string& message) {
+  if (on_vault_started_response_) {
+    on_vault_started_response_(message);
+  } else {
+    assert(false);  // already recieved vault configuration
+  }
+}
 
 //typedef std::function<void()> VoidFunction;
 //typedef std::function<void(bool)> VoidFunctionBoolParam;
