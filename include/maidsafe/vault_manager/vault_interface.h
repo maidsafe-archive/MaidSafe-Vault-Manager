@@ -42,12 +42,13 @@ class TcpConnection;
 
 class VaultInterface {
  public:
-  explicit VaultInterface(std::function<void()> stop_callback);
+  explicit VaultInterface(Port vault_manager_port);
+
   ~VaultInterface();
 
-  void GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
-                   routing::BootstrapContacts& bootstrap_endpoints);
-//  void ConfirmJoin();
+  // Doesn't throw.
+  int WaitForExit();
+
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
 
  private:
@@ -55,6 +56,8 @@ class VaultInterface {
   VaultInterface(VaultInterface&&) = delete;
   VaultInterface& operator=(VaultInterface) = delete;
 
+  void GetIdentity(std::unique_ptr<passport::Pmid>& pmid,
+                   routing::BootstrapContacts& bootstrap_endpoints);
   //void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
   //void RequestVaultIdentity(Port listening_port);
   //void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
