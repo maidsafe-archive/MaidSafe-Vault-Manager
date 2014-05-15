@@ -19,18 +19,12 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/types.h"
-#include "maidsafe/passport/passport.h"
+#include "maidsafe/passport/types.h"
 
 #include "maidsafe/routing/bootstrap_file_operations.h"
-
 
 namespace maidsafe {
 
