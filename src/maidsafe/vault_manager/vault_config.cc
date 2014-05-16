@@ -24,6 +24,7 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+
 VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
                          const boost::filesystem::path& chunkstore_path_in,
                          const DiskUsage& max_disk_usage_in,
@@ -69,6 +70,32 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
 #endif
   swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
 }
+
+
+#ifdef TESTING
+
+passport::Pmid GetPmidFromKeysFile(const boost::filesystem::path keys_path,
+                                   size_t identity_index) {
+  std::vector<passport::detail::AnmaidToPmid> key_chains(
+      passport::detail::ReadKeyChainList(keys_path));
+  if (identity_index >= key_chains.size()) {
+    std::cout << "Identity selected out of bounds\n";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  }
+  return passport::Pmid(key_chains.at(identity_index).pmid);
+}
+
+std::vector<passport::PublicPmid> GetPublicPmidsFromKeysFile(
+    const boost::filesystem::path keys_path) {
+  std::vector<passport::detail::AnmaidToPmid> key_chains(
+      passport::detail::ReadKeyChainList(keys_path));
+  std::vector<passport::PublicPmid> public_pmids;
+  for (auto& key_chain : key_chains)
+    public_pmids.push_back(passport::PublicPmid(key_chain.pmid));
+  return public_pmids;
+}
+#endif
+
 
 }  // namespace vault_manager
 
