@@ -71,14 +71,6 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
     LOG(kError) << "Vault process with this tcp_connection already exists.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
-
-#ifdef TESTING
-  if (new_vault.identity_index == existing_vault.identity_index) {
-    LOG(kError) << "Vault process with identity_index " << new_vault.identity_index
-                << " already exists.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
-  }
-#endif
 }
 
 }  // unnamed namespace

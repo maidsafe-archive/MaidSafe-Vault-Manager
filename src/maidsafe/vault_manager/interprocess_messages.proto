@@ -44,6 +44,7 @@ message StartVaultRequest {
   required bytes label = 1;
   required bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
+  optional bytes serialised_public_pmids = 4;
 }
 
 // Client to VaultManager
@@ -79,6 +80,7 @@ message VaultStartedResponse {
   required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
   required bytes serialised_bootstrap_contacts = 6;
+  optional bytes serialised_public_pmids = 7;
 }
 
 // Client to VaultManager and VaultManager to Vault

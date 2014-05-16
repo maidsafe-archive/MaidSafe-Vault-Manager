@@ -29,11 +29,7 @@ VaultInfo::VaultInfo()
       vault_dir(),
       max_disk_usage(0),
       owner_name(),
-      joined_network(false),
       label(),
-#ifdef TESTING
-      identity_index(-1),
-#endif
       tcp_connection() {}
 
 VaultInfo::VaultInfo(const VaultInfo& other)
@@ -41,11 +37,7 @@ VaultInfo::VaultInfo(const VaultInfo& other)
       vault_dir(other.vault_dir),
       max_disk_usage(other.max_disk_usage),
       owner_name(other.owner_name),
-      joined_network(other.joined_network),
       label(other.label),
-#ifdef TESTING
-      identity_index(other.identity_index),
-#endif
       tcp_connection(other.tcp_connection) {}
 
 VaultInfo::VaultInfo(VaultInfo&& other)
@@ -53,11 +45,7 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       vault_dir(std::move(other.vault_dir)),
       max_disk_usage(std::move(other.max_disk_usage)),
       owner_name(std::move(other.owner_name)),
-      joined_network(std::move(other.joined_network)),
       label(std::move(other.label)),
-#ifdef TESTING
-      identity_index(std::move(other.identity_index)),
-#endif
       tcp_connection(std::move(other.tcp_connection)) {}
 
 VaultInfo& VaultInfo::operator=(VaultInfo other) {
@@ -71,11 +59,7 @@ void swap(VaultInfo& lhs, VaultInfo& rhs) {
   swap(lhs.vault_dir, rhs.vault_dir);
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
   swap(lhs.owner_name, rhs.owner_name);
-  swap(lhs.joined_network, rhs.joined_network);
   swap(lhs.label, rhs.label);
-#ifdef TESTING
-  swap(lhs.identity_index, rhs.identity_index);
-#endif
   swap(lhs.tcp_connection, rhs.tcp_connection);
 }
 

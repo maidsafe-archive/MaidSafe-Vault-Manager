@@ -161,7 +161,7 @@ TEST_F(TcpTest, BEH_UnavailablePort) {
 
   AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener0{ [](TcpConnectionPtr connection) {}, Port{ 7777 } };
+  TcpListener listener0{ [](TcpConnectionPtr /*connection*/) {}, Port{ 7777 } };
   TcpListener listener1{
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
       listener0.ListeningPort() };
@@ -258,7 +258,7 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
 
   AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener0{ [](TcpConnectionPtr connection) {}, Port{ 7777 } };
+  TcpListener listener0{ [](TcpConnectionPtr /*connection*/) {}, Port{ 7777 } };
   TcpListener listener1{
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
       listener0.ListeningPort() };

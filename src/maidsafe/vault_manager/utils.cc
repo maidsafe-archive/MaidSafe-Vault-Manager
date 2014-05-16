@@ -75,7 +75,13 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
   routing::BootstrapContacts bootstrap_contacts(
           routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
-  return maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage, bootstrap_contacts);
+  auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage,
+                                                         bootstrap_contacts);
+#ifdef TESTING
+  // TODO(Prakash) parse if has_serialised_public_pmids()
+  vault_config->test_config.public_pmid_list = std::vector<passport::PublicPmid>();
+#endif
+  return vault_config;
 }
 
 }  // namspace detail

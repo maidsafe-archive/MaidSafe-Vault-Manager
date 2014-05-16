@@ -45,11 +45,7 @@ struct VaultInfo {
   boost::filesystem::path vault_dir;
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
-  bool joined_network;
   NonEmptyString label;
-#ifdef TESTING
-  int identity_index;
-#endif
   TcpConnectionPtr tcp_connection;
 };
 

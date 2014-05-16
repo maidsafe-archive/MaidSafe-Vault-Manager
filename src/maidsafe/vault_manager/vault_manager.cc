@@ -80,6 +80,14 @@ Port GetInitialLocalPort() {
 #endif
 }
 
+#ifdef TESTING
+void SetPublicPmidList(const std::string& /*serialised_public_pmids*/,
+                       std::mutex& /*mutex*/, std::vector<passport::PublicPmid>& /*public_pmids*/) {
+// throw if already set
+// TODO(Prakash)
+}
+#endif
+
 }  // unnamed namespace
 
 VaultManager::VaultManager()
@@ -93,6 +101,10 @@ VaultManager::VaultManager()
       asio_service_(maidsafe::make_unique<AsioService>(1)),
       process_manager_(asio_service_->service(), GetVaultExecutablePath(),
                        listener_->ListeningPort()),
+#ifdef TESTING
+      public_pmids_mutex_(),
+      public_pmids_(),
+#endif
       client_connections_(asio_service_->service()) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
@@ -242,6 +254,11 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     vault_info.owner_name = client_name;
     process_manager_.AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+#ifdef TESTING
+    if (start_vault_message.has_serialised_public_pmids())
+      SetPublicPmidList(start_vault_message.serialised_public_pmids(), public_pmids_mutex_,
+                        public_pmids_);
+#endif
     return;
   }
   catch (const maidsafe_error& e) {
