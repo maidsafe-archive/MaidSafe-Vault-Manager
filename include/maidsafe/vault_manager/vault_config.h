@@ -52,14 +52,9 @@ struct VaultConfig {
   struct TestConfig {
     TestConfig()
         : test_type(TestType::kNone),
-          public_pmid_list()
-//          keys_path (),
-//          identity_index(-1)
-    {}
+          public_pmid_list() {}
     TestType test_type;
     std::vector<passport::PublicPmid> public_pmid_list;
-//    boost::filesystem::path keys_path;
-//    int identity_index;
   } test_config;
 #endif
 
