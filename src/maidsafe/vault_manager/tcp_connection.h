@@ -69,12 +69,12 @@ class TcpConnection {
   TcpConnection& operator=(TcpConnection) = delete;
 
   struct ReceivingMessage {
-    std::array<char, 4> size_buffer;
-    std::vector<char> data_buffer;
+    std::array<unsigned char, 4> size_buffer;
+    std::vector<unsigned char> data_buffer;
   };
 
   struct SendingMessage {
-    std::array<char, 4> size_buffer;
+    std::array<unsigned char, 4> size_buffer;
     std::string data;
   };
 
