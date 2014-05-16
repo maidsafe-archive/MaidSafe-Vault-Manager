@@ -38,17 +38,17 @@ int main(int argc, char* argv[]) {
 
     std::future<void> worker;
     VaultConfig config{ vault_interface.GetConfiguration() };
-    switch (config.test_type) {
+    switch (config.test_config.test_type) {
       case VaultConfig::TestType::kNone:
         break;
       case VaultConfig::TestType::kKillConnection:
-        worker = std::async{ std::launch::async, [&] { vault_interface.KillConnection(); } };
+        worker = std::async(std::launch::async, [&] { vault_interface.KillConnection(); });
         break;
       case VaultConfig::TestType::kSendInvalidMessage:
-        worker = std::async{ std::launch::async, [&] { vault_interface.SendInvalidMessage(); } };
+        worker = std::async(std::launch::async, [&] { vault_interface.SendInvalidMessage(); });
         break;
       case VaultConfig::TestType::kStopProcess:
-        worker = std::async{ std::launch::async, [&] { vault_interface.StopProcess(); } };
+        worker = std::async(std::launch::async, [&] { vault_interface.StopProcess(); });
         break;
       default:
         BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
