@@ -29,6 +29,7 @@
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"
+#include "maidsafe/common/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -77,6 +78,8 @@ void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector
 std::string WrapMessage(MessageAndType message_and_type);
 
 MessageAndType UnwrapMessage(std::string wrapped_message);
+
+NonEmptyString GenerateLabel();
 
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_vault_manager_port,

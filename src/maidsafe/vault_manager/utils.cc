@@ -19,6 +19,7 @@
 #include "maidsafe/vault_manager/utils.h"
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 #include <limits>
 #include <mutex>
@@ -28,6 +29,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
@@ -126,6 +128,14 @@ MessageAndType UnwrapMessage(std::string wrapped_message) {
   }
 
   return std::make_pair(wrapper.payload(), static_cast<MessageType>(wrapper.type()));
+}
+
+NonEmptyString GenerateLabel() {
+  std::string label{ RandomAlphaNumericString(4) };
+  for (int i(0); i < 4; ++i)
+    label += ("-" + RandomAlphaNumericString(4));
+  std::transform(std::begin(label), std::end(label), std::begin(label), std::toupper);
+  return NonEmptyString{ label };
 }
 
 #ifdef TESTING

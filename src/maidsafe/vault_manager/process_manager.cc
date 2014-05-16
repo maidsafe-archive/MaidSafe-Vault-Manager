@@ -171,8 +171,8 @@ std::vector<VaultInfo> ProcessManager::GetAll() const {
 }
 
 void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
-  if (info.chunkstore_path.empty()) {
-    LOG(kError) << "Can't add vault process - chunkstore path is empty.";
+  if (info.chunkstore_path.empty() || !info.label.IsInitialised() || !info.pmid_and_signer) {
+    LOG(kError) << "Can't add vault: chunkstore path and/or vault label and/or Pmid is empty.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   if (restart_count > kMaxVaultRestarts) {
@@ -262,7 +262,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   }
 
   std::vector<std::string> args{ 1, kVaultExecutablePath_.string() };
-  args.emplace_back("--vm_port " + std::to_string(kListeningPort_));
+  args.emplace_back(std::to_string(kListeningPort_));
   args.insert(std::end(args), std::begin(itr->process_args), std::end(itr->process_args));
 
   NonEmptyString label{ itr->info.label };
@@ -392,7 +392,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (terminate)
       TerminateProcess(child_itr);
 
-    vaults_.erase(child_itr);
+    io_service_.post([label, this] { EraseChild(label); });
   }
 
   if (on_exit) {
@@ -404,8 +404,16 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
       on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
   }
 
-  if (restart_count >= 0 && restart_count <= kMaxVaultRestarts)
-    AddProcess(std::move(vault_info), restart_count);
+  if (restart_count >= 0 && restart_count <= kMaxVaultRestarts) {
+    io_service_.post([vault_info, restart_count, this] {
+      try {
+        AddProcess(std::move(vault_info), restart_count + 1);
+      }
+      catch (const std::exception& e) {
+        LOG(kError) << "Failed restarting vault: " << boost::diagnostic_information(e);
+      }
+    });
+  }
 }
 
 void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
@@ -413,6 +421,14 @@ void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
   bp::terminate(itr->process, ec);
   if (ec)
     LOG(kError) << "Error while terminating vault: " << ec.message();
+}
+
+void ProcessManager::EraseChild(const NonEmptyString& label) {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, &label](const Child& vault) { return vault.info.label == label; }));
+  if (itr != std::end(vaults_))
+    vaults_.erase(itr);
 }
 
 }  // namespace vault_manager

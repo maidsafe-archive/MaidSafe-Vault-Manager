@@ -101,6 +101,7 @@ class ProcessManager {
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
   void TerminateProcess(std::vector<Child>::iterator itr);
+  void EraseChild(const NonEmptyString& label);
 
   boost::asio::io_service &io_service_;
   const Port kListeningPort_;

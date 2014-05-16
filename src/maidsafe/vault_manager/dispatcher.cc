@@ -97,6 +97,8 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts) {
   protobuf::VaultStartedResponse message;
+  message.set_aes256key(symm_key.string());
+  message.set_aes256iv(symm_iv.string());
   message.set_encrypted_pmid(
       passport::EncryptPmid(vault_info.pmid_and_signer->first, symm_key, symm_iv)->string());
   message.set_chunkstore_path(vault_info.chunkstore_path.string());

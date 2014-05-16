@@ -98,9 +98,11 @@ VaultManager::VaultManager()
   if (vaults.empty()) {
     VaultInfo vault_info;
     vault_info.chunkstore_path = GetDefaultChunkstorePath();
+    vault_info.label = GenerateLabel();
+    vault_info.pmid_and_signer =
+        std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
     process_manager_.AddProcess(std::move(vault_info));
-  }
-  else {
+  } else {
     for (auto& vault_info : vaults)
       process_manager_.AddProcess(std::move(vault_info));
   }

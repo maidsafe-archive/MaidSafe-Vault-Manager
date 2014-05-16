@@ -48,27 +48,30 @@ namespace maidsafe {
 namespace vault_manager {
 
 VaultInterface::VaultInterface(Port vault_manager_port)
-    : asio_service_(1),
-      exit_code_promise_(),
+    : exit_code_promise_(),
       exit_code_flag_(),
-      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
-          [this](std::string message) { HandleReceivedMessage(message); },
-          [this]() { OnConnectionClosed(); },
-          vault_manager_port)),
+      vault_manager_port_(vault_manager_port),
       on_vault_started_response_(),
-      kVaultConfig_([this]()->VaultConfig {
-                      SendVaultStarted(*tcp_connection_);
-                      std::mutex mutex;
-                      return *SetResponseCallback<std::unique_ptr<VaultConfig>>(
-                          on_vault_started_response_, asio_service_.service(), mutex).get();
-                    }()) {
-  LOG(kVerbose) << "Connected to VaultManager which is listening on port " << vault_manager_port;
+      vault_config_(),
+      tcp_connection_(),
+      asio_service_(1) {
 }
 
 VaultInterface::~VaultInterface() {}
 
-VaultConfig VaultInterface::GetConfiguration() const {
-  return kVaultConfig_;
+VaultConfig VaultInterface::GetConfiguration() {
+  tcp_connection_ = maidsafe::make_unique<TcpConnection>(
+          asio_service_,
+          [this](std::string message) { HandleReceivedMessage(message); },
+          [this] { OnConnectionClosed(); },
+          vault_manager_port_);
+  LOG(kVerbose) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
+  std::mutex mutex;
+  auto vault_config_future(SetResponseCallback<std::unique_ptr<VaultConfig>>(
+                           on_vault_started_response_, asio_service_.service(), mutex));
+  SendVaultStarted(*tcp_connection_);
+  vault_config_ = vault_config_future.get();
+  return *vault_config_;
 }
 
 int VaultInterface::WaitForExit() {
@@ -111,7 +114,7 @@ void VaultInterface::HandleVaultStartedResponse(const std::string& message) {
   if (on_vault_started_response_) {
     on_vault_started_response_(message);
   } else {
-    assert(false);  // already recieved vault configuration
+    assert(false);  // already received vault configuration
   }
 }
 

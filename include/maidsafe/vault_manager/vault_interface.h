@@ -47,7 +47,7 @@ class VaultInterface {
   explicit VaultInterface(Port vault_manager_port);
   ~VaultInterface();
 
-  VaultConfig GetConfiguration() const;
+  VaultConfig GetConfiguration();
 
   // Doesn't throw.
   int WaitForExit();
@@ -81,12 +81,13 @@ class VaultInterface {
   void HandleVaultStartedResponse(const std::string& message);
   void HandleVaultShutdownRequest();
 
-  AsioService asio_service_;
   std::promise<int> exit_code_promise_;
   std::once_flag exit_code_flag_;
-  std::unique_ptr<TcpConnection> tcp_connection_;
+  Port vault_manager_port_;
   std::function<void(std::string)> on_vault_started_response_;
-  const VaultConfig kVaultConfig_;
+  std::unique_ptr<VaultConfig> vault_config_;
+  std::unique_ptr<TcpConnection> tcp_connection_;
+  AsioService asio_service_;
 };
 
 }  // namespace vault_manager
