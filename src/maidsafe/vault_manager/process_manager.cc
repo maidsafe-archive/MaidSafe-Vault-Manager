@@ -287,7 +287,10 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   itr->status = ProcessStatus::kStarting;
 
 #ifdef MAIDSAFE_WIN32
-  itr->handle.assign(itr->process.process_handle());
+  HANDLE copied_handle;
+  DuplicateHandle(GetCurrentProcess(), itr->process.process_handle(), GetCurrentProcess(),
+                  &copied_handle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+  itr->handle.assign(copied_handle);
   HANDLE native_handle{ itr->handle.native_handle() };
   itr->handle.async_wait([this, label, native_handle](const boost::system::error_code&) {
     DWORD exit_code;
@@ -392,7 +395,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (terminate)
       TerminateProcess(child_itr);
 
-    io_service_.post([label, this] { EraseChild(label); });
+    vaults_.erase(child_itr);
   }
 
   if (on_exit) {
@@ -404,7 +407,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
       on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
   }
 
-  if (restart_count >= 0 && restart_count <= kMaxVaultRestarts) {
+  if (restart_count >= 0 && restart_count < kMaxVaultRestarts) {
     io_service_.post([vault_info, restart_count, this] {
       try {
         AddProcess(std::move(vault_info), restart_count + 1);
@@ -421,14 +424,6 @@ void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
   bp::terminate(itr->process, ec);
   if (ec)
     LOG(kError) << "Error while terminating vault: " << ec.message();
-}
-
-void ProcessManager::EraseChild(const NonEmptyString& label) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
-  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, &label](const Child& vault) { return vault.info.label == label; }));
-  if (itr != std::end(vaults_))
-    vaults_.erase(itr);
 }
 
 }  // namespace vault_manager

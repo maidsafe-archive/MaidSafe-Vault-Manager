@@ -110,13 +110,16 @@ VaultManager::VaultManager()
 }
 
 VaultManager::~VaultManager() {
-  listener_.reset();
   std::vector<VaultInfo> all_vaults{ process_manager_.GetAll() };
   std::for_each(std::begin(all_vaults), std::end(all_vaults),
                 [this](const VaultInfo& vault) {
-                  SendVaultShutdownRequest(vault.tcp_connection);
-                  process_manager_.StopProcess(vault.tcp_connection);
+                  // TODO(Fraser#5#): 2014-05-16 - Protect connection
+                  if (vault.tcp_connection) {
+                    SendVaultShutdownRequest(vault.tcp_connection);
+                    process_manager_.StopProcess(vault.tcp_connection);
+                  }
                 });
+  listener_.reset();
   asio_service_.reset();
 }
 

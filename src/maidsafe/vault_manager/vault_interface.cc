@@ -54,10 +54,11 @@ VaultInterface::VaultInterface(Port vault_manager_port)
       on_vault_started_response_(),
       vault_config_(),
       tcp_connection_(),
-      asio_service_(1) {
-}
+      asio_service_(1) {}
 
-VaultInterface::~VaultInterface() {}
+VaultInterface::~VaultInterface() {
+  tcp_connection_.reset();
+}
 
 VaultConfig VaultInterface::GetConfiguration() {
   tcp_connection_ = maidsafe::make_unique<TcpConnection>(

@@ -86,8 +86,6 @@ TcpConnection::~TcpConnection() {
   io_service_.dispatch([this] { Close(); });
   while (is_open_)
     std::this_thread::yield();
-  if (on_connection_closed_)
-    on_connection_closed_();
 }
 
 void TcpConnection::Start(MessageReceivedFunctor on_message_received,
@@ -107,6 +105,8 @@ void TcpConnection::Close() {
     boost::system::error_code ignored_ec;
     socket_.close(ignored_ec);
     is_open_ = false;
+    if (on_connection_closed_)
+      on_connection_closed_();
   });
 }
 
