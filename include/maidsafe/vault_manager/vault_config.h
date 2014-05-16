@@ -52,11 +52,9 @@ struct VaultConfig {
   struct TestConfig {
     TestConfig()
         : test_type(TestType::kNone),
-          key_path (),
-          identity_index(-1) {}
+          public_pmid_list() {}
     TestType test_type;
-    boost::filesystem::path key_path;
-    int identity_index;
+    std::vector<passport::PublicPmid> public_pmid_list;
   } test_config;
 #endif
 
@@ -64,6 +62,14 @@ struct VaultConfig {
 };
 
 void swap(VaultConfig& lhs, VaultConfig& rhs);
+
+
+#ifdef TESTING
+passport::Pmid GetPmidFromKeysFile(const boost::filesystem::path keys_path, size_t identity_index);
+
+std::vector<passport::PublicPmid> GetPublicPmidsFromKeysFile(
+    const boost::filesystem::path keys_path);
+#endif
 
 }  // namespace vault_manager
 
