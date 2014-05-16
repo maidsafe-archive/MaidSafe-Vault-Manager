@@ -44,12 +44,10 @@ void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMa
                            const asymm::Signature& signature);
 
 void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
-                           const boost::filesystem::path& chunkstore_path,
-                           DiskUsage max_disk_usage);
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
 void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
-                              const boost::filesystem::path& chunkstore_path,
-                              DiskUsage max_disk_usage);
+                              const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
 void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString& vault_label,
                               const passport::PmidAndSigner* const pmid_and_signer,

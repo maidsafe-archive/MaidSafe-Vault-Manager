@@ -42,7 +42,7 @@ struct VaultInfo {
   VaultInfo& operator=(VaultInfo other);
 
   std::shared_ptr<passport::PmidAndSigner> pmid_and_signer;
-  boost::filesystem::path chunkstore_path;
+  boost::filesystem::path vault_dir;
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   bool joined_network;

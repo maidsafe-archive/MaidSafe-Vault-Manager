@@ -32,7 +32,7 @@ namespace vault_manager {
 
 struct VaultConfig {
   VaultConfig(const passport::Pmid& pmid_in,
-              const boost::filesystem::path& chunkstore_path_in,
+              const boost::filesystem::path& vault_dir_in,
               const DiskUsage& max_disk_usage_in,
               routing::BootstrapContacts bootstrap_contacts_in);
   VaultConfig(const VaultConfig&);
@@ -40,7 +40,7 @@ struct VaultConfig {
   VaultConfig& operator=(VaultConfig other);
 
   passport::Pmid pmid;
-  boost::filesystem::path chunkstore_path;
+  boost::filesystem::path vault_dir;
   DiskUsage max_disk_usage;
 #ifdef TESTING
   enum class TestType : int32_t {

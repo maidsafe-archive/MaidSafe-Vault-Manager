@@ -51,20 +51,20 @@ void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMa
 }
 
 void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
-                           const fs::path& chunkstore_path, DiskUsage max_disk_usage) {
+                           const fs::path& vault_dir, DiskUsage max_disk_usage) {
   protobuf::StartVaultRequest message;
   message.set_label(vault_label.string());
-  message.set_chunkstore_path(chunkstore_path.string());
+  message.set_vault_dir(vault_dir.string());
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kStartVaultRequest)));
 }
 
 void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
-                              const fs::path& chunkstore_path, DiskUsage max_disk_usage) {
+                              const fs::path& vault_dir, DiskUsage max_disk_usage) {
   protobuf::TakeOwnershipRequest message;
   message.set_label(vault_label.string());
-  message.set_chunkstore_path(chunkstore_path.string());
+  message.set_vault_dir(vault_dir.string());
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kTakeOwnershipRequest)));
@@ -101,7 +101,7 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
   message.set_aes256iv(symm_iv.string());
   message.set_encrypted_pmid(
       passport::EncryptPmid(vault_info.pmid_and_signer->first, symm_key, symm_iv)->string());
-  message.set_chunkstore_path(vault_info.chunkstore_path.string());
+  message.set_vault_dir(vault_info.vault_dir.string());
   message.set_max_disk_usage(vault_info.max_disk_usage.data);
   message.set_serialised_bootstrap_contacts(
       routing::SerialiseBootstrapContacts(bootstrap_contacts));

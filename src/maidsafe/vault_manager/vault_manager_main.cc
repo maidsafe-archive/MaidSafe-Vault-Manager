@@ -176,7 +176,7 @@ void HandleProgramOptions(int argc, char** argv) {
       ("port", po::value<int>(), "Listening port")("vault_path", po::value<std::string>(),
                                                    "Path to the vault executable including name")(
           "root_dir", po::value<std::string>(),
-          "Path to folder of config file and vault chunkstore")(
+          "Path to folder of config file and vault root dir")(
           "bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.")
 #endif
       ("help", "produce help message");

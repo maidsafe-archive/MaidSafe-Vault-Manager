@@ -57,9 +57,8 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
 
-  if (new_vault.chunkstore_path == existing_vault.chunkstore_path) {
-    LOG(kError) << "Vault process with chunkstore path " << new_vault.chunkstore_path
-                << " already exists.";
+  if (new_vault.vault_dir == existing_vault.vault_dir) {
+    LOG(kError) << "Vault process with vault dir " << new_vault.vault_dir << " already exists.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
 
@@ -171,8 +170,8 @@ std::vector<VaultInfo> ProcessManager::GetAll() const {
 }
 
 void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
-  if (info.chunkstore_path.empty() || !info.label.IsInitialised() || !info.pmid_and_signer) {
-    LOG(kError) << "Can't add vault: chunkstore path and/or vault label and/or Pmid is empty.";
+  if (info.vault_dir.empty() || !info.label.IsInitialised() || !info.pmid_and_signer) {
+    LOG(kError) << "Can't add vault: vault_dir path and/or vault label and/or Pmid is empty.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   if (restart_count > kMaxVaultRestarts) {

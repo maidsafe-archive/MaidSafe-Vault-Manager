@@ -60,8 +60,8 @@ fs::path GetBootstrapFilePath() {
   return GetPath(kBootstrapFilename);
 }
 
-fs::path GetDefaultChunkstorePath() {
-  return GetPath(kChunkstoreDirname);
+fs::path GetDefaultVaultDir() {
+  return GetPath(kVaultDirname);
 }
 
 fs::path GetVaultExecutablePath() {
@@ -97,7 +97,7 @@ VaultManager::VaultManager()
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
     VaultInfo vault_info;
-    vault_info.chunkstore_path = GetDefaultChunkstorePath();
+    vault_info.vault_dir = GetDefaultVaultDir();
     vault_info.label = GenerateLabel();
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
@@ -237,7 +237,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
     protobuf::StartVaultRequest start_vault_message{ ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
-    vault_info.chunkstore_path = start_vault_message.chunkstore_path();
+    vault_info.vault_dir = start_vault_message.vault_dir();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
     vault_info.owner_name = client_name;
     process_manager_.AddProcess(std::move(vault_info));
@@ -263,12 +263,12 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
     protobuf::TakeOwnershipRequest take_ownership_request{
         ParseProto<protobuf::TakeOwnershipRequest>(message) };
     NonEmptyString label{ take_ownership_request.label() };
-    fs::path new_chunkstore_path{ take_ownership_request.chunkstore_path() };
+    fs::path new_vault_dir{ take_ownership_request.vault_dir() };
     DiskUsage new_max_disk_usage{ take_ownership_request.max_disk_usage() };
     VaultInfo vault_info{ process_manager_.Find(label) };
 
-    if (vault_info.chunkstore_path != new_chunkstore_path) {
-      vault_info.chunkstore_path = new_chunkstore_path;
+    if (vault_info.vault_dir != new_vault_dir) {
+      vault_info.vault_dir = new_vault_dir;
       vault_info.max_disk_usage = new_max_disk_usage;
       vault_info.owner_name = client_name;
       return ChangeChunkstorePath(std::move(vault_info));

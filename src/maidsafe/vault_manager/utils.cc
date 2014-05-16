@@ -71,12 +71,11 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
       crypto::CipherText{ NonEmptyString{ vault_started_response.encrypted_pmid() } },
       crypto::AES256Key{ vault_started_response.aes256key() },
       crypto::AES256InitialisationVector{ vault_started_response.aes256iv() }) };
-  boost::filesystem::path chunkstore_path(vault_started_response.chunkstore_path());
+  boost::filesystem::path vault_dir(vault_started_response.vault_dir());
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
   routing::BootstrapContacts bootstrap_contacts(
           routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
-  return maidsafe::make_unique<VaultConfig>(pmid, chunkstore_path, max_disk_usage,
-                                            bootstrap_contacts);
+  return maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage, bootstrap_contacts);
 }
 
 }  // namspace detail
@@ -88,7 +87,7 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
       passport::EncryptPmid(vault_info.pmid_and_signer->first, symm_key, symm_iv)->string());
   protobuf_vault_info->set_anpmid(
       passport::EncryptAnpmid(vault_info.pmid_and_signer->second, symm_key, symm_iv)->string());
-  protobuf_vault_info->set_chunkstore_path(vault_info.chunkstore_path.string());
+  protobuf_vault_info->set_vault_dir(vault_info.vault_dir.string());
   protobuf_vault_info->set_label(vault_info.label.string());
   if (vault_info.max_disk_usage != 0U)
     protobuf_vault_info->set_max_disk_usage(vault_info.max_disk_usage.data);
@@ -103,7 +102,7 @@ void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector
         crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv),
     passport::DecryptAnpmid(
         crypto::CipherText{ NonEmptyString{ protobuf_vault_info.anpmid() } }, symm_key, symm_iv)));
-  vault_info.chunkstore_path = protobuf_vault_info.chunkstore_path();
+  vault_info.vault_dir = protobuf_vault_info.vault_dir();
   vault_info.label = NonEmptyString{ protobuf_vault_info.label() };
   if (protobuf_vault_info.has_max_disk_usage())
     vault_info.max_disk_usage = DiskUsage{ protobuf_vault_info.max_disk_usage() };

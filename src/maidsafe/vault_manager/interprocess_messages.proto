@@ -42,14 +42,14 @@ message ChallengeResponse {
 // will trigger the StartVaultResponse in reply this message.
 message StartVaultRequest {
   required bytes label = 1;
-  required bytes chunkstore_path = 2;
+  required bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
 }
 
 // Client to VaultManager
 message TakeOwnershipRequest {
   required bytes label = 1;
-  required bytes chunkstore_path = 2;
+  required bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
 }
 
@@ -76,7 +76,7 @@ message VaultStartedResponse {
   required bytes AES256Key = 1;
   required bytes AES256IV = 2;
   required bytes encrypted_pmid = 3;
-  required bytes chunkstore_path = 4;
+  required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
   required bytes serialised_bootstrap_contacts = 6;
 }
