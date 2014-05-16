@@ -20,9 +20,9 @@
 #define MAIDSAFE_VAULT_MANAGER_TCP_CONNECTION_H_
 
 #include <array>
-#include <atomic>
 #include <cstdint>
 #include <deque>
+#include <future>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -88,7 +88,7 @@ class TcpConnection {
 
   boost::asio::io_service& io_service_;
   std::once_flag socket_close_flag_;
-  std::atomic<bool> is_open_;
+  std::promise<void> socket_close_promise_;
   boost::asio::ip::tcp::socket socket_;
   MessageReceivedFunctor on_message_received_;
   ConnectionClosedFunctor on_connection_closed_;

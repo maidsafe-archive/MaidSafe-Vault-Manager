@@ -25,6 +25,7 @@
 #include "boost/asio/write.hpp"
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
 
 namespace asio = boost::asio;
@@ -40,7 +41,7 @@ namespace vault_manager {
 TcpConnection::TcpConnection(AsioService& asio_service)
     : io_service_(asio_service.service()),
       socket_close_flag_(),
-      is_open_(false),
+      socket_close_promise_(),
       socket_(io_service_),
       on_message_received_(),
       on_connection_closed_(),
@@ -59,7 +60,7 @@ TcpConnection::TcpConnection(AsioService& asio_service,
                              ConnectionClosedFunctor on_connection_closed, uint16_t remote_port)
     : io_service_(asio_service.service()),
       socket_close_flag_(),
-      is_open_(false),
+      socket_close_promise_(),
       socket_(io_service_),
       on_message_received_(on_message_received),
       on_connection_closed_(on_connection_closed),
@@ -73,7 +74,6 @@ TcpConnection::TcpConnection(AsioService& asio_service,
     socket_.connect(ip::tcp::endpoint(ip::address_v6::loopback(), remote_port));
     if (!socket_.is_open())
       BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
-    is_open_ = true;
   }
   catch (const boost::system::system_error& error) {
     LOG(kError) << "Failed to connect to " << remote_port << ": " << error.what();
@@ -84,13 +84,12 @@ TcpConnection::TcpConnection(AsioService& asio_service,
 
 TcpConnection::~TcpConnection() {
   io_service_.dispatch([this] { Close(); });
-  while (is_open_)
-    std::this_thread::yield();
+  // We never set an exception in the promise, so no need for a try catch block here.
+  socket_close_promise_.get_future().get();
 }
 
 void TcpConnection::Start(MessageReceivedFunctor on_message_received,
                           ConnectionClosedFunctor on_connection_closed) {
-  is_open_ = true;
   if (on_message_received_) {
     LOG(kError) << "Already started.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
@@ -104,9 +103,9 @@ void TcpConnection::Close() {
   std::call_once(socket_close_flag_, [this] {
     boost::system::error_code ignored_ec;
     socket_.close(ignored_ec);
-    is_open_ = false;
     if (on_connection_closed_)
       on_connection_closed_();
+    socket_close_promise_.set_value();
   });
 }
 
