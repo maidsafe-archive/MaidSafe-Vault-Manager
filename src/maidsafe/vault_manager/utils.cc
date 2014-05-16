@@ -134,7 +134,8 @@ NonEmptyString GenerateLabel() {
   std::string label{ RandomAlphaNumericString(4) };
   for (int i(0); i < 4; ++i)
     label += ("-" + RandomAlphaNumericString(4));
-  std::transform(std::begin(label), std::end(label), std::begin(label), std::toupper);
+  std::transform(std::begin(label), std::end(label), std::begin(label),
+                 std::ptr_fun<int, int>(std::toupper));
   return NonEmptyString{ label };
 }
 
