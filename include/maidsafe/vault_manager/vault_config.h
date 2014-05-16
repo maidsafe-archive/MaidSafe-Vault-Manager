@@ -47,8 +47,19 @@ struct VaultConfig {
     kNone,
     kKillConnection,
     kSendInvalidMessage,
-    kStopProcess } test_type;
+    kStopProcess };
+
+  struct TestConfig {
+    TestConfig()
+        : test_type(TestType::kNone),
+          key_path (),
+          identity_index(-1) {}
+    TestType test_type;
+    boost::filesystem::path key_path;
+    int identity_index;
+  } test_config;
 #endif
+
   routing::BootstrapContacts bootstrap_contacts;
 };
 

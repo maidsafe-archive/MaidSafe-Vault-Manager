@@ -117,8 +117,8 @@ void SendVaultStarted(TcpConnection& connection) {
 void SendBootstrapContact(TcpConnection& connection,
                           const routing::BootstrapContact& bootstrap_contact) {
   protobuf::BootstrapContact message;
-  assert(false);  static_cast<void>(bootstrap_contact);  // waiting for routing function to be implemented
-  //message.set_serialised_contact(routing::SerialiseBootstrapContact(bootstrap_contact));
+  assert(false);  static_cast<void>(bootstrap_contact);
+  message.set_serialised_contact(routing::SerialiseBootstrapContact(bootstrap_contact));
   connection.Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                               MessageType::kBootstrapContact)));
 }

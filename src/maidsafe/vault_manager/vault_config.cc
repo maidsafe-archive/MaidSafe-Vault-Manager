@@ -32,7 +32,7 @@ VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
       chunkstore_path(chunkstore_path_in),
       max_disk_usage(max_disk_usage_in),
 #ifdef TESTING
-      test_type(TestType::kNone),
+      test_config(),
 #endif
       bootstrap_contacts(bootstrap_contacts_in) {}
 
@@ -41,7 +41,7 @@ VaultConfig::VaultConfig(const VaultConfig& other)
       chunkstore_path(other.chunkstore_path),
       max_disk_usage(other.max_disk_usage),
 #ifdef TESTING
-      test_type(other.test_type),
+      test_config(other.test_config),
 #endif
       bootstrap_contacts(other.bootstrap_contacts) {}
 
@@ -50,7 +50,7 @@ VaultConfig::VaultConfig(VaultConfig&& other)
       chunkstore_path(std::move(other.chunkstore_path)),
       max_disk_usage(std::move(other.max_disk_usage)),
 #ifdef TESTING
-      test_type(std::move(other.test_type)),
+      test_config(std::move(other.test_config)),
 #endif
       bootstrap_contacts(std::move(other.bootstrap_contacts)) {}
 
@@ -65,7 +65,7 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
   swap(lhs.chunkstore_path, rhs.chunkstore_path);
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
 #ifdef TESTING
-  swap(lhs.test_type, rhs.test_type);
+  swap(lhs.test_config, rhs.test_config);
 #endif
   swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
 }
