@@ -381,13 +381,13 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
       restart_count = child_itr->restart_count;
       vault_info = child_itr->info;
-      vault_info.tcp_connection.reset();
+      if (vault_info.tcp_connection)
+        vault_info.tcp_connection->Close();
     }
 
     if (terminate)
       TerminateProcess(child_itr);
 
-    child_itr->info.tcp_connection->Close();
     vaults_.erase(child_itr);
   }
 

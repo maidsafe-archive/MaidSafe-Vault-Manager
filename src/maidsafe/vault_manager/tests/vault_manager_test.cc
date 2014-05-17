@@ -51,6 +51,8 @@ TEST(VaultManagerTest, BEH_Basic) {
   SetTestEnvironmentVariables(Port{ 7777 }, *test_env_root_dir, path_to_vault, bootstrap_contacts);
 
   VaultManager vault_manager;
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 }  // namespace test

@@ -57,12 +57,13 @@ VaultInterface::VaultInterface(Port vault_manager_port)
       tcp_connection_(std::make_shared<TcpConnection>(asio_service_, vault_manager_port_)) {
   tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
                          [this] { OnConnectionClosed(); });
-  LOG(kVerbose) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
+  LOG(kSuccess) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
   std::mutex mutex;
   auto vault_config_future(SetResponseCallback<std::unique_ptr<VaultConfig>>(
       on_vault_started_response_, asio_service_.service(), mutex));
   SendVaultStarted(tcp_connection_);
   vault_config_ = vault_config_future.get();
+  LOG(kSuccess) << "Retrieved config info from VaultManager";
 }
 
 VaultInterface::~VaultInterface() {
