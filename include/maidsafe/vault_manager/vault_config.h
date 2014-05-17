@@ -47,7 +47,8 @@ struct VaultConfig {
     kNone,
     kKillConnection,
     kSendInvalidMessage,
-    kStopProcess };
+    kStopProcess,
+    kIgnoreStopRequest };
 
   struct TestConfig {
     TestConfig()

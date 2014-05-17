@@ -72,14 +72,6 @@ fs::path GetVaultExecutablePath() {
   return process::GetOtherExecutablePath(fs::path{ "vault" });
 }
 
-Port GetInitialLocalPort() {
-#ifdef TESTING
-  return GetTestVaultManagerPort() == 0 ? kLivePort + 100 : GetTestVaultManagerPort();
-#else
-  return kDefaultPort();
-#endif
-}
-
 #ifdef TESTING
 void SetPublicPmidList(const std::string& /*serialised_public_pmids*/,
                        std::mutex& /*mutex*/, std::vector<passport::PublicPmid>& /*public_pmids*/) {
@@ -95,7 +87,7 @@ VaultManager::VaultManager()
       config_file_handler_(GetConfigFilePath()),
       listener_(maidsafe::make_unique<TcpListener>(
           [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
-          GetInitialLocalPort())),
+          GetInitialListeningPort())),
       new_connections_mutex_(),
       new_connections_(),
       asio_service_(maidsafe::make_unique<AsioService>(1)),

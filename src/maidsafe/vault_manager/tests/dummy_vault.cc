@@ -29,12 +29,15 @@
 
 int main(int argc, char* argv[]) {
   using maidsafe::vault_manager::VaultConfig;
+  bool connected_to_vault_manager{ false }, should_hang{ false };
+  int exit_code{ 0 };
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() != 2U)
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     uint16_t port{ static_cast<uint16_t>(std::stoi(std::string{ &unuseds[1][0] } )) };
     maidsafe::vault_manager::VaultInterface vault_interface{ port };
+    connected_to_vault_manager = true;
 
     std::future<void> worker;
     VaultConfig config{ vault_interface.GetConfiguration() };
@@ -50,19 +53,31 @@ int main(int argc, char* argv[]) {
       case VaultConfig::TestType::kStopProcess:
         worker = std::async(std::launch::async, [&] { vault_interface.StopProcess(); });
         break;
+      case VaultConfig::TestType::kIgnoreStopRequest:
+        should_hang = true;
+        break;
       default:
         BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     }
-    int result{ vault_interface.WaitForExit() };
+    exit_code = vault_interface.WaitForExit();
     worker.get();
-    return result;
   }
   catch (const maidsafe::maidsafe_error& error) {
-    LOG(kError) << "This is only designed to be invoked by VaultManager.";
-    return maidsafe::ErrorToInt(error);
+    if (connected_to_vault_manager)
+      LOG(kError) << error.what();
+    else
+      LOG(kError) << "This is only designed to be invoked by VaultManager.";
+    exit_code = maidsafe::ErrorToInt(error);
   }
   catch (const std::exception& e) {
-    LOG(kError) << "This is only designed to be invoked by VaultManager: " << e.what();
-    return maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+    if (connected_to_vault_manager)
+      LOG(kError) << e.what();
+    else
+      LOG(kError) << "This is only designed to be invoked by VaultManager.";
+    exit_code =
+        maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
   }
+  if (should_hang)
+    maidsafe::Sleep(std::chrono::hours(6));
+  return exit_code;
 }

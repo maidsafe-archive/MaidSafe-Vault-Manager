@@ -19,16 +19,12 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 #define MAIDSAFE_VAULT_MANAGER_CLIENT_INTERFACE_H_
 
-//#include <condition_variable>
 #include <cstdint>
-//#include <functional>
+#include <functional>
 #include <future>
-//#include <map>
 #include <memory>
-//#include <mutex>
-//#include <string>
-//#include <utility>
-//#include <vector>
+#include <mutex>
+#include <string>
 
 #include "boost/filesystem/path.hpp"
 
@@ -103,7 +99,7 @@ class ClientInterface {
 
   const passport::Maid kMaid_;
   std::mutex mutex_;
-  std::function<void(std::string)> on_challange_;
+  std::function<void(std::string)> on_challenge_;
   std::function<void(std::string)> on_bootstrap_contacts_response_;
   std::function<void(std::string)> on_take_ownerhip_response_;
   std::function<void(std::string)> on_vault_running_response_;

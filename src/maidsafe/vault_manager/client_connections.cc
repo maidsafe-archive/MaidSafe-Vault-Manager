@@ -21,6 +21,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/on_scope_exit.h"
+#include "maidsafe/common/utils.h"
 
 namespace maidsafe {
 
@@ -58,7 +59,9 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
 
   on_scope_exit cleanup{ [this, itr] { unvalidated_clients_.erase(itr); } };
 
-  if (!asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
+  if (asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
+    LOG(kSuccess) << "Client " << DebugId(maid.name().value) << " TCP connection validated.";
+  } else {
     LOG(kError) << "Client TCP connection validation failed.";
     BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
   }

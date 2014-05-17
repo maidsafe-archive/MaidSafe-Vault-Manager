@@ -20,30 +20,11 @@
 
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
-
-
-//#include <chrono>
-//#include <limits>
-//
-//#include "boost/filesystem/operations.hpp"
-//
-//#include "maidsafe/common/config.h"
-//#include "maidsafe/common/error.h"
-//#include "maidsafe/common/log.h"
-//
-//#include "maidsafe/passport/passport.h"
-//
-//#include "maidsafe/vault_manager/controller_messages.pb.h"
-//#include "maidsafe/vault_manager/vault_manager.h"
-//#include "maidsafe/vault_manager/local_tcp_transport.h"
-//#include "maidsafe/vault_manager/return_codes.h"
-//#include "maidsafe/vault_manager/utils.h"
-
-namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
@@ -52,17 +33,17 @@ namespace vault_manager {
 ClientInterface::ClientInterface(const passport::Maid& maid)
     : kMaid_(maid),
       mutex_(),
-      on_challange_(),
+      on_challenge_(),
       on_bootstrap_contacts_response_(),
       on_take_ownerhip_response_(),
       on_vault_running_response_(),
       asio_service_(1),
       tcp_connection_(ConnectToVaultManager()) {
   SendValidateConnectionRequest(tcp_connection_);
-  auto challange = SetResponseCallback<std::unique_ptr<asymm::PlainText>>(
-                   on_challange_, asio_service_.service(), mutex_).get();
+  auto challenge = SetResponseCallback<std::unique_ptr<asymm::PlainText>>(
+                   on_challenge_, asio_service_.service(), mutex_).get();
   SendChallengeResponse(tcp_connection_, passport::PublicMaid(kMaid_),
-                        asymm::Sign(*challange, maid.private_key()));
+                        asymm::Sign(*challenge, kMaid_.private_key()));
 }
 
 ClientInterface::~ClientInterface() {
@@ -70,20 +51,25 @@ ClientInterface::~ClientInterface() {
 }
 
 std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {
-  for (auto port(kLivePort); port < (kLivePort + 10U); ++port) { // Check range
+  unsigned attempts{ 0 };
+  Port initial_port{ GetInitialListeningPort() };
+  Port port{ initial_port };
+  while (attempts <= kMaxRangeAboveDefaultPort && port <= std::numeric_limits<Port>::max()) {
     try {
-      auto tcp_connection(std::make_shared<TcpConnection>(asio_service_, port));
-      tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
-                             [this] { }); // FIXME OnConnectionClosed
+      TcpConnectionPtr tcp_connection{ std::make_shared<TcpConnection>(asio_service_, port) };
+      tcp_connection->Start([this](std::string message) { HandleReceivedMessage(message); },
+                            [this] {}); // FIXME OnConnectionClosed
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
       return tcp_connection;
     } catch (const std::exception& e) {
-      LOG(kVerbose) << "Failed to connect to VaultManager which is listening on port " << port
+      LOG(kVerbose) << "Failed to connect to VaultManager with attempted port " << port
                     << ": " << boost::diagnostic_information(e);
+      ++attempts;
+      ++port;
     }
   }
-  LOG(kError) << "Failed to Connected to VaultManager on port range : " << kLivePort
-              << " to " << (kLivePort + 10U);
+  LOG(kError) << "Failed to connect to VaultManager.  Attempted port range " << initial_port
+              << " to " << --port;
   BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
 }
 
@@ -104,7 +90,7 @@ std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() 
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
-  NonEmptyString label("fix_me");  // FIXME Prakash
+  NonEmptyString label{ GenerateLabel() };
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
   return SetResponseCallback<std::unique_ptr<passport::PmidAndSigner>>(on_vault_running_response_,
       asio_service_.service(), mutex_);
@@ -116,7 +102,7 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
     LOG(kVerbose) << "Received " << message_and_type.second;
     switch (message_and_type.second) {
       case MessageType::kChallenge:
-        InvokeCallBack(message_and_type.first, on_challange_);
+        InvokeCallBack(message_and_type.first, on_challenge_);
         break;
       case MessageType::kBootstrapContactsResponse:
         InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);

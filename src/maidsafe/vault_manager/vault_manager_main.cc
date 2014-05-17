@@ -22,9 +22,8 @@
 #include <signal.h>
 #endif
 
-#include <condition_variable>
+#include <future>
 #include <iostream>
-#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -46,17 +45,11 @@ namespace po = boost::program_options;
 
 namespace {
 
-std::mutex g_mutex;
-std::condition_variable g_cond_var;
-bool g_shutdown_service(false);
+std::promise<void> g_shutdown_promise;
 
 void ShutDownVaultManager(int /*signal*/) {
   std::cout << "Stopping vault_manager." << std::endl;
-  {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    g_shutdown_service = true;
-  }
-  g_cond_var.notify_one();
+  g_shutdown_promise.set_value();
 }
 
 #ifdef MAIDSAFE_WIN32
@@ -115,11 +108,9 @@ void ServiceMain() {
 
   try {
     maidsafe::vault_manager::VaultManager vault_manager;
-    std::unique_lock<std::mutex> lock(g_mutex);
     g_service_status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_service_status_handle, &g_service_status);
-    g_cond_var.wait_for(lock, std::chrono::minutes(1),
-                        [] { return g_shutdown_service; });  // NOLINT (Fraser)
+    g_shutdown_promise.get_future().get();
     StopService(0, 0);
   }
   catch (const std::exception& e) {
@@ -227,8 +218,7 @@ int main(int argc, char** argv) {
     HandleProgramOptions(argc, argv);
     if (SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE)) {
       maidsafe::vault_manager::VaultManager vault_manager;
-      std::unique_lock<std::mutex> lock(g_mutex);
-      g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
+      g_shutdown_promise.get_future().get();
     } else {
       LOG(kError) << "Failed to set control handler.";
       return -3;
@@ -254,8 +244,7 @@ int main(int argc, char** argv) {
   std::cout << "Successfully started vault_manager" << std::endl;
   signal(SIGINT, ShutDownVaultManager);
   signal(SIGTERM, ShutDownVaultManager);
-  std::unique_lock<std::mutex> lock(g_mutex);
-  g_cond_var.wait(lock, [] { return g_shutdown_service; });  // NOLINT (Fraser)
+  g_shutdown_promise.get_future().get();
   std::cout << "Successfully stopped vault_manager" << std::endl;
   //  }
   //  catch(const std::exception& e) {

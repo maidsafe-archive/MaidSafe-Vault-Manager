@@ -92,6 +92,8 @@ MessageAndType UnwrapMessage(std::string wrapped_message);
 
 NonEmptyString GenerateLabel();
 
+Port GetInitialListeningPort();
+
 #ifdef TESTING
 void SetTestEnvironmentVariables(Port test_vault_manager_port,
                                  const boost::filesystem::path& test_env_root_dir,

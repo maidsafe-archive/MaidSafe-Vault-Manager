@@ -79,6 +79,7 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
                                                          bootstrap_contacts);
 #ifdef TESTING
   // TODO(Prakash) parse if has_serialised_public_pmids()
+  vault_config->test_config.test_type = VaultConfig::TestType::kNone;
   vault_config->test_config.public_pmid_list = std::vector<passport::PublicPmid>();
 #endif
   return vault_config;
@@ -88,7 +89,8 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
 template <>
 std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
     const std::string& message) {
-  return maidsafe::make_unique<asymm::PlainText>(message);
+  protobuf::Challenge challenge{ ParseProto<protobuf::Challenge>(message) };
+  return maidsafe::make_unique<asymm::PlainText>(challenge.plaintext());
 }
 
 template <>
@@ -156,6 +158,14 @@ NonEmptyString GenerateLabel() {
   std::transform(std::begin(label), std::end(label), std::begin(label),
                  std::ptr_fun<int, int>(std::toupper));
   return NonEmptyString{ label };
+}
+
+Port GetInitialListeningPort() {
+#ifdef TESTING
+  return GetTestVaultManagerPort() == 0 ? kLivePort + 100 : GetTestVaultManagerPort();
+#else
+  return kLivePort;
+#endif
 }
 
 #ifdef TESTING

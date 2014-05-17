@@ -98,6 +98,13 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
                    MessageType::kVaultRunningResponse)));
 }
 
+void SendVaultStarted(TcpConnectionPtr connection) {
+  protobuf::VaultStarted message;
+  message.set_process_id(process::GetProcessId());
+  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
+                                              MessageType::kVaultStarted)));
+}
+
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts) {
@@ -112,13 +119,6 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
       routing::SerialiseBootstrapContacts(bootstrap_contacts));
   vault_info.tcp_connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                                              MessageType::kVaultStartedResponse)));
-}
-
-void SendVaultStarted(TcpConnectionPtr connection) {
-  protobuf::VaultStarted message;
-  message.set_process_id(process::GetProcessId());
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                                              MessageType::kVaultStarted)));
 }
 
 void SendBootstrapContact(TcpConnectionPtr connection,
