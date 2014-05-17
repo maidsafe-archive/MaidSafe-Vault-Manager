@@ -101,7 +101,7 @@ class ClientInterface {
 
   passport::Maid maid_;
   AsioService asio_service_;
-  std::unique_ptr<TcpConnection> tcp_connection_;
+  std::shared_ptr<TcpConnection> tcp_connection_;
 };
 
 }  // namespace vault_manager

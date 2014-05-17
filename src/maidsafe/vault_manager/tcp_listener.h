@@ -31,8 +31,6 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpConnection;
-
 class TcpListener {
  public:
   TcpListener(NewConnectionFunctor on_new_connection, Port desired_port);

@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <deque>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -42,20 +43,18 @@ namespace vault_manager {
 
 class TcpListener;
 
-class TcpConnection {
+class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
  public:
   typedef uint32_t DataSize;
   // Constructor used when accepting an incoming connection.
   explicit TcpConnection(AsioService& asio_service);
   // Constructor used to attempt to connect to 'remote_port' on loopback address.
-  TcpConnection(AsioService& asio_service, MessageReceivedFunctor on_message_received,
-                ConnectionClosedFunctor connection_closed_functor, uint16_t remote_port);
-  ~TcpConnection();
+  TcpConnection(AsioService& asio_service, uint16_t remote_port);
 
-  // Only required for instances created using the first c'tor.  Should only be called once per
-  // TcpConnection instance.
   void Start(MessageReceivedFunctor on_message_received,
              ConnectionClosedFunctor on_connection_closed);
+
+  void Close();
 
   void Send(std::string data);
 
@@ -78,7 +77,7 @@ class TcpConnection {
     std::string data;
   };
 
-  void Close();
+  void DoClose();
 
   void ReadSize();
   void ReadData();
@@ -87,8 +86,8 @@ class TcpConnection {
   SendingMessage EncodeData(std::string data) const;
 
   boost::asio::io_service& io_service_;
-  std::once_flag socket_close_flag_;
-  std::promise<void> socket_close_promise_;
+  std::once_flag start_flag_, socket_close_flag_;
+  //std::promise<void> socket_close_promise_;
   boost::asio::ip::tcp::socket socket_;
   MessageReceivedFunctor on_message_received_;
   ConnectionClosedFunctor on_connection_closed_;

@@ -22,6 +22,7 @@
 #include <future>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "boost/asio/buffer.hpp"
@@ -32,6 +33,7 @@
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
@@ -104,12 +106,24 @@ class TcpTest : public testing::Test {
               messages_received_by_client_(),
               messages_received_by_server_() {}
 
+  typedef std::pair<TcpConnectionPtr, std::unique_ptr<on_scope_exit>> ConnectionAndCloser;
+
   void InitialiseMessagesToClient() {
     messages_received_by_client_ = maidsafe::make_unique<Messages>(to_client_messages_);
   }
   void InitialiseMessagesToServer() {
     messages_received_by_server_ = maidsafe::make_unique<Messages>(to_server_messages_);
   }
+
+  ConnectionAndCloser GenerateClientConnection(
+      AsioService& asio_service, uint16_t port, MessageReceivedFunctor on_message_received,
+      ConnectionClosedFunctor on_connection_closed) {
+    TcpConnectionPtr connection{ std::make_shared<TcpConnection>(asio_service, port) };
+    connection->Start(on_message_received, on_connection_closed);
+    return std::make_pair(connection,
+        maidsafe::make_unique<on_scope_exit>([connection] { connection->Close(); }));
+  }
+
   std::vector<std::string> to_client_messages_, to_server_messages_;
   std::unique_ptr<Messages> messages_received_by_client_, messages_received_by_server_;
 };
@@ -132,11 +146,10 @@ TEST_F(TcpTest, BEH_Basic) {
   TcpListener listener{
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
       Port{ 7777 } };
-  TcpConnection client_connection{
-      asio_service,
+  ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
+      asio_service, listener.ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
-      [&] { LOG(kVerbose) << "Client connection closed."; },
-      listener.ListeningPort() };
+      [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
   TcpConnectionPtr server_connection{ server_promise.get_future().get() };
   server_connection->Start(
@@ -147,7 +160,7 @@ TEST_F(TcpTest, BEH_Basic) {
   std::random_shuffle(std::begin(to_server_messages_), std::end(to_server_messages_));
   for (size_t i(0); i < kMessageCount; ++i) {
     server_connection->Send(to_client_messages_[i]);
-    client_connection.Send(to_server_messages_[i]);
+    client_connection_and_closer.first->Send(to_server_messages_[i]);
   }
   EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kSuccess);
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
@@ -165,11 +178,10 @@ TEST_F(TcpTest, BEH_UnavailablePort) {
   TcpListener listener1{
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
       listener0.ListeningPort() };
-  TcpConnection client_connection{
-      asio_service,
+  ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
+      asio_service, listener1.ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
-      [&] { LOG(kVerbose) << "Client connection closed."; },
-      listener1.ListeningPort() };
+      [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
   TcpConnectionPtr server_connection{ server_promise.get_future().get() };
   server_connection->Start(
@@ -177,7 +189,7 @@ TEST_F(TcpTest, BEH_UnavailablePort) {
       [&] { LOG(kVerbose) << "Server connection closed."; });
 
   server_connection->Send(to_client_messages_.front());
-  client_connection.Send(to_server_messages_.front());
+  client_connection_and_closer.first->Send(to_server_messages_.front());
   EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kSuccess);
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
 }
@@ -191,11 +203,9 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
   InitialiseMessagesToServer();
 
   AsioService asio_service{ 1 };
-  std::vector<TcpConnectionPtr> server_connections;
   TcpListener listener{
       [&](TcpConnectionPtr connection) {
         LOG(kVerbose) << "Server connection opened.";
-        server_connections.push_back(connection);  // Keep connection alive
         connection->Start(
             [&](std::string msg) { messages_received_by_server_->AddMessage(std::move(msg)); },
             [&] { LOG(kVerbose) << "Server connection closed."; });
@@ -203,14 +213,13 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
           EXPECT_THROW(connection->Send(message), maidsafe_error);
       },
       Port{ 7777 } };
-  TcpConnection client_connection{
-      asio_service,
+  ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
+      asio_service, listener.ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
-      [&] { LOG(kVerbose) << "Client connection closed."; },
-      listener.ListeningPort() };
+      [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
-  EXPECT_THROW(client_connection.Send(to_server_messages_[0]), maidsafe_error);
-  EXPECT_THROW(client_connection.Send(to_server_messages_[1]), maidsafe_error);
+  EXPECT_THROW(client_connection_and_closer.first->Send(to_server_messages_[0]), maidsafe_error);
+  EXPECT_THROW(client_connection_and_closer.first->Send(to_server_messages_[1]), maidsafe_error);
   EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kTimedOut);
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
   to_client_messages_.clear();
@@ -235,7 +244,12 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
   std::array<boost::asio::const_buffer, 2> buffers;
   buffers[0] = boost::asio::buffer(size_buffer);
   buffers[1] = boost::asio::buffer(large_data.data(), large_data.size());
-  EXPECT_THROW(boost::asio::write(bad_socket, buffers), boost::system::system_error);
+  try {
+    // N.B. This may or may not throw depending on how quickly the server closes the connection at
+    // its end.  However, we're only interested in the server dropping the message.
+    boost::asio::write(bad_socket, buffers);
+  }
+  catch (const boost::system::system_error&) {}
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
 
   // Try to make server receive a message which is too large by lying about its size
@@ -258,15 +272,13 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
 
   AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener0{ [](TcpConnectionPtr /*connection*/) {}, Port{ 7777 } };
-  TcpListener listener1{
+  TcpListener listener{
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
-      listener0.ListeningPort() };
-  TcpConnection client_connection{
-      asio_service,
+      Port{ 8888 } };
+  ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
+      asio_service, listener.ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
-      [&] { LOG(kVerbose) << "Client connection closed."; },
-      listener1.ListeningPort() };
+      [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
   TcpConnectionPtr server_connection{ server_promise.get_future().get() };
   server_connection->Start(
@@ -274,16 +286,104 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
       [&] { LOG(kVerbose) << "Server connection closed."; });
 
   server_connection->Send(to_client_messages_.front());
-  client_connection.Send(to_server_messages_.front());
+  client_connection_and_closer.first->Send(to_server_messages_.front());
+  server_connection->Close();
   server_connection.reset();
-  EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kSuccess);
-  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
+  EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kTimedOut);
+  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
 }
 
 TEST_F(TcpTest, BEH_ClientConnectionAborts) {
+  to_client_messages_.emplace_back(RandomString(1000));
+  to_server_messages_.emplace_back(RandomString(1000));
+  InitialiseMessagesToClient();
+  InitialiseMessagesToServer();
+
+  AsioService asio_service{ 1 };
+  std::promise<TcpConnectionPtr> server_promise;
+  TcpListener listener{
+      [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
+      Port{ 9999 } };
+  ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
+      asio_service, listener.ListeningPort(),
+      [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
+      [&] { LOG(kVerbose) << "Client connection closed."; }) };
+
+  TcpConnectionPtr server_connection{ server_promise.get_future().get() };
+  server_connection->Start(
+      [&](std::string message) { messages_received_by_server_->AddMessage(std::move(message)); },
+      [&] { LOG(kVerbose) << "Server connection closed."; });
+
+  server_connection->Send(to_client_messages_.front());
+  client_connection_and_closer.first->Send(to_server_messages_.front());
+  client_connection_and_closer.second.reset();  // Closes client connection
+  client_connection_and_closer.first.reset();
+  EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kTimedOut);
+  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
 }
 
 TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
+  const size_t kMessageCount(10), kClientCount(10);
+  std::vector<std::string> to_server_messages_from_single_client;
+  for (size_t i(0); i < kMessageCount; ++i) {
+    to_client_messages_.emplace_back(RandomString(10000));
+    to_server_messages_from_single_client.emplace_back(RandomString(10000));
+    for (size_t j(0); j < kClientCount; ++j)
+      to_server_messages_.push_back(to_server_messages_from_single_client.back());
+  }
+  std::vector<std::unique_ptr<Messages>> messages_received_by_client;
+  for (size_t i(0); i < kClientCount; ++i)
+    messages_received_by_client.emplace_back(maidsafe::make_unique<Messages>(to_client_messages_));
+  InitialiseMessagesToServer();
+
+  AsioService asio_service{ 1 };
+  std::mutex mutex;
+  std::condition_variable cond_var;
+  std::vector<TcpConnectionPtr> server_connections;
+  TcpListener listener{
+      [&](TcpConnectionPtr connection) {
+        connection->Start(
+            [&](std::string msg) { 
+              LOG(kVerbose) << "Server received msg";
+              messages_received_by_server_->AddMessage(std::move(msg));
+            },
+            [&] { LOG(kVerbose) << "Server connection closed."; });
+        {
+          std::lock_guard<std::mutex> lock{ mutex };
+          server_connections.push_back(connection);
+        }
+        cond_var.notify_one();
+      },
+      Port{ 9876 } };
+
+  std::vector<ConnectionAndCloser> client_connections_and_closers;
+  for (size_t i(0); i < kClientCount; ++i) {
+    client_connections_and_closers.emplace_back(GenerateClientConnection(
+        asio_service, listener.ListeningPort(),
+        [&, i](std::string msg) {
+          LOG(kVerbose) << "Client " << i << " received msg";
+          messages_received_by_client[i]->AddMessage(std::move(msg));
+        },
+        [&] { LOG(kVerbose) << "Client connection closed."; }));
+  }
+
+  std::unique_lock<std::mutex> lock{ mutex };
+  ASSERT_TRUE(cond_var.wait_for(lock, std::chrono::seconds(10),
+                                [&] { return server_connections.size() == kClientCount; }));
+
+  std::random_shuffle(std::begin(to_client_messages_), std::end(to_client_messages_));
+  std::random_shuffle(std::begin(to_server_messages_from_single_client),
+                      std::end(to_server_messages_from_single_client));
+  for (size_t i(0); i < kMessageCount; ++i) {
+    for (size_t j(0); j < kClientCount; ++j) {
+      server_connections[j]->Send(to_client_messages_[i]);
+      client_connections_and_closers[j].first->Send(to_server_messages_from_single_client[i]);
+    }
+  }
+  for (size_t i(0); i < kClientCount; ++i)
+    EXPECT_EQ(messages_received_by_client[i]->MessagesMatch(), Messages::Status::kSuccess);
+  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
+  client_connections_and_closers.clear();
 }
 
 }  // namespace test

@@ -53,9 +53,9 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error = nullptr);
 
-void SendVaultStarted(TcpConnection& connection);
+void SendVaultStarted(TcpConnectionPtr connection);
 
-void SendBootstrapContact(TcpConnection& connection,
+void SendBootstrapContact(TcpConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,

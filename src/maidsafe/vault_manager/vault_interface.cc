@@ -53,25 +53,23 @@ VaultInterface::VaultInterface(Port vault_manager_port)
       vault_manager_port_(vault_manager_port),
       on_vault_started_response_(),
       vault_config_(),
-      tcp_connection_(),
-      asio_service_(1) {}
-
-VaultInterface::~VaultInterface() {
-  tcp_connection_.reset();
-}
-
-VaultConfig VaultInterface::GetConfiguration() {
-  tcp_connection_ = maidsafe::make_unique<TcpConnection>(
-          asio_service_,
-          [this](std::string message) { HandleReceivedMessage(message); },
-          [this] { OnConnectionClosed(); },
-          vault_manager_port_);
+      asio_service_(1),
+      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, vault_manager_port_)) {
+  tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
+                         [this] { OnConnectionClosed(); });
   LOG(kVerbose) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
   std::mutex mutex;
   auto vault_config_future(SetResponseCallback<std::unique_ptr<VaultConfig>>(
-                           on_vault_started_response_, asio_service_.service(), mutex));
-  SendVaultStarted(*tcp_connection_);
+      on_vault_started_response_, asio_service_.service(), mutex));
+  SendVaultStarted(tcp_connection_);
   vault_config_ = vault_config_future.get();
+}
+
+VaultInterface::~VaultInterface() {
+  tcp_connection_->Close();
+}
+
+VaultConfig VaultInterface::GetConfiguration() {
   return *vault_config_;
 }
 
@@ -80,7 +78,7 @@ int VaultInterface::WaitForExit() {
 }
 
 void VaultInterface::SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact) {
-  SendBootstrapContact(*tcp_connection_, contact);
+  SendBootstrapContact(tcp_connection_, contact);
 }
 
 void VaultInterface::OnConnectionClosed() {

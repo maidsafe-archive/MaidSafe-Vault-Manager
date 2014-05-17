@@ -33,6 +33,7 @@
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
 
@@ -386,6 +387,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (terminate)
       TerminateProcess(child_itr);
 
+    child_itr->info.tcp_connection->Close();
     vaults_.erase(child_itr);
   }
 

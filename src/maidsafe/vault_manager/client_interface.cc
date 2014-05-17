@@ -18,9 +18,7 @@
 
 #include "maidsafe/vault_manager/client_interface.h"
 
-#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/utils.h"
-
 
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
@@ -52,16 +50,14 @@ namespace vault_manager {
 ClientInterface::ClientInterface(const passport::Maid& maid)
     : maid_(maid),
       asio_service_(1),
-      tcp_connection_(maidsafe::make_unique<TcpConnection>(asio_service_,
-                                                           [this](std::string message) {
-                                                             HandleReceivedMessage(message);
-                                                           },
-                                                           [this]() {
-                                                              // FIXME
-                                                           },
-                                                           kLivePort)) {}
+      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, kLivePort)) {
+  tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
+                         [this] { /* FIXME */ });
+}
 
-
+ClientInterface::~ClientInterface() {
+  tcp_connection_->Close();
+}
 
 //std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
 //  bootstrap_contacts_promise_and_timer_ =

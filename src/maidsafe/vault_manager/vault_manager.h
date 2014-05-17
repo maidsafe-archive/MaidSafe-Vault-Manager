@@ -45,9 +45,6 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-//namespace protobuf { class VaultManagerConfig; }
-
-class TcpConnection;
 class TcpListener;
 
 // The VaultManager has several responsibilities:

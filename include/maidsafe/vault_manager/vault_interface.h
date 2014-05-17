@@ -86,8 +86,8 @@ class VaultInterface {
   Port vault_manager_port_;
   std::function<void(std::string)> on_vault_started_response_;
   std::unique_ptr<VaultConfig> vault_config_;
-  std::unique_ptr<TcpConnection> tcp_connection_;
   AsioService asio_service_;
+  std::shared_ptr<TcpConnection> tcp_connection_;
 };
 
 }  // namespace vault_manager
