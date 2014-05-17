@@ -58,11 +58,8 @@ TEST(ClientInterfaceTest, BEH_Basic) {
   {
     passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
     ClientInterface client_interface{ maid_and_signer.first };
-    std::this_thread::sleep_for(std::chrono::seconds(5));
     LOG(kVerbose) << "Client stopping.";
   }
-
-  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
 }  // namespace test
