@@ -87,15 +87,16 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
 
 template <>
 std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
-    const std::string& serialised_message) {
-  return maidsafe::make_unique<asymm::PlainText>(serialised_message);
+    const std::string& message) {
+  return maidsafe::make_unique<asymm::PlainText>(message);
 }
 
+template <>
+std::unique_ptr<passport::PmidAndSigner> Parse<std::unique_ptr<passport::PmidAndSigner>>(
+    const std::string& /*message*/) {
 // FIXME need to set exception in case of error. this requires access to promise to set exception
-//template <>
-//passport::PmidAndSigner Parse<passport::PmidAndSigner>(const std::string& /*message*/) {
-//  return passport::PmidAndSigner();
-//}
+  return std::unique_ptr<passport::PmidAndSigner>{};
+}
 
 }  // namspace detail
 
@@ -116,7 +117,7 @@ void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector s
 
 void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                   const protobuf::VaultInfo& protobuf_vault_info, VaultInfo& vault_info) {
-  vault_info.pmid_and_signer = maidsafe::make_unique<passport::PmidAndSigner>(std::make_pair(
+  vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(std::make_pair(
     passport::DecryptPmid(
         crypto::CipherText{ NonEmptyString{ protobuf_vault_info.pmid() } }, symm_key, symm_iv),
     passport::DecryptAnpmid(

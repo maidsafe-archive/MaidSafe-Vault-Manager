@@ -78,7 +78,8 @@ std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
       return tcp_connection;
     } catch (const std::exception& e) {
-      LOG(kVerbose) << "Failed to Connected to VaultManager on port " << port;
+      LOG(kVerbose) << "Failed to connect to VaultManager which is listening on port " << port
+                    << ": " << boost::diagnostic_information(e);
     }
   }
   LOG(kError) << "Failed to Connected to VaultManager on port range : " << kLivePort
@@ -94,19 +95,19 @@ std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() 
 
 //FIXME need separate messages kVaultRunningResponse & kTakeOwnershipResponse
 // need to store label to varify ?
-//std::future<passport::PmidAndSigner> ClientInterface::TakeOwnership(const std::string& label,
+//std::future<passport::PmidAndSigner> ClientInterface::TakeOwnership(const NonEmptyString& label,
 //    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
 //  SendTakeOwnershipRequest(tcp_connection_, label, vault_dir, max_disk_usage);
 //  return SetResponseCallback<passport::PmidAndSigner>(on_take_ownerhip_response_,
 //                                                      asio_service_.service(), mutex_);
 //}
 
-std::future<passport::PmidAndSigner> ClientInterface::StartVault(
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
   NonEmptyString label("fix_me");  // FIXME Prakash
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
-  return SetResponseCallback<passport::PmidAndSigner>(on_vault_running_response_,
-                                                      asio_service_.service(), mutex_);
+  return SetResponseCallback<std::unique_ptr<passport::PmidAndSigner>>(on_vault_running_response_,
+      asio_service_.service(), mutex_);
 }
 
 void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {

@@ -38,25 +38,25 @@ namespace test {
 TEST(RpcHelperTest, BEH_SetResponseCallback) {
   AsioService asio_service(1);
   boost::asio::io_service& io_service(asio_service.service());
-  std::function<void(std::string)> call_back;
+  std::function<void(std::string)> callback;
   std::mutex mutex;
   typedef routing::BootstrapContacts BootstrapList;
   BootstrapList bootstrap_list{ 1, { maidsafe::GetLocalIp(), maidsafe::test::GetRandomPort() } };
 
   std::vector<std::future<BootstrapList>> futures;
   for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<BootstrapList>(call_back, io_service, mutex));
+    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
 
   for (auto& future : futures)
     EXPECT_THROW(future.get(), maidsafe_error) << "must have failed";
 
   futures.clear();
   for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<BootstrapList>(call_back, io_service, mutex));
+    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
 
   std::thread t([&]() {
     Sleep(std::chrono::milliseconds(100));
-    call_back(routing::SerialiseBootstrapContacts(bootstrap_list));
+    callback(routing::SerialiseBootstrapContacts(bootstrap_list));
   });
 
   for (auto& future : futures)

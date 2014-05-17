@@ -87,16 +87,16 @@ void PromiseAndTimer<ResultType>::SetException(boost::system::error_code error_c
 }  // namespace detail
 
 template <typename ResultType>
-std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& call_back,
+std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& callback,
                                             boost::asio::io_service& io_service,
                                             std::mutex& mutex) {
   auto promise_and_timer = std::make_shared<detail::PromiseAndTimer<ResultType>>(io_service);
   {
     std::lock_guard<std::mutex> lock{ mutex };
-    auto call_back_copy(call_back);
-    call_back = [=](std::string message) {
-      if (call_back_copy)
-        call_back_copy(message);
+    auto callback_copy(callback);
+    callback = [=](std::string message) {
+      if (callback_copy)
+        callback_copy(message);
       try {
         promise_and_timer->ParseAndSetValue(message);
       }
@@ -107,15 +107,15 @@ std::future<ResultType> SetResponseCallback(std::function<void(std::string)>& ca
       promise_and_timer->timer.cancel();
     };
   }
-  promise_and_timer->timer.async_wait([=, &call_back, &mutex](const boost::system::error_code& ec) {
+  promise_and_timer->timer.async_wait([=, &callback, &mutex](const boost::system::error_code& ec) {
     if (ec && ec == boost::asio::error::operation_aborted) {
       LOG(kVerbose) << "Timer cancelled";
       return;
     }
     LOG(kVerbose) << "Timer expired - i.e. timed out";
     std::lock_guard<std::mutex> lock{ mutex };
-    if (call_back)
-      call_back = nullptr;
+    if (callback)
+      callback = nullptr;
     if (ec)
       promise_and_timer->SetException(ec);
     else

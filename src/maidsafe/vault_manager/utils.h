@@ -65,7 +65,7 @@ std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
     const std::string& message);
 
 template <>
-passport::PmidAndSigner Parse<passport::PmidAndSigner>(
+std::unique_ptr<passport::PmidAndSigner> Parse<std::unique_ptr<passport::PmidAndSigner>>(
     const std::string& message);
 
 
