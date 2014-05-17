@@ -64,6 +64,8 @@ DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (VaultStartedResponse)
     (VaultShutdownRequest)
     (MaxDiskUsageUpdate)
+    (BootstrapContactsRequest)
+    (BootstrapContactsResponse)
     (BootstrapContact))
 
 typedef std::pair<std::string, MessageType> MessageAndType;

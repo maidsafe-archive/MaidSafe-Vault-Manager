@@ -84,6 +84,19 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
   return vault_config;
 }
 
+
+template <>
+std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
+    const std::string& serialised_message) {
+  return maidsafe::make_unique<asymm::PlainText>(serialised_message);
+}
+
+// FIXME need to set exception in case of error. this requires access to promise to set exception
+//template <>
+//passport::PmidAndSigner Parse<passport::PmidAndSigner>(const std::string& /*message*/) {
+//  return passport::PmidAndSigner();
+//}
+
 }  // namspace detail
 
 

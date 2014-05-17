@@ -20,6 +20,8 @@
 
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/dispatcher.h"
+#include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 
@@ -48,33 +50,79 @@ namespace maidsafe {
 namespace vault_manager {
 
 ClientInterface::ClientInterface(const passport::Maid& maid)
-    : maid_(maid),
+    : kMaid_(maid),
+      mutex_(),
+      on_challange_(),
+      on_bootstrap_contacts_response_(),
+      on_take_ownerhip_response_(),
+      on_vault_running_response_(),
       asio_service_(1),
-      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, kLivePort)) {
-  tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
-                         [this] { /* FIXME */ });
+      tcp_connection_(ConnectToVaultManager()) {
+  SendValidateConnectionRequest(tcp_connection_);
+  auto challange = SetResponseCallback<std::unique_ptr<asymm::PlainText>>(
+                   on_challange_, asio_service_.service(), mutex_).get();
+  SendChallengeResponse(tcp_connection_, passport::PublicMaid(kMaid_),
+                        asymm::Sign(*challange, maid.private_key()));
 }
 
 ClientInterface::~ClientInterface() {
   tcp_connection_->Close();
 }
 
-//std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
-//  bootstrap_contacts_promise_and_timer_ =
-//      maidsafe::make_unique<PromiseAndTimer<routing::BootstrapContacts>>(asio_service_.service());
-//  return bootstrap_contacts_promise_and_timer_->AddRequest();
+std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {
+  for (auto port(kLivePort); port < (kLivePort + 10U); ++port) { // Check range
+    try {
+      auto tcp_connection(std::make_shared<TcpConnection>(asio_service_, port));
+      tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
+                             [this] { }); // FIXME OnConnectionClosed
+      LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
+      return tcp_connection;
+    } catch (const std::exception& e) {
+      LOG(kVerbose) << "Failed to Connected to VaultManager on port " << port;
+    }
+  }
+  LOG(kError) << "Failed to Connected to VaultManager on port range : " << kLivePort
+              << " to " << (kLivePort + 10U);
+  BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
+}
+
+std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
+  SendBootstrapContactsRequest(tcp_connection_);
+  return SetResponseCallback<routing::BootstrapContacts>(on_bootstrap_contacts_response_,
+                                                         asio_service_.service(), mutex_);
+}
+
+//FIXME need separate messages kVaultRunningResponse & kTakeOwnershipResponse
+// need to store label to varify ?
+//std::future<passport::PmidAndSigner> ClientInterface::TakeOwnership(const std::string& label,
+//    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
+//  SendTakeOwnershipRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+//  return SetResponseCallback<passport::PmidAndSigner>(on_take_ownerhip_response_,
+//                                                      asio_service_.service(), mutex_);
 //}
 
-
+std::future<passport::PmidAndSigner> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
+  NonEmptyString label("fix_me");  // FIXME Prakash
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  return SetResponseCallback<passport::PmidAndSigner>(on_vault_running_response_,
+                                                      asio_service_.service(), mutex_);
+}
 
 void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
     LOG(kVerbose) << "Received " << message_and_type.second;
     switch (message_and_type.second) {
-      case MessageType::kVaultRunningResponse:
-//        HandleTakeOwnershipResponse(message_and_type.first);
+      case MessageType::kChallenge:
+        InvokeCallBack(message_and_type.first, on_challange_);
         break;
+      case MessageType::kBootstrapContactsResponse:
+        InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);
+        break;
+    case MessageType::kVaultRunningResponse:
+//      InvokeCallBack(message_and_type.first, on_vault_running_response_);
+      break;
       default:
         return;
     }
@@ -84,8 +132,14 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
   }
 }
 
-
-
+void ClientInterface::InvokeCallBack(const std::string& message,
+                                     std::function<void(std::string)>& callback) {
+  if (callback) {
+    callback(message);
+  } else {
+    LOG(kWarning) << "Call back not available";
+  }
+}
 
 
 //ClientInterface::ClientInterface(

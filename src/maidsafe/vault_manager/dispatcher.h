@@ -38,6 +38,8 @@ class TcpConnection;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 struct VaultInfo;
 
+void SendValidateConnectionRequest(TcpConnectionPtr connection);
+
 void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challenge);
 
 void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMaid& public_maid,
@@ -55,8 +57,14 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
 
 void SendVaultStarted(TcpConnectionPtr connection);
 
+
 void SendBootstrapContact(TcpConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact);
+
+void SendBootstrapContactsRequest(TcpConnectionPtr connection);
+
+void SendBootstrapContactsResponse(TcpConnectionPtr connection,
+                                   const routing::BootstrapContacts& bootstrap_contacts);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,

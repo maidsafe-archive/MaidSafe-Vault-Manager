@@ -54,10 +54,10 @@ class ClientInterface {
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
   std::future<passport::PmidAndSigner> TakeOwnership(const std::string& label,
-                                                     const boost::filesystem::path& chunkstore,
+                                                     const boost::filesystem::path& vault_dir,
                                                      DiskUsage max_disk_usage);
 
-  std::future<passport::PmidAndSigner> StartVault(const boost::filesystem::path& chunkstore,
+  std::future<passport::PmidAndSigner> StartVault(const boost::filesystem::path& vault_dir,
                                                   DiskUsage max_disk_usage);
 
 #ifdef TESTING
@@ -97,9 +97,17 @@ class ClientInterface {
   //void HandleBootstrapResponse(const std::string& message,
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
+  std::shared_ptr<TcpConnection> ConnectToVaultManager();
   void HandleReceivedMessage(const std::string& wrapped_message);
+  void HandleBootstrapContactsResponse(const std::string& message);
+  void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
 
-  passport::Maid maid_;
+  const passport::Maid kMaid_;
+  std::mutex mutex_;
+  std::function<void(std::string)> on_challange_;
+  std::function<void(std::string)> on_bootstrap_contacts_response_;
+  std::function<void(std::string)> on_take_ownerhip_response_;
+  std::function<void(std::string)> on_vault_running_response_;
   AsioService asio_service_;
   std::shared_ptr<TcpConnection> tcp_connection_;
 };

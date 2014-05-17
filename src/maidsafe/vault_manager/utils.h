@@ -32,6 +32,8 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/passport/passport.h"
+
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/vault_config.h"
 
@@ -56,7 +58,16 @@ routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& 
 
 template <>
 std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(
-    const std::string& serialised_message);
+    const std::string& message);
+
+template <>
+std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
+    const std::string& message);
+
+template <>
+passport::PmidAndSigner Parse<passport::PmidAndSigner>(
+    const std::string& message);
+
 
 }  // namespace detail
 

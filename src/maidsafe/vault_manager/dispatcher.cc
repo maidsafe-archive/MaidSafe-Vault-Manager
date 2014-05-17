@@ -33,6 +33,11 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+void SendValidateConnectionRequest(TcpConnectionPtr connection) {
+  connection->Send(WrapMessage(std::make_pair(std::string{},
+                                              MessageType::kValidateConnectionRequest)));
+}
+
 void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challenge) {
   protobuf::Challenge message;
   message.set_plaintext(challenge.string());
@@ -124,6 +129,20 @@ void SendBootstrapContact(TcpConnectionPtr connection,
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                MessageType::kBootstrapContact)));
 }
+
+void SendBootstrapContactsRequest(TcpConnectionPtr connection) {
+  connection->Send(WrapMessage(std::make_pair(std::string{},
+                                              MessageType::kBootstrapContactsRequest)));
+}
+
+void SendBootstrapContactsResponse(TcpConnectionPtr connection,
+                          const routing::BootstrapContacts& bootstrap_contacts) {
+  protobuf::BootstrapContact message;
+  message.set_serialised_contact(routing::SerialiseBootstrapContacts(bootstrap_contacts));
+  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
+                               MessageType::kBootstrapContactsResponse)));
+}
+
 
 void SendVaultShutdownRequest(TcpConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kVaultShutdownRequest)));
