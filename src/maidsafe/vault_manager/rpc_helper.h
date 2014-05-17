@@ -46,6 +46,7 @@ template <typename ResultType>
 struct PromiseAndTimer {
   explicit PromiseAndTimer(boost::asio::io_service& io_service);
   void ParseAndSetValue(const std::string& message);
+  void SetValue(ResultType&& result);  // Check
   void SetException(std::exception_ptr exception);
   void SetException(maidsafe_error error);
   void SetException(boost::system::error_code error_code);
@@ -64,6 +65,11 @@ PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::ParseAndSetValue(const std::string& message) {
   ResultType result(Parse<ResultType>(message));
+  std::call_once(once_flag, [&] { promise.set_value(std::move(result)); });
+}
+
+template <typename ResultType>
+void PromiseAndTimer<ResultType>::SetValue(ResultType&& result) {
   std::call_once(once_flag, [&] { promise.set_value(std::move(result)); });
 }
 

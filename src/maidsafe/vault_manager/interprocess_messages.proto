@@ -57,14 +57,14 @@ message TakeOwnershipRequest {
 // VaultManager to Client
 message VaultRunningResponse {
   message VaultKeys {
-    required bytes label = 1;
-    required bytes AES256Key = 2;
-    required bytes AES256IV = 3;
-    required bytes encrypted_anpmid = 4;
-    required bytes encrypted_pmid = 5;
+    required bytes AES256Key = 1;
+    required bytes AES256IV = 2;
+    required bytes encrypted_anpmid = 3;
+    required bytes encrypted_pmid = 4;
   }
-  optional bytes serialised_maidsafe_error = 1;
-  optional VaultKeys vault_keys = 2;
+  required bytes label = 1;
+  optional bytes serialised_maidsafe_error = 2;
+  optional VaultKeys vault_keys = 3;
 }
 
 // Vault to VaultManager

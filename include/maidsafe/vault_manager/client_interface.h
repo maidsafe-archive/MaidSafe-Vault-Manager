@@ -34,6 +34,7 @@
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/utils.h"
 
 namespace maidsafe {
@@ -63,6 +64,8 @@ class ClientInterface {
 #endif
 
  private:
+  typedef detail::PromiseAndTimer<std::unique_ptr<passport::PmidAndSigner>> VaultRequest;
+
   ClientInterface(const ClientInterface&) = delete;
   ClientInterface(ClientInterface&&) = delete;
   ClientInterface& operator=(ClientInterface) = delete;
@@ -94,15 +97,16 @@ class ClientInterface {
   //                             std::function<void(bool)> callback);
   std::shared_ptr<TcpConnection> ConnectToVaultManager();
   void HandleReceivedMessage(const std::string& wrapped_message);
+  void HandleVaultRunningResponse(const std::string& message);
   void HandleBootstrapContactsResponse(const std::string& message);
   void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
+  std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(const NonEmptyString& label);
 
   const passport::Maid kMaid_;
   std::mutex mutex_;
   std::function<void(std::string)> on_challenge_;
   std::function<void(std::string)> on_bootstrap_contacts_response_;
-  std::function<void(std::string)> on_take_ownerhip_response_;
-  std::function<void(std::string)> on_vault_running_response_;
+  std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;
   AsioService asio_service_;
   std::shared_ptr<TcpConnection> tcp_connection_;
 };

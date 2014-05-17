@@ -18,11 +18,12 @@
 
 #include "maidsafe/vault_manager/client_interface.h"
 
+#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
-#include "maidsafe/vault_manager/rpc_helper.h"
+#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 
@@ -30,13 +31,28 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+namespace {
+
+std::unique_ptr<passport::PmidAndSigner> ParseVaultKeys(
+    protobuf::VaultRunningResponse::VaultKeys vault_keys) {
+  crypto::AES256Key symm_key{ vault_keys.aes256key() };
+  crypto::AES256InitialisationVector symm_iv{ vault_keys.aes256iv() };
+  std::unique_ptr<passport::PmidAndSigner> pmid_and_signer =
+      maidsafe::make_unique<passport::PmidAndSigner>(std::make_pair(
+        passport::DecryptPmid(
+          crypto::CipherText{ NonEmptyString{ vault_keys.encrypted_pmid() } }, symm_key, symm_iv),
+        passport::DecryptAnpmid(
+          crypto::CipherText{ NonEmptyString{ vault_keys.encrypted_anpmid() } }, symm_key, symm_iv)));
+  return pmid_and_signer;
+}
+
+}
+
 ClientInterface::ClientInterface(const passport::Maid& maid)
     : kMaid_(maid),
       mutex_(),
       on_challenge_(),
       on_bootstrap_contacts_response_(),
-      on_take_ownerhip_response_(),
-      on_vault_running_response_(),
       asio_service_(1),
       tcp_connection_(ConnectToVaultManager()) {
   SendValidateConnectionRequest(tcp_connection_);
@@ -79,21 +95,68 @@ std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() 
                                                          asio_service_.service(), mutex_);
 }
 
-//FIXME need separate messages kVaultRunningResponse & kTakeOwnershipResponse
-// need to store label to varify ?
-//std::future<passport::PmidAndSigner> ClientInterface::TakeOwnership(const NonEmptyString& label,
-//    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
-//  SendTakeOwnershipRequest(tcp_connection_, label, vault_dir, max_disk_usage);
-//  return SetResponseCallback<passport::PmidAndSigner>(on_take_ownerhip_response_,
-//                                                      asio_service_.service(), mutex_);
-//}
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwnership(
+    const NonEmptyString& label, const boost::filesystem::path& vault_dir,
+    DiskUsage max_disk_usage) {
+  SendTakeOwnershipRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  return AddVaultRequest(label);
+}
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
   NonEmptyString label{ GenerateLabel() };
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
-  return SetResponseCallback<std::unique_ptr<passport::PmidAndSigner>>(on_vault_running_response_,
-      asio_service_.service(), mutex_);
+  return AddVaultRequest(label);
+}
+
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultRequest(
+    const NonEmptyString& label) {
+  std::shared_ptr<VaultRequest> request(std::make_shared<VaultRequest>(asio_service_.service()));
+  request->timer.async_wait([request, label, this](const boost::system::error_code& ec) {
+    if (ec && ec == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Timer cancelled. OK";
+      return;
+    }
+    LOG(kVerbose) << "Timer expired - i.e. timed out";
+    std::lock_guard<std::mutex> lock{ mutex_ };
+    if (ec)
+      request->SetException(ec);
+    else
+      request->SetException(MakeError(VaultManagerErrors::timed_out));
+    ongoing_vault_requests_.erase(label);
+  });
+
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  ongoing_vault_requests_.insert(std::make_pair(label, request));
+  return request->promise.get_future();
+}
+
+void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
+  protobuf::VaultRunningResponse
+    vault_running_response{ ParseProto<protobuf::VaultRunningResponse>(message) };
+  NonEmptyString label(vault_running_response.label());
+  std::unique_ptr<passport::PmidAndSigner> pmid_and_signer;
+  std::unique_ptr<maidsafe_error> error;
+  if (vault_running_response.has_vault_keys()) {
+    pmid_and_signer = ParseVaultKeys(vault_running_response.vault_keys());
+  } else if (vault_running_response.has_serialised_maidsafe_error()) {
+    error = maidsafe::make_unique<maidsafe_error>(Parse(maidsafe_error::serialised_type(
+        vault_running_response.serialised_maidsafe_error())));
+  } else {
+    throw MakeError(CommonErrors::invalid_parameter);
+  }
+
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  auto itr = ongoing_vault_requests_.find(label);
+  if (ongoing_vault_requests_.end() != itr) {
+    if (pmid_and_signer)
+      itr->second->SetValue(std::move(pmid_and_signer));
+    else
+      itr->second->SetException(*error);
+    ongoing_vault_requests_.erase(itr);
+  } else {
+    LOG(kWarning) << "No pending requests in map";
+  }
 }
 
 void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
@@ -108,7 +171,7 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
         InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);
         break;
     case MessageType::kVaultRunningResponse:
-//      InvokeCallBack(message_and_type.first, on_vault_running_response_);
+      HandleVaultRunningResponse(message_and_type.first);
       break;
       default:
         return;

@@ -93,15 +93,7 @@ std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
   return maidsafe::make_unique<asymm::PlainText>(challenge.plaintext());
 }
 
-template <>
-std::unique_ptr<passport::PmidAndSigner> Parse<std::unique_ptr<passport::PmidAndSigner>>(
-    const std::string& /*message*/) {
-// FIXME need to set exception in case of error. this requires access to promise to set exception
-  return std::unique_ptr<passport::PmidAndSigner>{};
-}
-
 }  // namspace detail
-
 
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info) {
