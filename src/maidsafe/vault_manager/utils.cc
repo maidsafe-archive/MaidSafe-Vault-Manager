@@ -49,8 +49,7 @@ std::once_flag test_env_flag;
 Port g_test_vault_manager_port(0);
 fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
-routing::BootstrapContacts g_bootstrap_contacts;
-int g_identity_index(0);
+std::vector<passport::PublicPmid> g_public_pmids;
 #endif
 
 }  // unnamed namespace
@@ -161,25 +160,34 @@ Port GetInitialListeningPort() {
 }
 
 #ifdef TESTING
-void SetTestEnvironmentVariables(Port test_vault_manager_port, const fs::path& test_env_root_dir,
-                                 const fs::path& path_to_vault,
-                                 routing::BootstrapContacts bootstrap_contacts) {
+namespace test {
+
+void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_dir,
+    const fs::path& path_to_vault, const routing::BootstrapContact& bootstrap_contact,
+    const std::vector<passport::PublicPmid>& public_pmids) {
   std::call_once(test_env_flag, [=] {
+    if (!fs::exists(test_env_root_dir) || !fs::is_directory(test_env_root_dir)) {
+      LOG(kError) << test_env_root_dir << " doesn't exist or is not a directory.";
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::not_a_directory));
+    }
     g_test_vault_manager_port = test_vault_manager_port;
     g_test_env_root_dir = test_env_root_dir;
     g_path_to_vault = path_to_vault;
-    g_bootstrap_contacts = bootstrap_contacts;
+    if (bootstrap_contact != routing::BootstrapContact{}) {
+      routing::WriteBootstrapFile(routing::BootstrapContacts{ 1, bootstrap_contact },
+                                  test_env_root_dir / kBootstrapFilename);
+    }
+    g_public_pmids = public_pmids;
     g_using_default_environment = false;
   });
 }
 
+}  // namespace test
+
 Port GetTestVaultManagerPort() { return g_test_vault_manager_port; }
 fs::path GetTestEnvironmentRootDir() { return g_test_env_root_dir; }
 fs::path GetPathToVault() { return g_path_to_vault; }
-routing::BootstrapContacts GetBootstrapContacts() { return g_bootstrap_contacts; }
-void SetIdentityIndex(int identity_index) { g_identity_index = identity_index; }
-int IdentityIndex() { return g_identity_index; }
-bool UsingDefaultEnvironment() { return g_using_default_environment; }
+std::vector<passport::PublicPmid> GetPublicPmids() { return g_public_pmids; }
 #endif  // TESTING
 
 }  //  namespace vault_manager

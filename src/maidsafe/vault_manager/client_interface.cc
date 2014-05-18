@@ -191,54 +191,20 @@ void ClientInterface::InvokeCallBack(const std::string& message,
   }
 }
 
+#ifdef TESTING
+void ClientInterface::SetTestEnvironment(Port test_vault_manager_port,
+    boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
+    routing::BootstrapContact bootstrap_contact, std::vector<passport::PublicPmid> public_pmids) {
+  test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, bootstrap_contact,
+                       public_pmids);
+}
+#endif
 
-//ClientInterface::ClientInterface(
-//    std::function<void(const std::string&)> on_new_version_available_slot)
-//#ifdef TESTING
-//    : vault_manager_port_(detail::GetTestVaultManagerPort() == 0
-//                                  ? VaultManager::kDefaultPort() + 100
-//                                  : detail::GetTestVaultManagerPort()),
-//#else
-//      : vault_manager_port_(VaultManager::kDefaultPort()),
-//#endif
-//        local_port_(0),
-//        on_new_version_available_(),
-//        bootstrap_nodes_(),
-//        joining_vaults_(),
-//        joining_vaults_mutex_(),
-//        joining_vaults_conditional_(),
-//        asio_service_(3),
-//        receiving_transport_(std::make_shared<LocalTcpTransport>(asio_service_.service())) {
-//  OnMessageReceived::slot_type on_message_slot([this](
-//      const std::string & message,
-//      Port vault_manager_port) { HandleReceivedRequest(message, vault_manager_port); });
-//  detail::StartControllerListeningPort(receiving_transport_, on_message_slot, local_port_);
-//  std::string path_to_new_installer;
-//  if (!ConnectToVaultManager(path_to_new_installer)) {
-//    receiving_transport_->StopListening();
-//    LOG(kError) << "ClientInterface::ClientInterface can't connect to VaultManager";
-//    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::uninitialised));
-//  }
-//
-//  on_new_version_available_.connect(on_new_version_available_slot);
-//  if (!path_to_new_installer.empty())
-//    on_new_version_available_(path_to_new_installer);
-//}
-//
-//ClientInterface::~ClientInterface() { receiving_transport_->StopListening(); }
 
 
 
 
 //
-//#ifdef TESTING
-//void ClientInterface::SetTestEnvironmentVariables(
-//    Port test_vault_manager_port, fs::path test_env_root_dir, fs::path path_to_vault,
-//    std::vector<boost::asio::ip::udp::endpoint> bootstrap_ips) {
-//  detail::SetTestEnvironmentVariables(test_vault_manager_port, test_env_root_dir, path_to_vault,
-//                                      bootstrap_ips);
-//}
-//#endif
 //
 //std::vector<boost::asio::ip::udp::endpoint> ClientInterface::BootstrapEndpoints() {
 //  return bootstrap_nodes_;

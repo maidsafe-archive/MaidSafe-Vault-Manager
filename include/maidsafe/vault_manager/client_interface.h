@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "boost/filesystem/path.hpp"
 
@@ -57,10 +58,19 @@ class ClientInterface {
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
 #ifdef TESTING
-  static void SetTestEnvironmentVariables(
+  // This function sets up global variables specifying:
+  // * the desired TCP listening port of the VaultManager (VM)
+  // * a root dir for the VM to which it will write its config file and bootstrap list
+  // * the path to an executable which the VM will treat as a MaidSafe vault
+  // * a bootstrap contact which will be used to initialise the bootstrap list the VM manages
+  // * a list of PublicPmids to allow starting a zero-state network
+  //
+  // 'test_env_root_dir' must exist when this call is made or an error will be thrown.
+  // The function should only be called once - further calls are no-ops.
+  static void SetTestEnvironment(
       uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
-      boost::filesystem::path path_to_vault,
-      routing::BootstrapContacts bootstrap_contacts);
+      boost::filesystem::path path_to_vault, routing::BootstrapContact bootstrap_contact,
+      std::vector<passport::PublicPmid> public_pmids);
 #endif
 
  private:

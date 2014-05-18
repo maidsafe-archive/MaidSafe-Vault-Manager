@@ -31,7 +31,6 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
-
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -95,17 +94,19 @@ NonEmptyString GenerateLabel();
 Port GetInitialListeningPort();
 
 #ifdef TESTING
-void SetTestEnvironmentVariables(Port test_vault_manager_port,
-                                 const boost::filesystem::path& test_env_root_dir,
-                                 const boost::filesystem::path& path_to_vault,
-                                 routing::BootstrapContacts bootstrap_contacts);
+namespace test {
+
+void SetEnvironment(Port test_vault_manager_port, const boost::filesystem::path& test_env_root_dir,
+    const boost::filesystem::path& path_to_vault,
+    const routing::BootstrapContact& bootstrap_contact = routing::BootstrapContact(),
+    const std::vector<passport::PublicPmid>& public_pmids = std::vector<passport::PublicPmid>());
+
+}  // namespace test
+
 Port GetTestVaultManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
-routing::BootstrapContacts GetBootstrapContacts();
-void SetIdentityIndex(int identity_index);
-int IdentityIndex();
-bool UsingDefaultEnvironment();
+std::vector<passport::PublicPmid> GetPublicPmids();
 #endif
 
 }  // namespace vault_manager

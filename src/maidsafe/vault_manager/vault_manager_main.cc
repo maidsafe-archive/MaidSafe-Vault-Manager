@@ -166,8 +166,7 @@ void HandleProgramOptions(int argc, char** argv) {
 #ifdef TESTING
       ("port", po::value<int>(), "Listening port")
       ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
-      ("root_dir", po::value<std::string>(), "Path to folder of config file and vault root dir")
-      ("bootstrap_ips", po::value<std::string>(), "List of IPs to pass as bootstrap with LIVE.")
+      ("root_dir", po::value<std::string>(), "Path to folder of config file and bootstrap file")
 #endif
       ("help", "produce help message");
   po::variables_map variables_map;
@@ -200,11 +199,8 @@ void HandleProgramOptions(int argc, char** argv) {
     root_dir = variables_map["root_dir"].as<std::string>();
   if (variables_map.count("vault_path") != 0)
     path_to_vault = variables_map["vault_path"].as<std::string>();
-  if (variables_map.count("bootstrap_ips") != 0)
-    booststrap_ips = ParseIps(variables_map["bootstrap_ips"].as<std::string>());
 
-  maidsafe::vault_manager::SetTestEnvironmentVariables(port, root_dir, path_to_vault,
-                                                       booststrap_ips);
+  maidsafe::vault_manager::test::SetEnvironment(port, root_dir, path_to_vault);
 #endif
 }
 
