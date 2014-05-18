@@ -212,10 +212,9 @@ void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_e
   auto itr(std::begin(vaults_));
   try {
     itr = DoFind(connection);
-  }  catch (const maidsafe_error& error) {
-    if (error.code() != make_error_code(CommonErrors::no_such_element))
-      throw;
-    LOG(kWarning) << "Vault process doesn't exist.";
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Vault process doesn't exist: " << boost::diagnostic_information(e);
     return;
   }
   itr->on_exit = on_exit_functor;
@@ -228,11 +227,11 @@ bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   auto itr(std::begin(vaults_));
   try {
     itr = DoFind(connection);
-  }  catch (const maidsafe_error& error) {
-    if (error.code() != make_error_code(CommonErrors::no_such_element))
-      throw;
-    LOG(kWarning) << "Vault process doesn't exist.";
-    return false;
+  }
+  catch (const maidsafe_error& error) {
+    if (error.code() == make_error_code(CommonErrors::no_such_element))
+      return false;
+    throw;
   }
   // Set the timer to stop the process without setting the status to kStopping.  This will cause the
   // vault to be restarted unless it is explicitly stopped before the timer expires.
@@ -358,10 +357,8 @@ std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
                         [this, connection](const Child& vault) {
                           return ConnectionsEqual(vault.info.tcp_connection, connection);
                         }));
-  if (itr == std::end(vaults_)) {
-    LOG(kError) << "Vault process doesn't exist.";
+  if (itr == std::end(vaults_))
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
-  }
   return itr;
 }
 
@@ -371,10 +368,8 @@ std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(
                         [this, connection](const Child& vault) {
                           return ConnectionsEqual(vault.info.tcp_connection, connection);
                         }));
-  if (itr == std::end(vaults_)) {
-    LOG(kError) << "Vault process doesn't exist.";
+  if (itr == std::end(vaults_))
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
-  }
   return itr;
 }
 
