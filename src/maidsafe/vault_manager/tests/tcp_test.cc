@@ -289,8 +289,6 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
   client_connection_and_closer.first->Send(to_server_messages_.front());
   server_connection->Close();
   server_connection.reset();
-  EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kTimedOut);
-  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
 }
 
 TEST_F(TcpTest, BEH_ClientConnectionAborts) {
@@ -318,8 +316,6 @@ TEST_F(TcpTest, BEH_ClientConnectionAborts) {
   client_connection_and_closer.first->Send(to_server_messages_.front());
   client_connection_and_closer.second.reset();  // Closes client connection
   client_connection_and_closer.first.reset();
-  EXPECT_EQ(messages_received_by_client_->MessagesMatch(), Messages::Status::kTimedOut);
-  EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kTimedOut);
 }
 
 TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
