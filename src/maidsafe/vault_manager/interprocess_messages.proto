@@ -37,6 +37,15 @@ message ChallengeResponse {
   required bytes signature = 3;
 }
 
+// TESTING only
+message PublicPmidList {
+  message PublicPmid {
+    required bytes public_pmid_name = 1;
+    required bytes public_pmid = 2;
+  }
+  repeated PublicPmid public_pmids = 1;
+}
+
 // Client to VaultManager
 // VaultManager starts a vault.  The new vault will send a VaultStarted to the VaultManager which
 // will trigger the StartVaultResponse in reply this message.
@@ -44,7 +53,7 @@ message StartVaultRequest {
   required bytes label = 1;
   required bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
-  optional bytes serialised_public_pmids = 4;
+  optional bytes serialised_public_pmids = 4;  // TESTING only
 }
 
 // Client to VaultManager
@@ -80,7 +89,7 @@ message VaultStartedResponse {
   required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
   required bytes serialised_bootstrap_contacts = 6;
-  optional bytes serialised_public_pmids = 7;
+  optional bytes serialised_public_pmids = 7;  // TESTING only
 }
 
 // Client to VaultManager and VaultManager to Vault
