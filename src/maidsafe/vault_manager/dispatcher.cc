@@ -130,6 +130,10 @@ void SendBootstrapContact(TcpConnectionPtr connection,
                                MessageType::kBootstrapContact)));
 }
 
+void SendJoinedNetwork(TcpConnectionPtr connection) {
+  connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kJoinedNetwork)));
+}
+
 void SendBootstrapContactsRequest(TcpConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{},
                                               MessageType::kBootstrapContactsRequest)));
@@ -153,6 +157,10 @@ void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usag
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                               MessageType::kMaxDiskUsageUpdate)));
+}
+
+void SendLogMessage(TcpConnectionPtr connection, const std::string log_message) {
+  connection->Send(WrapMessage(std::make_pair(log_message, MessageType::kLogMessage)));
 }
 
 }  //  namespace vault_manager

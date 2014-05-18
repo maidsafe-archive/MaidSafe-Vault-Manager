@@ -82,6 +82,10 @@ void VaultInterface::SendBootstrapContactToVaultManager(const routing::Bootstrap
   SendBootstrapContact(tcp_connection_, contact);
 }
 
+void VaultInterface::SendJoined() {
+  SendJoinedNetwork(tcp_connection_);
+}
+
 void VaultInterface::OnConnectionClosed() {
   LOG(kError) << "Lost connection to Vault Manager";
   std::call_once(exit_code_flag_, [this] {

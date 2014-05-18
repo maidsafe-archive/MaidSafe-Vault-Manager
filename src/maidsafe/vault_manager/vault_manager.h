@@ -74,7 +74,8 @@ class VaultManager {
 
   // Messages from Vault
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);
-
+  void HandleJoinedNetwork(TcpConnectionPtr connection);
+  void HandleLogMessage(TcpConnectionPtr connection, const std::string& message);
   void RemoveFromNewConnections(TcpConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
 

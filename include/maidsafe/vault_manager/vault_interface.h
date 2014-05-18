@@ -53,6 +53,7 @@ class VaultInterface {
   int WaitForExit();
 
   void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
+  void SendJoined();
 
 #ifdef TESTING
   void KillConnection();

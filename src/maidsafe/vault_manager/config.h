@@ -66,7 +66,9 @@ DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (MaxDiskUsageUpdate)
     (BootstrapContactsRequest)
     (BootstrapContactsResponse)
-    (BootstrapContact))
+    (JoinedNetwork)
+    (BootstrapContact)
+    (LogMessage))
 
 typedef std::pair<std::string, MessageType> MessageAndType;
 

@@ -190,6 +190,13 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
       case MessageType::kVaultStarted:
         HandleVaultStarted(connection, message_and_type.first);
         break;
+      case MessageType::kJoinedNetwork:
+        assert(message_and_type.first.empty());
+        HandleJoinedNetwork(connection);
+        break;
+      case MessageType::kLogMessage:
+        HandleLogMessage(connection, message_and_type.first);
+        break;
       //case MessageType::kClientRegistrationRequest:
       //  HandleClientRegistrationRequest(payload, response);
       //  break;
@@ -339,6 +346,29 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
     }
     catch (const std::exception&) {}  // We don't care if the client isn't connected.
   }
+}
+
+void VaultManager::HandleJoinedNetwork(TcpConnectionPtr /*connection*/) {
+  try {
+    VaultInfo vault_info;  //FIXME find vault info using ConnectionsEqual()
+    // TODO do vault_info need joined field
+    std::string log_message("Vault running as " +
+                              HexSubstr(vault_info.pmid_and_signer->first.name().value));
+    LOG(kInfo) << log_message;
+    TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+    SendLogMessage(client, log_message);
+  }
+  catch (const std::exception&) {}  // We don't care if the client isn't connected.
+}
+
+void VaultManager::HandleLogMessage(TcpConnectionPtr /*connection*/, const std::string& message) {
+  LOG(kInfo) << message;
+  try {
+    VaultInfo vault_info;  //FIXME find vault info using ConnectionsEqual()
+    TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+    SendLogMessage(client, message);
+  }
+  catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
 /*

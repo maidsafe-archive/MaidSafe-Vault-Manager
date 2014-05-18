@@ -61,6 +61,8 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts);
 
+void SendJoinedNetwork(TcpConnectionPtr connection);
+
 void SendBootstrapContact(TcpConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact);
 
@@ -72,6 +74,8 @@ void SendBootstrapContactsResponse(TcpConnectionPtr connection,
 void SendVaultShutdownRequest(TcpConnectionPtr connection);
 
 void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usage);
+
+void SendLogMessage(TcpConnectionPtr connection, const std::string log_message);
 
 }  // namespace vault_manager
 
