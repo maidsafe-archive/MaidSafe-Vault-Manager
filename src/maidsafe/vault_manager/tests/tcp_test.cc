@@ -339,7 +339,7 @@ TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
   TcpListener listener{
       [&](TcpConnectionPtr connection) {
         connection->Start(
-            [&](std::string msg) { 
+            [&](std::string msg) {
               LOG(kVerbose) << "Server received msg";
               messages_received_by_server_->AddMessage(std::move(msg));
             },
@@ -380,6 +380,7 @@ TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
     EXPECT_EQ(messages_received_by_client[i]->MessagesMatch(), Messages::Status::kSuccess);
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
   client_connections_and_closers.clear();
+  asio_service.Stop();
 }
 
 }  // namespace test
