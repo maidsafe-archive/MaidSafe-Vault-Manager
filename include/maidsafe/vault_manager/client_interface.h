@@ -106,11 +106,13 @@ class ClientInterface {
   //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
   //                             std::function<void(bool)> callback);
   std::shared_ptr<TcpConnection> ConnectToVaultManager();
+  std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(
+      const NonEmptyString& label);
   void HandleReceivedMessage(const std::string& wrapped_message);
   void HandleVaultRunningResponse(const std::string& message);
   void HandleBootstrapContactsResponse(const std::string& message);
   void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
-  std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(const NonEmptyString& label);
+  void HandleLogMessage(const std::string& message);
 
   const passport::Maid kMaid_;
   std::mutex mutex_;

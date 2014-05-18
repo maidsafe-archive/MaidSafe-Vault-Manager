@@ -131,6 +131,31 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
   return request->promise.get_future();
 }
 
+void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
+  try {
+    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
+    LOG(kVerbose) << "Received " << message_and_type.second;
+    switch (message_and_type.second) {
+      case MessageType::kChallenge:
+        InvokeCallBack(message_and_type.first, on_challenge_);
+        break;
+      case MessageType::kBootstrapContactsResponse:
+        InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);
+        break;
+      case MessageType::kVaultRunningResponse:
+        HandleVaultRunningResponse(message_and_type.first);
+        break;
+      case MessageType::kLogMessage:
+        HandleLogMessage(message_and_type.first);
+        break;
+      default:
+        return;
+    }
+  } catch (const std::exception& e) {
+    LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
+  }
+}
+
 void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
   protobuf::VaultRunningResponse
     vault_running_response{ ParseProto<protobuf::VaultRunningResponse>(message) };
@@ -159,29 +184,6 @@ void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
   }
 }
 
-void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
-  try {
-    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
-    LOG(kVerbose) << "Received " << message_and_type.second;
-    switch (message_and_type.second) {
-      case MessageType::kChallenge:
-        InvokeCallBack(message_and_type.first, on_challenge_);
-        break;
-      case MessageType::kBootstrapContactsResponse:
-        InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);
-        break;
-    case MessageType::kVaultRunningResponse:
-      HandleVaultRunningResponse(message_and_type.first);
-      break;
-      default:
-        return;
-    }
-  }
-  catch (const std::exception& e) {
-    LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
-  }
-}
-
 void ClientInterface::InvokeCallBack(const std::string& message,
                                      std::function<void(std::string)>& callback) {
   if (callback) {
@@ -189,6 +191,10 @@ void ClientInterface::InvokeCallBack(const std::string& message,
   } else {
     LOG(kWarning) << "Call back not available";
   }
+}
+
+void ClientInterface::HandleLogMessage(const std::string& message) {
+  LOG(kInfo) << message;
 }
 
 #ifdef TESTING
