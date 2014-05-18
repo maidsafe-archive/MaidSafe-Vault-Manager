@@ -65,28 +65,28 @@ PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::ParseAndSetValue(const std::string& message) {
   ResultType result(Parse<ResultType>(message));
-  std::call_once(once_flag, [&] { promise.set_value(std::move(result)); });
+  std::call_once(once_flag, [&] { this->promise.set_value(std::move(result)); });
 }
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::SetValue(ResultType&& result) {
-  std::call_once(once_flag, [&] { promise.set_value(std::move(result)); });
+  std::call_once(once_flag, [&] { this->promise.set_value(std::move(result)); });
 }
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::SetException(std::exception_ptr exception) {
-  std::call_once(once_flag, [&] { promise.set_exception(exception); });
+  std::call_once(once_flag, [&] { this->promise.set_exception(exception); });
 }
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::SetException(maidsafe_error error) {
-  std::call_once(once_flag, [&] { promise.set_exception(std::make_exception_ptr(error)); });
+  std::call_once(once_flag, [&] { this->promise.set_exception(std::make_exception_ptr(error)); });
 }
 
 template <typename ResultType>
 void PromiseAndTimer<ResultType>::SetException(boost::system::error_code error_code) {
   std::call_once(once_flag, [&] {
-      promise.set_exception(std::make_exception_ptr(boost::system::system_error(error_code)));
+    this->promise.set_exception(std::make_exception_ptr(boost::system::system_error(error_code)));
   });
 }
 
