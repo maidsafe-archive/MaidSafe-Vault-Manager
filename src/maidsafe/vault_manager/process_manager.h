@@ -65,6 +65,7 @@ class ProcessManager {
   // Returns false if the process doesn't exist.
   bool HandleConnectionClosed(TcpConnectionPtr connection);
   VaultInfo Find(const NonEmptyString& label) const;
+  VaultInfo Find(TcpConnectionPtr connection) const;
 
  private:
   ProcessManager(const ProcessManager&) = delete;
@@ -97,6 +98,8 @@ class ProcessManager {
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
+  std::vector<Child>::const_iterator DoFind(TcpConnectionPtr connection) const;
+  std::vector<Child>::iterator DoFind(TcpConnectionPtr connection);
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);

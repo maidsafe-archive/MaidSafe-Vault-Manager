@@ -348,9 +348,9 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
   }
 }
 
-void VaultManager::HandleJoinedNetwork(TcpConnectionPtr /*connection*/) {
+void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
   try {
-    VaultInfo vault_info;  //FIXME find vault info using ConnectionsEqual()
+    VaultInfo vault_info(process_manager_.Find(connection));
     // TODO do vault_info need joined field
     std::string log_message("Vault running as " +
                               HexSubstr(vault_info.pmid_and_signer->first.name().value));
@@ -361,10 +361,10 @@ void VaultManager::HandleJoinedNetwork(TcpConnectionPtr /*connection*/) {
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
-void VaultManager::HandleLogMessage(TcpConnectionPtr /*connection*/, const std::string& message) {
+void VaultManager::HandleLogMessage(TcpConnectionPtr connection, const std::string& message) {
   LOG(kInfo) << message;
   try {
-    VaultInfo vault_info;  //FIXME find vault info using ConnectionsEqual()
+    VaultInfo vault_info(process_manager_.Find(connection));
     TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
     SendLogMessage(client, message);
   }

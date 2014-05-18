@@ -209,11 +209,12 @@ void ProcessManager::AssignOwner(const NonEmptyString& label,
 
 void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, connection](const Child& vault) {
-                          return ConnectionsEqual(vault.info.tcp_connection, connection);
-                        }));
-  if (itr == std::end(vaults_)) {
+  auto itr(std::begin(vaults_));
+  try {
+    itr = DoFind(connection);
+  }  catch (const maidsafe_error& error) {
+    if (error.code() != make_error_code(CommonErrors::no_such_element))
+      throw;
     LOG(kWarning) << "Vault process doesn't exist.";
     return;
   }
@@ -224,11 +225,12 @@ void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_e
 
 bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                        [this, connection](const Child& vault) {
-                          return ConnectionsEqual(vault.info.tcp_connection, connection);
-                        }));
-  if (itr == std::end(vaults_)) {
+  auto itr(std::begin(vaults_));
+  try {
+    itr = DoFind(connection);
+  }  catch (const maidsafe_error& error) {
+    if (error.code() != make_error_code(CommonErrors::no_such_element))
+      throw;
     LOG(kWarning) << "Vault process doesn't exist.";
     return false;
   }
@@ -340,6 +342,37 @@ std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(const NonEmp
                         }));
   if (itr == std::end(vaults_)) {
     LOG(kError) << "Vault process with label " << label.string() << " doesn't exist.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+  return itr;
+}
+
+VaultInfo ProcessManager::Find(TcpConnectionPtr connection) const {
+  std::lock_guard<std::mutex> lock{ mutex_ };
+  return DoFind(connection)->info;
+}
+
+std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
+    TcpConnectionPtr connection) const {
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, connection](const Child& vault) {
+                          return ConnectionsEqual(vault.info.tcp_connection, connection);
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Vault process doesn't exist.";
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
+  }
+  return itr;
+}
+
+std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(
+    TcpConnectionPtr connection) {
+  auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                        [this, connection](const Child& vault) {
+                          return ConnectionsEqual(vault.info.tcp_connection, connection);
+                        }));
+  if (itr == std::end(vaults_)) {
+    LOG(kError) << "Vault process doesn't exist.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
   return itr;
