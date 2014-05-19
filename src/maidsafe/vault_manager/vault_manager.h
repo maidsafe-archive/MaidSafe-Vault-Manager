@@ -79,39 +79,6 @@ class VaultManager {
   void RemoveFromNewConnections(TcpConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
 
-
-
-
-  //void HandleClientRegistrationRequest(const std::string& request, std::string& response);
-  //void HandleVaultIdentityRequest(const std::string& request, std::string& response);
-  //void HandleVaultJoinedNetworkRequest(const std::string& request, std::string& response);
-  //void HandleStopVaultRequest(const std::string& request, std::string& response);
-  //void HandleSendEndpointToVaultManagerRequest(const std::string& request,
-  //                                                 std::string& response);
-  //void HandleBootstrapRequest(const std::string& request, std::string& response);
-
-  //// Requests to client
-  //// NOTE: vault_info_mutex_ must be locked when calling this function.
-  //void SendVaultJoinConfirmation(const passport::Pmid::Name& pmid_name, bool join_result);
-  //void SendNewVersionAvailable(Port client_port);
-
-  //// Response handling from client
-  //void HandleVaultJoinConfirmationAck(const std::string& message,
-  //                                    std::function<void(bool)> callback);
-  //void HandleNewVersionAvailableAck(const std::string& message,
-  //                                  std::function<void(bool)> callback);
-
-  //// General
-  //bool InTestMode() const;
-  //void RestartVault(const passport::Pmid::Name& pmid_name);
-  //bool StopVault(const passport::Pmid::Name& pmid_name, const asymm::PlainText& data,
-  //               const asymm::Signature& signature, bool permanent);
-  //void StopAllVaults();
-  //bool ObtainBootstrapInformation(protobuf::VaultManagerConfig& config);
-  //void LoadBootstrapEndpoints(const protobuf::Bootstrap& end_points);
-  //bool AddBootstrapEndPoint(const std::string& ip, Port port);
-  //bool AmendVaultDetailsInConfigFile(const VaultInfoPtr& vault_info, bool existing_vault);
-
   const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
   std::unique_ptr<TcpListener> listener_;

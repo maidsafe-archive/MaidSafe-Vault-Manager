@@ -141,6 +141,8 @@ void StartNetwork::HandleChoice() {
                                       path_to_vault_, routing::BootstrapContact{}, vault_count_);
   std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
 
+  StartVaultManagerAndClientInterface();
+
   Sleep(std::chrono::seconds(10));
   finished_with_zero_state_nodes_.set_value();
   zero_state_launcher.join();
@@ -212,6 +214,26 @@ void StartNetwork::StartZeroStateRoutingNodes() {
 
   finished_with_zero_state_nodes_.get_future().get();
   TLOG(kDefaultColour) << "Shutting down zero state bootstrap nodes.\n";
+}
+
+void StartNetwork::StartVaultManagerAndClientInterface() {
+  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface ...\n";
+  local_network_controller_->vault_manager = maidsafe::make_unique<VaultManager>();
+  passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
+  local_network_controller_->client_interface =
+      maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
+}
+
+void StartNetwork::TakeOwnershipOfFirstVault() {
+
+}
+
+void StartNetwork::StartSecondVault() {
+
+}
+
+void StartNetwork::StartRemainingVaults() {
+
 }
 
 }  // namespace tools
