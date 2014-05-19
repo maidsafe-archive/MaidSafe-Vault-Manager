@@ -138,28 +138,6 @@ BOOL CtrlHandler(DWORD control_type) {
 
 #endif
 
-#ifdef TESTING
-std::vector<boost::asio::ip::udp::endpoint> ParseIps(const std::string& parameter_ips) {
-  std::vector<boost::asio::ip::udp::endpoint> endpoints;
-  boost::regex re(",");
-  boost::sregex_token_iterator it(parameter_ips.begin(), parameter_ips.end(), re, -1), end;
-  while (it != end) {
-    try {
-      boost::asio::ip::udp::endpoint endpoint;
-      endpoint.address(boost::asio::ip::address::from_string(*it));
-      endpoint.port(maidsafe::kLivePort);
-      endpoints.push_back(endpoint);
-    }
-    catch (...) {
-    }
-    ++it;
-  }
-  for (auto& ep : endpoints)
-    LOG(kInfo) << "IP candidate: " << ep;
-  return endpoints;
-}
-#endif
-
 void HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
   options_description.add_options()
