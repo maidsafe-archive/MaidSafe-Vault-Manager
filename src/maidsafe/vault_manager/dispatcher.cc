@@ -85,6 +85,7 @@ void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString&
     message.set_serialised_maidsafe_error(Serialise(*error).data);
   } else {
     assert(pmid_and_signer);
+    message.set_label(vault_label.string());
     crypto::AES256Key symm_key{ RandomString(crypto::AES256_KeySize) };
     crypto::AES256InitialisationVector symm_iv{ RandomString(crypto::AES256_IVSize) };
     message.mutable_vault_keys()->set_aes256key(symm_key.string());
