@@ -156,7 +156,8 @@ void StartNetwork::HandleChoice() {
   }
   TLOG(kDefaultColour) << "Creating " << vault_count_ + 2 << " sets of Pmid keys...\n";
   ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
-                                      path_to_vault_, routing::BootstrapContact{}, vault_count_);
+                                      path_to_vault_, routing::BootstrapContact{},
+                                      vault_count_ + 2);
   std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
   zero_state_nodes_started_.get_future().get();
 
@@ -247,7 +248,7 @@ void StartNetwork::StartVaultManagerAndClientInterface() {
 }
 
 void StartNetwork::StartFirstTwoVaults() {
-  TLOG(kDefaultColour) << "Starting vault 0...\n";
+  TLOG(kDefaultColour) << "Starting vault 0... (index 2) \n";
   fs::create_directories(test_env_root_dir_ / (kVaultDirname + "0"));
   auto first_vault_future(local_network_controller_->client_interface->StartVault(
       test_env_root_dir_ / (kVaultDirname + "0"), DiskUsage{ 10000000000 }, 2));
@@ -259,7 +260,7 @@ void StartNetwork::StartFirstTwoVaults() {
   }
   Sleep(std::chrono::seconds(2));
 
-  TLOG(kDefaultColour) << "Starting vault 1...\n";
+  TLOG(kDefaultColour) << "Starting vault 1... (index 3)\n";
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   fs::create_directories(test_env_root_dir_ / (kVaultDirname + "1"));
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
@@ -274,8 +275,8 @@ void StartNetwork::StartFirstTwoVaults() {
 }
 
 void StartNetwork::StartRemainingVaults() {
-  for (int i(4); i < vault_count_; ++i) {
-    TLOG(kDefaultColour) << "Starting vault " << i + 2 << "...\n";
+  for (int i(4); i < vault_count_ + 2; ++i) {
+    TLOG(kDefaultColour) << "Starting vault " << i - 2 << "...(index " << i <<")\n";
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)));
     auto vault_future(local_network_controller_->client_interface->StartVault(

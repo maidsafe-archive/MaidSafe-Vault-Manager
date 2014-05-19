@@ -228,8 +228,11 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     vault_info.owner_name = client_name;
 #ifdef TESTING
     if (start_vault_message.has_pmid_list_index()) {
+      LOG(kVerbose) << "Vault index : " << start_vault_message.pmid_list_index();
       vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(
           GetPmidAndSigner(start_vault_message.pmid_list_index()));
+      LOG(kVerbose) << "Vault index : " << start_vault_message.pmid_list_index()
+                    << " label : " << vault_info.label.string();
     }
 #endif
     if (!vault_info.pmid_and_signer) {
