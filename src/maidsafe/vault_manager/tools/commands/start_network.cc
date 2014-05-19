@@ -72,6 +72,10 @@ void StartNetwork::PrintOptions() const {
     TLOG(kDefaultColour)
         << "Do you wish to create " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
         << kDefaultOutput_;
+  } else if (!fs::is_empty(test_env_root_dir_, ec) || ec) {
+    TLOG(kDefaultColour)
+      << "Do you wish to remove all contents of " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
+      << kDefaultOutput_;
   } else if (path_to_vault_.empty()) {
     TLOG(kDefaultColour)
         << "Enter path to Vault executable.  Hit enter to use default\n"
@@ -97,8 +101,22 @@ void StartNetwork::GetChoice() {
       PrintOptions();
     }
     boost::system::error_code ec;
-    if (fs::exists(test_env_root_dir_, ec))
-      break;
+    if (fs::exists(test_env_root_dir_, ec)) {
+      if (fs::is_empty(test_env_root_dir_, ec))
+        break;
+      PrintOptions();
+      bool clear;
+      while (!GetBoolChoice(clear, nullptr)) {
+        TLOG(kDefaultColour) << '\n';
+        PrintOptions();
+      }
+      if (clear) {
+        if (fs::remove_all(test_env_root_dir_, ec) &&
+          fs::create_directories(test_env_root_dir_, ec)) {
+          break;
+        }
+      }
+    }
 
     PrintOptions();
     bool create;
