@@ -18,15 +18,26 @@
 
 #include "maidsafe/vault_manager/tools/commands/start_network.h"
 
+#include <memory>
+#include <thread>
+
 #include "boost/filesystem/operations.hpp"
 
+#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/node_id.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/routing/bootstrap_file_operations.h"
+#include "maidsafe/routing/routing_api.h"
+#include "maidsafe/routing/node_info.h"
+#include "maidsafe/nfs/utils.h"
+#include "maidsafe/nfs/client/data_getter.h"
 
 #include "maidsafe/vault_manager/client_interface.h"
+#include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_manager.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test.h"
@@ -48,7 +59,8 @@ StartNetwork::StartNetwork(LocalNetworkController* local_network_controller)
       kDefaultTestEnvRootDir_(fs::temp_directory_path() / "MaidSafe_TestNetwork"),
       kDefaultPathToVault_(process::GetOtherExecutablePath(fs::path{ "vault" })),
       kDefaultVaultManagerPort_(44444),
-      kDefaultVaultCount_(12) {}
+      kDefaultVaultCount_(12),
+      finished_with_zero_state_nodes_() {}
 
 void StartNetwork::PrintOptions() const {
   boost::system::error_code ec;
@@ -124,14 +136,16 @@ void StartNetwork::HandleChoice() {
     local_network_controller_->current_command.reset();
     return;
   }
-
-
-
-
-  routing::BootstrapContact bootstrap_contact{ maidsafe::GetLocalIp(),
-                                               maidsafe::test::GetRandomPort() };
+  TLOG(kDefaultColour) << "Creating " << vault_count_ << " sets of Pmid keys...\n";
   ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
-                                      path_to_vault_, bootstrap_contact, vault_count_);
+                                      path_to_vault_, routing::BootstrapContact{}, vault_count_);
+  std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
+
+  Sleep(std::chrono::seconds(10));
+  finished_with_zero_state_nodes_.set_value();
+  zero_state_launcher.join();
+
+
   TLOG(kRed) << "Not implemented yet.\n";
   TLOG(kGreen) << "Chose " << test_env_root_dir_ << '\n';
   TLOG(kGreen) << "Chose " << path_to_vault_ << '\n';
@@ -141,7 +155,66 @@ void StartNetwork::HandleChoice() {
       maidsafe::make_unique<ChooseTest>(local_network_controller_);
 }
 
-}  // namepsace tools
+void StartNetwork::StartZeroStateRoutingNodes() {
+  TLOG(kDefaultColour) << "Creating zero state routing network...\n";
+  AsioService asio_service{ 1 };
+  std::unique_ptr<routing::Routing> node0{
+      maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(0).first) };
+  routing::NodeInfo node_info0;
+  node_info0.node_id = NodeId{ GetPmidAndSigner(0).first.name()->string() };
+  node_info0.public_key = GetPmidAndSigner(0).first.public_key();
+
+  std::unique_ptr<routing::Routing> node1{
+      maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(1).first) };
+  routing::NodeInfo node_info1;
+  node_info1.node_id = NodeId{ GetPmidAndSigner(1).first.name()->string() };
+  node_info1.public_key = GetPmidAndSigner(1).first.public_key();
+
+  nfs_client::DataGetter public_key_getter{ asio_service, *node0 };
+
+  routing::Functors functors0, functors1;
+  nfs::detail::PublicPmidHelper public_pmid_helper;
+  functors0.request_public_key = functors1.request_public_key =
+     [&](NodeId node_id, const routing::GivePublicKeyFunctor& give_key) {
+    auto public_pmids(GetPublicPmids());
+    nfs::detail::DoGetPublicKey(public_key_getter, node_id, give_key, public_pmids,
+                                public_pmid_helper);
+  };
+  functors0.typed_message_and_caching.group_to_group.message_received =
+      functors1.typed_message_and_caching.group_to_group.message_received =
+          [&](const routing::GroupToGroupMessage&) {};
+  functors0.typed_message_and_caching.group_to_single.message_received =
+      functors1.typed_message_and_caching.group_to_single.message_received =
+          [&](const routing::GroupToSingleMessage&) {};
+  functors0.typed_message_and_caching.single_to_group.message_received =
+      functors1.typed_message_and_caching.single_to_group.message_received =
+          [&](const routing::SingleToGroupMessage&) {};
+  functors0.typed_message_and_caching.single_to_single.message_received =
+      functors1.typed_message_and_caching.single_to_single.message_received =
+          [&](const routing::SingleToSingleMessage&) {};
+  functors0.typed_message_and_caching.single_to_group_relay.message_received =
+      functors1.typed_message_and_caching.single_to_group_relay.message_received =
+          [&](const routing::SingleToGroupRelayMessage&) {};
+
+  routing::BootstrapContact contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+  routing::BootstrapContact contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+  auto join_future0(std::async(std::launch::async,
+      [&, this] { return node0->ZeroStateJoin(functors0, contact0, contact1, node_info1); }));
+  auto join_future1(std::async(std::launch::async,
+      [&, this] { return node1->ZeroStateJoin(functors1, contact1, contact0, node_info0); }));
+  if (join_future0.get() != 0 || join_future1.get() != 0) {
+    TLOG(kRed) << "Could not start zero state bootstrap nodes.\n";
+    BOOST_THROW_EXCEPTION(MakeError(RoutingErrors::not_connected));
+  }
+
+  routing::WriteBootstrapFile(routing::BootstrapContacts{ contact0, contact1 },
+                              test_env_root_dir_ / kBootstrapFilename);
+
+  finished_with_zero_state_nodes_.get_future().get();
+  TLOG(kDefaultColour) << "Shutting down zero state bootstrap nodes.\n";
+}
+
+}  // namespace tools
 
 }  // namespace vault_manager
 

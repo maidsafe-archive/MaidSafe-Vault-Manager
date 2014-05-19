@@ -107,6 +107,7 @@ Port GetTestVaultManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
 passport::PmidAndSigner GetPmidAndSigner(int index);
+std::vector<passport::PublicPmid> GetPublicPmids();
 std::string GetSerialisedPublicPmids();
 #endif
 

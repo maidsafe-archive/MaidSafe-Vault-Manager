@@ -50,6 +50,7 @@ Port g_test_vault_manager_port(0);
 fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
 std::vector<passport::PmidAndSigner> g_pmids_and_signers;
+std::vector<passport::PublicPmid> g_public_pmids;
 std::string g_serialised_public_pmids;
 #endif
 
@@ -181,10 +182,10 @@ void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_
     protobuf::PublicPmidList protobuf_public_pmid_list;
     for (int i(0); i < pmid_list_size; ++i) {
       g_pmids_and_signers.emplace_back(passport::CreatePmidAndSigner());
-      passport::PublicPmid public_pmid{ g_pmids_and_signers.back().first };
+      g_public_pmids.emplace_back(passport::PublicPmid{ g_pmids_and_signers.back().first });
       auto protobuf_public_pmid(protobuf_public_pmid_list.add_public_pmids());
-      protobuf_public_pmid->set_public_pmid_name(public_pmid.name()->string());
-      protobuf_public_pmid->set_public_pmid(public_pmid.Serialise()->string());
+      protobuf_public_pmid->set_public_pmid_name(g_public_pmids.back().name()->string());
+      protobuf_public_pmid->set_public_pmid(g_public_pmids.back().Serialise()->string());
     }
     g_serialised_public_pmids = protobuf_public_pmid_list.SerializeAsString();
     g_using_default_environment = false;
@@ -197,6 +198,7 @@ Port GetTestVaultManagerPort() { return g_test_vault_manager_port; }
 fs::path GetTestEnvironmentRootDir() { return g_test_env_root_dir; }
 fs::path GetPathToVault() { return g_path_to_vault; }
 passport::PmidAndSigner GetPmidAndSigner(int index) { return g_pmids_and_signers.at(index); }
+std::vector<passport::PublicPmid> GetPublicPmids() { return g_public_pmids; }
 std::string GetSerialisedPublicPmids() { return g_serialised_public_pmids; }
 #endif  // TESTING
 

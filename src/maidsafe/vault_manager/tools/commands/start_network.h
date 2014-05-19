@@ -19,6 +19,7 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
 #define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
 
+#include <future>
 #include <string>
 #include <vector>
 
@@ -44,10 +45,13 @@ class StartNetwork : public Command {
   virtual void HandleChoice();
 
  private:
+  void StartZeroStateRoutingNodes();
+
   boost::filesystem::path test_env_root_dir_, path_to_vault_;
   int vault_manager_port_, vault_count_;
   const boost::filesystem::path kDefaultTestEnvRootDir_, kDefaultPathToVault_;
   const int kDefaultVaultManagerPort_, kDefaultVaultCount_;
+  std::promise<void> finished_with_zero_state_nodes_;
 };
 
 }  // namepsace tools
