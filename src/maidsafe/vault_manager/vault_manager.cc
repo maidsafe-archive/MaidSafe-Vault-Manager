@@ -101,18 +101,21 @@ VaultManager::VaultManager()
       asio_service_(maidsafe::make_unique<AsioService>(1)),
       process_manager_(asio_service_->service(), GetVaultExecutablePath(),
                        listener_->ListeningPort()),
-#ifdef TESTING
-      public_pmids_mutex_(),
-      public_pmids_(),
-#endif
       client_connections_(asio_service_->service()) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
     VaultInfo vault_info;
     vault_info.vault_dir = GetDefaultVaultDir();
     vault_info.label = GenerateLabel();
-    vault_info.pmid_and_signer =
-        std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+#ifdef TESTING
+    // Use the 3rd Pmid from the zero-state Pmid list if available
+    if (!GetPublicPmids().empty())
+      vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(GetPmidAndSigner(2));
+#endif
+    if (!vault_info.pmid_and_signer) {
+      vault_info.pmid_and_signer =
+          std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+    }
     process_manager_.AddProcess(std::move(vault_info));
   } else {
     for (auto& vault_info : vaults)
@@ -197,27 +200,6 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
       case MessageType::kLogMessage:
         HandleLogMessage(connection, message_and_type.first);
         break;
-      //case MessageType::kClientRegistrationRequest:
-      //  HandleClientRegistrationRequest(payload, response);
-      //  break;
-      //case MessageType::kVaultIdentityRequest:
-      //  HandleVaultIdentityRequest(payload, response);
-      //  break;
-      //case MessageType::kVaultJoinedNetwork:
-      //  HandleVaultJoinedNetworkRequest(payload, response);
-      //  break;
-      //case MessageType::kStopVaultRequest:
-      //  HandleStopVaultRequest(payload, response);
-      //  break;
-      //case MessageType::kUpdateIntervalRequest:
-      //  HandleUpdateIntervalRequest(payload, response);
-      //  break;
-      //case MessageType::kSendEndpointToVaultManagerRequest:
-      //  HandleSendEndpointToVaultManagerRequest(payload, response);
-      //  break;
-      //case MessageType::kBootstrapRequest:
-      //  HandleBootstrapRequest(payload, response);
-      //  break;
       default:
         return;
     }
@@ -267,9 +249,6 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
       vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(
           GetPmidAndSigner(start_vault_message.pmid_list_index()));
     }
-                                                                        //if (!GetSerialisedPublicPmids().empty())
-                                                                        //  SetPublicPmidList(start_vault_message.serialised_public_pmids(), public_pmids_mutex_,
-                                                                        //                    GetSerialisedPublicPmids());
 #endif
     return;
   }

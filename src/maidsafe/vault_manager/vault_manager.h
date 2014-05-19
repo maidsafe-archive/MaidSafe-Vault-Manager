@@ -86,10 +86,6 @@ class VaultManager {
   std::map<TcpConnectionPtr, TimerPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
   std::unique_ptr<AsioService> asio_service_;
   ProcessManager process_manager_;
-#ifdef TESTING
-  std::mutex public_pmids_mutex_;
-  std::vector<passport::PublicPmid> public_pmids_;
-#endif
   ClientConnections client_connections_;
 };
 

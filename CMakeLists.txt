@@ -60,6 +60,7 @@ target_link_libraries(maidsafe_vault_manager maidsafe_nfs_client)
 ms_add_executable(vault_manager "Production" "${VaultManagerSourcesDir}/vault_manager_main.cc")
 target_include_directories(vault_manager PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(vault_manager maidsafe_vault_manager)
+add_dependencies(vault_manager vault)
 
 ms_rename_outdated_built_exes()
 
@@ -86,6 +87,7 @@ if(MaidsafeTesting)
   ms_add_executable(local_network_controller "Tools/Vault Manager" ${VaultManagerToolsAllFiles} ${VaultManagerToolsCommandsAllFiles})
   target_include_directories(local_network_controller PRIVATE ${PROJECT_SOURCE_DIR}/src)
   target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_nfs_vault)
+  add_dependencies(local_network_controller vault)
 
   ms_add_style_test()
   ms_add_gtests(TESTvault_manager)
