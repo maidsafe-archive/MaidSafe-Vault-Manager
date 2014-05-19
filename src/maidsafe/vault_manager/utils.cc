@@ -52,6 +52,21 @@ bool g_using_default_environment(true);
 std::vector<passport::PmidAndSigner> g_pmids_and_signers;
 std::vector<passport::PublicPmid> g_public_pmids;
 std::string g_serialised_public_pmids;
+
+
+// Parsing public Pmid list
+std::vector<passport::PublicPmid> ParsePublicPmidList(const std::string& serialised_public_pmids) {
+  protobuf::PublicPmidList proto_public_pmids{
+      ParseProto<protobuf::PublicPmidList>(serialised_public_pmids) };
+  std::vector<passport::PublicPmid> public_pmids;
+  public_pmids.reserve(proto_public_pmids.public_pmids_size());
+  for (const auto& i : proto_public_pmids.public_pmids()) {
+    passport::PublicPmid public_pmid(passport::PublicPmid::Name(Identity(i.public_pmid_name())),
+        passport::PublicPmid::serialised_type(NonEmptyString(i.public_pmid())));
+    public_pmids.push_back(public_pmid);
+  }
+  return public_pmids;
+}
 #endif
 
 }  // unnamed namespace
@@ -79,9 +94,9 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
   auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage,
                                                          bootstrap_contacts);
 #ifdef TESTING
-  // TODO(Prakash) parse if has_serialised_public_pmids()
-  vault_config->test_config.test_type = VaultConfig::TestType::kNone;
-  vault_config->test_config.public_pmid_list = std::vector<passport::PublicPmid>();
+  if (vault_started_response.has_serialised_public_pmids())
+    vault_config->test_config.public_pmid_list = ParsePublicPmidList(
+        vault_started_response.serialised_public_pmids());
 #endif
   return vault_config;
 }
@@ -187,7 +202,8 @@ void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_
       protobuf_public_pmid->set_public_pmid_name(g_public_pmids.back().name()->string());
       protobuf_public_pmid->set_public_pmid(g_public_pmids.back().Serialise()->string());
     }
-    g_serialised_public_pmids = protobuf_public_pmid_list.SerializeAsString();
+    if (!g_public_pmids.empty())
+      g_serialised_public_pmids = protobuf_public_pmid_list.SerializeAsString();
     g_using_default_environment = false;
   });
 }

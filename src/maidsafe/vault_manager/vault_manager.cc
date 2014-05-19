@@ -72,22 +72,6 @@ fs::path GetVaultExecutablePath() {
   return process::GetOtherExecutablePath(fs::path{ "vault" });
 }
 
-#ifdef TESTING
-void SetPublicPmidList(const std::string& serialised_public_pmids,
-                       std::mutex& mutex, std::vector<passport::PublicPmid>& public_pmids) {
-  protobuf::PublicPmidList proto_public_pmids{
-      ParseProto<protobuf::PublicPmidList>(serialised_public_pmids) };
-  std::lock_guard<std::mutex> lock{ mutex };
-  public_pmids.clear();
-  public_pmids.reserve(proto_public_pmids.public_pmids_size());
-  for (const auto& i : proto_public_pmids.public_pmids()) {
-    passport::PublicPmid public_pmid(passport::PublicPmid::Name(Identity(i.public_pmid_name())),
-        passport::PublicPmid::serialised_type(NonEmptyString(i.public_pmid())));
-    public_pmids.push_back(public_pmid);
-  }
-}
-#endif
-
 }  // unnamed namespace
 
 VaultManager::VaultManager()

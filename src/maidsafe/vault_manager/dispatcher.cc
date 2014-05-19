@@ -117,6 +117,11 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
   message.set_max_disk_usage(vault_info.max_disk_usage.data);
   message.set_serialised_bootstrap_contacts(
       routing::SerialiseBootstrapContacts(bootstrap_contacts));
+#ifdef TESTING
+  auto serialised_public_pmids = GetSerialisedPublicPmids();
+  if (!serialised_public_pmids.empty())
+    message.set_serialised_public_pmids(serialised_public_pmids);
+#endif
   vault_info.tcp_connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                                              MessageType::kVaultStartedResponse)));
 }
