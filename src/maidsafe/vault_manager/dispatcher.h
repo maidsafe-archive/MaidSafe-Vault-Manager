@@ -77,6 +77,12 @@ void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usag
 
 void SendLogMessage(TcpConnectionPtr connection, const std::string log_message);
 
+#ifdef TESTING
+void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           int pmid_list_index);
+#endif
+
 }  // namespace vault_manager
 
 }  // namespace maidsafe

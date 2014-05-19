@@ -53,7 +53,7 @@ message StartVaultRequest {
   required bytes label = 1;
   required bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
-  optional bytes serialised_public_pmids = 4;  // TESTING only
+  optional int32 pmid_list_index = 4;  // TESTING only
 }
 
 // Client to VaultManager

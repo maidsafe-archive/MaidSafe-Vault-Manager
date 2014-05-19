@@ -70,7 +70,10 @@ class ClientInterface {
   static void SetTestEnvironment(
       uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
       boost::filesystem::path path_to_vault, routing::BootstrapContact bootstrap_contact,
-      std::vector<passport::PublicPmid> public_pmids);
+      int pmid_list_size);
+
+  std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
+      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
 #endif
 
  private:

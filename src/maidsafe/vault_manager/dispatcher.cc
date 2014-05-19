@@ -163,6 +163,20 @@ void SendLogMessage(TcpConnectionPtr connection, const std::string log_message) 
   connection->Send(WrapMessage(std::make_pair(log_message, MessageType::kLogMessage)));
 }
 
+#ifdef TESTING
+void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           int pmid_list_index) {
+  protobuf::StartVaultRequest message;
+  message.set_label(vault_label.string());
+  message.set_vault_dir(vault_dir.string());
+  message.set_max_disk_usage(max_disk_usage.data);
+  message.set_pmid_list_index(pmid_list_index);
+  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
+                                              MessageType::kStartVaultRequest)));
+}
+#endif
+
 }  //  namespace vault_manager
 
 }  //  namespace maidsafe

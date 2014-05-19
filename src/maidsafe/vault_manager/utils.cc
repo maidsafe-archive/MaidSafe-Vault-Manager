@@ -49,7 +49,8 @@ std::once_flag test_env_flag;
 Port g_test_vault_manager_port(0);
 fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
-std::vector<passport::PublicPmid> g_public_pmids;
+std::vector<passport::PmidAndSigner> g_pmids_and_signers;
+std::string g_serialised_public_pmids;
 #endif
 
 }  // unnamed namespace
@@ -164,7 +165,7 @@ namespace test {
 
 void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_dir,
     const fs::path& path_to_vault, const routing::BootstrapContact& bootstrap_contact,
-    const std::vector<passport::PublicPmid>& public_pmids) {
+    int pmid_list_size) {
   std::call_once(test_env_flag, [=] {
     if (!fs::exists(test_env_root_dir) || !fs::is_directory(test_env_root_dir)) {
       LOG(kError) << test_env_root_dir << " doesn't exist or is not a directory.";
@@ -177,7 +178,15 @@ void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_
       routing::WriteBootstrapFile(routing::BootstrapContacts{ 1, bootstrap_contact },
                                   test_env_root_dir / kBootstrapFilename);
     }
-    g_public_pmids = public_pmids;
+    protobuf::PublicPmidList protobuf_public_pmid_list;
+    for (int i(0); i < pmid_list_size; ++i) {
+      g_pmids_and_signers.emplace_back(passport::CreatePmidAndSigner());
+      passport::PublicPmid public_pmid{ g_pmids_and_signers.back().first };
+      auto protobuf_public_pmid(protobuf_public_pmid_list.add_public_pmids());
+      protobuf_public_pmid->set_public_pmid_name(public_pmid.name()->string());
+      protobuf_public_pmid->set_public_pmid(public_pmid.Serialise()->string());
+    }
+    g_serialised_public_pmids = protobuf_public_pmid_list.SerializeAsString();
     g_using_default_environment = false;
   });
 }
@@ -187,7 +196,8 @@ void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_
 Port GetTestVaultManagerPort() { return g_test_vault_manager_port; }
 fs::path GetTestEnvironmentRootDir() { return g_test_env_root_dir; }
 fs::path GetPathToVault() { return g_path_to_vault; }
-std::vector<passport::PublicPmid> GetPublicPmids() { return g_public_pmids; }
+passport::PmidAndSigner GetPmidAndSigner(int index) { return g_pmids_and_signers.at(index); }
+std::string GetSerialisedPublicPmids() { return g_serialised_public_pmids; }
 #endif  // TESTING
 
 }  //  namespace vault_manager

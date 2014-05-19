@@ -99,14 +99,15 @@ namespace test {
 void SetEnvironment(Port test_vault_manager_port, const boost::filesystem::path& test_env_root_dir,
     const boost::filesystem::path& path_to_vault,
     const routing::BootstrapContact& bootstrap_contact = routing::BootstrapContact(),
-    const std::vector<passport::PublicPmid>& public_pmids = std::vector<passport::PublicPmid>());
+    int pmid_list_size = 0);
 
 }  // namespace test
 
 Port GetTestVaultManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
-std::vector<passport::PublicPmid> GetPublicPmids();
+passport::PmidAndSigner GetPmidAndSigner(int index);
+std::string GetSerialisedPublicPmids();
 #endif
 
 }  // namespace vault_manager

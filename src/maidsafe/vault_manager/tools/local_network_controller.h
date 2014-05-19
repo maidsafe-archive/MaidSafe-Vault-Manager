@@ -16,18 +16,20 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_
 
-#include <fstream>
+#include <deque>
+#include <memory>
+#include <string>
+#include <vector>
 
-#include "boost/filesystem/operations.hpp"
+#include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/error.h"
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/make_unique.h"
+#include "maidsafe/passport/passport.h"
 
-#include "maidsafe/vault_manager/tools/commands/commands.h"
-#include "maidsafe/vault_manager/tools/commands/begin.h"
+#include "maidsafe/vault_manager/client_interface.h"
+#include "maidsafe/vault_manager/vault_manager.h"
 
 namespace maidsafe {
 
@@ -35,28 +37,20 @@ namespace vault_manager {
 
 namespace tools {
 
-LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
-    : script_commands(),
-      current_command(),
-      client_interface(),
-      vault_manager() {
-  if (!script_path.empty()) {
-    if (!boost::filesystem::exists(script_path) ||
-        !boost::filesystem::is_regular_file(script_path)) {
-      TLOG(kRed) << script_path << " doesn't exist or is not a regular file.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-    }
+class Command;
 
-    std::ifstream script(script_path.string());
-    std::string line;
-    while (std::getline(script, line))
-      script_commands.emplace_back(std::move(line));
-  }
-  current_command = maidsafe::make_unique<Begin>(this);
-}
+struct LocalNetworkController {
+  explicit LocalNetworkController(const boost::filesystem::path& script_path);
+  std::deque<std::string> script_commands;
+  std::unique_ptr<Command> current_command;
+  std::unique_ptr<ClientInterface> client_interface;
+  std::unique_ptr<VaultManager> vault_manager;
+};
 
 }  // namepsace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_

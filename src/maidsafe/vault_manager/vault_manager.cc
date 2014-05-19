@@ -254,7 +254,8 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
   VaultInfo vault_info;
   try {
     passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
-    protobuf::StartVaultRequest start_vault_message{ ParseProto<protobuf::StartVaultRequest>(message) };
+    protobuf::StartVaultRequest start_vault_message{
+        ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
     vault_info.vault_dir = start_vault_message.vault_dir();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
@@ -262,9 +263,13 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     process_manager_.AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_.GetAll());
 #ifdef TESTING
-    if (start_vault_message.has_serialised_public_pmids())
-      SetPublicPmidList(start_vault_message.serialised_public_pmids(), public_pmids_mutex_,
-                        public_pmids_);
+    if (start_vault_message.has_pmid_list_index()) {
+      vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(
+          GetPmidAndSigner(start_vault_message.pmid_list_index()));
+    }
+                                                                        //if (!GetSerialisedPublicPmids().empty())
+                                                                        //  SetPublicPmidList(start_vault_message.serialised_public_pmids(), public_pmids_mutex_,
+                                                                        //                    GetSerialisedPublicPmids());
 #endif
     return;
   }

@@ -16,18 +16,17 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
 
-#include <fstream>
+#include <string>
+#include <vector>
 
-#include "boost/filesystem/operations.hpp"
+#include "boost/filesystem/path.hpp"
 
-#include "maidsafe/common/error.h"
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/make_unique.h"
+#include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
-#include "maidsafe/vault_manager/tools/commands/begin.h"
 
 namespace maidsafe {
 
@@ -35,28 +34,26 @@ namespace vault_manager {
 
 namespace tools {
 
-LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
-    : script_commands(),
-      current_command(),
-      client_interface(),
-      vault_manager() {
-  if (!script_path.empty()) {
-    if (!boost::filesystem::exists(script_path) ||
-        !boost::filesystem::is_regular_file(script_path)) {
-      TLOG(kRed) << script_path << " doesn't exist or is not a regular file.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-    }
+struct LocalNetworkController;
 
-    std::ifstream script(script_path.string());
-    std::string line;
-    while (std::getline(script, line))
-      script_commands.emplace_back(std::move(line));
-  }
-  current_command = maidsafe::make_unique<Begin>(this);
-}
+class StartNetwork : public Command {
+ public:
+  explicit StartNetwork(LocalNetworkController* local_network_controller);
+  virtual void PrintOptions() const;
+  virtual void GetChoice();
+  virtual void HandleChoice();
+
+ private:
+  boost::filesystem::path test_env_root_dir_, path_to_vault_;
+  int vault_manager_port_, vault_count_;
+  const boost::filesystem::path kDefaultTestEnvRootDir_, kDefaultPathToVault_;
+  const int kDefaultVaultManagerPort_, kDefaultVaultCount_;
+};
 
 }  // namepsace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_

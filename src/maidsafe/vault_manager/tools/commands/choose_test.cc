@@ -16,18 +16,13 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/commands/choose_test.h"
 
-#include <fstream>
-
-#include "boost/filesystem/operations.hpp"
-
-#include "maidsafe/common/error.h"
+#include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 
-#include "maidsafe/vault_manager/tools/commands/commands.h"
-#include "maidsafe/vault_manager/tools/commands/begin.h"
+#include "maidsafe/vault_manager/tools/local_network_controller.h"
 
 namespace maidsafe {
 
@@ -35,24 +30,31 @@ namespace vault_manager {
 
 namespace tools {
 
-LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
-    : script_commands(),
-      current_command(),
-      client_interface(),
-      vault_manager() {
-  if (!script_path.empty()) {
-    if (!boost::filesystem::exists(script_path) ||
-        !boost::filesystem::is_regular_file(script_path)) {
-      TLOG(kRed) << script_path << " doesn't exist or is not a regular file.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-    }
+ChooseTest::ChooseTest(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Main Test Choices"), choice_(0) {}
 
-    std::ifstream script(script_path.string());
-    std::string line;
-    while (std::getline(script, line))
-      script_commands.emplace_back(std::move(line));
+void ChooseTest::PrintOptions() const {
+  TLOG(kDefaultColour)
+      << "Currently unimplemented beyond this point.\n"
+      << "To keep network alive or stay connected to VaultManager, don't exit this tool.\n";
+    //<< "* To start a new network on this machine, enter '1'\n"
+    //<< "* To connect to an existing VaultManager on this machine, enter '2'\n" << kDefaultOutput_;
+}
+
+void ChooseTest::GetChoice() {
+  while (!GetIntChoice(choice_, nullptr, 1, 2)) {
+    TLOG(kDefaultColour) << '\n';
+    PrintOptions();
   }
-  current_command = maidsafe::make_unique<Begin>(this);
+}
+
+void ChooseTest::HandleChoice() {
+  if (exit_) {
+    local_network_controller_->current_command.reset();
+  } else {
+    local_network_controller_->current_command =
+        maidsafe::make_unique<ChooseTest>(local_network_controller_);
+  }
 }
 
 }  // namepsace tools

@@ -46,7 +46,7 @@ std::unique_ptr<passport::PmidAndSigner> ParseVaultKeys(
   return pmid_and_signer;
 }
 
-}
+}  // unnamed namespace
 
 ClientInterface::ClientInterface(const passport::Maid& maid)
     : kMaid_(maid),
@@ -200,9 +200,16 @@ void ClientInterface::HandleLogMessage(const std::string& message) {
 #ifdef TESTING
 void ClientInterface::SetTestEnvironment(Port test_vault_manager_port,
     boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
-    routing::BootstrapContact bootstrap_contact, std::vector<passport::PublicPmid> public_pmids) {
+    routing::BootstrapContact bootstrap_contact, int pmid_list_size) {
   test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, bootstrap_contact,
-                       public_pmids);
+                       pmid_list_size);
+}
+
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
+  NonEmptyString label{ GenerateLabel() };
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);
+  return AddVaultRequest(label);
 }
 #endif
 

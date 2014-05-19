@@ -16,18 +16,13 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_COMMANDS_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_COMMANDS_H_
 
-#include <fstream>
+#include <limits>
+#include <string>
 
-#include "boost/filesystem/operations.hpp"
-
-#include "maidsafe/common/error.h"
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/make_unique.h"
-
-#include "maidsafe/vault_manager/tools/commands/commands.h"
-#include "maidsafe/vault_manager/tools/commands/begin.h"
+#include "boost/filesystem/path.hpp"
 
 namespace maidsafe {
 
@@ -35,28 +30,37 @@ namespace vault_manager {
 
 namespace tools {
 
-LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
-    : script_commands(),
-      current_command(),
-      client_interface(),
-      vault_manager() {
-  if (!script_path.empty()) {
-    if (!boost::filesystem::exists(script_path) ||
-        !boost::filesystem::is_regular_file(script_path)) {
-      TLOG(kRed) << script_path << " doesn't exist or is not a regular file.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-    }
+struct LocalNetworkController;
 
-    std::ifstream script(script_path.string());
-    std::string line;
-    while (std::getline(script, line))
-      script_commands.emplace_back(std::move(line));
-  }
-  current_command = maidsafe::make_unique<Begin>(this);
-}
+class Command {
+ public:
+  Command(LocalNetworkController* local_network_controller, std::string title);
+  virtual ~Command();
+  void PrintTitle() const;
+  virtual void PrintOptions() const = 0;
+  virtual void GetChoice() = 0;
+  virtual void HandleChoice() = 0;
+
+ protected:
+  bool PopScriptCommand();
+  bool GetIntChoice(int& choice, const int* const default_choice = nullptr, int min = 1,
+                    int max = std::numeric_limits<int>::max());
+  bool GetPathChoice(boost::filesystem::path& chosen_path,
+                     const boost::filesystem::path* const default_choice,
+                     bool must_exist);
+  bool GetBoolChoice(bool& choice, const bool* const default_choice);
+
+  LocalNetworkController* local_network_controller_;
+  std::string script_command_;
+  const std::string kDefaultOutput_;
+  const std::string kTitle_;
+  bool exit_;
+};
 
 }  // namepsace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_COMMANDS_H_
