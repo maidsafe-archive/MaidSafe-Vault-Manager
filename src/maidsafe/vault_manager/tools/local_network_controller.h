@@ -47,7 +47,7 @@ struct LocalNetworkController {
   std::unique_ptr<VaultManager> vault_manager;
 };
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

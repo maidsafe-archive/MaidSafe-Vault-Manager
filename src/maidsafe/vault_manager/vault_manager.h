@@ -19,16 +19,10 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
 
-//#include <condition_variable>
-//#include <mutex>
-//#include <cstdint>
-//#include <functional>
 #include <map>
 #include <memory>
-//#include <string>
-//#include <utility>
-//#include <vector>
-//
+#include <string>
+
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/asio_service.h"

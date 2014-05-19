@@ -63,7 +63,7 @@ void Begin::HandleChoice() {
   }
 }
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

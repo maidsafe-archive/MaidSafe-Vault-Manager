@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <mutex>
@@ -94,7 +95,7 @@ std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
   return maidsafe::make_unique<asymm::PlainText>(challenge.plaintext());
 }
 
-}  // namspace detail
+}  // namespace detail
 
 void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
                 const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info) {

@@ -87,7 +87,6 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 
   boost::asio::io_service& io_service_;
   std::once_flag start_flag_, socket_close_flag_;
-  //std::promise<void> socket_close_promise_;
   boost::asio::ip::tcp::socket socket_;
   MessageReceivedFunctor on_message_received_;
   ConnectionClosedFunctor on_connection_closed_;

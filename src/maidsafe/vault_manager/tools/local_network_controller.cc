@@ -55,7 +55,7 @@ LocalNetworkController::LocalNetworkController(const boost::filesystem::path& sc
   current_command = maidsafe::make_unique<Begin>(this);
 }
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

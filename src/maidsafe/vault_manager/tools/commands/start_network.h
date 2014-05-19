@@ -55,10 +55,10 @@ class StartNetwork : public Command {
   int vault_manager_port_, vault_count_;
   const boost::filesystem::path kDefaultTestEnvRootDir_, kDefaultPathToVault_;
   const int kDefaultVaultManagerPort_, kDefaultVaultCount_;
-  std::promise<void> finished_with_zero_state_nodes_;
+  std::promise<void> zero_state_nodes_started_, finished_with_zero_state_nodes_;
 };
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

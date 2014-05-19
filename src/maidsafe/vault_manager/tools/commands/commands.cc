@@ -166,7 +166,7 @@ bool Command::GetBoolChoice(bool& choice, const bool* const default_choice) {
   }
 }
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

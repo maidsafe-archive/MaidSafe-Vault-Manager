@@ -50,12 +50,12 @@ void ConnectToVaultManager::HandleChoice() {
   } else {
     TLOG(kRed) << "Not implemented yet.";
     local_network_controller_->current_command.reset();
-    //local_network_controller_->current_command =
-    //    maidsafe::make_unique<ChooseTest>(local_network_controller_);
+    //  local_network_controller_->current_command =
+    //      maidsafe::make_unique<ChooseTest>(local_network_controller_);
   }
 }
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

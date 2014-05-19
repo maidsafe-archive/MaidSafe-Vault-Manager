@@ -18,6 +18,9 @@
 
 #include "maidsafe/vault_manager/vault_manager.h"
 
+#include <string>
+#include <vector>
+
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/application_support_directories.h"
@@ -106,11 +109,16 @@ VaultManager::VaultManager()
   if (vaults.empty()) {
     VaultInfo vault_info;
     vault_info.vault_dir = GetDefaultVaultDir();
-    vault_info.label = GenerateLabel();
+    // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
+    vault_info.max_disk_usage = DiskUsage{ 10000000000 };
 #ifdef TESTING
     // Use the 3rd Pmid from the zero-state Pmid list if available
-    if (!GetPublicPmids().empty())
+    if (!GetPublicPmids().empty()) {
       vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(GetPmidAndSigner(2));
+      vault_info.label = NonEmptyString("first vault");
+    } else {
+      vault_info.label = GenerateLabel();
+    }
 #endif
     if (!vault_info.pmid_and_signer) {
       vault_info.pmid_and_signer =
@@ -215,12 +223,12 @@ void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) 
 
   client_connections_.Add(connection, challenge);
   SendChallenge(connection, challenge);
-
 }
 
 void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
                                            const std::string& message) {
-  protobuf::ChallengeResponse challenge_response{ ParseProto<protobuf::ChallengeResponse>(message) };
+  protobuf::ChallengeResponse challenge_response{
+      ParseProto<protobuf::ChallengeResponse>(message) };
   passport::PublicMaid maid{
       passport::PublicMaid::Name{ Identity{ challenge_response.public_maid_name() } },
       passport::PublicMaid::serialised_type{ NonEmptyString{
@@ -335,7 +343,7 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
   try {
     VaultInfo vault_info(process_manager_.Find(connection));
-    // TODO do vault_info need joined field
+    // TODO(Prakash) do vault_info need joined field
     std::string log_message("Vault running as " +
                               HexSubstr(vault_info.pmid_and_signer->first.name().value));
     LOG(kInfo) << log_message;

@@ -40,7 +40,7 @@ class ConnectToVaultManager : public Command {
   int vault_manager_port_;
 };
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

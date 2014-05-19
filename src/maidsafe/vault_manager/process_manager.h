@@ -23,6 +23,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <vector>
 
 #include "boost/asio/io_service.hpp"

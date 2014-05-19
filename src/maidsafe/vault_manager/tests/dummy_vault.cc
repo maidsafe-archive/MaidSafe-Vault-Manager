@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() != 2U)
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
-    uint16_t port{ static_cast<uint16_t>(std::stoi(std::string{ &unuseds[1][0] } )) };
+    uint16_t port{ static_cast<uint16_t>(std::stoi(std::string{ &unuseds[1][0] })) };
     maidsafe::vault_manager::VaultInterface vault_interface{ port };
     connected_to_vault_manager = true;
 

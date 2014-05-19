@@ -37,8 +37,8 @@ void ChooseTest::PrintOptions() const {
   TLOG(kDefaultColour)
       << "Currently unimplemented beyond this point.\n"
       << "To keep network alive or stay connected to VaultManager, don't exit this tool.\n";
-    //<< "* To start a new network on this machine, enter '1'\n"
-    //<< "* To connect to an existing VaultManager on this machine, enter '2'\n" << kDefaultOutput_;
+  //  << "* To start a new network on this machine, enter '1'\n"
+  //  << "* To connect to an existing VaultManager on this machine, enter '2'\n" << kDefaultOutput_;
 }
 
 void ChooseTest::GetChoice() {
@@ -57,7 +57,7 @@ void ChooseTest::HandleChoice() {
   }
 }
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

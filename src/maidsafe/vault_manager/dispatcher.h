@@ -20,6 +20,7 @@
 #define MAIDSAFE_VAULT_MANAGER_DISPATCHER_H_
 
 #include <memory>
+#include <string>
 
 #include "boost/filesystem/path.hpp"
 

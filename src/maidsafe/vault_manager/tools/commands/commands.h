@@ -57,7 +57,7 @@ class Command {
   bool exit_;
 };
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

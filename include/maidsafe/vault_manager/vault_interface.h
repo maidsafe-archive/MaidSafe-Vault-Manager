@@ -25,6 +25,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/rsa.h"
@@ -66,16 +67,6 @@ class VaultInterface {
   VaultInterface(VaultInterface&&) = delete;
   VaultInterface& operator=(VaultInterface) = delete;
 
-  //void HandleVaultJoinedAck(const std::string& message, std::function<void()> callback);
-  //void RequestVaultIdentity(Port listening_port);
-  //void HandleVaultIdentityResponse(const std::string& message, std::mutex& mutex);
-  //void HandleReceivedRequest(const std::string& message, Port peer_port);
-  //void HandleVaultShutdownRequest(const std::string& request, std::string& response);
-  //void HandleSendEndpointToVaultManagerResponse(
-  //    const std::string& message, std::function<void(bool)> callback);
-  //void HandleBootstrapResponse(const std::string& message,
-  //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
-  //                             std::function<void(bool)> callback);
   void HandleReceivedMessage(const std::string& wrapped_message);
   void OnConnectionClosed();
 

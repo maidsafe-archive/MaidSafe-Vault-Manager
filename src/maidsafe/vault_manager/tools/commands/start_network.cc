@@ -136,23 +136,27 @@ void StartNetwork::HandleChoice() {
     local_network_controller_->current_command.reset();
     return;
   }
-  TLOG(kDefaultColour) << "Creating " << vault_count_ << " sets of Pmid keys...\n";
+  TLOG(kDefaultColour) << "Creating " << vault_count_ + 2 << " sets of Pmid keys...\n";
   ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
                                       path_to_vault_, routing::BootstrapContact{}, vault_count_);
   std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
+  zero_state_nodes_started_.get_future().get();
 
   StartVaultManagerAndClientInterface();
+  TakeOwnershipOfFirstVault();
+  StartSecondVault();
 
-  Sleep(std::chrono::seconds(10));
+  TLOG(kDefaultColour) << "Killing zero state nodes and waiting for network to stabilise...\n";
   finished_with_zero_state_nodes_.set_value();
   zero_state_launcher.join();
+  Sleep(std::chrono::seconds(10));
 
+  routing::WriteBootstrapFile(
+      routing::BootstrapContacts{ 1, routing::BootstrapContact{ GetLocalIp(), kLivePort} },
+      test_env_root_dir_ / kBootstrapFilename);
 
-  TLOG(kRed) << "Not implemented yet.\n";
-  TLOG(kGreen) << "Chose " << test_env_root_dir_ << '\n';
-  TLOG(kGreen) << "Chose " << path_to_vault_ << '\n';
-  TLOG(kGreen) << "Chose " << vault_manager_port_ << '\n';
-  TLOG(kGreen) << "Chose " << vault_count_ << '\n';
+  StartRemainingVaults();
+
   local_network_controller_->current_command =
       maidsafe::make_unique<ChooseTest>(local_network_controller_);
 }
@@ -211,13 +215,14 @@ void StartNetwork::StartZeroStateRoutingNodes() {
 
   routing::WriteBootstrapFile(routing::BootstrapContacts{ contact0, contact1 },
                               test_env_root_dir_ / kBootstrapFilename);
+  zero_state_nodes_started_.set_value();
 
   finished_with_zero_state_nodes_.get_future().get();
   TLOG(kDefaultColour) << "Shutting down zero state bootstrap nodes.\n";
 }
 
 void StartNetwork::StartVaultManagerAndClientInterface() {
-  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface ...\n";
+  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface...\n";
   local_network_controller_->vault_manager = maidsafe::make_unique<VaultManager>();
   passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
   local_network_controller_->client_interface =
@@ -225,15 +230,32 @@ void StartNetwork::StartVaultManagerAndClientInterface() {
 }
 
 void StartNetwork::TakeOwnershipOfFirstVault() {
-
+  TLOG(kDefaultColour) << "Taking ownership of vault 0...\n";
+  auto first_vault_future(local_network_controller_->client_interface->TakeOwnership(
+      NonEmptyString{ "first vault" }, test_env_root_dir_ / kVaultDirname,
+      DiskUsage{ 10000000000 }));
+  first_vault_future.get();
+  Sleep(std::chrono::seconds(2));
 }
 
 void StartNetwork::StartSecondVault() {
-
+  TLOG(kDefaultColour) << "Starting vault 1...\n";
+  // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
+  auto second_vault_future(local_network_controller_->client_interface->StartVault(
+      test_env_root_dir_ / kVaultDirname, DiskUsage{ 10000000000 }, 3));
+  second_vault_future.get();
+  Sleep(std::chrono::seconds(2));
 }
 
 void StartNetwork::StartRemainingVaults() {
-
+  for (int i(0); i < vault_count_; ++i) {
+    TLOG(kDefaultColour) << "Starting vault " << i + 2 << "...\n";
+    // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
+    auto vault_future(local_network_controller_->client_interface->StartVault(
+       test_env_root_dir_ / kVaultDirname, DiskUsage{ 10000000000 }, i + 4));
+    vault_future.get();
+    Sleep(std::chrono::seconds(2));
+  }
 }
 
 }  // namespace tools

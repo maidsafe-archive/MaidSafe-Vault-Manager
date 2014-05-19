@@ -40,7 +40,7 @@ class ChooseTest : public Command {
   int choice_;
 };
 
-}  // namepsace tools
+}  // namespace tools
 
 }  // namespace vault_manager
 

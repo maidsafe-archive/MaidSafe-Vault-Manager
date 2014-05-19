@@ -19,6 +19,8 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 
+#include <vector>
+
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/types.h"

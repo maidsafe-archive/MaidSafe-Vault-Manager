@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <future>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -83,31 +84,6 @@ class ClientInterface {
   ClientInterface(ClientInterface&&) = delete;
   ClientInterface& operator=(ClientInterface) = delete;
 
-  //enum State {
-  //  kInitialising,
-  //  kVerified,
-  //  kFailed
-  //};
-
-  //bool FindNextAcceptingPort(TransportPtr requesting_transport);
-  //bool ConnectToVaultManager(std::string& path_to_new_installer);
-  //void HandleRegisterResponse(const std::string& message, Port vault_manager_port,
-  //                            std::mutex& mutex, std::condition_variable& condition_variable,
-  //                            State& state, std::string& path_to_new_installer);
-  //template <typename ResponseType>
-  //void HandleStartStopVaultResponse(const std::string& message,
-  //                                  const std::function<void(bool)>& callback);
-  //boost::posix_time::time_duration SetOrGetUpdateInterval(
-  //    const boost::posix_time::time_duration& update_interval);
-  //void HandleUpdateIntervalResponse(
-  //    const std::string& message,
-  //    const std::function<void(boost::posix_time::time_duration)>& callback);
-  //void HandleReceivedRequest(const std::string& message, Port peer_port);
-  //void HandleNewVersionAvailable(const std::string& request, std::string& response);
-  //void HandleVaultJoinConfirmation(const std::string& request, std::string& response);
-  //void HandleBootstrapResponse(const std::string& message,
-  //                             std::vector<boost::asio::ip::udp::endpoint>& bootstrap_endpoints,
-  //                             std::function<void(bool)> callback);
   std::shared_ptr<TcpConnection> ConnectToVaultManager();
   std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(
       const NonEmptyString& label);
