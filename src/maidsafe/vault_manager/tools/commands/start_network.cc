@@ -274,13 +274,13 @@ void StartNetwork::StartFirstTwoVaults() {
 }
 
 void StartNetwork::StartRemainingVaults() {
-  for (int i(0); i < vault_count_; ++i) {
+  for (int i(4); i < vault_count_; ++i) {
     TLOG(kDefaultColour) << "Starting vault " << i + 2 << "...\n";
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
-    fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i + 2)));
+    fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)));
     auto vault_future(local_network_controller_->client_interface->StartVault(
-       test_env_root_dir_ / (kVaultDirname + std::to_string(i + 2)), DiskUsage{ 10000000000 },
-       i + 4));
+       test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)), DiskUsage{ 10000000000 },
+       i));
     vault_future.get();
     Sleep(std::chrono::seconds(2));
   }
