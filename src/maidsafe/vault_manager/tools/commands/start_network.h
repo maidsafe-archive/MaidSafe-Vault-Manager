@@ -47,8 +47,7 @@ class StartNetwork : public Command {
  private:
   void StartZeroStateRoutingNodes();
   void StartVaultManagerAndClientInterface();
-  void TakeOwnershipOfFirstVault();
-  void StartSecondVault();
+  void StartFirstTwoVaults();
   void StartRemainingVaults();
 
   boost::filesystem::path test_env_root_dir_, path_to_vault_;

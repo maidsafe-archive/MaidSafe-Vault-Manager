@@ -143,8 +143,7 @@ void StartNetwork::HandleChoice() {
   zero_state_nodes_started_.get_future().get();
 
   StartVaultManagerAndClientInterface();
-  TakeOwnershipOfFirstVault();
-  StartSecondVault();
+  StartFirstTwoVaults();
 
   TLOG(kDefaultColour) << "Killing zero state nodes and waiting for network to stabilise...\n";
   finished_with_zero_state_nodes_.set_value();
@@ -229,21 +228,30 @@ void StartNetwork::StartVaultManagerAndClientInterface() {
       maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
 }
 
-void StartNetwork::TakeOwnershipOfFirstVault() {
-  TLOG(kDefaultColour) << "Taking ownership of vault 0...\n";
-  auto first_vault_future(local_network_controller_->client_interface->TakeOwnership(
-      NonEmptyString{ "first vault" }, test_env_root_dir_ / kVaultDirname,
-      DiskUsage{ 10000000000 }));
-  first_vault_future.get();
+void StartNetwork::StartFirstTwoVaults() {
+  TLOG(kDefaultColour) << "Starting vault 0...\n";
+  fs::create_directories(test_env_root_dir_ / (kVaultDirname + "0"));
+  auto first_vault_future(local_network_controller_->client_interface->StartVault(
+      test_env_root_dir_ / (kVaultDirname + "0"), DiskUsage{ 10000000000 }, 2));
+  try {
+    first_vault_future.get();
+  }
+  catch (const std::exception& e) {
+    LOG(kWarning) << boost::diagnostic_information(e);
+  }
   Sleep(std::chrono::seconds(2));
-}
 
-void StartNetwork::StartSecondVault() {
   TLOG(kDefaultColour) << "Starting vault 1...\n";
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
+  fs::create_directories(test_env_root_dir_ / (kVaultDirname + "1"));
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
-      test_env_root_dir_ / kVaultDirname, DiskUsage{ 10000000000 }, 3));
-  second_vault_future.get();
+      test_env_root_dir_ / (kVaultDirname + "1"), DiskUsage{ 10000000000 }, 3));
+  try {
+    second_vault_future.get();
+  }
+  catch (const std::exception& e) {
+    LOG(kWarning) << boost::diagnostic_information(e);
+  }
   Sleep(std::chrono::seconds(2));
 }
 
@@ -251,8 +259,10 @@ void StartNetwork::StartRemainingVaults() {
   for (int i(0); i < vault_count_; ++i) {
     TLOG(kDefaultColour) << "Starting vault " << i + 2 << "...\n";
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
+    fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i + 2)));
     auto vault_future(local_network_controller_->client_interface->StartVault(
-       test_env_root_dir_ / kVaultDirname, DiskUsage{ 10000000000 }, i + 4));
+       test_env_root_dir_ / (kVaultDirname + std::to_string(i + 2)), DiskUsage{ 10000000000 },
+       i + 4));
     vault_future.get();
     Sleep(std::chrono::seconds(2));
   }

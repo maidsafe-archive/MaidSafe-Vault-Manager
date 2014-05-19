@@ -91,24 +91,16 @@ VaultManager::VaultManager()
       client_connections_(asio_service_->service()) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
+#ifndef TESTING
     VaultInfo vault_info;
     vault_info.vault_dir = GetDefaultVaultDir();
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     vault_info.max_disk_usage = DiskUsage{ 10000000000 };
-#ifdef TESTING
-    // Use the 3rd Pmid from the zero-state Pmid list if available
-    if (!GetPublicPmids().empty()) {
-      vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(GetPmidAndSigner(2));
-      vault_info.label = NonEmptyString("first vault");
-    } else {
-      vault_info.label = GenerateLabel();
-    }
-#endif
-    if (!vault_info.pmid_and_signer) {
-      vault_info.pmid_and_signer =
-          std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
-    }
+    vault_info.label = GenerateLabel();
+    vault_info.pmid_and_signer =
+        std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
     process_manager_.AddProcess(std::move(vault_info));
+#endif
   } else {
     for (auto& vault_info : vaults)
       process_manager_.AddProcess(std::move(vault_info));
@@ -234,14 +226,19 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     vault_info.vault_dir = start_vault_message.vault_dir();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
     vault_info.owner_name = client_name;
-    process_manager_.AddProcess(std::move(vault_info));
-    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
 #ifdef TESTING
     if (start_vault_message.has_pmid_list_index()) {
       vault_info.pmid_and_signer = std::make_shared<passport::PmidAndSigner>(
           GetPmidAndSigner(start_vault_message.pmid_list_index()));
     }
 #endif
+    if (!vault_info.pmid_and_signer) {
+      vault_info.pmid_and_signer =
+          std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+    }
+
+    process_manager_.AddProcess(std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
     return;
   }
   catch (const maidsafe_error& e) {
