@@ -39,7 +39,6 @@ namespace tools {
 
 Command::Command(LocalNetworkController* local_network_controller, std::string title)
     : local_network_controller_(local_network_controller),
-      script_command_(),
       kDefaultOutput_("\n>> "),
       kTitle_(std::move(title)),
       kQuitCommand_("q") {
@@ -50,36 +49,32 @@ Command::~Command() {
   TLOG(kDefaultColour) << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n";
 }
 
-bool Command::PopScriptCommand() {
-  if (local_network_controller_->script_commands.empty()) {
-    script_command_.clear();
-    return false;
-  } else {
-    script_command_ = local_network_controller_->script_commands.front();
-    local_network_controller_->script_commands.pop_front();
-    return true;
-  }
-}
-
 void Command::PrintTitle() const {
   TLOG(kDefaultColour) << kTitle_ << '\n' << std::string(kTitle_.size(), '=') << '\n';
 }
 
+std::pair<std::string, Command::Source> Command::GetLine() {
+  std::pair<std::string, Command::Source> line_and_source;
+  if (local_network_controller_->script_commands.empty()) {
+    line_and_source.second = Source::kStdCin;
+    std::getline(std::cin, line_and_source.first);
+  } else {
+    line_and_source.first = local_network_controller_->script_commands.front();
+    local_network_controller_->script_commands.pop_front();
+    line_and_source.second = Source::kScript;
+    TLOG(kDefaultColour) << line_and_source.first << '\n';
+  }
+  CheckForExitCommand(line_and_source.first);
+  return line_and_source;
+}
+
 bool Command::GetIntChoice(int& choice, const int* const default_choice, int min, int max) {
-  bool got_from_script{ PopScriptCommand() };
-  std::string chosen_int_as_string{ script_command_ };
+  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
   try {
-    if (got_from_script)
-      TLOG(kDefaultColour) << chosen_int_as_string << '\n';
-    else
-      std::getline(std::cin, chosen_int_as_string);
-
-    CheckForExitCommand(chosen_int_as_string);
-
-    if (chosen_int_as_string.empty() && default_choice)
+    if (line_and_source.first.empty() && default_choice)
       choice = *default_choice;
     else
-      choice = std::stoi(chosen_int_as_string);
+      choice = std::stoi(line_and_source.first);
 
     if (choice < min || choice > max)
       BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
@@ -87,8 +82,8 @@ bool Command::GetIntChoice(int& choice, const int* const default_choice, int min
     return true;
   }
   catch (const std::exception&) {
-    TLOG(kRed) << "\n" << chosen_int_as_string << " is not a valid choice.\n";
-    if (got_from_script)
+    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
+    if (line_and_source.second == Source::kScript)
       throw;
     return false;
   }
@@ -96,73 +91,54 @@ bool Command::GetIntChoice(int& choice, const int* const default_choice, int min
 
 bool Command::GetPathChoice(fs::path& chosen_path, const fs::path* const default_choice,
                             bool must_exist) {
-  bool got_from_script{ PopScriptCommand() };
-  std::string chosen_path_as_string{ script_command_ };
+  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
   try {
-    if (got_from_script)
-      TLOG(kDefaultColour) << chosen_path_as_string << '\n';
-    else
-      std::getline(std::cin, chosen_path_as_string);
-
-    CheckForExitCommand(chosen_path_as_string);
-
-    if (chosen_path_as_string.empty() && default_choice)
+    if (line_and_source.first.empty() && default_choice)
       chosen_path = *default_choice;
     else
-      chosen_path = fs::path{ chosen_path_as_string };
+      chosen_path = fs::path{ line_and_source.first };
 
     if (must_exist && !fs::exists(chosen_path)) {
-      TLOG(kRed) << "\n" << chosen_path_as_string << " doesn't exist.\n";
+      TLOG(kRed) << "\n" << line_and_source.first << " doesn't exist.\n";
       BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     }
 
     return true;
   }
-  catch (const std::exception& e) {
-    // Success is thrown when Quit option is invoked.
-    if (e.what() == maidsafe::GetCommonCategory().message(static_cast<int>(CommonErrors::success)))
-      throw;
+  catch (const std::exception&) {
     chosen_path.clear();
-    TLOG(kRed) << "\n" << chosen_path_as_string << " is not a valid choice.\n";
-    if (got_from_script)
+    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
+    if (line_and_source.second == Source::kScript)
       throw;
     return false;
   }
 }
 
 bool Command::GetBoolChoice(bool& choice, const bool* const default_choice) {
-  bool got_from_script{ PopScriptCommand() };
-  std::string choice_as_string{ script_command_ };
+  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
   try {
-    if (got_from_script)
-      TLOG(kDefaultColour) << choice_as_string << '\n';
-    else
-      std::getline(std::cin, choice_as_string);
-
-    CheckForExitCommand(choice_as_string);
-
-    if (choice_as_string.empty() && default_choice) {
+    if (line_and_source.first.empty() && default_choice) {
       choice = *default_choice;
       return true;
-    } else if (choice_as_string == "y" || choice_as_string == "Y") {
+    } else if (line_and_source.first == "y" || line_and_source.first == "Y") {
       choice = true;
       return true;
-    } else if (choice_as_string == "n" || choice_as_string == "N") {
+    } else if (line_and_source.first == "n" || line_and_source.first == "N") {
       choice = false;
       return true;
     }
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   catch (const std::exception&) {
-    TLOG(kRed) << "\n" << choice_as_string << " is not a valid choice.\n";
-    if (got_from_script)
+    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
+    if (line_and_source.second == Source::kScript)
       throw;
     return false;
   }
 }
 
 void Command::CheckForExitCommand(const std::string& input_command) const {
-  if (input_command == kQuitCommand_ || boost::to_lower_copy(input_command) == kQuitCommand_)
+  if (boost::to_lower_copy(input_command) == kQuitCommand_)
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::success));
 }
 

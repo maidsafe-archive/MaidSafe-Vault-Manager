@@ -21,6 +21,7 @@
 
 #include <limits>
 #include <string>
+#include <utility>
 
 #include "boost/filesystem/path.hpp"
 
@@ -42,20 +43,22 @@ class Command {
   virtual void HandleChoice() = 0;
 
  protected:
-  bool PopScriptCommand();
   bool GetIntChoice(int& choice, const int* const default_choice = nullptr, int min = 1,
                     int max = std::numeric_limits<int>::max());
   bool GetPathChoice(boost::filesystem::path& chosen_path,
                      const boost::filesystem::path* const default_choice,
                      bool must_exist);
   bool GetBoolChoice(bool& choice, const bool* const default_choice);
-  void CheckForExitCommand(const std::string& input_command) const;
 
   LocalNetworkController* local_network_controller_;
-  std::string script_command_;
   const std::string kDefaultOutput_;
   const std::string kTitle_;
   const std::string kQuitCommand_;
+
+ private:
+  enum class Source { kScript, kStdCin };
+  std::pair<std::string, Source> GetLine();
+  void CheckForExitCommand(const std::string& input_command) const;
 };
 
 }  // namespace tools
