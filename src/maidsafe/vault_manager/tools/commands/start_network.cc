@@ -150,12 +150,8 @@ void StartNetwork::GetChoice() {
 }
 
 void StartNetwork::HandleChoice() {
-  if (exit_) {
-    local_network_controller_->current_command.reset();
-    return;
-  }
   TLOG(kDefaultColour) << "\nCreating "
-                       << vault_count_ << " sets of Pmid keys...(This may take a while)\n";
+                       << vault_count_ << " sets of Pmid keys (this may take a while)...\n";
   ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
                                       path_to_vault_, routing::BootstrapContact{},
                                       vault_count_ + 2);
@@ -250,9 +246,11 @@ void StartNetwork::StartVaultManagerAndClientInterface() {
 
 void StartNetwork::StartFirstTwoVaults() {
   TLOG(kDefaultColour) << "Starting vault 1... (index 2) \n";
-  fs::create_directories(test_env_root_dir_ / (kVaultDirname + "0"));
+  std::string vault_dir_name{ DebugId(GetPmidAndSigner(2).first.name().value) };
+  fs::create_directories(test_env_root_dir_ / vault_dir_name);
+  // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   auto first_vault_future(local_network_controller_->client_interface->StartVault(
-      test_env_root_dir_ / (kVaultDirname + "0"), DiskUsage{ 10000000000 }, 2));
+      test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, 2));
   try {
     first_vault_future.get();
   }
@@ -262,10 +260,11 @@ void StartNetwork::StartFirstTwoVaults() {
   Sleep(std::chrono::seconds(2));
 
   TLOG(kDefaultColour) << "Starting vault 2... (index 3)\n";
+  vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
+  fs::create_directories(test_env_root_dir_ / vault_dir_name);
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
-  fs::create_directories(test_env_root_dir_ / (kVaultDirname + "1"));
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
-      test_env_root_dir_ / (kVaultDirname + "1"), DiskUsage{ 10000000000 }, 3));
+      test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, 3));
   try {
     second_vault_future.get();
   }
@@ -278,11 +277,11 @@ void StartNetwork::StartFirstTwoVaults() {
 void StartNetwork::StartRemainingVaults() {
   for (int i(4); i < vault_count_ + 2; ++i) {
     TLOG(kDefaultColour) << "Starting vault " << i - 1 << "...(index " << i <<")\n";
+    std::string vault_dir_name{ DebugId(GetPmidAndSigner(i).first.name().value) };
+    fs::create_directories(test_env_root_dir_ / vault_dir_name);
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
-    fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)));
     auto vault_future(local_network_controller_->client_interface->StartVault(
-       test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)), DiskUsage{ 10000000000 },
-       i));
+        test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, i));
     vault_future.get();
     Sleep(std::chrono::seconds(2));
   }

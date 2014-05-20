@@ -56,7 +56,6 @@ class Command {
   const std::string kDefaultOutput_;
   const std::string kTitle_;
   const std::string kQuitCommand_;
-  bool exit_;
 };
 
 }  // namespace tools

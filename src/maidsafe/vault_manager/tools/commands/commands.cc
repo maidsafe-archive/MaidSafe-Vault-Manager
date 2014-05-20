@@ -42,8 +42,7 @@ Command::Command(LocalNetworkController* local_network_controller, std::string t
       script_command_(),
       kDefaultOutput_("\n>> "),
       kTitle_(std::move(title)),
-      kQuitCommand_("q"),
-      exit_(false) {
+      kQuitCommand_("q") {
   assert(!kTitle_.empty());
 }
 
@@ -118,10 +117,10 @@ bool Command::GetPathChoice(fs::path& chosen_path, const fs::path* const default
     }
 
     return true;
-  } catch (const std::exception& error) {
+  }
+  catch (const std::exception& e) {
     // Success is thrown when Quit option is invoked.
-    if (error.what() ==
-          maidsafe::GetCommonCategory().message(static_cast<int>(CommonErrors::success)))
+    if (e.what() == maidsafe::GetCommonCategory().message(static_cast<int>(CommonErrors::success)))
       throw;
     chosen_path.clear();
     TLOG(kRed) << "\n" << chosen_path_as_string << " is not a valid choice.\n";

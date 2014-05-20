@@ -49,12 +49,8 @@ void ChooseTest::GetChoice() {
 }
 
 void ChooseTest::HandleChoice() {
-  if (exit_) {
-    local_network_controller_->current_command.reset();
-  } else {
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseTest>(local_network_controller_);
-  }
+  local_network_controller_->current_command =
+      maidsafe::make_unique<ChooseTest>(local_network_controller_);
 }
 
 }  // namespace tools

@@ -23,7 +23,6 @@ namespace maidsafe {
 namespace vault_manager {
 
 const std::string kConfigFilename("vault_manager_config.dat");
-const std::string kVaultDirname("vault_root");
 const std::string kBootstrapFilename("bootstrap.dat");
 const unsigned kMaxRangeAboveDefaultPort(100);
 const std::chrono::seconds kRpcTimeout(2);

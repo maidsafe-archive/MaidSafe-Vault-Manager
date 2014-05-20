@@ -45,7 +45,6 @@ typedef boost::asio::steady_timer Timer;
 typedef std::shared_ptr<Timer> TimerPtr;
 
 extern const std::string kConfigFilename;
-extern const std::string kVaultDirname;
 extern const std::string kBootstrapFilename;
 extern const unsigned kMaxRangeAboveDefaultPort;
 extern const std::chrono::seconds kRpcTimeout;

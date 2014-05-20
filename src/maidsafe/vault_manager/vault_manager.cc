@@ -63,8 +63,8 @@ fs::path GetBootstrapFilePath() {
   return GetPath(kBootstrapFilename);
 }
 
-fs::path GetDefaultVaultDir() {
-  return GetPath(kVaultDirname);
+fs::path GetVaultDir(const std::string& debug_id) {
+  return GetPath(debug_id);
 }
 
 fs::path GetVaultExecutablePath() {
@@ -93,12 +93,12 @@ VaultManager::VaultManager()
   if (vaults.empty()) {
 #ifndef TESTING
     VaultInfo vault_info;
-    vault_info.vault_dir = GetDefaultVaultDir();
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     vault_info.max_disk_usage = DiskUsage{ 10000000000 };
     vault_info.label = GenerateLabel();
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+    vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
     process_manager_.AddProcess(std::move(vault_info));
 #endif
   } else {
@@ -302,6 +302,10 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
 }
 
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
+  // TODO(Fraser#5#): 2014-05-20 - We should validate received ProcessID since a malicious process
+  //                  could have spotted a new vault process starting and jumped in with this TCP
+  //                  connection before the new vault can connect, passing itself off as the new
+  //                  vault (i.e. lying about its own Process ID).
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ ParseProto<protobuf::VaultStarted>(message) };
   VaultInfo vault_info{
@@ -319,6 +323,10 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
     }
     catch (const std::exception&) {}  // We don't care if the client isn't connected.
   }
+
+  LOG(kSuccess) << "Vault started.  Pmid ID: "
+      << DebugId(vault_info.pmid_and_signer->first.name().value) << "  Process ID: "
+      << vault_started.process_id() << "  Label: " << vault_info.label.string();
 }
 
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {

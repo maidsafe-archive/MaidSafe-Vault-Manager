@@ -35,16 +35,15 @@ int main(int argc, char* argv[]) {
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
 
     maidsafe::vault_manager::tools::LocalNetworkController local_network_controller{ script_path };
-    while (local_network_controller.current_command) {
+    for (;;) {
       local_network_controller.current_command->PrintTitle();
       local_network_controller.current_command->PrintOptions();
       local_network_controller.current_command->GetChoice();
       local_network_controller.current_command->HandleChoice();
     }
-    TLOG(kDefaultColour) << '\n';
-    return 0;
   }
   catch (const maidsafe::maidsafe_error& error) {
+    // Success is thrown when Quit option is invoked.
     if (error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::success))
       return 0;
     TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";

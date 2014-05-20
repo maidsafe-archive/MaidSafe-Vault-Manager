@@ -52,9 +52,7 @@ void Begin::GetChoice() {
 }
 
 void Begin::HandleChoice() {
-  if (exit_) {
-    local_network_controller_->current_command.reset();
-  } else if (choice_ == 1) {
+  if (choice_ == 1) {
     local_network_controller_->current_command =
         maidsafe::make_unique<StartNetwork>(local_network_controller_);
   } else {
