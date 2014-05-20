@@ -21,7 +21,14 @@
 #include <algorithm>
 #include <type_traits>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4702)
+#endif
 #include "boost/process/execute.hpp"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 #include "boost/process/initializers.hpp"
 #include "boost/process/mitigate.hpp"
 #include "boost/process/terminate.hpp"
