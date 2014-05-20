@@ -37,6 +37,7 @@ namespace tools {
 
 LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
     : script_commands(),
+      entered_commands(),
       current_command(),
       client_interface(),
       vault_manager() {
@@ -53,6 +54,16 @@ LocalNetworkController::LocalNetworkController(const boost::filesystem::path& sc
       script_commands.emplace_back(std::move(line));
   }
   current_command = maidsafe::make_unique<Begin>(this);
+}
+
+LocalNetworkController::~LocalNetworkController() {
+  current_command.reset();
+  if (entered_commands.empty())
+    return;
+  TLOG(kDefaultColour) << "\n\nSequence of entered commands:\n\n";
+  for (const auto& command : entered_commands)
+    TLOG(kDefaultColour) << command << '\n';
+  TLOG(kDefaultColour) << "\n\n";
 }
 
 }  // namespace tools

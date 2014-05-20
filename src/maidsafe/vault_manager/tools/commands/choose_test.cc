@@ -34,11 +34,7 @@ ChooseTest::ChooseTest(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Main Test Choices"), choice_(0) {}
 
 void ChooseTest::PrintOptions() const {
-  TLOG(kDefaultColour)
-      << "Network setup completed successfully.\n"
-      << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
-  //  << "* To start a new network on this machine, enter '1'\n"
-  //  << "* To connect to an existing VaultManager on this machine, enter '2'\n" << kDefaultOutput_;
+  TLOG(kYellow) << "Unimplemented as yet.\n";
 }
 
 void ChooseTest::GetChoice() {

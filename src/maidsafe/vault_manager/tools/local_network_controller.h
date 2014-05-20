@@ -41,7 +41,9 @@ class Command;
 
 struct LocalNetworkController {
   explicit LocalNetworkController(const boost::filesystem::path& script_path);
+  ~LocalNetworkController();
   std::deque<std::string> script_commands;
+  std::vector<std::string> entered_commands;
   std::unique_ptr<Command> current_command;
   std::unique_ptr<ClientInterface> client_interface;
   std::unique_ptr<VaultManager> vault_manager;

@@ -127,6 +127,10 @@ void StartNetwork::GetChoice() {
     if (create) {
       if (fs::create_directories(test_env_root_dir_, ec))
         break;
+      test_env_root_dir_.clear();
+    } else {
+      test_env_root_dir_.clear();
+      PrintOptions();
     }
   }
 
@@ -174,6 +178,10 @@ void StartNetwork::HandleChoice() {
 
   local_network_controller_->current_command =
       maidsafe::make_unique<ChooseTest>(local_network_controller_);
+
+  TLOG(kDefaultColour)
+      << "Network setup completed successfully.\n"
+      << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
 }
 
 void StartNetwork::StartZeroStateRoutingNodes() {

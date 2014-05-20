@@ -65,6 +65,7 @@ std::pair<std::string, Command::Source> Command::GetLine() {
     TLOG(kDefaultColour) << line_and_source.first << '\n';
   }
   CheckForExitCommand(line_and_source.first);
+  local_network_controller_->entered_commands.push_back(line_and_source.first);
   return line_and_source;
 }
 
