@@ -49,11 +49,13 @@ class Command {
                      const boost::filesystem::path* const default_choice,
                      bool must_exist);
   bool GetBoolChoice(bool& choice, const bool* const default_choice);
+  void CheckForExitCommand(const std::string& input_command) const;
 
   LocalNetworkController* local_network_controller_;
   std::string script_command_;
   const std::string kDefaultOutput_;
   const std::string kTitle_;
+  const std::string kQuitCommand_;
   bool exit_;
 };
 

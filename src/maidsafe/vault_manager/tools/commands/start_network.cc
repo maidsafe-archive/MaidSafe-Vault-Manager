@@ -66,30 +66,30 @@ void StartNetwork::PrintOptions() const {
   boost::system::error_code ec;
   if (test_env_root_dir_.empty()) {
     TLOG(kDefaultColour)
-        << "Enter VaultManager root directory.  Hit enter to use default\n"
-        << kDefaultTestEnvRootDir_ << '\n' << kDefaultOutput_;
+        << "Path to VaultManager root directory.\n"
+        << "('Enter' to use " << kDefaultTestEnvRootDir_ << ")\n" << kDefaultOutput_;
   } else if (!fs::exists(test_env_root_dir_, ec) || ec) {
     TLOG(kDefaultColour)
-        << "Do you wish to create " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
+        << "\n\nDo you wish to create " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
         << kDefaultOutput_;
   } else if (!fs::is_empty(test_env_root_dir_, ec) || ec) {
     TLOG(kDefaultColour)
-      << "Do you wish to remove all contents of " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
-      << kDefaultOutput_;
+        << "\n\nDo you wish to remove all contents of " << test_env_root_dir_ << "?"
+        << "\nEnter 'y' or 'n'.\n" << kDefaultOutput_;
   } else if (path_to_vault_.empty()) {
     TLOG(kDefaultColour)
-        << "Enter path to Vault executable.  Hit enter to use default\n"
+        << "\n\nPath to Vault executable. ('Enter' to use default)\n"
         << kDefaultPathToVault_ << '\n' << kDefaultOutput_;
   } else if (vault_manager_port_ == 0) {
     TLOG(kDefaultColour)
-        << "Enter preferred VaultManager listening port.  This should be between\n"
-        << "1025 and 65536 inclusive.  Hit enter to use default " << kDefaultVaultManagerPort_
-        << '\n' << kDefaultOutput_;
+        << "\n\nEnter preferred VaultManager listening port. This should be between\n"
+        << "1025 and 65536 inclusive. ('Enter' to use default " << kDefaultVaultManagerPort_
+        << ")\n" << kDefaultOutput_;
   } else {
     TLOG(kDefaultColour)
-        << "Enter number of Vaults to start.  This must be at least 10.\nThere is no "
+        << "\n\nNumber of Vaults to start. This must be at least 10.\nThere is no "
         << "upper limit, but more than 20 on one PC will probably\ncause noticeable "
-        << "performance slowdown.  Hit enter to use default " << kDefaultVaultCount_ << '\n'
+        << "performance slowdown. ('Enter' to use default " << kDefaultVaultCount_ << ")\n"
         << kDefaultOutput_;
   }
 }
@@ -154,7 +154,8 @@ void StartNetwork::HandleChoice() {
     local_network_controller_->current_command.reset();
     return;
   }
-  TLOG(kDefaultColour) << "Creating " << vault_count_ + 2 << " sets of Pmid keys...\n";
+  TLOG(kDefaultColour) << "\nCreating "
+                       << vault_count_ << " sets of Pmid keys...(This may take a while)\n";
   ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
                                       path_to_vault_, routing::BootstrapContact{},
                                       vault_count_ + 2);
@@ -248,7 +249,7 @@ void StartNetwork::StartVaultManagerAndClientInterface() {
 }
 
 void StartNetwork::StartFirstTwoVaults() {
-  TLOG(kDefaultColour) << "Starting vault 0... (index 2) \n";
+  TLOG(kDefaultColour) << "Starting vault 1... (index 2) \n";
   fs::create_directories(test_env_root_dir_ / (kVaultDirname + "0"));
   auto first_vault_future(local_network_controller_->client_interface->StartVault(
       test_env_root_dir_ / (kVaultDirname + "0"), DiskUsage{ 10000000000 }, 2));
@@ -260,7 +261,7 @@ void StartNetwork::StartFirstTwoVaults() {
   }
   Sleep(std::chrono::seconds(2));
 
-  TLOG(kDefaultColour) << "Starting vault 1... (index 3)\n";
+  TLOG(kDefaultColour) << "Starting vault 2... (index 3)\n";
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   fs::create_directories(test_env_root_dir_ / (kVaultDirname + "1"));
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
@@ -276,7 +277,7 @@ void StartNetwork::StartFirstTwoVaults() {
 
 void StartNetwork::StartRemainingVaults() {
   for (int i(4); i < vault_count_ + 2; ++i) {
-    TLOG(kDefaultColour) << "Starting vault " << i - 2 << "...(index " << i <<")\n";
+    TLOG(kDefaultColour) << "Starting vault " << i - 1 << "...(index " << i <<")\n";
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     fs::create_directories(test_env_root_dir_ / (kVaultDirname + std::to_string(i - 2)));
     auto vault_future(local_network_controller_->client_interface->StartVault(

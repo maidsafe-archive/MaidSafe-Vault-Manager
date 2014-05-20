@@ -20,6 +20,7 @@
 
 #include <iostream>
 
+#include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/config.h"
@@ -39,8 +40,9 @@ namespace tools {
 Command::Command(LocalNetworkController* local_network_controller, std::string title)
     : local_network_controller_(local_network_controller),
       script_command_(),
-      kDefaultOutput_(">> "),
+      kDefaultOutput_("\n>> "),
       kTitle_(std::move(title)),
+      kQuitCommand_("q"),
       exit_(false) {
   assert(!kTitle_.empty());
 }
@@ -73,10 +75,7 @@ bool Command::GetIntChoice(int& choice, const int* const default_choice, int min
     else
       std::getline(std::cin, chosen_int_as_string);
 
-    if (chosen_int_as_string == "exit") {
-      exit_ = true;
-      return true;
-    }
+    CheckForExitCommand(chosen_int_as_string);
 
     if (chosen_int_as_string.empty() && default_choice)
       choice = *default_choice;
@@ -89,7 +88,7 @@ bool Command::GetIntChoice(int& choice, const int* const default_choice, int min
     return true;
   }
   catch (const std::exception&) {
-    TLOG(kRed) << chosen_int_as_string << " is not a valid choice.\n";
+    TLOG(kRed) << "\n" << chosen_int_as_string << " is not a valid choice.\n";
     if (got_from_script)
       throw;
     return false;
@@ -106,10 +105,7 @@ bool Command::GetPathChoice(fs::path& chosen_path, const fs::path* const default
     else
       std::getline(std::cin, chosen_path_as_string);
 
-    if (chosen_path_as_string == "exit") {
-      exit_ = true;
-      return true;
-    }
+    CheckForExitCommand(chosen_path_as_string);
 
     if (chosen_path_as_string.empty() && default_choice)
       chosen_path = *default_choice;
@@ -117,15 +113,18 @@ bool Command::GetPathChoice(fs::path& chosen_path, const fs::path* const default
       chosen_path = fs::path{ chosen_path_as_string };
 
     if (must_exist && !fs::exists(chosen_path)) {
-      TLOG(kRed) << chosen_path_as_string << " doesn't exist.\n";
+      TLOG(kRed) << "\n" << chosen_path_as_string << " doesn't exist.\n";
       BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
     }
 
     return true;
-  }
-  catch (const std::exception&) {
+  } catch (const std::exception& error) {
+    // Success is thrown when Quit option is invoked.
+    if (error.what() ==
+          maidsafe::GetCommonCategory().message(static_cast<int>(CommonErrors::success)))
+      throw;
     chosen_path.clear();
-    TLOG(kRed) << chosen_path_as_string << " is not a valid choice.\n";
+    TLOG(kRed) << "\n" << chosen_path_as_string << " is not a valid choice.\n";
     if (got_from_script)
       throw;
     return false;
@@ -141,10 +140,7 @@ bool Command::GetBoolChoice(bool& choice, const bool* const default_choice) {
     else
       std::getline(std::cin, choice_as_string);
 
-    if (choice_as_string == "exit") {
-      exit_ = true;
-      return true;
-    }
+    CheckForExitCommand(choice_as_string);
 
     if (choice_as_string.empty() && default_choice) {
       choice = *default_choice;
@@ -159,11 +155,16 @@ bool Command::GetBoolChoice(bool& choice, const bool* const default_choice) {
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
   catch (const std::exception&) {
-    TLOG(kRed) << choice_as_string << " is not a valid choice.\n";
+    TLOG(kRed) << "\n" << choice_as_string << " is not a valid choice.\n";
     if (got_from_script)
       throw;
     return false;
   }
+}
+
+void Command::CheckForExitCommand(const std::string& input_command) const {
+  if (input_command == kQuitCommand_ || boost::to_lower_copy(input_command) == kQuitCommand_)
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::success));
 }
 
 }  // namespace tools

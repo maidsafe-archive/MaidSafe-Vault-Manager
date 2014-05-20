@@ -45,6 +45,8 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   catch (const maidsafe::maidsafe_error& error) {
+    if (error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::success))
+      return 0;
     TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
     return maidsafe::ErrorToInt(error);
   }

@@ -39,9 +39,9 @@ Begin::Begin(LocalNetworkController* local_network_controller)
 
 void Begin::PrintOptions() const {
   TLOG(kDefaultColour)
-      << "In any menu, enter 'exit' to quit this tool.\n\n"
-      << "* To start a new network on this machine, enter '1'\n"
-      << "* To connect to an existing VaultManager on this machine, enter '2'\n" << kDefaultOutput_;
+      << "\nPlease choose from the following options ('" << kQuitCommand_ << "' to quit):\n\n"
+      << "  1. Start a new network on this machine.\n"
+      << "  2. Connect to an existing VaultManager on this machine.\n" << kDefaultOutput_;
 }
 
 void Begin::GetChoice() {

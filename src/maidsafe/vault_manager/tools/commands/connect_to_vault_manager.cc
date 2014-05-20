@@ -34,7 +34,7 @@ ConnectToVaultManager::ConnectToVaultManager(LocalNetworkController* local_netwo
 
 void ConnectToVaultManager::PrintOptions() const {
   TLOG(kDefaultColour)
-      << "Enter listening port of VaultManager " << kDefaultOutput_;
+      << "Enter listening port of VaultManager\n" << kDefaultOutput_;
 }
 
 void ConnectToVaultManager::GetChoice() {
