@@ -263,6 +263,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 
   std::vector<std::string> args{ 1, kVaultExecutablePath_.string() };
   args.emplace_back(std::to_string(kListeningPort_));
+  args.emplace_back("--log_folder " + (itr->info.vault_dir / "logs").string());
   args.insert(std::end(args), std::begin(itr->process_args), std::end(itr->process_args));
 
   NonEmptyString label{ itr->info.label };
