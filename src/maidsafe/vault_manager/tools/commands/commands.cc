@@ -81,7 +81,7 @@ std::pair<std::string, Command::Source> Command::GetLine() {
 
 template <>
 bool Command::ConvertAndValidateChoice<int, int, int>(const std::string& choice_as_string,
-    int& choice, const int* const default_choice, int min = 1, int max) {
+    int& choice, const int* const default_choice, int min, int max) {
   if (choice_as_string.empty() && default_choice)
     choice = *default_choice;
   else
