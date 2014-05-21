@@ -21,6 +21,8 @@
 
 #include <future>
 
+#include "maidsafe/common/types.h"
+
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
@@ -44,6 +46,7 @@ class ChooseVaultCount : public Command {
   void StartRemainingVaults();
 
   std::promise<void> zero_state_nodes_started_, finished_with_zero_state_nodes_;
+  DiskUsage max_disk_usage_;
 };
 
 }  // namespace tools

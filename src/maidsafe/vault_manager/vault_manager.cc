@@ -93,12 +93,14 @@ VaultManager::VaultManager()
   if (vaults.empty()) {
 #ifndef TESTING
     VaultInfo vault_info;
-    // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
-    vault_info.max_disk_usage = DiskUsage{ 10000000000 };
-    vault_info.label = GenerateLabel();
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
     vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
+    if (!fs::exists(vault_info.vault_dir))
+      fs::create_directories(vault_info.vault_dir);
+    auto space_info(fs::space(vault_info.vault_dir));
+    vault_info.max_disk_usage = DiskUsage{ (9 * space_info.available) / 10 };
+    vault_info.label = GenerateLabel();
     process_manager_.AddProcess(std::move(vault_info));
 #endif
   } else {
@@ -334,7 +336,7 @@ void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
     VaultInfo vault_info(process_manager_.Find(connection));
     // TODO(Prakash) do vault_info need joined field
     std::string log_message("Vault running as " +
-                              HexSubstr(vault_info.pmid_and_signer->first.name().value));
+                            HexSubstr(vault_info.pmid_and_signer->first.name().value));
     LOG(kInfo) << log_message;
     TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
     SendLogMessage(client, log_message);

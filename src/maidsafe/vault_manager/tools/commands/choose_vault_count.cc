@@ -58,7 +58,8 @@ ChooseVaultCount::ChooseVaultCount(LocalNetworkController* local_network_control
               "will probably\ncause noticeable performance slowdown.  'Enter' to use default " +
               std::to_string(GetDefault().kVaultCount) + '\n' + kPrompt_),
       zero_state_nodes_started_(),
-      finished_with_zero_state_nodes_() {}
+      finished_with_zero_state_nodes_(),
+      max_disk_usage_(0) {}
 
 void ChooseVaultCount::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
@@ -75,6 +76,9 @@ void ChooseVaultCount::HandleChoice() {
       static_cast<Port>(local_network_controller_->vault_manager_port),
       local_network_controller_->test_env_root_dir, local_network_controller_->path_to_vault,
       routing::BootstrapContact{}, local_network_controller_->vault_count + 2);
+  auto space_info(fs::space(local_network_controller_->test_env_root_dir));
+  max_disk_usage_ =
+      DiskUsage{ (9 * space_info.available) / (10 * local_network_controller_->vault_count) };
   std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
   zero_state_nodes_started_.get_future().get();
 
@@ -172,9 +176,8 @@ void ChooseVaultCount::StartFirstTwoVaults() {
   TLOG(kDefaultColour) << "Starting vault 1\n";  // index 2 in pmid list
   std::string vault_dir_name{ DebugId(GetPmidAndSigner(2).first.name().value) };
   fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
-  // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   auto first_vault_future(local_network_controller_->client_interface->StartVault(
-      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, 2));
+      local_network_controller_->test_env_root_dir / vault_dir_name, max_disk_usage_, 2));
   try {
     first_vault_future.get();
   }
@@ -186,9 +189,8 @@ void ChooseVaultCount::StartFirstTwoVaults() {
   TLOG(kDefaultColour) << "Starting vault 2\n";  // index 3 in pmid list
   vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
   fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
-  // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
-      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, 3));
+      local_network_controller_->test_env_root_dir / vault_dir_name, max_disk_usage_, 3));
   try {
     second_vault_future.get();
   }
@@ -203,9 +205,8 @@ void ChooseVaultCount::StartRemainingVaults() {
     TLOG(kDefaultColour) << "Starting vault " << i - 1 << '\n';  // index i in pmid list
     std::string vault_dir_name{ DebugId(GetPmidAndSigner(i).first.name().value) };
     fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
-    // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     auto vault_future(local_network_controller_->client_interface->StartVault(
-      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, i));
+        local_network_controller_->test_env_root_dir / vault_dir_name, max_disk_usage_, i));
     vault_future.get();
     Sleep(std::chrono::seconds(2));
   }
