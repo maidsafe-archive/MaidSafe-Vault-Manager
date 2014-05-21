@@ -201,7 +201,8 @@ void ChooseVaultCount::StartFirstTwoVaults() {
 }
 
 void ChooseVaultCount::StartRemainingVaults() {
-  for (int i(4); i < local_network_controller_->vault_count + 2; ++i) {
+  const int kRemainingIndex(local_network_controller_->vault_count + 2);
+  for (int i(4); i < kRemainingIndex; ++i) {
     TLOG(kDefaultColour) << "Starting vault " << i - 1 << '\n';  // index i in pmid list
     std::string vault_dir_name{ DebugId(GetPmidAndSigner(i).first.name().value) };
     fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
