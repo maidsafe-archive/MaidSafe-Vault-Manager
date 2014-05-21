@@ -63,9 +63,11 @@ fs::path GetBootstrapFilePath() {
   return GetPath(kBootstrapFilename);
 }
 
+#ifndef TESTING
 fs::path GetVaultDir(const std::string& debug_id) {
   return GetPath(debug_id);
 }
+#endif
 
 fs::path GetVaultExecutablePath() {
 #ifdef TESTING
