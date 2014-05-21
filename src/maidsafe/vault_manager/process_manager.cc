@@ -94,8 +94,7 @@ ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service
       process(PROCESS_INFORMATION()),
       handle(io_service) {}
 #else
-      process(0),
-      signal_set(maidsafe::make_unique<boost::asio::signal_set>(io_service, SIGCHLD)) {}
+      process(0) { static_cast<void>(io_service); }
 #endif
 
 ProcessManager::Child::Child(Child&& other)
@@ -105,11 +104,11 @@ ProcessManager::Child::Child(Child&& other)
       restart_count(std::move(other.restart_count)),
       process_args(std::move(other.process_args)),
       status(std::move(other.status)),
-      process(std::move(other.process)),
 #ifdef MAIDSAFE_WIN32
+      process(std::move(other.process)),
       handle(std::move(other.handle)) {}
 #else
-      signal_set(std::move(other.signal_set)) {}
+      process(std::move(other.process)) {}
 #endif
 
 ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
@@ -128,8 +127,6 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
   swap(lhs.process, rhs.process);
 #ifdef MAIDSAFE_WIN32
   swap(lhs.handle, rhs.handle);
-#else
-  swap(lhs.signal_set, rhs.signal_set);
 #endif
 }
 
@@ -269,19 +266,12 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   NonEmptyString label{ itr->info.label };
 
 #ifndef MAIDSAFE_WIN32
-  itr->signal_set->async_wait([this, label](const boost::system::error_code&, int) {
-    int exit_code;
-    wait(&exit_code);
-    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
-  });
+  signal(SIGCHLD, SIG_IGN);
 #endif
 
   itr->process = bp::execute(
       bp::initializers::run_exe(kVaultExecutablePath_),
       bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
-#ifndef MAIDSAFE_WIN32
-      bp::initializers::notify_io_service(io_service_),
-#endif
       bp::initializers::throw_on_error(),
       bp::initializers::inherit_env());
 

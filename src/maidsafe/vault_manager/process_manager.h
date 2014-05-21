@@ -29,8 +29,6 @@
 #include "boost/asio/io_service.hpp"
 #ifdef MAIDSAFE_WIN32
 #include "boost/asio/windows/object_handle.hpp"
-#else
-#include "boost/asio/signal_set.hpp"
 #endif
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
@@ -86,8 +84,6 @@ class ProcessManager {
     boost::process::child process;
 #ifdef MAIDSAFE_WIN32
     boost::asio::windows::object_handle handle;
-#else
-    std::unique_ptr<boost::asio::signal_set> signal_set;
 #endif
    private:
     Child(const Child&) = delete;
