@@ -16,15 +16,18 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/commands/begin.h"
+#include "maidsafe/vault_manager/tools/commands/clear_test_root_dir.h"
 
-#include "maidsafe/common/config.h"
+#include "boost/filesystem/operations.hpp"
+
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
-#include "maidsafe/vault_manager/tools/commands/choose_vault_manager_port.h"
+#include "maidsafe/vault_manager/tools/commands/choose_path_to_vault.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
+
+namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
@@ -32,29 +35,29 @@ namespace vault_manager {
 
 namespace tools {
 
-Begin::Begin(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Initial options.",
-              "\nPlease choose from the following options ('" + kQuitCommand_ + "' to quit):\n\n"
-              "  1. Start a new network on this machine.\n"
-              "  2. Connect to an existing VaultManager on this machine.\n" + kPrompt_,
-              "MaidSafe Local Network Controller " + kApplicationVersion() + ": Main Options"),
-      choice_(0) {}
+ClearTestRootDir::ClearTestRootDir(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Clear VaultManager root directory.",
+              "  Do you wish to remove all contents of \n\"" +
+              local_network_controller->test_env_root_dir.string() + "\"?\nEnter 'y' or 'n'.\n" +
+              kPrompt_),
+      clear_(false) {}
 
-void Begin::GetChoice() {
+void ClearTestRootDir::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
+  while (!DoGetChoice(clear_, static_cast<bool*>(nullptr)))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 
-void Begin::HandleChoice() {
-  if (choice_ == 1) {
+void ClearTestRootDir::HandleChoice() {
+  if (clear_) {
+    fs::remove_all(local_network_controller_->test_env_root_dir);
+    fs::create_directories(local_network_controller_->test_env_root_dir);
     local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
+        maidsafe::make_unique<ChoosePathToVault>(local_network_controller_);
   } else {
     local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
+        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
   }
-  TLOG(kDefaultColour) << kSeparator_;
 }
 
 }  // namespace tools

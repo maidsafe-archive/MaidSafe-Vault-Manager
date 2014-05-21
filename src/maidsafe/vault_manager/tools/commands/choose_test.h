@@ -32,7 +32,6 @@ struct LocalNetworkController;
 class ChooseTest : public Command {
  public:
   explicit ChooseTest(LocalNetworkController* local_network_controller);
-  virtual void PrintOptions() const;
   virtual void GetChoice();
   virtual void HandleChoice();
 

@@ -18,6 +18,7 @@
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 
+#include <algorithm>
 #include <iostream>
 
 #include "boost/algorithm/string.hpp"
@@ -25,7 +26,7 @@
 
 #include "maidsafe/common/config.h"
 #include "maidsafe/common/error.h"
-#include "maidsafe/common/log.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
 
@@ -37,24 +38,32 @@ namespace vault_manager {
 
 namespace tools {
 
-Command::Command(LocalNetworkController* local_network_controller, std::string title)
-    : local_network_controller_(local_network_controller),
-      kDefaultOutput_("\n>> "),
-      kTitle_(std::move(title)),
-      kQuitCommand_("q") {
-  assert(!kTitle_.empty());
-}
+const std::string Command::kPrompt_ = "\n>> ";
+const std::string Command::kQuitCommand_ = "q";
+const std::string Command::kSeparator_ =
+    "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 
-Command::~Command() {
-  TLOG(kDefaultColour) << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n";
+Command::Command(LocalNetworkController* local_network_controller, std::string preamble,
+                 std::string instructions, std::string title)
+    : local_network_controller_(local_network_controller),
+      kPreamble_(std::move(preamble)),
+      kInstructions_("\n\n" + kPreamble_ + std::move(instructions)),
+      kTitle_(std::move(title)) {
+  assert(!std::any_of(std::begin(kPreamble_), std::end(kPreamble_),
+                      [](char c) { return c == '\n'; }));
 }
 
 void Command::PrintTitle() const {
-  TLOG(kDefaultColour) << kTitle_ << '\n' << std::string(kTitle_.size(), '=') << '\n';
+  if (!kTitle_.empty())
+    TLOG(kDefaultColour) << "\n\n" << kTitle_ << '\n' << std::string(kTitle_.size(), '=');
 }
 
 std::pair<std::string, Command::Source> Command::GetLine() {
   std::pair<std::string, Command::Source> line_and_source;
+  while (!local_network_controller_->script_commands.empty() &&
+          local_network_controller_->script_commands.front().substr(0, 4) == "### ") {
+    local_network_controller_->script_commands.pop_front();
+  }
   if (local_network_controller_->script_commands.empty()) {
     line_and_source.second = Source::kStdCin;
     std::getline(std::cin, line_and_source.first);
@@ -65,77 +74,58 @@ std::pair<std::string, Command::Source> Command::GetLine() {
     TLOG(kDefaultColour) << line_and_source.first << '\n';
   }
   CheckForExitCommand(line_and_source.first);
-  local_network_controller_->entered_commands.push_back(line_and_source.first);
+  local_network_controller_->entered_commands.push_back("### " + kPreamble_ + '\n' +
+                                                        line_and_source.first);
   return line_and_source;
 }
 
-bool Command::GetIntChoice(int& choice, const int* const default_choice, int min, int max) {
-  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
-  try {
-    if (line_and_source.first.empty() && default_choice)
-      choice = *default_choice;
-    else
-      choice = std::stoi(line_and_source.first);
+template <>
+bool Command::ConvertAndValidateChoice<int, int, int>(const std::string& choice_as_string,
+    int& choice, const int* const default_choice, int min = 1, int max) {
+  if (choice_as_string.empty() && default_choice)
+    choice = *default_choice;
+  else
+    choice = std::stoi(choice_as_string);
 
-    if (choice < min || choice > max)
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  if (choice < min || choice > max)
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
 
-    return true;
-  }
-  catch (const std::exception&) {
-    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
-    if (line_and_source.second == Source::kScript)
-      throw;
-    return false;
-  }
+  return true;
 }
 
-bool Command::GetPathChoice(fs::path& chosen_path, const fs::path* const default_choice,
-                            bool must_exist) {
-  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
-  try {
-    if (line_and_source.first.empty() && default_choice)
-      chosen_path = *default_choice;
-    else
-      chosen_path = fs::path{ line_and_source.first };
+template <>
+bool Command::ConvertAndValidateChoice<boost::filesystem::path, bool>(
+    const std::string& choice_as_string, boost::filesystem::path& choice,
+    const boost::filesystem::path* const default_choice, bool must_exist) {
+  on_scope_exit clear_path{ [&choice] { choice.clear(); } };
+  if (choice_as_string.empty() && default_choice)
+    choice = *default_choice;
+  else
+    choice = fs::path{ choice_as_string };
 
-    if (must_exist && !fs::exists(chosen_path)) {
-      TLOG(kRed) << "\n" << line_and_source.first << " doesn't exist.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
-    }
-
-    return true;
-  }
-  catch (const std::exception&) {
-    chosen_path.clear();
-    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
-    if (line_and_source.second == Source::kScript)
-      throw;
-    return false;
-  }
-}
-
-bool Command::GetBoolChoice(bool& choice, const bool* const default_choice) {
-  std::pair<std::string, Command::Source> line_and_source{ GetLine() };
-  try {
-    if (line_and_source.first.empty() && default_choice) {
-      choice = *default_choice;
-      return true;
-    } else if (line_and_source.first == "y" || line_and_source.first == "Y") {
-      choice = true;
-      return true;
-    } else if (line_and_source.first == "n" || line_and_source.first == "N") {
-      choice = false;
-      return true;
-    }
+  if (must_exist && !fs::exists(choice)) {
+    TLOG(kRed) << "\n" << choice_as_string << " doesn't exist.\n";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  catch (const std::exception&) {
-    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
-    if (line_and_source.second == Source::kScript)
-      throw;
-    return false;
+
+  clear_path.Release();
+  return true;
+}
+
+template <>
+bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string, bool& choice,
+                                             const bool* const default_choice) {
+  if (choice_as_string.empty() && default_choice) {
+    choice = *default_choice;
+    return true;
+  } else if (choice_as_string == "y" || choice_as_string == "Y") {
+    choice = true;
+    return true;
+  } else if (choice_as_string == "n" || choice_as_string == "N") {
+    choice = false;
+    return true;
   }
+  BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
 }
 
 void Command::CheckForExitCommand(const std::string& input_command) const {

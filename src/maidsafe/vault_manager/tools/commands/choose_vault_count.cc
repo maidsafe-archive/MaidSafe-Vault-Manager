@@ -16,9 +16,11 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/commands/start_network.h"
+#include "maidsafe/vault_manager/tools/commands/choose_vault_count.h"
 
+#include <limits>
 #include <memory>
+#include <string>
 #include <thread>
 
 #include "boost/filesystem/operations.hpp"
@@ -50,142 +52,56 @@ namespace vault_manager {
 
 namespace tools {
 
-StartNetwork::StartNetwork(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Start Network"),
-      test_env_root_dir_(),
-      path_to_vault_(),
-      vault_manager_port_(0),
-      vault_count_(0),
-      kDefaultTestEnvRootDir_(fs::temp_directory_path() / "MaidSafe_TestNetwork"),
-      kDefaultPathToVault_(process::GetOtherExecutablePath(fs::path{ "vault" })),
-      kDefaultVaultManagerPort_(44444),
-      kDefaultVaultCount_(12),
+ChooseVaultCount::ChooseVaultCount(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Number of Vaults to start.",
+              "\nThis must be at least 10.\nThere is no upper limit, but more than 20 on one PC "
+              "will probably\ncause noticeable performance slowdown.  'Enter' to use default " +
+              std::to_string(GetDefault().kVaultCount) + '\n' + kPrompt_),
+      zero_state_nodes_started_(),
       finished_with_zero_state_nodes_() {}
 
-void StartNetwork::PrintOptions() const {
-  boost::system::error_code ec;
-  if (test_env_root_dir_.empty()) {
-    TLOG(kDefaultColour)
-        << "Path to VaultManager root directory.\n"
-        << "('Enter' to use " << kDefaultTestEnvRootDir_ << ")\n" << kDefaultOutput_;
-  } else if (!fs::exists(test_env_root_dir_, ec) || ec) {
-    TLOG(kDefaultColour)
-        << "\n\nDo you wish to create " << test_env_root_dir_ << "?\nEnter 'y' or 'n'.\n"
-        << kDefaultOutput_;
-  } else if (!fs::is_empty(test_env_root_dir_, ec) || ec) {
-    TLOG(kDefaultColour)
-        << "\n\nDo you wish to remove all contents of " << test_env_root_dir_ << "?"
-        << "\nEnter 'y' or 'n'.\n" << kDefaultOutput_;
-  } else if (path_to_vault_.empty()) {
-    TLOG(kDefaultColour)
-        << "\n\nPath to Vault executable. ('Enter' to use default)\n"
-        << kDefaultPathToVault_ << '\n' << kDefaultOutput_;
-  } else if (vault_manager_port_ == 0) {
-    TLOG(kDefaultColour)
-        << "\n\nEnter preferred VaultManager listening port. This should be between\n"
-        << "1025 and 65536 inclusive. ('Enter' to use default " << kDefaultVaultManagerPort_
-        << ")\n" << kDefaultOutput_;
-  } else {
-    TLOG(kDefaultColour)
-        << "\n\nNumber of Vaults to start. This must be at least 10.\nThere is no "
-        << "upper limit, but more than 20 on one PC will probably\ncause noticeable "
-        << "performance slowdown. ('Enter' to use default " << kDefaultVaultCount_ << ")\n"
-        << kDefaultOutput_;
+void ChooseVaultCount::GetChoice() {
+  TLOG(kDefaultColour) << kInstructions_;
+  while (!DoGetChoice(local_network_controller_->vault_count, &GetDefault().kVaultCount, 10,
+                      std::numeric_limits<int>::max())) {
+    TLOG(kDefaultColour) << '\n' << kInstructions_;
   }
 }
 
-void StartNetwork::GetChoice() {
-  for (;;) {
-    while (!GetPathChoice(test_env_root_dir_, &kDefaultTestEnvRootDir_, false)) {
-      TLOG(kDefaultColour) << '\n';
-      PrintOptions();
-    }
-    boost::system::error_code ec;
-    if (fs::exists(test_env_root_dir_, ec)) {
-      if (fs::is_empty(test_env_root_dir_, ec))
-        break;
-      PrintOptions();
-      bool clear;
-      while (!GetBoolChoice(clear, nullptr)) {
-        TLOG(kDefaultColour) << '\n';
-        PrintOptions();
-      }
-      if (clear) {
-        if (fs::remove_all(test_env_root_dir_, ec) &&
-          fs::create_directories(test_env_root_dir_, ec)) {
-          break;
-        }
-      }
-    }
-
-    PrintOptions();
-    bool create;
-    while (!GetBoolChoice(create, nullptr)) {
-      TLOG(kDefaultColour) << '\n';
-      PrintOptions();
-    }
-    if (create) {
-      if (fs::create_directories(test_env_root_dir_, ec))
-        break;
-      test_env_root_dir_.clear();
-    } else {
-      test_env_root_dir_.clear();
-      PrintOptions();
-    }
-  }
-
-  PrintOptions();
-  while (!GetPathChoice(path_to_vault_, &kDefaultPathToVault_, true)) {
-    TLOG(kDefaultColour) << '\n';
-    PrintOptions();
-  }
-
-  PrintOptions();
-  while (!GetIntChoice(vault_manager_port_, &kDefaultVaultManagerPort_, 1025, 65536)) {
-    TLOG(kDefaultColour) << '\n';
-    PrintOptions();
-  }
-
-  PrintOptions();
-  while (!GetIntChoice(vault_count_, &kDefaultVaultCount_, 10)) {
-    TLOG(kDefaultColour) << '\n';
-    PrintOptions();
-  }
-}
-
-void StartNetwork::HandleChoice() {
-  TLOG(kDefaultColour) << "\nCreating "
-                       << vault_count_ << " sets of Pmid keys (this may take a while)...\n";
-  ClientInterface::SetTestEnvironment(static_cast<Port>(vault_manager_port_), test_env_root_dir_,
-                                      path_to_vault_, routing::BootstrapContact{},
-                                      vault_count_ + 2);
+void ChooseVaultCount::HandleChoice() {
+  TLOG(kDefaultColour) << "\nCreating " << local_network_controller_->vault_count
+                       << " sets of Pmid keys (this may take a while)\n";
+  ClientInterface::SetTestEnvironment(
+      static_cast<Port>(local_network_controller_->vault_manager_port),
+      local_network_controller_->test_env_root_dir, local_network_controller_->path_to_vault,
+      routing::BootstrapContact{}, local_network_controller_->vault_count + 2);
   std::thread zero_state_launcher{ [&] { StartZeroStateRoutingNodes(); } };
   zero_state_nodes_started_.get_future().get();
 
   StartVaultManagerAndClientInterface();
   StartFirstTwoVaults();
 
-  TLOG(kDefaultColour) << "Killing zero state nodes and waiting for network to stabilise...\n";
   finished_with_zero_state_nodes_.set_value();
   zero_state_launcher.join();
   Sleep(std::chrono::seconds(10));
 
   routing::WriteBootstrapFile(
       routing::BootstrapContacts{ 1, routing::BootstrapContact{ GetLocalIp(), kLivePort} },
-      test_env_root_dir_ / kBootstrapFilename);
+      local_network_controller_->test_env_root_dir / kBootstrapFilename);
 
   StartRemainingVaults();
 
   local_network_controller_->current_command =
       maidsafe::make_unique<ChooseTest>(local_network_controller_);
 
-  TLOG(kDefaultColour)
+  TLOG(kGreen)
       << "Network setup completed successfully.\n"
       << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
+  TLOG(kDefaultColour) << kSeparator_;
 }
 
-void StartNetwork::StartZeroStateRoutingNodes() {
-  TLOG(kDefaultColour) << "Creating zero state routing network...\n";
+void ChooseVaultCount::StartZeroStateRoutingNodes() {
+  TLOG(kDefaultColour) << "Creating two zero state routing nodes\n";
   AsioService asio_service{ 1 };
   std::unique_ptr<routing::Routing> node0{
       maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(0).first) };
@@ -232,33 +148,33 @@ void StartNetwork::StartZeroStateRoutingNodes() {
   auto join_future1(std::async(std::launch::async,
       [&, this] { return node1->ZeroStateJoin(functors1, contact1, contact0, node_info0); }));
   if (join_future0.get() != 0 || join_future1.get() != 0) {
-    TLOG(kRed) << "Could not start zero state bootstrap nodes.\n";
+    TLOG(kRed) << "Could not start zero state routing nodes.\n";
     BOOST_THROW_EXCEPTION(MakeError(RoutingErrors::not_connected));
   }
 
   routing::WriteBootstrapFile(routing::BootstrapContacts{ contact0, contact1 },
-                              test_env_root_dir_ / kBootstrapFilename);
+                              local_network_controller_->test_env_root_dir / kBootstrapFilename);
   zero_state_nodes_started_.set_value();
 
   finished_with_zero_state_nodes_.get_future().get();
-  TLOG(kDefaultColour) << "Shutting down zero state bootstrap nodes.\n";
+  TLOG(kDefaultColour) << "Shutting down zero state routing nodes\n";
 }
 
-void StartNetwork::StartVaultManagerAndClientInterface() {
-  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface...\n";
+void ChooseVaultCount::StartVaultManagerAndClientInterface() {
+  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface\n";
   local_network_controller_->vault_manager = maidsafe::make_unique<VaultManager>();
   passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
   local_network_controller_->client_interface =
       maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
 }
 
-void StartNetwork::StartFirstTwoVaults() {
-  TLOG(kDefaultColour) << "Starting vault 1... (index 2) \n";
+void ChooseVaultCount::StartFirstTwoVaults() {
+  TLOG(kDefaultColour) << "Starting vault 1\n";  // index 2 in pmid list
   std::string vault_dir_name{ DebugId(GetPmidAndSigner(2).first.name().value) };
-  fs::create_directories(test_env_root_dir_ / vault_dir_name);
+  fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   auto first_vault_future(local_network_controller_->client_interface->StartVault(
-      test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, 2));
+      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, 2));
   try {
     first_vault_future.get();
   }
@@ -267,12 +183,12 @@ void StartNetwork::StartFirstTwoVaults() {
   }
   Sleep(std::chrono::seconds(2));
 
-  TLOG(kDefaultColour) << "Starting vault 2... (index 3)\n";
+  TLOG(kDefaultColour) << "Starting vault 2\n";  // index 3 in pmid list
   vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
-  fs::create_directories(test_env_root_dir_ / vault_dir_name);
+  fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
   // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
   auto second_vault_future(local_network_controller_->client_interface->StartVault(
-      test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, 3));
+      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, 3));
   try {
     second_vault_future.get();
   }
@@ -282,14 +198,14 @@ void StartNetwork::StartFirstTwoVaults() {
   Sleep(std::chrono::seconds(2));
 }
 
-void StartNetwork::StartRemainingVaults() {
-  for (int i(4); i < vault_count_ + 2; ++i) {
-    TLOG(kDefaultColour) << "Starting vault " << i - 1 << "...(index " << i <<")\n";
+void ChooseVaultCount::StartRemainingVaults() {
+  for (int i(4); i < local_network_controller_->vault_count + 2; ++i) {
+    TLOG(kDefaultColour) << "Starting vault " << i - 1 << '\n';  // index i in pmid list
     std::string vault_dir_name{ DebugId(GetPmidAndSigner(i).first.name().value) };
-    fs::create_directories(test_env_root_dir_ / vault_dir_name);
+    fs::create_directories(local_network_controller_->test_env_root_dir / vault_dir_name);
     // TODO(Fraser#5#): 2014-05-19 - BEFORE_RELEASE handle size properly.
     auto vault_future(local_network_controller_->client_interface->StartVault(
-        test_env_root_dir_ / vault_dir_name, DiskUsage{ 10000000000 }, i));
+      local_network_controller_->test_env_root_dir / vault_dir_name, DiskUsage{ 10000000000 }, i));
     vault_future.get();
     Sleep(std::chrono::seconds(2));
   }

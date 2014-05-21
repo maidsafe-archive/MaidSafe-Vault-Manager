@@ -16,20 +16,10 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_
-#define MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_VAULT_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_VAULT_H_
 
-#include <deque>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/passport/passport.h"
-
-#include "maidsafe/vault_manager/client_interface.h"
-#include "maidsafe/vault_manager/vault_manager.h"
+#include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
 
@@ -37,28 +27,13 @@ namespace vault_manager {
 
 namespace tools {
 
-class Command;
+struct LocalNetworkController;
 
-struct Default {
-  Default();
-  const boost::filesystem::path kTestEnvRootDir;
-  const boost::filesystem::path kPathToVault;
-  const int kVaultManagerPort;
-  const int kVaultCount;
-};
-
-const Default& GetDefault();
-
-struct LocalNetworkController {
-  explicit LocalNetworkController(const boost::filesystem::path& script_path);
-  ~LocalNetworkController();
-  std::deque<std::string> script_commands;
-  std::vector<std::string> entered_commands;
-  std::unique_ptr<Command> current_command;
-  std::unique_ptr<ClientInterface> client_interface;
-  std::unique_ptr<VaultManager> vault_manager;
-  boost::filesystem::path test_env_root_dir, path_to_vault;
-  int vault_manager_port, vault_count;
+class ChoosePathToVault : public Command {
+ public:
+  explicit ChoosePathToVault(LocalNetworkController* local_network_controller);
+  virtual void GetChoice();
+  virtual void HandleChoice();
 };
 
 }  // namespace tools
@@ -67,4 +42,4 @@ struct LocalNetworkController {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_LOCAL_NETWORK_CONTROLLER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_VAULT_H_

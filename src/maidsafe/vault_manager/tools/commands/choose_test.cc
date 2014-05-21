@@ -18,7 +18,6 @@
 
 #include "maidsafe/vault_manager/tools/commands/choose_test.h"
 
-#include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 
@@ -31,17 +30,15 @@ namespace vault_manager {
 namespace tools {
 
 ChooseTest::ChooseTest(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Main Test Choices"), choice_(0) {}
-
-void ChooseTest::PrintOptions() const {
-  TLOG(kYellow) << "Unimplemented as yet.\n";
-}
+    : Command(local_network_controller, "Test options.",
+              "\nUnimplemented as yet.\n",
+              "Main Test Choices"),
+      choice_(0) {}
 
 void ChooseTest::GetChoice() {
-  while (!GetIntChoice(choice_, nullptr, 1, 2)) {
-    TLOG(kDefaultColour) << '\n';
-    PrintOptions();
-  }
+  TLOG(kYellow) << kInstructions_;
+  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
+    TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 
 void ChooseTest::HandleChoice() {

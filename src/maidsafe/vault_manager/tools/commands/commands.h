@@ -19,11 +19,12 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_COMMANDS_H_
 #define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_COMMANDS_H_
 
-#include <limits>
 #include <string>
 #include <utility>
 
 #include "boost/filesystem/path.hpp"
+
+#include "maidsafe/common/log.h"
 
 namespace maidsafe {
 
@@ -35,31 +36,59 @@ struct LocalNetworkController;
 
 class Command {
  public:
-  Command(LocalNetworkController* local_network_controller, std::string title);
-  virtual ~Command();
+  Command(LocalNetworkController* local_network_controller, std::string preamble,
+          std::string instructions, std::string title = "");
+  virtual ~Command() {}
   void PrintTitle() const;
-  virtual void PrintOptions() const = 0;
   virtual void GetChoice() = 0;
   virtual void HandleChoice() = 0;
 
  protected:
-  bool GetIntChoice(int& choice, const int* const default_choice = nullptr, int min = 1,
-                    int max = std::numeric_limits<int>::max());
-  bool GetPathChoice(boost::filesystem::path& chosen_path,
-                     const boost::filesystem::path* const default_choice,
-                     bool must_exist);
-  bool GetBoolChoice(bool& choice, const bool* const default_choice);
+  template <typename Choice, typename... Args>
+  bool DoGetChoice(Choice& choice, const Choice* const default_choice, Args... args);
+
+  template <typename Choice, typename... Args>
+  bool ConvertAndValidateChoice(const std::string& choice_as_string, Choice& choice,
+                                const Choice* const default_choice, Args... args);
 
   LocalNetworkController* local_network_controller_;
-  const std::string kDefaultOutput_;
-  const std::string kTitle_;
-  const std::string kQuitCommand_;
+  const std::string kPreamble_, kInstructions_, kTitle_;
+  static const std::string kPrompt_, kQuitCommand_, kSeparator_;
 
  private:
   enum class Source { kScript, kStdCin };
   std::pair<std::string, Source> GetLine();
   void CheckForExitCommand(const std::string& input_command) const;
 };
+
+
+
+template <typename Choice, typename... Args>
+bool Command::DoGetChoice(Choice& choice, const Choice* const default_choice, Args... args) {
+  std::pair<std::string, Source> line_and_source{ GetLine() };
+  try {
+    return ConvertAndValidateChoice(line_and_source.first, choice, default_choice, args...);
+  }
+  catch (const std::exception&) {
+    TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
+    if (line_and_source.second == Source::kScript)
+      throw;
+    return false;
+  }
+}
+
+template <>
+bool Command::ConvertAndValidateChoice<int, int, int>(const std::string& choice_as_string,
+    int& choice, const int* const default_choice, int min, int max);
+
+template <>
+bool Command::ConvertAndValidateChoice<boost::filesystem::path, bool>(
+    const std::string& choice_as_string, boost::filesystem::path& chosen_path,
+    const boost::filesystem::path* const default_choice, bool must_exist);
+
+template <>
+bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string, bool& choice,
+                                             const bool* const default_choice);
 
 }  // namespace tools
 

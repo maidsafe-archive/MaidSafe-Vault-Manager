@@ -16,16 +16,10 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
-#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
 
 #include <future>
-#include <string>
-#include <vector>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 
@@ -37,10 +31,9 @@ namespace tools {
 
 struct LocalNetworkController;
 
-class StartNetwork : public Command {
+class ChooseVaultCount : public Command {
  public:
-  explicit StartNetwork(LocalNetworkController* local_network_controller);
-  virtual void PrintOptions() const;
+  explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
   virtual void GetChoice();
   virtual void HandleChoice();
 
@@ -50,10 +43,6 @@ class StartNetwork : public Command {
   void StartFirstTwoVaults();
   void StartRemainingVaults();
 
-  boost::filesystem::path test_env_root_dir_, path_to_vault_;
-  int vault_manager_port_, vault_count_;
-  const boost::filesystem::path kDefaultTestEnvRootDir_, kDefaultPathToVault_;
-  const int kDefaultVaultManagerPort_, kDefaultVaultCount_;
   std::promise<void> zero_state_nodes_started_, finished_with_zero_state_nodes_;
 };
 
@@ -63,4 +52,4 @@ class StartNetwork : public Command {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_START_NETWORK_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_

@@ -16,12 +16,10 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/commands/connect_to_vault_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CREATE_TEST_ROOT_DIR_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CREATE_TEST_ROOT_DIR_H_
 
-#include "maidsafe/common/log.h"
-#include "maidsafe/common/make_unique.h"
-#include "maidsafe/vault_manager/tools/local_network_controller.h"
-#include "maidsafe/vault_manager/tools/commands/choose_test.h"
+#include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
 
@@ -29,29 +27,22 @@ namespace vault_manager {
 
 namespace tools {
 
-ConnectToVaultManager::ConnectToVaultManager(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Connect to Running VaultManager"),
-      vault_manager_port_(0) {}
+struct LocalNetworkController;
 
-void ConnectToVaultManager::PrintOptions() const {
-  TLOG(kDefaultColour)
-      << "Enter listening port of VaultManager\n" << kDefaultOutput_;
-}
+class CreateTestRootDir : public Command {
+ public:
+  explicit CreateTestRootDir(LocalNetworkController* local_network_controller);
+  virtual void GetChoice();
+  virtual void HandleChoice();
 
-void ConnectToVaultManager::GetChoice() {
-  while (!GetIntChoice(vault_manager_port_, nullptr, 1025, 65536)) {
-    TLOG(kDefaultColour) << '\n';
-    PrintOptions();
-  }
-}
-
-void ConnectToVaultManager::HandleChoice() {
-  local_network_controller_->current_command =
-      maidsafe::make_unique<ChooseTest>(local_network_controller_);
-}
+ private:
+  bool create_;
+};
 
 }  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CREATE_TEST_ROOT_DIR_H_

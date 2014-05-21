@@ -37,7 +37,6 @@ int main(int argc, char* argv[]) {
     maidsafe::vault_manager::tools::LocalNetworkController local_network_controller{ script_path };
     for (;;) {
       local_network_controller.current_command->PrintTitle();
-      local_network_controller.current_command->PrintOptions();
       local_network_controller.current_command->GetChoice();
       local_network_controller.current_command->HandleChoice();
     }

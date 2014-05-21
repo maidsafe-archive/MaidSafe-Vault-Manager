@@ -25,6 +25,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/process.h"
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 #include "maidsafe/vault_manager/tools/commands/begin.h"
@@ -35,12 +36,27 @@ namespace vault_manager {
 
 namespace tools {
 
+Default::Default()
+    : kTestEnvRootDir(boost::filesystem::temp_directory_path() / "MaidSafe_TestNetwork"),
+      kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{ "vault" })),
+      kVaultManagerPort(44444),
+      kVaultCount(12) {}
+
+const Default& GetDefault() {
+  static Default the_defaults;
+  return the_defaults;
+}
+  
 LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
     : script_commands(),
-      entered_commands(),
+      entered_commands(1, { "### Commands begin." }),
       current_command(),
       client_interface(),
-      vault_manager() {
+      vault_manager(),
+      test_env_root_dir(),
+      path_to_vault(),
+      vault_manager_port(0),
+      vault_count(0) {
   if (!script_path.empty()) {
     if (!boost::filesystem::exists(script_path) ||
         !boost::filesystem::is_regular_file(script_path)) {
@@ -58,12 +74,12 @@ LocalNetworkController::LocalNetworkController(const boost::filesystem::path& sc
 
 LocalNetworkController::~LocalNetworkController() {
   current_command.reset();
-  if (entered_commands.empty())
+  if (entered_commands.size() == 1U)
     return;
   TLOG(kDefaultColour) << "\n\nSequence of entered commands:\n\n";
   for (const auto& command : entered_commands)
     TLOG(kDefaultColour) << command << '\n';
-  TLOG(kDefaultColour) << "\n\n";
+  TLOG(kDefaultColour) << "### Commands end.\n\n";
 }
 
 }  // namespace tools
