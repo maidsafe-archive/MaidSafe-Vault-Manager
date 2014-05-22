@@ -19,6 +19,7 @@
 #include "maidsafe/vault_manager/vault_interface.h"
 
 #include "maidsafe/common/make_unique.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
 
 #include "maidsafe/vault_manager/dispatcher.h"
@@ -39,7 +40,8 @@ VaultInterface::VaultInterface(Port vault_manager_port)
       on_vault_started_response_(),
       vault_config_(),
       asio_service_(1),
-      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, vault_manager_port_)) {
+      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, vault_manager_port_)),
+      connection_closer_([&] { tcp_connection_->Close(); }) {
   tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
                          [this] { OnConnectionClosed(); });
   LOG(kSuccess) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
@@ -49,10 +51,6 @@ VaultInterface::VaultInterface(Port vault_manager_port)
   SendVaultStarted(tcp_connection_);
   vault_config_ = vault_config_future.get();
   LOG(kSuccess) << "Retrieved config info from VaultManager";
-}
-
-VaultInterface::~VaultInterface() {
-  tcp_connection_->Close();
 }
 
 VaultConfig VaultInterface::GetConfiguration() {

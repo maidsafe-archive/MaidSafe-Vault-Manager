@@ -31,6 +31,7 @@
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/asio_service.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
@@ -48,7 +49,6 @@ class TcpConnection;
 class ClientInterface {
  public:
   explicit ClientInterface(const passport::Maid& maid);
-  ~ClientInterface();
 
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
@@ -100,6 +100,9 @@ class ClientInterface {
   std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;
   AsioService asio_service_;
   std::shared_ptr<TcpConnection> tcp_connection_;
+  // We need to ensure the connection is closed in the event of the constructor throwing, or the
+  // asio_service destructor will hang.
+  on_scope_exit connection_closer_;
 };
 
 }  // namespace vault_manager

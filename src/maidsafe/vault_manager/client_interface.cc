@@ -56,16 +56,13 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
       on_challenge_(),
       on_bootstrap_contacts_response_(),
       asio_service_(1),
-      tcp_connection_(ConnectToVaultManager()) {
+      tcp_connection_(ConnectToVaultManager()),
+      connection_closer_([&] { tcp_connection_->Close(); }) {
   SendValidateConnectionRequest(tcp_connection_);
   auto challenge = SetResponseCallback<std::unique_ptr<asymm::PlainText>>(
                    on_challenge_, asio_service_.service(), mutex_).get();
   SendChallengeResponse(tcp_connection_, passport::PublicMaid(kMaid_),
                         asymm::Sign(*challenge, kMaid_.private_key()));
-}
-
-ClientInterface::~ClientInterface() {
-  tcp_connection_->Close();
 }
 
 std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {

@@ -28,6 +28,7 @@
 #include <string>
 
 #include "maidsafe/common/asio_service.h"
+#include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
@@ -46,7 +47,6 @@ typedef uint16_t Port;
 class VaultInterface {
  public:
   explicit VaultInterface(Port vault_manager_port);
-  ~VaultInterface();
 
   VaultConfig GetConfiguration();
 
@@ -80,6 +80,9 @@ class VaultInterface {
   std::unique_ptr<VaultConfig> vault_config_;
   AsioService asio_service_;
   std::shared_ptr<TcpConnection> tcp_connection_;
+  // We need to ensure the connection is closed in the event of the constructor throwing, or the
+  // asio_service destructor will hang.
+  on_scope_exit connection_closer_;
 };
 
 }  // namespace vault_manager
