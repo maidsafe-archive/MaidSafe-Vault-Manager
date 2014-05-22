@@ -44,7 +44,8 @@ ms_glob_dir(VaultManager ${VaultManagerSourcesDir} "Vault Manager")
 list(REMOVE_ITEM VaultManagerAllFiles "${VaultManagerSourcesDir}/vault_manager_main.cc")
 
 ms_glob_dir(VaultManagerTools ${VaultManagerSourcesDir}/tools "Tools")
-ms_glob_dir(VaultManagerToolsCommands ${VaultManagerSourcesDir}/tools/commands "Tools")
+ms_glob_dir(VaultManagerToolsCommands ${VaultManagerSourcesDir}/tools/commands "Tool Commands")
+ms_glob_dir(VaultManagerToolsActions ${VaultManagerSourcesDir}/tools/actions "Tool Actions")
 
 ms_glob_dir(VaultManagerTests ${VaultManagerSourcesDir}/tests "Vault Manager Tests")
 list(REMOVE_ITEM VaultManagerTestsAllFiles "${VaultManagerSourcesDir}/tests/dummy_vault.cc")
@@ -84,7 +85,10 @@ if(MaidsafeTesting)
   target_link_libraries(dummy_vault maidsafe_vault_manager)
   add_dependencies(TESTvault_manager dummy_vault)
 
-  ms_add_executable(local_network_controller "Tools/Vault Manager" ${VaultManagerToolsAllFiles} ${VaultManagerToolsCommandsAllFiles})
+  ms_add_executable(local_network_controller "Tools/Vault Manager"
+                    ${VaultManagerToolsAllFiles}
+                    ${VaultManagerToolsCommandsAllFiles}
+                    ${VaultManagerToolsActionsAllFiles})
   target_include_directories(local_network_controller PRIVATE ${PROJECT_SOURCE_DIR}/src)
   target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_nfs_vault)
   add_dependencies(local_network_controller vault)

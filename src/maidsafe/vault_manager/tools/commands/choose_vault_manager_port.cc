@@ -24,6 +24,7 @@
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/actions/connect_to_vault_manager.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test.h"
 #include "maidsafe/vault_manager/tools/commands/choose_vault_count.h"
 
@@ -51,15 +52,9 @@ void ChooseVaultManagerPort::GetChoice() {
 
 void ChooseVaultManagerPort::HandleChoice() {
   if (connect_to_running_) {
-    ClientInterface::SetTestEnvironment(
-        static_cast<Port>(local_network_controller_->vault_manager_port),
-        GetDefault().kTestEnvRootDir, GetDefault().kPathToVault, routing::BootstrapContact{}, 0);
-    passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
-    local_network_controller_->client_interface =
-        maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
+    ConnectToVaultManager(local_network_controller_);
     local_network_controller_->current_command =
         maidsafe::make_unique<ChooseTest>(local_network_controller_);
-    TLOG(kGreen) << "Successfully connected to VaultManager.\n";
     TLOG(kDefaultColour) << kSeparator_;
   } else {
     local_network_controller_->current_command =

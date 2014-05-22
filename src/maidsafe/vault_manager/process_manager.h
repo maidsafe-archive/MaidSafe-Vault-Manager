@@ -27,9 +27,6 @@
 #include <vector>
 
 #include "boost/asio/io_service.hpp"
-#ifdef MAIDSAFE_WIN32
-#include "boost/asio/windows/object_handle.hpp"
-#endif
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
 
@@ -82,9 +79,6 @@ class ProcessManager {
     std::vector<std::string> process_args;
     ProcessStatus status;
     boost::process::child process;
-#ifdef MAIDSAFE_WIN32
-    boost::asio::windows::object_handle handle;
-#endif
    private:
     Child(const Child&) = delete;
   };

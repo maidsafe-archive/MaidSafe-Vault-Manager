@@ -91,10 +91,9 @@ ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service
       process_args(),
       status(ProcessStatus::kBeforeStarted),
 #ifdef MAIDSAFE_WIN32
-      process(PROCESS_INFORMATION()),
-      handle(io_service) {}
+      process(PROCESS_INFORMATION()) {}
 #else
-      process(0) { static_cast<void>(io_service); }
+      process(0) {}
 #endif
 
 ProcessManager::Child::Child(Child&& other)
@@ -104,12 +103,7 @@ ProcessManager::Child::Child(Child&& other)
       restart_count(std::move(other.restart_count)),
       process_args(std::move(other.process_args)),
       status(std::move(other.status)),
-#ifdef MAIDSAFE_WIN32
-      process(std::move(other.process)),
-      handle(std::move(other.handle)) {}
-#else
       process(std::move(other.process)) {}
-#endif
 
 ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
   swap(*this, other);
@@ -125,9 +119,6 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
   swap(lhs.process_args, rhs.process_args);
   swap(lhs.status, rhs.status);
   swap(lhs.process, rhs.process);
-#ifdef MAIDSAFE_WIN32
-  swap(lhs.handle, rhs.handle);
-#endif
 }
 
 
@@ -268,7 +259,6 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 #ifndef MAIDSAFE_WIN32
   signal(SIGCHLD, SIG_IGN);
 #endif
-
   itr->process = bp::execute(
       bp::initializers::run_exe(kVaultExecutablePath_),
       bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
@@ -276,20 +266,6 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
       bp::initializers::inherit_env());
 
   itr->status = ProcessStatus::kStarting;
-
-#ifdef MAIDSAFE_WIN32
-  HANDLE copied_handle;
-  DuplicateHandle(GetCurrentProcess(), itr->process.process_handle(), GetCurrentProcess(),
-                  &copied_handle, 0, FALSE, DUPLICATE_SAME_ACCESS);
-  itr->handle.assign(copied_handle);
-  HANDLE native_handle{ itr->handle.native_handle() };
-  itr->handle.async_wait([this, label, native_handle](const boost::system::error_code&) {
-    DWORD exit_code;
-    GetExitCodeProcess(native_handle, &exit_code);
-    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
-  });
-#endif
-
   itr->timer->expires_from_now(kRpcTimeout);
   itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
     if (error_code && error_code == boost::asio::error::operation_aborted) {
@@ -442,7 +418,7 @@ void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
   boost::system::error_code ec;
   bp::terminate(itr->process, ec);
   if (ec)
-    LOG(kError) << "Error while terminating vault: " << ec.message();
+    LOG(kWarning) << "Error while terminating vault: " << ec.message();
 }
 
 }  // namespace vault_manager
