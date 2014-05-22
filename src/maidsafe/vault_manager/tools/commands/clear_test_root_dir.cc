@@ -17,6 +17,7 @@
     use of the MaidSafe Software.                                                                 */
 
 #include "maidsafe/vault_manager/tools/commands/clear_test_root_dir.h"
+#include <string>
 
 #include "boost/filesystem/operations.hpp"
 

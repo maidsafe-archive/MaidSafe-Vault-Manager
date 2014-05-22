@@ -46,7 +46,7 @@ const Default& GetDefault() {
   static Default the_defaults;
   return the_defaults;
 }
-  
+
 LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
     : script_commands(),
       entered_commands(1, { "### Commands begin." }),

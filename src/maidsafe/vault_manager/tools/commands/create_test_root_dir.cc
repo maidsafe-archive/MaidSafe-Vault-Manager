@@ -17,6 +17,7 @@
     use of the MaidSafe Software.                                                                 */
 
 #include "maidsafe/vault_manager/tools/commands/create_test_root_dir.h"
+#include <string>
 
 #include "boost/filesystem/operations.hpp"
 
@@ -37,8 +38,9 @@ namespace tools {
 
 CreateTestRootDir::CreateTestRootDir(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Create VaultManager root directory.",
-              "  Do you wish to create \n\"" + local_network_controller->test_env_root_dir.string() +
-              "\"?\nEnter 'y' or 'n'.\n" + kPrompt_),
+              "  Do you wish to create \n\"" +
+                local_network_controller->test_env_root_dir.string() +
+                "\"?\nEnter 'y' or 'n'.\n" + kPrompt_),
       create_(false) {}
 
 void CreateTestRootDir::GetChoice() {

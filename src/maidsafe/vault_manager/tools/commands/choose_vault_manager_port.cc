@@ -61,8 +61,7 @@ void ChooseVaultManagerPort::HandleChoice() {
         maidsafe::make_unique<ChooseTest>(local_network_controller_);
     TLOG(kGreen) << "Successfully connected to VaultManager.\n";
     TLOG(kDefaultColour) << kSeparator_;
-  }
-  else {
+  } else {
     local_network_controller_->current_command =
         maidsafe::make_unique<ChooseVaultCount>(local_network_controller_);
   }

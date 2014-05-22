@@ -17,6 +17,7 @@
     use of the MaidSafe Software.                                                                 */
 
 #include "maidsafe/vault_manager/tools/commands/choose_path_to_vault.h"
+#include <string>
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
