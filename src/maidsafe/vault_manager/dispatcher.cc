@@ -130,7 +130,7 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
 void SendBootstrapContact(TcpConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact) {
   protobuf::BootstrapContact message;
-  assert(false);  static_cast<void>(bootstrap_contact);
+//  assert(false);  static_cast<void>(bootstrap_contact);
   message.set_serialised_contact(routing::SerialiseBootstrapContact(bootstrap_contact));
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                MessageType::kBootstrapContact)));
