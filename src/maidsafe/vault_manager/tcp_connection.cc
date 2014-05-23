@@ -36,8 +36,6 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-  int t(0);
-
 TcpConnection::TcpConnection(AsioService& asio_service)
     : io_service_(asio_service.service()),
       start_flag_(),
@@ -97,6 +95,7 @@ void TcpConnection::Close() {
 void TcpConnection::DoClose() {
   std::call_once(socket_close_flag_, [this] {
     boost::system::error_code ignored_ec;
+    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ignored_ec);
     socket_.close(ignored_ec);
     if (on_connection_closed_)
       on_connection_closed_();

@@ -287,7 +287,6 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
 
   server_connection->Send(to_client_messages_.front());
   client_connection_and_closer.first->Send(to_server_messages_.front());
-  server_connection->Close();
   server_connection.reset();
 }
 
@@ -314,7 +313,6 @@ TEST_F(TcpTest, BEH_ClientConnectionAborts) {
 
   server_connection->Send(to_client_messages_.front());
   client_connection_and_closer.first->Send(to_server_messages_.front());
-  client_connection_and_closer.second.reset();  // Closes client connection
   client_connection_and_closer.first.reset();
 }
 
@@ -379,8 +377,10 @@ TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
   for (size_t i(0); i < kClientCount; ++i)
     EXPECT_EQ(messages_received_by_client[i]->MessagesMatch(), Messages::Status::kSuccess);
   EXPECT_EQ(messages_received_by_server_->MessagesMatch(), Messages::Status::kSuccess);
-  client_connections_and_closers.clear();
-  asio_service.Stop();
+
+  for (auto& server_connection : server_connections)
+    server_connection->Close();
+  server_connections.clear();
 }
 
 }  // namespace test

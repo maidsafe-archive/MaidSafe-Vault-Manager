@@ -67,8 +67,8 @@ template <>
 std::unique_ptr<passport::PmidAndSigner> Parse<std::unique_ptr<passport::PmidAndSigner>>(
     const std::string& message);
 
-
 }  // namespace detail
+
 
 
 template <typename ProtobufMessage>
