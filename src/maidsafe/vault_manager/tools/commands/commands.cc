@@ -66,7 +66,18 @@ std::pair<std::string, Command::Source> Command::GetLine() {
   }
   if (local_network_controller_->script_commands.empty()) {
     line_and_source.second = Source::kStdCin;
-    std::getline(std::cin, line_and_source.first);
+    // On Unix, when a child process stops, it causes the eof bit to get set in std::cin.
+    const int kMaxClearAttempts{ 1000 };
+    int clear_attempts{ 0 };
+    while (!std::getline(std::cin, line_and_source.first) && clear_attempts < kMaxClearAttempts) {
+      if (std::cin.eof()) {
+        std::cin.clear();
+        ++clear_attempts;
+      } else {
+        TLOG(kRed) << "Error reading from std::cin.\n";
+        BOOST_THROW_EXCEPTION(MakeError(CommonErrors::unknown));
+      }
+    }
   } else {
     line_and_source.first = local_network_controller_->script_commands.front();
     local_network_controller_->script_commands.pop_front();

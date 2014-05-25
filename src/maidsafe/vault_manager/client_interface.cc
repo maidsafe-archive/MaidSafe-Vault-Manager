@@ -116,7 +116,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
       LOG(kVerbose) << "Timer cancelled. OK";
       return;
     }
-    LOG(kWarning) << "Timer expired - i.e. timed out for label : " << label.string();
+    LOG(kWarning) << "Timer expired - i.e. timed out for label: " << label.string();
     std::lock_guard<std::mutex> lock{ mutex_ };
     if (ec)
       request->SetException(ec);
@@ -126,7 +126,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
   });
 
   std::lock_guard<std::mutex> lock{ mutex_ };
-  LOG(kVerbose) << "Added request for vault label :" << label.string();
+  LOG(kVerbose) << "Added request for vault label:" << label.string();
   ongoing_vault_requests_.insert(std::make_pair(label, request));
   return request->promise.get_future();
 }
@@ -164,12 +164,12 @@ void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
   std::unique_ptr<maidsafe_error> error;
   if (vault_running_response.has_vault_keys()) {
     pmid_and_signer = ParseVaultKeys(vault_running_response.vault_keys());
-    LOG(kVerbose) << "Got pmid_and_signer for vault label :" << label.string();
+    LOG(kVerbose) << "Got pmid_and_signer for vault label: " << label.string();
   } else if (vault_running_response.has_serialised_maidsafe_error()) {
     error = maidsafe::make_unique<maidsafe_error>(Parse(maidsafe_error::serialised_type(
         vault_running_response.serialised_maidsafe_error())));
-    LOG(kError) << "Got error for vault label :" << label.string()
-                << "error : " << error->what();
+    LOG(kError) << "Got error for vault label: " << label.string()
+                << "   Error: " << error->what();
   } else {
     throw MakeError(CommonErrors::invalid_parameter);
   }

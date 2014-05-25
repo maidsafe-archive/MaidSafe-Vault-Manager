@@ -91,7 +91,8 @@ ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service
       process_args(),
       status(ProcessStatus::kBeforeStarted),
 #ifdef MAIDSAFE_WIN32
-      process(PROCESS_INFORMATION()) {}
+      process(PROCESS_INFORMATION()),
+      handle(io_service) {}
 #else
       process(0) {}
 #endif
@@ -103,7 +104,12 @@ ProcessManager::Child::Child(Child&& other)
       restart_count(std::move(other.restart_count)),
       process_args(std::move(other.process_args)),
       status(std::move(other.status)),
+#ifdef MAIDSAFE_WIN32
+      process(std::move(other.process)),
+      handle(std::move(other.handle)) {}
+#else
       process(std::move(other.process)) {}
+#endif
 
 ProcessManager::Child& ProcessManager::Child::operator=(Child other) {
   swap(*this, other);
@@ -119,6 +125,9 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
   swap(lhs.process_args, rhs.process_args);
   swap(lhs.status, rhs.status);
   swap(lhs.process, rhs.process);
+#ifdef MAIDSAFE_WIN32
+  swap(lhs.handle, rhs.handle);
+#endif
 }
 
 
@@ -126,6 +135,9 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
 ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vault_executable_path,
                                Port listening_port)
     : io_service_(io_service),
+#ifndef MAIDSAFE_WIN32
+      signal_set_(io_service_, SIGCHLD),
+#endif
       kListeningPort_(listening_port),
       kVaultExecutablePath_(vault_executable_path),
       vaults_(),
@@ -257,15 +269,37 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   NonEmptyString label{ itr->info.label };
 
 #ifndef MAIDSAFE_WIN32
-  signal(SIGCHLD, SIG_IGN);
+//  signal(SIGCHLD, SIG_IGN);
+  signal_set_.async_wait([this, label](const boost::system::error_code&, int) {
+    int exit_code;
+    wait(&exit_code);
+    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code), false);
+  });
 #endif
   itr->process = bp::execute(
       bp::initializers::run_exe(kVaultExecutablePath_),
       bp::initializers::set_cmd_line(process::ConstructCommandLine(args)),
+#ifndef MAIDSAFE_WIN32
+      bp::initializers::notify_io_service(io_service_),
+#endif
       bp::initializers::throw_on_error(),
       bp::initializers::inherit_env());
 
   itr->status = ProcessStatus::kStarting;
+
+#ifdef MAIDSAFE_WIN32
+  HANDLE copied_handle;
+  DuplicateHandle(GetCurrentProcess(), itr->process.process_handle(), GetCurrentProcess(),
+                  &copied_handle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+  itr->handle.assign(copied_handle);
+  HANDLE native_handle{ itr->handle.native_handle() };
+  itr->handle.async_wait([this, label, native_handle](const boost::system::error_code&) {
+    DWORD exit_code;
+    GetExitCodeProcess(native_handle, &exit_code);
+    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
+  });
+#endif
+
   itr->timer->expires_from_now(kRpcTimeout);
   itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
     if (error_code && error_code == boost::asio::error::operation_aborted) {
@@ -387,7 +421,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
         vault_info.tcp_connection->Close();
     }
 
-    if (terminate)
+    if (terminate && IsRunning(*child_itr))
       TerminateProcess(child_itr);
 
     vaults_.erase(child_itr);

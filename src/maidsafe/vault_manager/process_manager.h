@@ -27,6 +27,11 @@
 #include <vector>
 
 #include "boost/asio/io_service.hpp"
+#ifdef MAIDSAFE_WIN32
+#include "boost/asio/windows/object_handle.hpp"
+#else
+#include "boost/asio/signal_set.hpp"
+#endif
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
 
@@ -78,6 +83,9 @@ class ProcessManager {
     int restart_count;
     std::vector<std::string> process_args;
     ProcessStatus status;
+#ifdef MAIDSAFE_WIN32
+    boost::asio::windows::object_handle handle;
+#endif
     boost::process::child process;
    private:
     Child(const Child&) = delete;
@@ -97,6 +105,9 @@ class ProcessManager {
   void TerminateProcess(std::vector<Child>::iterator itr);
 
   boost::asio::io_service &io_service_;
+#ifndef MAIDSAFE_WIN32
+  boost::asio::signal_set signal_set_;
+#endif
   const Port kListeningPort_;
   const boost::filesystem::path kVaultExecutablePath_;
   std::vector<Child> vaults_;
