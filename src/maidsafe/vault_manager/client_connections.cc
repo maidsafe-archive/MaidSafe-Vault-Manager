@@ -73,6 +73,8 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
   }
 
   bool result{ clients_.emplace(connection, maid.name()).second };
+  unvalidated_clients_.erase(itr);
+  cleanup.Release();
   assert(result);
   static_cast<void>(result);
 }
