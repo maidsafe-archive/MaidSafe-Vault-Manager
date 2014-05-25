@@ -140,7 +140,7 @@ void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskU
   catch (const std::exception& e) {
     LOG(kWarning) << boost::diagnostic_information(e);
   }
-  Sleep(std::chrono::seconds(2));
+  Sleep(std::chrono::milliseconds(500));
 
   TLOG(kDefaultColour) << "Starting vault 2\n";  // index 3 in pmid list
   vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
@@ -153,7 +153,7 @@ void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskU
   catch (const std::exception& e) {
     LOG(kWarning) << boost::diagnostic_information(e);
   }
-  Sleep(std::chrono::seconds(2));
+  Sleep(std::chrono::milliseconds(500));
 }
 
 void StartRemainingVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
@@ -165,7 +165,7 @@ void StartRemainingVaults(LocalNetworkController* local_network_controller, Disk
     auto vault_future(local_network_controller->client_interface->StartVault(
         local_network_controller->test_env_root_dir / vault_dir_name, max_usage, i));
     vault_future.get();
-    Sleep(std::chrono::seconds(2));
+    Sleep(std::chrono::milliseconds(500));
   }
 }
 
@@ -201,7 +201,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
     zero_state_launcher.join();
     throw;
   }
-  Sleep(std::chrono::seconds(10));
+  Sleep(std::chrono::seconds(2));
 
   routing::WriteBootstrapFile(
       routing::BootstrapContacts{ 1, routing::BootstrapContact{ GetLocalIp(), kLivePort } },

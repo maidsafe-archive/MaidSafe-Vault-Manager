@@ -250,7 +250,7 @@ bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
       LOG(kVerbose) << "Connection closed timer cancelled OK.";
       return;
     }
-    LOG(kWarning) << "Timed out after connection closed; restarting the vault.";
+    LOG(kWarning) << "Timed out after connection closed; about to restart the vault if required.";
     OnProcessExit(label, -1, true);
   });
   return true;
@@ -436,8 +436,10 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
       restart_count = child_itr->restart_count;
       vault_info = child_itr->info;
-      if (vault_info.tcp_connection)
+      if (vault_info.tcp_connection) {
         vault_info.tcp_connection->Close();
+        vault_info.tcp_connection.reset();
+      }
     }
 
     bool is_running{ IsRunning(*child_itr) };
@@ -446,6 +448,8 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
     if (terminate && is_running)
       TerminateProcess(child_itr);
 
+    if (child_itr->info.tcp_connection)
+      child_itr->info.tcp_connection->Close();
     vaults_.erase(child_itr);
   }
 
@@ -459,6 +463,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   }
 
   if (restart_count >= 0 && restart_count < kMaxVaultRestarts) {
+    LOG(kWarning) << "Restarting vault " << label.string();
     io_service_.post([vault_info, restart_count, this] {
       try {
         AddProcess(std::move(vault_info), restart_count + 1);

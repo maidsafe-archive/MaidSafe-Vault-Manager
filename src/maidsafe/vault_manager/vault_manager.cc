@@ -117,11 +117,12 @@ VaultManager::~VaultManager() {
   std::for_each(std::begin(all_vaults), std::end(all_vaults),
                 [this](const VaultInfo& vault) {
                   if (vault.tcp_connection) {
-                    SendVaultShutdownRequest(vault.tcp_connection);
+                    // StopProcess must be called before SendVaultShutdownRequest to avoid the
+                    // process_manager_ trying to restart the Vault.
                     process_manager_.StopProcess(vault.tcp_connection);
+                    SendVaultShutdownRequest(vault.tcp_connection);
                   }
                 });
-  listener_.reset();
   asio_service_.reset();
 }
 
