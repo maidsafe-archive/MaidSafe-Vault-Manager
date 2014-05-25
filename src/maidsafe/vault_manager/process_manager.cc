@@ -321,9 +321,9 @@ void ProcessManager::InitSignalHandler() {
   LOG(kInfo) << " InitSignalHandler";
   signal_set_.async_wait([this](const boost::system::error_code&, int) {
     int exit_code;
-    int process_id = wait(&exit_code);
+    ProcessId process_id{ static_cast<ProcessId>(wait(&exit_code)) };
     LOG(kWarning) << "Received Signal pid: " << process_id;
-    if (process_id == getpid())
+    if (process_id == process::GetProcessId())
       return;
 
     NonEmptyString label;
