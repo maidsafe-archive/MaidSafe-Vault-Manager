@@ -102,7 +102,6 @@ class ProcessManager {
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
-  void OnProcessExit(ProcessId process_id, int exit_code, bool terminate = false);
   void TerminateProcess(std::vector<Child>::iterator itr);
   void InitSignalHandler();
 

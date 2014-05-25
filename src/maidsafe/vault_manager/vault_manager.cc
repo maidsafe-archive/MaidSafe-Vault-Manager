@@ -116,7 +116,6 @@ VaultManager::~VaultManager() {
   std::vector<VaultInfo> all_vaults{ process_manager_.GetAll() };
   std::for_each(std::begin(all_vaults), std::end(all_vaults),
                 [this](const VaultInfo& vault) {
-                  // TODO(Fraser#5#): 2014-05-16 - Protect connection
                   if (vault.tcp_connection) {
                     SendVaultShutdownRequest(vault.tcp_connection);
                     process_manager_.StopProcess(vault.tcp_connection);
@@ -135,6 +134,7 @@ void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
         LOG(kVerbose) << "New connection timer cancelled OK.";
       } else {
         LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
+        connection->Close();
         std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
         new_connections_.erase(connection);
       }

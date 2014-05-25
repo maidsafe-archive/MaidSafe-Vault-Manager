@@ -23,6 +23,8 @@
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/tcp_connection.h"
+
 namespace maidsafe {
 
 namespace vault_manager {
@@ -39,6 +41,7 @@ void ClientConnections::Add(TcpConnectionPtr connection, const asymm::PlainText&
       LOG(kVerbose) << "Client connection timer cancelled OK.";
     } else {
       LOG(kWarning) << "Timed out waiting for Client to validate.";
+      connection->Close();
       std::lock_guard<std::mutex> lock{ mutex_ };
       unvalidated_clients_.erase(connection);
     }
@@ -57,7 +60,10 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
   }
 
-  on_scope_exit cleanup{ [this, itr] { unvalidated_clients_.erase(itr); } };
+  on_scope_exit cleanup{ [this, itr] {
+    itr->first->Close();
+    unvalidated_clients_.erase(itr);
+  } };
 
   if (asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
     LOG(kSuccess) << "Client " << DebugId(maid.name().value) << " TCP connection validated.";
@@ -73,7 +79,21 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
 
 bool ClientConnections::Remove(TcpConnectionPtr connection) {
   std::lock_guard<std::mutex> lock{ mutex_ };
-  return clients_.erase(connection) == 1U || unvalidated_clients_.erase(connection) == 1U;
+  auto itr(clients_.find(connection));
+  if (itr != std::end(clients_)) {
+    itr->first->Close();
+    clients_.erase(itr);
+    return true;
+  }
+
+  auto unvalidated_itr(unvalidated_clients_.find(connection));
+  if (unvalidated_itr != std::end(unvalidated_clients_)) {
+    unvalidated_itr->first->Close();
+    unvalidated_clients_.erase(unvalidated_itr);
+    return true;
+  }
+
+  return false;
 }
 
 ClientConnections::MaidName ClientConnections::FindValidated(TcpConnectionPtr connection) const {
