@@ -162,6 +162,12 @@ ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vau
   InitSignalHandler();
 }
 
+ProcessManager::~ProcessManager() {
+  signal_set_.cancel();
+  assert(vaults_.empty());
+}
+
+
 std::vector<VaultInfo> ProcessManager::GetAll() const {
   std::vector<VaultInfo> all_vaults;
   std::lock_guard<std::mutex> lock(mutex_);
@@ -318,8 +324,11 @@ void ProcessManager::StopProcess(Child& vault) {
 
 void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
-  LOG(kInfo) << " InitSignalHandler";
-  signal_set_.async_wait([this](const boost::system::error_code&, int) {
+  LOG(kVerbose) << " InitSignalHandler";
+  signal_set_.async_wait([this](const boost::system::error_code& error, int) {
+    LOG(kVerbose) << " async_wait returned error_code : " << error.message();
+    if (error == boost::asio::error::operation_aborted)
+      return;
     int exit_code;
     ProcessId process_id{ static_cast<ProcessId>(wait(&exit_code)) };
     LOG(kWarning) << "Received Signal pid: " << process_id;

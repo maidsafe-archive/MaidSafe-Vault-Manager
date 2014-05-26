@@ -56,7 +56,7 @@ class ProcessManager {
   typedef std::function<void(maidsafe_error, int)> OnExitFunctor;
   ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
                  Port listening_port);
-  ~ProcessManager() { assert(vaults_.empty()); }
+  ~ProcessManager();
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info, int restart_count = 0);
   VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);

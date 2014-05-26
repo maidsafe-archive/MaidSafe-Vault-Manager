@@ -24,6 +24,8 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/asio_service.h"
+#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
@@ -39,6 +41,14 @@ namespace maidsafe {
 namespace vault_manager {
 
 namespace test {
+
+TEST(ProcessManagerTest, BEH_Constructor) {
+  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
+  std::unique_ptr<AsioService> asio_service = maidsafe::make_unique<AsioService> (1);
+  ProcessManager process_manager(asio_service->service(), path_to_vault, Port{ 7777 });
+  LOG(kInfo) << "Destroying asio ... ";
+  //  asio_service.reset();
+}
 
 }  // namespace test
 
