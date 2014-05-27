@@ -44,30 +44,25 @@ namespace vault_manager {
 
 namespace tools {
 
-typedef std::vector<passport::detail::AnmaidToPmid> KeyChainVector;
 
-class ClientTester {
+class PublicPmidStorer {
  public:
-  ClientTester(const passport::detail::AnmaidToPmid& key_chain,
-               const std::vector<passport::PublicPmid>& public_pmids,
-               bool register_pmid_for_client);
-
- protected:
+  PublicPmidStorer(const std::vector<passport::PublicPmid>& public_pmids);
+  void Store();
+ private:
   template <typename SigningData>
   bool EqualKeys(const SigningData& lhs, const SigningData& rhs) {
     return lhs.name() == rhs.name() && asymm::MatchingKeys(lhs.public_key(), rhs.public_key());
   }
 
+  ~PublicPmidStorer();
+  std::future<bool> RoutingJoin(const routing::BootstrapContacts& bootstrap_contacts);
+
   AsioService asio_service_;
-  passport::detail::AnmaidToPmid key_chain_;
+  const passport::MaidAndSigner kMaidAndSigner_;
   routing::Routing client_routing_;
   routing::Functors functors_;
   std::unique_ptr<nfs_client::MaidNodeNfs> client_nfs_;
-
-  ~ClientTester();
-  std::future<bool> RoutingJoin(const routing::BootstrapContacts& bootstrap_contacts);
-
- private:
   std::vector<passport::PublicPmid> kPublicPmids_;
   nfs::detail::PublicPmidHelper public_pmid_helper_;
   std::atomic<bool> call_once_;
@@ -82,17 +77,10 @@ class KeyStorer : public ClientTester {
 
  private:
   template <typename Data>
-  void StoreKey(const Data& key) {
-    client_nfs_->Put(key);
+  boost::future<void> StoreKey(const Data& key) {
+    return client_nfs_->Put(key);
   }
   KeyChainVector key_chain_list_;
-};
-
-class KeyVerifier : public ClientTester {
- public:
-  KeyVerifier(const passport::detail::AnmaidToPmid& key_chain,
-              const std::vector<passport::PublicPmid>& public_pmids);
-  void Verify();
 };
 
 }  // namespace tools

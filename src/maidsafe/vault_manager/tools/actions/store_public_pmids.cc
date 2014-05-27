@@ -19,6 +19,8 @@
 #include "maidsafe/vault_manager/tools/actions/store_public_pmids.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/utils.h"
+
 
 namespace fs = boost::filesystem;
 
@@ -34,7 +36,7 @@ namespace {
 
 void StorePublicPmids(LocalNetworkController* /*local_network_controller*/) {
   TLOG(kDefaultColour) << "\nStoring PublicPmids keys (this may take a while)\n";
-
+  KeyStorer key_storer();
   TLOG(kGreen)
       << "PublicPmids stored and varified successfully.\n"
       << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
