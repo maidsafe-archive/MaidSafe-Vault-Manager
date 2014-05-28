@@ -16,16 +16,13 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
-#define MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_NEW_CONNECTIONS_H_
+#define MAIDSAFE_VAULT_MANAGER_NEW_CONNECTIONS_H_
 
-#include <functional>
+#include <map>
 #include <memory>
-#include <mutex>
 
-#include "boost/asio/ip/tcp.hpp"
-
-#include "maidsafe/common/asio_service.h"
+#include "boost/asio/io_service.hpp"
 
 #include "maidsafe/vault_manager/config.h"
 
@@ -33,33 +30,23 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpListener : public std::enable_shared_from_this<TcpListener> {
+class NewConnections : public std::enable_shared_from_this<NewConnections> {
  public:
-  static TcpListenerPtr MakeShared(AsioService &asio_service,
-                                   NewConnectionFunctor on_new_connection, Port desired_port);
-  Port ListeningPort() const;
-  void StopListening();
+  static std::shared_ptr<NewConnections> MakeShared(boost::asio::io_service& io_service);
+  ~NewConnections();
+  void Add(TcpConnectionPtr connection);
+  bool Remove(TcpConnectionPtr connection);
+  void CloseAll();
 
  private:
-  TcpListener(AsioService &asio_service, NewConnectionFunctor on_new_connection);
+  explicit NewConnections(boost::asio::io_service& io_service);
 
-  TcpListener(const TcpListener&) = delete;
-  TcpListener(TcpListener&&) = delete;
-  TcpListener& operator=(TcpListener) = delete;
-
-  void StartListening(Port desired_port);
-  void DoStartListening(Port port);
-  void HandleAccept(TcpConnectionPtr accepted_connection, const boost::system::error_code& ec);
-  void DoStopListening();
-
-  AsioService& asio_service_;
-  std::once_flag stop_listening_flag_;
-  NewConnectionFunctor on_new_connection_;
-  boost::asio::ip::tcp::acceptor acceptor_;
+  boost::asio::io_service& io_service_;
+  std::map<TcpConnectionPtr, TimerPtr, std::owner_less<TcpConnectionPtr>> connections_;
 };
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_TCP_LISTENER_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_NEW_CONNECTIONS_H_

@@ -40,6 +40,7 @@
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
@@ -138,10 +139,10 @@ ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vau
 #ifndef MAIDSAFE_WIN32
       signal_set_(io_service_, SIGCHLD),
 #endif
+      stop_all_flag_(),
       kListeningPort_(listening_port),
       kVaultExecutablePath_(vault_executable_path),
-      vaults_(),
-      mutex_() {
+      vaults_() {
   static_assert(std::is_same<ProcessId, process::ProcessId>::value,
                 "process::ProcessId is statically checked as being of suitable size for holding a "
                 "pid_t or DWORD, so vault_manager::ProcessId should use the same type.");
@@ -162,9 +163,30 @@ ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vau
   InitSignalHandler();
 }
 
+std::shared_ptr<ProcessManager> ProcessManager::MakeShared(
+    boost::asio::io_service& io_service, boost::filesystem::path vault_executable_path,
+    Port listening_port) {
+  return std::shared_ptr<ProcessManager>{ new ProcessManager{ io_service, vault_executable_path,
+                                                              listening_port } };
+}
+
+ProcessManager::~ProcessManager() {
+  assert(vaults_.empty());
+}
+
+void ProcessManager::StopAll() {
+  std::call_once(stop_all_flag_, [this] {
+    for (const auto& vault : vaults_)
+      StopProcess(vault.info.tcp_connection);
+#ifndef MAIDSAFE_WIN32
+    boost::system::error_code ignored_ec;
+    signal_set_.cancel(ignored_ec);
+#endif
+  });
+}
+
 std::vector<VaultInfo> ProcessManager::GetAll() const {
   std::vector<VaultInfo> all_vaults;
-  std::lock_guard<std::mutex> lock(mutex_);
   for (const auto& vault : vaults_)
     all_vaults.push_back(vault.info);
   return all_vaults;
@@ -179,7 +201,6 @@ void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
     LOG(kError) << "Can't add vault process - too many restarts.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  std::lock_guard<std::mutex> lock{ mutex_ };
   for (const auto& vault : vaults_)
     CheckNewVaultDoesntConflict(info, vault.info);
 
@@ -191,7 +212,6 @@ void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
 }
 
 VaultInfo ProcessManager::HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, process_id](const Child& vault) {
                           return GetProcessId(vault) == process_id;
@@ -209,14 +229,12 @@ VaultInfo ProcessManager::HandleVaultStarted(TcpConnectionPtr connection, Proces
 void ProcessManager::AssignOwner(const NonEmptyString& label,
                                  const passport::PublicMaid::Name& owner_name,
                                  DiskUsage max_disk_usage) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(DoFind(label));
   itr->info.owner_name = owner_name;
   itr->info.max_disk_usage = max_disk_usage;
 }
 
 void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::begin(vaults_));
   try {
     itr = DoFind(connection);
@@ -227,11 +245,11 @@ void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_e
   }
   itr->on_exit = on_exit_functor;
   itr->status = ProcessStatus::kStopping;
+  SendVaultShutdownRequest(itr->info.tcp_connection);
   StopProcess(*itr);
 }
 
 bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   auto itr(std::begin(vaults_));
   try {
     itr = DoFind(connection);
@@ -318,33 +336,37 @@ void ProcessManager::StopProcess(Child& vault) {
 
 void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
-  LOG(kInfo) << " InitSignalHandler";
-  signal_set_.async_wait([this](const boost::system::error_code&, int) {
+  LOG(kVerbose) << "Initialising signal handler.";
+  signal_set_.async_wait([this](const boost::system::error_code& error_code, int signum) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Cancelled waiting for SIGCHLD signal.";
+      return;
+    }
+
+    if (signum != SIGCHLD) {
+      LOG(kWarning) << "Process ID " << process::GetProcessId() << " received signal " << signum;
+      return;
+    }
+
     int exit_code;
     ProcessId process_id{ static_cast<ProcessId>(wait(&exit_code)) };
-    LOG(kWarning) << "Received Signal pid: " << process_id;
+    LOG(kWarning) << "Process ID " << process::GetProcessId() << " received SIGCHLD pid: "
+                  << process_id;
     if (process_id == process::GetProcessId())
       return;
 
-    NonEmptyString label;
-    {
-      std::lock_guard<std::mutex> lock{ mutex_ };
-      auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+    auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
         [this, process_id](const Child& vault) { return GetProcessId(vault) == process_id; }));
-      if (child_itr == std::end(vaults_))
-        return;
-      else
-        label = child_itr->info.label;
-    }
+    if (child_itr == std::end(vaults_))
+      return;
 
-    OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
+    OnProcessExit(child_itr->info.label, BOOST_PROCESS_EXITSTATUS(exit_code));
     InitSignalHandler();
   });
 #endif
 }
 
 VaultInfo ProcessManager::Find(const NonEmptyString& label) const {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   return DoFind(label)->info;
 }
 
@@ -374,7 +396,6 @@ std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(const NonEmp
 }
 
 VaultInfo ProcessManager::Find(TcpConnectionPtr connection) const {
-  std::lock_guard<std::mutex> lock{ mutex_ };
   return DoFind(connection)->info;
 }
 
@@ -423,56 +444,36 @@ bool ProcessManager::IsRunning(const Child& vault) const {
 }
 
 void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate) {
-  OnExitFunctor on_exit;
+  auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
+                  [this, &label](const Child& vault) { return vault.info.label == label; }));
+  if (child_itr == std::end(vaults_))
+    return;
+
   VaultInfo vault_info;
-  int restart_count(-1);
-  {
-    std::lock_guard<std::mutex> lock{ mutex_ };
-    auto child_itr(std::find_if(std::begin(vaults_), std::end(vaults_),
-                   [this, &label](const Child& vault) { return vault.info.label == label; }));
-    if (child_itr == std::end(vaults_))
-      return;
-    on_exit = child_itr->on_exit;
-    if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
-      restart_count = child_itr->restart_count;
-      vault_info = child_itr->info;
-      if (vault_info.tcp_connection) {
-        vault_info.tcp_connection->Close();
-        vault_info.tcp_connection.reset();
-      }
+  int restart_count{ -1 };
+  if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
+    restart_count = child_itr->restart_count;
+    vault_info = child_itr->info;
+    if (vault_info.tcp_connection) {
+      vault_info.tcp_connection->Close();
+      vault_info.tcp_connection.reset();
     }
-
-    bool is_running{ IsRunning(*child_itr) };
-    LOG(kVerbose) << "On exit for Vault " << label.string() << std::boolalpha << "  Is running: "
-        << is_running << "   Exit code: " << exit_code << "   Terminate requested: " << terminate;
-    if (terminate && is_running)
-      TerminateProcess(child_itr);
-
-    if (child_itr->info.tcp_connection)
-      child_itr->info.tcp_connection->Close();
-    vaults_.erase(child_itr);
   }
 
-  if (on_exit) {
-    if (terminate)
-      on_exit(MakeError(VaultManagerErrors::vault_terminated), -1);
-    else if (exit_code == 0)
-      on_exit(MakeError(CommonErrors::success), exit_code);
-    else
-      on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
-  }
+  bool is_running{ IsRunning(*child_itr) };
+  LOG(kVerbose) << "On exit for Vault " << label.string() << std::boolalpha << "  Is running: "
+      << is_running << "   Exit code: " << exit_code << "   Terminate requested: " << terminate;
+  if (terminate && is_running)
+    TerminateProcess(child_itr);
 
-  if (restart_count >= 0 && restart_count < kMaxVaultRestarts) {
-    LOG(kWarning) << "Restarting vault " << label.string();
-    io_service_.post([vault_info, restart_count, this] {
-      try {
-        AddProcess(std::move(vault_info), restart_count + 1);
-      }
-      catch (const std::exception& e) {
-        LOG(kError) << "Failed restarting vault: " << boost::diagnostic_information(e);
-      }
-    });
-  }
+  if (child_itr->info.tcp_connection)
+    child_itr->info.tcp_connection->Close();
+
+  OnExitFunctor on_exit{ child_itr->on_exit };
+  vaults_.erase(child_itr);
+
+  InvokeOnExitFunctor(on_exit, exit_code, terminate);
+  RestartIfRequired(restart_count, std::move(vault_info));
 }
 
 void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
@@ -480,6 +481,41 @@ void ProcessManager::TerminateProcess(std::vector<Child>::iterator itr) {
   bp::terminate(itr->process, ec);
   if (ec)
     LOG(kWarning) << "Error while terminating vault: " << ec.message();
+}
+
+void ProcessManager::InvokeOnExitFunctor(OnExitFunctor on_exit, int exit_code, bool terminate) {
+  if (!on_exit)
+    return;
+
+  try {
+    if (terminate)
+      on_exit(MakeError(VaultManagerErrors::vault_terminated), -1);
+    else if (exit_code == 0)
+      on_exit(MakeError(CommonErrors::success), exit_code);
+    else
+      on_exit(MakeError(VaultManagerErrors::vault_exited_with_error), exit_code);
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Error executing on_exit functor: " << boost::diagnostic_information(e);
+  }
+  catch (...) {
+    LOG(kError) << "Unknown error type while executing on_exit functor.";
+  }
+}
+
+void ProcessManager::RestartIfRequired(int restart_count, VaultInfo vault_info) {
+  if (restart_count < 0 || restart_count >= kMaxVaultRestarts)
+    return;
+
+  LOG(kWarning) << "Restarting vault " << vault_info.label.string();
+  io_service_.post([vault_info, restart_count, this] {
+    try {
+      AddProcess(std::move(vault_info), restart_count + 1);
+    }
+    catch (const std::exception& e) {
+      LOG(kError) << "Failed restarting vault: " << boost::diagnostic_information(e);
+    }
+  });
 }
 
 }  // namespace vault_manager

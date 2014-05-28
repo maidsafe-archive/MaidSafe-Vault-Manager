@@ -208,6 +208,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
       local_network_controller->test_env_root_dir / kBootstrapFilename);
 
   StartRemainingVaults(local_network_controller, max_usage);
+  Sleep(std::chrono::milliseconds(500));
 
   TLOG(kGreen)
       << "Network setup completed successfully.\n"

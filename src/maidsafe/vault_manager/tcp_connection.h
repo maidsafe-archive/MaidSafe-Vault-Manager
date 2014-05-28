@@ -41,15 +41,14 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpListener;
-
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
  public:
   typedef uint32_t DataSize;
-  // Constructor used when accepting an incoming connection.
-  explicit TcpConnection(AsioService& asio_service);
-  // Constructor used to attempt to connect to 'remote_port' on loopback address.
-  TcpConnection(AsioService& asio_service, uint16_t remote_port);
+
+  // Used when accepting an incoming connection.
+  static TcpConnectionPtr MakeShared(AsioService &asio_service);
+  // Used to attempt to connect to 'remote_port' on loopback address.
+  static TcpConnectionPtr MakeShared(AsioService &asio_service, uint16_t remote_port);
 
   void Start(MessageReceivedFunctor on_message_received,
              ConnectionClosedFunctor on_connection_closed);
@@ -58,11 +57,14 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 
   void Send(std::string data);
 
+  boost::asio::ip::tcp::socket& Socket() { return socket_; }
+
   static size_t MaxMessageSize() { return 1024 * 1024; }  // bytes
 
-  friend class TcpListener;
-
  private:
+  explicit TcpConnection(AsioService &asio_service);
+  TcpConnection(AsioService &asio_service, uint16_t remote_port);
+
   TcpConnection(const TcpConnection&) = delete;
   TcpConnection(TcpConnection&&) = delete;
   TcpConnection& operator=(TcpConnection) = delete;

@@ -71,7 +71,7 @@ std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {
   Port port{ initial_port };
   while (attempts <= kMaxRangeAboveDefaultPort && port <= std::numeric_limits<Port>::max()) {
     try {
-      TcpConnectionPtr tcp_connection{ std::make_shared<TcpConnection>(asio_service_, port) };
+      TcpConnectionPtr tcp_connection{ TcpConnection::MakeShared(asio_service_, port) };
       tcp_connection->Start([this](std::string message) { HandleReceivedMessage(message); },
                             [this] {});  // FIXME OnConnectionClosed
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;

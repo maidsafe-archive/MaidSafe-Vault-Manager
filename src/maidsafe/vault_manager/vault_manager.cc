@@ -32,8 +32,11 @@
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/vault_manager/client_connections.h"
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
+#include "maidsafe/vault_manager/new_connections.h"
+#include "maidsafe/vault_manager/process_manager.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/tcp_listener.h"
 #include "maidsafe/vault_manager/utils.h"
@@ -82,15 +85,14 @@ fs::path GetVaultExecutablePath() {
 VaultManager::VaultManager()
     : kBootstrapFilePath_(GetBootstrapFilePath()),
       config_file_handler_(GetConfigFilePath()),
-      listener_(maidsafe::make_unique<TcpListener>(
+      asio_service_(1),
+      listener_(TcpListener::MakeShared(asio_service_,
           [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialListeningPort())),
-      new_connections_mutex_(),
-      new_connections_(),
-      asio_service_(maidsafe::make_unique<AsioService>(1)),
-      process_manager_(asio_service_->service(), GetVaultExecutablePath(),
-                       listener_->ListeningPort()),
-      client_connections_(asio_service_->service()) {
+      process_manager_(ProcessManager::MakeShared(asio_service_.service(),
+                       GetVaultExecutablePath(), listener_->ListeningPort())),
+      client_connections_(ClientConnections::MakeShared(asio_service_.service())),
+      new_connections_(NewConnections::MakeShared(asio_service_.service())) {
   std::vector<VaultInfo> vaults{ config_file_handler_.ReadConfigFile() };
   if (vaults.empty()) {
 #ifndef TESTING
@@ -103,47 +105,31 @@ VaultManager::VaultManager()
     auto space_info(fs::space(vault_info.vault_dir));
     vault_info.max_disk_usage = DiskUsage{ (9 * space_info.available) / 10 };
     vault_info.label = GenerateLabel();
-    process_manager_.AddProcess(std::move(vault_info));
+    process_manager_->AddProcess(std::move(vault_info));
 #endif
   } else {
     for (auto& vault_info : vaults)
-      process_manager_.AddProcess(std::move(vault_info));
+      process_manager_->AddProcess(std::move(vault_info));
   }
   LOG(kInfo) << "VaultManager started";
 }
 
 VaultManager::~VaultManager() {
-  std::vector<VaultInfo> all_vaults{ process_manager_.GetAll() };
-  std::for_each(std::begin(all_vaults), std::end(all_vaults),
-                [this](const VaultInfo& vault) {
-                  if (vault.tcp_connection) {
-                    // StopProcess must be called before SendVaultShutdownRequest to avoid the
-                    // process_manager_ trying to restart the Vault.
-                    process_manager_.StopProcess(vault.tcp_connection);
-                    SendVaultShutdownRequest(vault.tcp_connection);
-                  }
-                });
-  asio_service_.reset();
+  auto listener(listener_);
+  auto new_connections(new_connections_);
+  auto client_connections(client_connections_);
+  auto process_manager(process_manager_);
+  asio_service_.service().post([=] {
+    listener->StopListening();
+    new_connections->CloseAll();
+    client_connections->CloseAll();
+    process_manager->StopAll();
+  });
+  asio_service_.Stop();
 }
 
 void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
-  {
-    std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-    TimerPtr timer{ std::make_shared<Timer>(asio_service_->service(), kRpcTimeout) };
-    timer->async_wait([=](const boost::system::error_code& error_code) {
-      if (error_code && error_code == boost::asio::error::operation_aborted) {
-        LOG(kVerbose) << "New connection timer cancelled OK.";
-      } else {
-        LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
-        connection->Close();
-        std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-        new_connections_.erase(connection);
-      }
-    });
-    bool result{ new_connections_.emplace(connection, timer).second };
-    assert(result);
-    static_cast<void>(result);
-  }
+  new_connections_->Add(connection);
   MessageReceivedFunctor on_message{ [=](const std::string& message) {
     HandleReceivedMessage(connection, message);
   } };
@@ -151,13 +137,11 @@ void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
 }
 
 void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
-  // Need to lock for entire duration of this function to avoid moving a connection from
-  // 'new_connections_' to 'process_manager_' or 'client_connections_' concurrently with the
-  // connection closing.
-  std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-  if (process_manager_.HandleConnectionClosed(connection) || client_connections_.Remove(connection))
+  if (process_manager_->HandleConnectionClosed(connection) ||
+    client_connections_->Remove(connection)) {
     return;
-  new_connections_.erase(connection);
+  }
+  new_connections_->Remove(connection);
 }
 
 void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
@@ -202,7 +186,7 @@ void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) 
   RemoveFromNewConnections(connection);
   asymm::PlainText challenge{ RandomString((RandomUint32() % 100) + 100) };
 
-  client_connections_.Add(connection, challenge);
+  client_connections_->Add(connection, challenge);
   SendChallenge(connection, challenge);
 }
 
@@ -215,7 +199,7 @@ void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
       passport::PublicMaid::serialised_type{ NonEmptyString{
           challenge_response.public_maid_value() } } };
   asymm::Signature signature{ challenge_response.signature() };
-  client_connections_.Validate(connection, maid, signature);
+  client_connections_->Validate(connection, maid, signature);
 }
 
 
@@ -224,7 +208,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
   try {
-    passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
+    passport::PublicMaid::Name client_name{ client_connections_->FindValidated(connection) };
     protobuf::StartVaultRequest start_vault_message{
         ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
@@ -242,16 +226,16 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
           std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
     }
 
-    process_manager_.AddProcess(std::move(vault_info));
-    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+    process_manager_->AddProcess(std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_->GetAll());
     return;
   }
   catch (const maidsafe_error& e) {
-    LOG(kWarning) << e.what();
+    LOG(kWarning) << boost::diagnostic_information(e);
     error = e;
   }
   catch (const std::exception& e) {
-    LOG(kWarning) << e.what();
+    LOG(kWarning) << boost::diagnostic_information(e);
   }
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
@@ -261,13 +245,13 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
   try {
-    passport::PublicMaid::Name client_name{ client_connections_.FindValidated(connection) };
+    passport::PublicMaid::Name client_name{ client_connections_->FindValidated(connection) };
     protobuf::TakeOwnershipRequest take_ownership_request{
         ParseProto<protobuf::TakeOwnershipRequest>(message) };
     NonEmptyString label{ take_ownership_request.label() };
     fs::path new_vault_dir{ take_ownership_request.vault_dir() };
     DiskUsage new_max_disk_usage{ take_ownership_request.max_disk_usage() };
-    VaultInfo vault_info{ process_manager_.Find(label) };
+    VaultInfo vault_info{ process_manager_->Find(label) };
 
     if (vault_info.vault_dir != new_vault_dir) {
       vault_info.vault_dir = new_vault_dir;
@@ -279,17 +263,17 @@ void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
     if (vault_info.max_disk_usage != new_max_disk_usage && new_max_disk_usage != 0U)
       SendMaxDiskUsageUpdate(vault_info.tcp_connection, new_max_disk_usage);
 
-    process_manager_.AssignOwner(label, client_name, new_max_disk_usage);
-    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+    process_manager_->AssignOwner(label, client_name, new_max_disk_usage);
+    config_file_handler_.WriteConfigFile(process_manager_->GetAll());
     SendVaultRunningResponse(connection, label, vault_info.pmid_and_signer.get());
     return;
   }
   catch (const maidsafe_error& e) {
-    LOG(kWarning) << e.what();
+    LOG(kWarning) << boost::diagnostic_information(e);
     error = e;
   }
   catch (const std::exception& e) {
-    LOG(kWarning) << e.what();
+    LOG(kWarning) << boost::diagnostic_information(e);
   }
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
@@ -299,11 +283,12 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
   //                               restarting the vault.
   SendVaultShutdownRequest(vault_info.tcp_connection);
   ProcessManager::OnExitFunctor on_exit{ [this, vault_info](maidsafe_error error, int exit_code) {
-    LOG(kVerbose) << "Process returned " << exit_code << " with error message: " << error.what();
-    process_manager_.AddProcess(std::move(vault_info));
-    config_file_handler_.WriteConfigFile(process_manager_.GetAll());
+    LOG(kVerbose) << "Process returned " << exit_code << " with error message: "
+                  << boost::diagnostic_information(error);
+    process_manager_->AddProcess(std::move(vault_info));
+    config_file_handler_.WriteConfigFile(process_manager_->GetAll());
   } };
-  process_manager_.StopProcess(vault_info.tcp_connection, on_exit);
+  process_manager_->StopProcess(vault_info.tcp_connection, on_exit);
 }
 
 void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
@@ -314,7 +299,7 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ ParseProto<protobuf::VaultStarted>(message) };
   VaultInfo vault_info{
-      process_manager_.HandleVaultStarted(connection, { vault_started.process_id() }) };
+      process_manager_->HandleVaultStarted(connection, { vault_started.process_id() }) };
 
   // Send vault its credentials
   SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
@@ -323,7 +308,7 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
     try {
-      TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+      TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
       SendVaultRunningResponse(client, vault_info.label, vault_info.pmid_and_signer.get());
     }
     catch (const std::exception&) {}  // We don't care if the client isn't connected.
@@ -336,12 +321,12 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
 
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
   try {
-    VaultInfo vault_info(process_manager_.Find(connection));
+    VaultInfo vault_info(process_manager_->Find(connection));
     // TODO(Prakash) do vault_info need joined field
     std::string log_message("Vault running as " +
                             HexSubstr(vault_info.pmid_and_signer->first.name().value));
     LOG(kInfo) << log_message;
-    TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+    TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, log_message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
@@ -350,16 +335,15 @@ void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
 void VaultManager::HandleLogMessage(TcpConnectionPtr connection, const std::string& message) {
   LOG(kInfo) << message;
   try {
-    VaultInfo vault_info(process_manager_.Find(connection));
-    TcpConnectionPtr client{ client_connections_.FindValidated(vault_info.owner_name) };
+    VaultInfo vault_info(process_manager_->Find(connection));
+    TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
 void VaultManager::RemoveFromNewConnections(TcpConnectionPtr connection) {
-  std::lock_guard<std::mutex> lock{ new_connections_mutex_ };
-  if (!new_connections_.erase(connection)) {
+  if (!new_connections_->Remove(connection)) {
     LOG(kWarning) << "Connection not found in new_connections_.";
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
   }

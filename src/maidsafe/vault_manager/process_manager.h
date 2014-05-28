@@ -54,9 +54,11 @@ enum class ProcessStatus { kBeforeStarted, kStarting, kRunning, kStopping };
 class ProcessManager {
  public:
   typedef std::function<void(maidsafe_error, int)> OnExitFunctor;
-  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
-                 Port listening_port);
-  ~ProcessManager() { assert(vaults_.empty()); }
+  static std::shared_ptr<ProcessManager> MakeShared(boost::asio::io_service& io_service,
+                                                    boost::filesystem::path vault_executable_path,
+                                                    Port listening_port);
+  ~ProcessManager();
+  void StopAll();
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info, int restart_count = 0);
   VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);
@@ -69,6 +71,9 @@ class ProcessManager {
   VaultInfo Find(TcpConnectionPtr connection) const;
 
  private:
+  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
+                 Port listening_port);
+
   ProcessManager(const ProcessManager&) = delete;
   ProcessManager(ProcessManager&&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
@@ -94,6 +99,7 @@ class ProcessManager {
 
   void StartProcess(std::vector<Child>::iterator itr);
   void StopProcess(Child& vault);
+  void InitSignalHandler();
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
@@ -103,16 +109,17 @@ class ProcessManager {
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
   void TerminateProcess(std::vector<Child>::iterator itr);
-  void InitSignalHandler();
+  void InvokeOnExitFunctor(OnExitFunctor on_exit, int exit_code, bool terminate);
+  void RestartIfRequired(int restart_count, VaultInfo vault_info);
 
   boost::asio::io_service &io_service_;
 #ifndef MAIDSAFE_WIN32
   boost::asio::signal_set signal_set_;
 #endif
+  std::once_flag stop_all_flag_;
   const Port kListeningPort_;
   const boost::filesystem::path kVaultExecutablePath_;
   std::vector<Child> vaults_;
-  mutable std::mutex mutex_;
 };
 
 }  // namespace vault_manager

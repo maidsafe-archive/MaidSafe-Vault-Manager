@@ -72,9 +72,18 @@ TcpConnection::TcpConnection(AsioService& asio_service, uint16_t remote_port)
       BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
   }
   catch (const boost::system::system_error& error) {
-    LOG(kError) << "Failed to connect to " << remote_port << ": " << error.what();
+    LOG(kError) << "Failed to connect to " << remote_port << ": "
+                << boost::diagnostic_information(error);
     throw;
   }
+}
+
+TcpConnectionPtr TcpConnection::MakeShared(AsioService& asio_service) {
+  return TcpConnectionPtr{ new TcpConnection{ asio_service } };
+}
+
+TcpConnectionPtr TcpConnection::MakeShared(AsioService& asio_service, uint16_t remote_port) {
+  return TcpConnectionPtr{ new TcpConnection{ asio_service, remote_port } };
 }
 
 void TcpConnection::Start(MessageReceivedFunctor on_message_received,
@@ -89,7 +98,7 @@ void TcpConnection::Start(MessageReceivedFunctor on_message_received,
 
 void TcpConnection::Close() {
   TcpConnectionPtr this_ptr{ shared_from_this() };
-  io_service_.dispatch([this_ptr] { this_ptr->DoClose(); });
+  io_service_.post([this_ptr] { this_ptr->DoClose(); });
 }
 
 void TcpConnection::DoClose() {

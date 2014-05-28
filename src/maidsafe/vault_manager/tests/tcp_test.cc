@@ -104,9 +104,12 @@ class TcpTest : public testing::Test {
   TcpTest() : to_client_messages_(),
               to_server_messages_(),
               messages_received_by_client_(),
-              messages_received_by_server_() {}
+              messages_received_by_server_(),
+              client_asio_service_(1),
+              server_asio_service_(1) {}
 
   typedef std::pair<TcpConnectionPtr, std::unique_ptr<on_scope_exit>> ConnectionAndCloser;
+  typedef std::pair<TcpListenerPtr, std::unique_ptr<on_scope_exit>> ListenerAndCloser;
 
   void InitialiseMessagesToClient() {
     messages_received_by_client_ = maidsafe::make_unique<Messages>(to_client_messages_);
@@ -118,14 +121,22 @@ class TcpTest : public testing::Test {
   ConnectionAndCloser GenerateClientConnection(
       AsioService& asio_service, uint16_t port, MessageReceivedFunctor on_message_received,
       ConnectionClosedFunctor on_connection_closed) {
-    TcpConnectionPtr connection{ std::make_shared<TcpConnection>(asio_service, port) };
+    TcpConnectionPtr connection{ TcpConnection::MakeShared(asio_service, port) };
     connection->Start(on_message_received, on_connection_closed);
     return std::make_pair(connection,
         maidsafe::make_unique<on_scope_exit>([connection] { connection->Close(); }));
   }
 
+  ListenerAndCloser GenerateListener(AsioService& asio_service,
+      NewConnectionFunctor on_new_connection, Port port) {
+    TcpListenerPtr listener{ TcpListener::MakeShared(asio_service, on_new_connection, port) };
+    return std::make_pair(listener,
+        maidsafe::make_unique<on_scope_exit>([listener] { listener->StopListening(); }));
+  }
+
   std::vector<std::string> to_client_messages_, to_server_messages_;
   std::unique_ptr<Messages> messages_received_by_client_, messages_received_by_server_;
+  AsioService client_asio_service_, server_asio_service_;
 };
 
 TEST_F(TcpTest, BEH_Basic) {
@@ -141,13 +152,12 @@ TEST_F(TcpTest, BEH_Basic) {
   InitialiseMessagesToClient();
   InitialiseMessagesToServer();
 
-  AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener{
+  ListenerAndCloser listener_and_closer{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
-      Port{ 7777 } };
+      Port{ 7777 }) };
   ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
-      asio_service, listener.ListeningPort(),
+      client_asio_service_, listener_and_closer.first->ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
       [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
@@ -174,12 +184,13 @@ TEST_F(TcpTest, BEH_UnavailablePort) {
 
   AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener0{ [](TcpConnectionPtr /*connection*/) {}, Port{ 7777 } };
-  TcpListener listener1{
+  ListenerAndCloser listener_and_closer0{ GenerateListener(asio_service,
+      [](TcpConnectionPtr /*connection*/) {}, Port{ 7777 }) };
+  ListenerAndCloser listener_and_closer1{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
-      listener0.ListeningPort() };
+      listener_and_closer0.first->ListeningPort()) };
   ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
-      asio_service, listener1.ListeningPort(),
+      client_asio_service_, listener_and_closer1.first->ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
       [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
@@ -202,8 +213,7 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
   InitialiseMessagesToClient();
   InitialiseMessagesToServer();
 
-  AsioService asio_service{ 1 };
-  TcpListener listener{
+  ListenerAndCloser listener_and_closer{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) {
         LOG(kVerbose) << "Server connection opened.";
         connection->Start(
@@ -212,9 +222,9 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
         for (const auto& message : to_client_messages_)
           EXPECT_THROW(connection->Send(message), maidsafe_error);
       },
-      Port{ 7777 } };
+      Port{ 7777 }) };
   ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
-      asio_service, listener.ListeningPort(),
+      client_asio_service_, listener_and_closer.first->ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
       [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
@@ -228,7 +238,7 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
   AsioService bad_asio_service{ 1 };
   boost::asio::ip::tcp::socket bad_socket(bad_asio_service.service());
   bad_socket.connect(boost::asio::ip::tcp::endpoint{ boost::asio::ip::address_v6::loopback(),
-                                                     listener.ListeningPort() });
+                                                     listener_and_closer.first->ListeningPort() });
   ASSERT_TRUE(bad_socket.is_open());
 
   to_server_messages_.erase(std::begin(to_server_messages_));
@@ -256,7 +266,7 @@ TEST_F(TcpTest, BEH_InvalidMessageSizes) {
   InitialiseMessagesToServer();
   bad_socket = boost::asio::ip::tcp::socket(bad_asio_service.service());
   bad_socket.connect(boost::asio::ip::tcp::endpoint{ boost::asio::ip::address_v6::loopback(),
-                     listener.ListeningPort() });
+                     listener_and_closer.first->ListeningPort() });
   ASSERT_TRUE(bad_socket.is_open());
   --size_buffer[3];
   buffers[0] = boost::asio::buffer(size_buffer);
@@ -270,13 +280,12 @@ TEST_F(TcpTest, BEH_ServerConnectionAborts) {
   InitialiseMessagesToClient();
   InitialiseMessagesToServer();
 
-  AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener{
+  ListenerAndCloser listener_and_closer{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
-      Port{ 8888 } };
+      Port{ 8888 }) };
   ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
-      asio_service, listener.ListeningPort(),
+      client_asio_service_, listener_and_closer.first->ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
       [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
@@ -296,13 +305,12 @@ TEST_F(TcpTest, BEH_ClientConnectionAborts) {
   InitialiseMessagesToClient();
   InitialiseMessagesToServer();
 
-  AsioService asio_service{ 1 };
   std::promise<TcpConnectionPtr> server_promise;
-  TcpListener listener{
+  ListenerAndCloser listener_and_closer{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) { server_promise.set_value(std::move(connection)); },
-      Port{ 9999 } };
+      Port{ 9999 }) };
   ConnectionAndCloser client_connection_and_closer{ GenerateClientConnection(
-      asio_service, listener.ListeningPort(),
+      client_asio_service_, listener_and_closer.first->ListeningPort(),
       [&](std::string message) { messages_received_by_client_->AddMessage(std::move(message)); },
       [&] { LOG(kVerbose) << "Client connection closed."; }) };
 
@@ -330,11 +338,10 @@ TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
     messages_received_by_client.emplace_back(maidsafe::make_unique<Messages>(to_client_messages_));
   InitialiseMessagesToServer();
 
-  AsioService asio_service{ 1 };
   std::mutex mutex;
   std::condition_variable cond_var;
   std::vector<TcpConnectionPtr> server_connections;
-  TcpListener listener{
+  ListenerAndCloser listener_and_closer{ GenerateListener(server_asio_service_,
       [&](TcpConnectionPtr connection) {
         connection->Start(
             [&](std::string msg) {
@@ -348,12 +355,12 @@ TEST_F(TcpTest, BEH_MultipleConnectionsToServer) {
         }
         cond_var.notify_one();
       },
-      Port{ 9876 } };
+      Port{ 9876 }) };
 
   std::vector<ConnectionAndCloser> client_connections_and_closers;
   for (size_t i(0); i < kClientCount; ++i) {
     client_connections_and_closers.emplace_back(GenerateClientConnection(
-        asio_service, listener.ListeningPort(),
+        client_asio_service_, listener_and_closer.first->ListeningPort(),
         [&, i](std::string msg) {
           LOG(kVerbose) << "Client " << i << " received msg";
           messages_received_by_client[i]->AddMessage(std::move(msg));

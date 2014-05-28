@@ -19,7 +19,6 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_MANAGER_H_
 
-#include <map>
 #include <memory>
 #include <string>
 
@@ -29,10 +28,8 @@
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/passport/types.h"
 
-#include "maidsafe/vault_manager/client_connections.h"
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/config_file_handler.h"
-#include "maidsafe/vault_manager/process_manager.h"
 #include "maidsafe/vault_manager/vault_info.h"
 
 namespace maidsafe {
@@ -40,6 +37,9 @@ namespace maidsafe {
 namespace vault_manager {
 
 class TcpListener;
+class ClientConnections;
+class NewConnections;
+class ProcessManager;
 
 // The VaultManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file.
@@ -70,17 +70,17 @@ class VaultManager {
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);
   void HandleJoinedNetwork(TcpConnectionPtr connection);
   void HandleLogMessage(TcpConnectionPtr connection, const std::string& message);
+
   void RemoveFromNewConnections(TcpConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
 
   const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
-  std::unique_ptr<TcpListener> listener_;
-  mutable std::mutex new_connections_mutex_;
-  std::map<TcpConnectionPtr, TimerPtr, std::owner_less<TcpConnectionPtr>> new_connections_;
-  std::unique_ptr<AsioService> asio_service_;
-  ProcessManager process_manager_;
-  ClientConnections client_connections_;
+  AsioService asio_service_;
+  std::shared_ptr<TcpListener> listener_;
+  std::shared_ptr<ProcessManager> process_manager_;
+  std::shared_ptr<ClientConnections> client_connections_;
+  std::shared_ptr<NewConnections> new_connections_;
 };
 
 }  // namespace vault_manager

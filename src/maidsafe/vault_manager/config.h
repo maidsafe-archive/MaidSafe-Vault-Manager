@@ -35,9 +35,11 @@ namespace maidsafe {
 namespace vault_manager {
 
 class TcpConnection;
+class TcpListener;
 
 typedef uint16_t Port;
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
+typedef std::shared_ptr<TcpListener> TcpListenerPtr;
 typedef std::function<void(std::string)> MessageReceivedFunctor;
 typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
 typedef std::function<void()> ConnectionClosedFunctor;

@@ -40,7 +40,7 @@ VaultInterface::VaultInterface(Port vault_manager_port)
       on_vault_started_response_(),
       vault_config_(),
       asio_service_(1),
-      tcp_connection_(std::make_shared<TcpConnection>(asio_service_, vault_manager_port_)),
+      tcp_connection_(TcpConnection::MakeShared(asio_service_, vault_manager_port_)),
       connection_closer_([&] { tcp_connection_->Close(); }) {
   tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
                          [this] { OnConnectionClosed(); });

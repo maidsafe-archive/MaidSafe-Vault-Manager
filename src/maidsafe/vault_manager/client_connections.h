@@ -21,7 +21,6 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
 #include <utility>
 
 #include "boost/asio/io_service.hpp"
@@ -35,23 +34,23 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpConnection;
-typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
-
 class ClientConnections {
  public:
   typedef passport::PublicMaid::Name MaidName;
-  explicit ClientConnections(boost::asio::io_service& io_service);
+  static std::shared_ptr<ClientConnections> MakeShared(boost::asio::io_service& io_service);
+  ~ClientConnections();
   void Add(TcpConnectionPtr connection, const asymm::PlainText& challenge);
   void Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
                 const asymm::Signature& signature);
   bool Remove(TcpConnectionPtr connection);
+  void CloseAll();
   MaidName FindValidated(TcpConnectionPtr connection) const;
   TcpConnectionPtr FindValidated(MaidName maid_name) const;
 
  private:
+  explicit ClientConnections(boost::asio::io_service& io_service);
+
   boost::asio::io_service& io_service_;
-  mutable std::mutex mutex_;
   std::map<TcpConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
            std::owner_less<TcpConnectionPtr>> unvalidated_clients_;
   std::map<TcpConnectionPtr, MaidName, std::owner_less<TcpConnectionPtr>> clients_;
