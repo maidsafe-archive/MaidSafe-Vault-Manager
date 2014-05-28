@@ -77,7 +77,10 @@ namespace detail {
 
 template <>
 routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& message) {
-  return routing::ParseBootstrapContacts(message);
+  protobuf::BootstrapContactsResponse bootstrap_contact_response{
+      ParseProto<protobuf::BootstrapContactsResponse>(message) };
+
+  return routing::ParseBootstrapContacts(bootstrap_contact_response.serialised_bootstrap_contacts());
 }
 
 template <>

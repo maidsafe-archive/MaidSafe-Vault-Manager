@@ -101,3 +101,7 @@ message MaxDiskUsageUpdate {
 message BootstrapContact {
   required bytes serialised_contact = 1;
 }
+
+message BootstrapContactsResponse {
+  required bytes serialised_bootstrap_contacts = 1;
+}

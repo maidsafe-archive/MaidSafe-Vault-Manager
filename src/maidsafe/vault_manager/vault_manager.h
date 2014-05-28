@@ -65,6 +65,7 @@ class VaultManager {
   void HandleChallengeResponse(TcpConnectionPtr connection, const std::string& message);
   void HandleStartVaultRequest(TcpConnectionPtr connection, const std::string& message);
   void HandleTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& message);
+  void HandleBootstrapContactsRequest(TcpConnectionPtr connection);
 
   // Messages from Vault
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);

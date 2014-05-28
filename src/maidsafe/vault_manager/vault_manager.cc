@@ -169,6 +169,10 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
         assert(message_and_type.first.empty());
         HandleJoinedNetwork(connection);
         break;
+    case MessageType::kBootstrapContactsRequest:
+      assert(message_and_type.first.empty());
+      HandleBootstrapContactsRequest(connection);
+      break;
       case MessageType::kLogMessage:
         HandleLogMessage(connection, message_and_type.first);
         break;
@@ -316,6 +320,12 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
   LOG(kSuccess) << "Vault started.  Pmid ID: "
       << DebugId(vault_info.pmid_and_signer->first.name().value) << "  Process ID: "
       << vault_started.process_id() << "  Label: " << vault_info.label.string();
+}
+
+void VaultManager::HandleBootstrapContactsRequest(TcpConnectionPtr connection) {
+  auto bootstrap_file = routing::ReadBootstrapFile(kBootstrapFilePath_);
+  LOG(kInfo) << " Number of Contacts in BootstrapContacts file : " << bootstrap_file.size();
+  SendBootstrapContactsResponse(connection, bootstrap_file);
 }
 
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {

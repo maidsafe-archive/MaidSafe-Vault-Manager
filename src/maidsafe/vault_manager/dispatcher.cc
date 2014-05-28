@@ -147,8 +147,9 @@ void SendBootstrapContactsRequest(TcpConnectionPtr connection) {
 
 void SendBootstrapContactsResponse(TcpConnectionPtr connection,
                           const routing::BootstrapContacts& bootstrap_contacts) {
-  protobuf::BootstrapContact message;
-  message.set_serialised_contact(routing::SerialiseBootstrapContacts(bootstrap_contacts));
+  protobuf::BootstrapContactsResponse message;
+  message.set_serialised_bootstrap_contacts(
+      routing::SerialiseBootstrapContacts(bootstrap_contacts));
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                MessageType::kBootstrapContactsResponse)));
 }
