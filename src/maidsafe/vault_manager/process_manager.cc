@@ -21,6 +21,10 @@
 #include <algorithm>
 #include <type_traits>
 
+#ifdef __FreeBSD__
+extern "C" char **environ;
+#endif
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4702)
