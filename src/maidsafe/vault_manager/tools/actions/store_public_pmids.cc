@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,23 +16,11 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/process_manager.h"
+#include "maidsafe/vault_manager/tools/actions/store_public_pmids.h"
 
-#include <thread>
-#include <string>
-#include <vector>
+#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/utils.h"
 
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/asio_service.h"
-#include "maidsafe/common/make_unique.h"
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
 
 namespace fs = boost::filesystem;
 
@@ -40,18 +28,21 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+namespace tools {
 
-TEST(ProcessManagerTest, BEH_Constructor) {
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  std::unique_ptr<AsioService> asio_service{ maidsafe::make_unique<AsioService>(1) };
-  std::shared_ptr<ProcessManager> process_manager{ ProcessManager::MakeShared(
-      asio_service->service(), path_to_vault, Port{ 7777 }) };
-  LOG(kInfo) << "Destroying asio...";
-  asio_service.reset();
+namespace {
+
+}  // unnamed namespace
+
+void StorePublicPmids(LocalNetworkController* /*local_network_controller*/) {
+  TLOG(kDefaultColour) << "\nStoring PublicPmids keys (this may take a while)\n";
+  KeyStorer key_storer();
+  TLOG(kGreen)
+      << "PublicPmids stored and varified successfully.\n"
+      << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
 }
 
-}  // namespace test
+}  // namespace tools
 
 }  // namespace vault_manager
 

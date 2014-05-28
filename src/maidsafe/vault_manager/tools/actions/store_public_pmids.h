@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2014 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,43 +16,29 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/process_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_STORE_PUBLIC_PMIDS_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_STORE_PUBLIC_PMIDS_H_
 
-#include <thread>
-#include <string>
-#include <vector>
+#include <future>
 
-#include "boost/filesystem/path.hpp"
+#include "maidsafe/common/types.h"
 
-#include "maidsafe/common/asio_service.h"
-#include "maidsafe/common/make_unique.h"
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
+#include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+namespace tools {
 
-TEST(ProcessManagerTest, BEH_Constructor) {
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  std::unique_ptr<AsioService> asio_service{ maidsafe::make_unique<AsioService>(1) };
-  std::shared_ptr<ProcessManager> process_manager{ ProcessManager::MakeShared(
-      asio_service->service(), path_to_vault, Port{ 7777 }) };
-  LOG(kInfo) << "Destroying asio...";
-  asio_service.reset();
-}
+struct LocalNetworkController;
 
-}  // namespace test
+void StorePublicPmids(LocalNetworkController* local_network_controller);
+
+}  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_STORE_PUBLIC_PMIDS_H_

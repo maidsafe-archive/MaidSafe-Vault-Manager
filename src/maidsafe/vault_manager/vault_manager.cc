@@ -26,7 +26,6 @@
 #include "maidsafe/common/application_support_directories.h"
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
-#include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
