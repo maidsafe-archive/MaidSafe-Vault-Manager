@@ -59,8 +59,11 @@ TEST(RpcHelperTest, BEH_SetResponseCallback) {
     callback(routing::SerialiseBootstrapContacts(bootstrap_list));
   });
 
-  for (auto& future : futures)
-    EXPECT_EQ(future.get(), bootstrap_list);
+  BootstrapList retrieved_bootstrap_list;
+  for (auto& future : futures) {
+    EXPECT_NO_THROW(retrieved_bootstrap_list = future.get());
+    EXPECT_EQ(bootstrap_list, retrieved_bootstrap_list);
+  }
 
   t.join();
 }
