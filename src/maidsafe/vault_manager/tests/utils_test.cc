@@ -18,10 +18,13 @@
 
 #include "maidsafe/vault_manager/utils.h"
 
-#include <string>
+#include <utility>
 
-#include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/test.h"
+#include "maidsafe/common/utils.h"
+
+#include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 
 namespace maidsafe {
 
@@ -29,7 +32,32 @@ namespace vault_manager {
 
 namespace test {
 
-TEST(UtilsTest, BEH_WrapAndUnwrapMessage) { GTEST_FAIL() << "Needs test"; }
+TEST(UtilsTest, BEH_ParseProto) {
+  EXPECT_THROW(ParseProto<protobuf::Challenge>(""), common_error);
+
+  protobuf::Challenge challenge;
+  const std::string kPlainText(RandomString(100));
+  challenge.set_plaintext(kPlainText);
+  EXPECT_EQ(kPlainText, ParseProto<protobuf::Challenge>(challenge.SerializeAsString()).plaintext());
+}
+
+TEST(UtilsTest, BEH_WrapAndUnwrapMessage) {
+  protobuf::Challenge challenge;
+  const std::string kPlainText(RandomString(100));
+  challenge.set_plaintext(kPlainText);
+
+  MessageAndType message_and_type{ std::make_pair(challenge.SerializeAsString(),
+                                                  MessageType::kChallenge) };
+  std::string serialised_message;
+  EXPECT_NO_THROW(serialised_message = WrapMessage(message_and_type));
+  EXPECT_FALSE(serialised_message.empty());
+
+  EXPECT_THROW(UnwrapMessage(""), common_error);
+  MessageAndType recovered;
+  EXPECT_NO_THROW(recovered = UnwrapMessage(serialised_message));
+  EXPECT_EQ(message_and_type, recovered);
+  EXPECT_EQ(kPlainText, ParseProto<protobuf::Challenge>(message_and_type.first).plaintext());
+}
 
 }  // namespace test
 

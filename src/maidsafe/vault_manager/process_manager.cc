@@ -283,7 +283,6 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
     LOG(kWarning) << "Timed out waiting for new process to connect via TCP.";
     OnProcessExit(label, -1, true);
   });
-
 }
 
 void ProcessManager::InitSignalHandler() {
@@ -326,7 +325,7 @@ void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_e
   catch (const std::exception& e) {
     LOG(kError) << "Vault process doesn't exist: " << boost::diagnostic_information(e);
     return;
-   }
+  }
   itr->on_exit = on_exit_functor;
   itr->status = ProcessStatus::kStopping;
   SendVaultShutdownRequest(itr->info.tcp_connection);
@@ -353,7 +352,7 @@ bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   }
   return true;
 }
-  
+
 VaultInfo ProcessManager::Find(const NonEmptyString& label) const {
   return DoFind(label)->info;
 }
