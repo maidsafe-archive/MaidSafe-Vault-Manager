@@ -26,6 +26,7 @@
 
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
+#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/utils.h"
 
 
@@ -54,9 +55,12 @@ TEST(RpcHelperTest, BEH_SetResponseCallback) {
   for (int i(0); i < 3; ++i)
     futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
 
+  protobuf::BootstrapContactsResponse message;
+  message.set_serialised_bootstrap_contacts(routing::SerialiseBootstrapContacts(bootstrap_list));
+
   std::thread t([&]() {
     Sleep(std::chrono::milliseconds(100));
-    callback(routing::SerialiseBootstrapContacts(bootstrap_list));
+    callback(message.SerializeAsString());
   });
 
   BootstrapList retrieved_bootstrap_list;
