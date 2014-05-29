@@ -238,46 +238,6 @@ void ProcessManager::AssignOwner(const NonEmptyString& label,
   itr->info.max_disk_usage = max_disk_usage;
 }
 
-void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor) {
-  auto itr(std::begin(vaults_));
-  try {
-    itr = DoFind(connection);
-  }
-  catch (const std::exception& e) {
-    LOG(kError) << "Vault process doesn't exist: " << boost::diagnostic_information(e);
-    return;
-  }
-  itr->on_exit = on_exit_functor;
-  itr->status = ProcessStatus::kStopping;
-  SendVaultShutdownRequest(itr->info.tcp_connection);
-  StopProcess(*itr);
-}
-
-bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
-  auto itr(std::begin(vaults_));
-  try {
-    itr = DoFind(connection);
-  }
-  catch (const maidsafe_error& error) {
-    if (error.code() == make_error_code(CommonErrors::no_such_element))
-      return false;
-    throw;
-  }
-  // Set the timer to stop the process without setting the status to kStopping.  This will cause the
-  // vault to be restarted unless it is explicitly stopped before the timer expires.
-  NonEmptyString label{ itr->info.label };
-  itr->timer->expires_from_now(kRpcTimeout);
-  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
-      LOG(kVerbose) << "Connection closed timer cancelled OK.";
-      return;
-    }
-    LOG(kWarning) << "Timed out after connection closed; about to restart the vault if required.";
-    OnProcessExit(label, -1, true);
-  });
-  return true;
-}
-
 void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
   if (itr->status != ProcessStatus::kBeforeStarted) {
     LOG(kError) << "Process has already been started.";
@@ -323,19 +283,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
     LOG(kWarning) << "Timed out waiting for new process to connect via TCP.";
     OnProcessExit(label, -1, true);
   });
-}
 
-void ProcessManager::StopProcess(Child& vault) {
-  NonEmptyString label{ vault.info.label };
-  vault.timer->expires_from_now(kVaultStopTimeout);
-  vault.timer->async_wait([this, label](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
-      LOG(kVerbose) << "Vault termination timer cancelled OK.";
-      return;
-    }
-    LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
-    OnProcessExit(label, -1, true);
-  });
 }
 
 void ProcessManager::InitSignalHandler() {
@@ -370,6 +318,42 @@ void ProcessManager::InitSignalHandler() {
 #endif
 }
 
+void ProcessManager::StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor) {
+  auto itr(std::begin(vaults_));
+  try {
+    itr = DoFind(connection);
+  }
+  catch (const std::exception& e) {
+    LOG(kError) << "Vault process doesn't exist: " << boost::diagnostic_information(e);
+    return;
+   }
+  itr->on_exit = on_exit_functor;
+  itr->status = ProcessStatus::kStopping;
+  SendVaultShutdownRequest(itr->info.tcp_connection);
+  NonEmptyString label{ itr->info.label };
+  itr->timer->expires_from_now(kVaultStopTimeout);
+  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
+    if (error_code && error_code == boost::asio::error::operation_aborted) {
+      LOG(kVerbose) << "Vault termination timer cancelled OK.";
+      return;
+    }
+    LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
+    OnProcessExit(label, -1, true);
+  });
+}
+
+bool ProcessManager::HandleConnectionClosed(TcpConnectionPtr connection) {
+  try {
+    OnProcessExit(DoFind(connection)->info.label, -1, true);
+  }
+  catch (const maidsafe_error& error) {
+    if (error.code() == make_error_code(CommonErrors::no_such_element))
+      return false;
+    throw;
+  }
+  return true;
+}
+  
 VaultInfo ProcessManager::Find(const NonEmptyString& label) const {
   return DoFind(label)->info;
 }

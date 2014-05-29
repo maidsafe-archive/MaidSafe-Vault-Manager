@@ -47,6 +47,7 @@ TEST(ProcessManagerTest, BEH_Constructor) {
   std::unique_ptr<AsioService> asio_service{ maidsafe::make_unique<AsioService>(1) };
   std::shared_ptr<ProcessManager> process_manager{ ProcessManager::MakeShared(
       asio_service->service(), path_to_vault, Port{ 7777 }) };
+  process_manager->StopAll();
   LOG(kInfo) << "Destroying asio...";
   asio_service.reset();
 }

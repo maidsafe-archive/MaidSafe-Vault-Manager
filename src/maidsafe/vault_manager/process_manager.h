@@ -98,7 +98,6 @@ class ProcessManager {
   friend void swap(Child& lhs, Child& rhs);
 
   void StartProcess(std::vector<Child>::iterator itr);
-  void StopProcess(Child& vault);
   void InitSignalHandler();
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
