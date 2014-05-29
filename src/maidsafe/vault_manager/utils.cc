@@ -80,7 +80,8 @@ routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& 
   protobuf::BootstrapContactsResponse bootstrap_contact_response{
       ParseProto<protobuf::BootstrapContactsResponse>(message) };
 
-  return routing::ParseBootstrapContacts(bootstrap_contact_response.serialised_bootstrap_contacts());
+  return routing::ParseBootstrapContacts(
+      bootstrap_contact_response.serialised_bootstrap_contacts());
 }
 
 template <>
