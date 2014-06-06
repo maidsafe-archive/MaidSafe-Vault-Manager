@@ -76,13 +76,25 @@ void TcpListener::StartListening(Port desired_port) {
 }
 
 void TcpListener::DoStartListening(Port port) {
+  // Try IPv6 first.
   asio::ip::tcp::endpoint endpoint{ asio::ip::address_v6::loopback(), port };
   on_scope_exit cleanup_on_error([&] {
     boost::system::error_code ec;
     acceptor_.close(ec);
   });
 
-  acceptor_.open(endpoint.protocol());
+  try {
+    acceptor_.open(endpoint.protocol());
+  }
+  catch (const boost::system::system_error& error) {
+    if (error.code() == asio::error::make_error_code(asio::error::address_family_not_supported)) {
+      // Try IPv4 now.
+      endpoint = asio::ip::tcp::endpoint{ asio::ip::address_v4::loopback(), port };
+      acceptor_.open(endpoint.protocol());
+    } else {
+      throw;
+    }
+  }
 
   // Below option is interpreted differently by Windows and shouldn't be used.  On, Windows, this
   // will allow two processes to listen on the same port.  On a POSIX-compliant OS, this option
