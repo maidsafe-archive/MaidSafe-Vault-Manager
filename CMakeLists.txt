@@ -104,8 +104,9 @@ endif()
 # Package                                                                                          #
 #==================================================================================================#
 set(EXPORT_NAME maidsafe_vault_manager)
-install(TARGETS maidsafe_vault_manager EXPORT ${EXPORT_NAME} ARCHIVE DESTINATION bin/lib)
+install(TARGETS maidsafe_vault_manager EXPORT ${EXPORT_NAME} ARCHIVE DESTINATION lib)
+set(EXPORT_NAME vault_manager)
+install(TARGETS vault_manager EXPORT ${EXPORT_NAME} RUNTIME DESTINATION bin)
 # install(TARGETS local_network_controller EXPORT ${EXPORT_NAME} RUNTIME DESTINATION bin)
 
-install(FILES ${VaultManagerApi} DESTINATION include/maidsafe/routing)
-install(FILES ${VaultManagerHeaders} DESTINATION src/maidsafe/routing)
+install(FILES ${VaultManagerApi} DESTINATION include/maidsafe/vault_manager)
