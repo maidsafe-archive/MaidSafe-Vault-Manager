@@ -66,15 +66,16 @@ TcpConnection::TcpConnection(AsioService& asio_service, uint16_t remote_port)
     LOG(kError) << "This must be a single-threaded io_service, or an asio strand will be required.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  try {
-    socket_.connect(ip::tcp::endpoint{ ip::address_v6::loopback(), remote_port });
-    if (!socket_.is_open())
-      BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
-  }
-  catch (const boost::system::system_error& error) {
-    LOG(kError) << "Failed to connect to " << remote_port << ": "
-                << boost::diagnostic_information(error);
-    throw;
+
+  boost::system::error_code ec;
+  // Try IPv6 first.
+  socket_.connect(ip::tcp::endpoint{ ip::address_v6::loopback(), remote_port }, ec);
+  if (ec && ec == asio::error::make_error_code(asio::error::address_family_not_supported))
+    // Try IPv4 now.
+    socket_.connect(ip::tcp::endpoint{ ip::address_v4::loopback(), remote_port }, ec);
+  if (!socket_.is_open()) {
+    LOG(kError) << "Failed to connect to " << remote_port << ": " << ec.message();
+    BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
   }
 }
 
