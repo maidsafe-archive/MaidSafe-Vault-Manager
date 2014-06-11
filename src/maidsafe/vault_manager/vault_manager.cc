@@ -30,6 +30,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
+#include "maidsafe/nfs/client/maid_node_nfs.h"
 
 #include "maidsafe/vault_manager/client_connections.h"
 #include "maidsafe/vault_manager/dispatcher.h"
@@ -77,6 +78,17 @@ fs::path GetVaultExecutablePath() {
     return GetPathToVault();
 #endif
   return process::GetOtherExecutablePath(fs::path{ "vault" });
+}
+
+void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer,
+                      const boost::filesystem::path bootstrap_file_path) {
+  std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs(nfs_client::MaidNodeNfs::MakeShared(
+      passport::MaidAndSigner{ passport::CreateMaidAndSigner() },
+      routing::ReadBootstrapFile(bootstrap_file_path)));
+
+  client_nfs->Put(passport::PublicPmid{ pmid_and_signer.first }).get();
+  client_nfs->Put(passport::PublicAnpmid{ pmid_and_signer.second }).get();
+  client_nfs->Stop();
 }
 
 }  // unnamed namespace
@@ -227,6 +239,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     if (!vault_info.pmid_and_signer) {
       vault_info.pmid_and_signer =
           std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+      PutPmidAndSigner(*vault_info.pmid_and_signer, kBootstrapFilePath_);
     }
 
     process_manager_->AddProcess(std::move(vault_info));
