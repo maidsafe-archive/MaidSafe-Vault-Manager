@@ -205,9 +205,9 @@ void ClientInterface::HandleLogMessage(const std::string& message) {
 #ifdef TESTING
 void ClientInterface::SetTestEnvironment(Port test_vault_manager_port,
     boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
-    routing::BootstrapContact bootstrap_contact, int pmid_list_size) {
-  test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, bootstrap_contact,
-                       pmid_list_size);
+    routing::BootstrapContacts bootstrap_contacts, int pmid_list_size) {
+  test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault,
+                       bootstrap_contacts, pmid_list_size);
 }
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(

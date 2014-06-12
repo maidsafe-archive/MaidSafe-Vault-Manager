@@ -36,7 +36,7 @@ namespace tools {
 void ConnectToVaultManager(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
       static_cast<Port>(local_network_controller->vault_manager_port),
-      GetDefault().kTestEnvRootDir, GetDefault().kPathToVault, routing::BootstrapContact{}, 0);
+      GetDefault().kTestEnvRootDir, GetDefault().kPathToVault, routing::BootstrapContacts{}, 0);
   passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
   local_network_controller->client_interface =
       maidsafe::make_unique<ClientInterface>(maid_and_signer.first);

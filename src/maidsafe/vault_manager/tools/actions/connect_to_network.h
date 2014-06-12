@@ -16,8 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
-#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_CONNECT_TO_NETWORK_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_CONNECT_TO_NETWORK_H_
 
 #include <future>
 
@@ -33,20 +33,11 @@ namespace tools {
 
 struct LocalNetworkController;
 
-class ChooseVaultCount : public Command {
- public:
-  explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
-  virtual void GetChoice();
-  virtual void HandleChoice();
-
- private:
-  std::string Instruction();
-};
-
+void ConnectToNetwork(LocalNetworkController* local_network_controller);
 }  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_ACTIONS_CONNECT_TO_NETWORK_H_

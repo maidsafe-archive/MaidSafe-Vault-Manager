@@ -36,24 +36,35 @@ Begin::Begin(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Initial options.",
               "\nPlease choose from the following options ('" + kQuitCommand_ + "' to quit):\n\n"
               "  1. Start a new network on this machine.\n"
-              "  2. Connect to an existing VaultManager on this machine.\n" + kPrompt_,
+              "  2. Connect to an existing VaultManager on this machine.\n"
+              "  3. Connect to an existing Network.\n" + kPrompt_,
               "MaidSafe Local Network Controller " + kApplicationVersion() + ": Main Options"),
       choice_(0) {}
 
 void Begin::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
+  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 3))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 
 void Begin::HandleChoice() {
   if (choice_ == 1) {
+    local_network_controller_->new_network = true;
+    local_network_controller_->current_command =
+        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
+  } else if (choice_ == 2) {
+    local_network_controller_->current_command =
+        maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
+  } else if (choice_ == 3) {
     local_network_controller_->current_command =
         maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
   } else {
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
+//    local_network_controller_->current_command =
+//        maidsafe::make_unique<ChooseTest>(local_network_controller_);
+      assert(false);                                                                               // FIXME Prakash
   }
+
+
   TLOG(kDefaultColour) << kSeparator_;
 }
 

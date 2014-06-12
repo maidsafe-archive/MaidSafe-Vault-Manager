@@ -16,14 +16,14 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
-#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
+#include "maidsafe/vault_manager/tools/commands/choose_path_to_bootstrap.h"
+#include <string>
 
-#include <future>
+#include "maidsafe/common/log.h"
+#include "maidsafe/common/make_unique.h"
 
-#include "maidsafe/common/types.h"
-
-#include "maidsafe/vault_manager/tools/commands/commands.h"
+#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/commands/choose_vault_manager_port.h"
 
 namespace maidsafe {
 
@@ -31,22 +31,25 @@ namespace vault_manager {
 
 namespace tools {
 
-struct LocalNetworkController;
+ChoosePathToBootstrap::ChoosePathToBootstrap(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Path to bootstrap file.",
+              "  'Enter' to use default\n\"" + GetDefault().kPathToBootstrap.string() + "\"\n" +
+              kPrompt_) {}
 
-class ChooseVaultCount : public Command {
- public:
-  explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
-  virtual void GetChoice();
-  virtual void HandleChoice();
+void ChoosePathToBootstrap::GetChoice() {
+  TLOG(kDefaultColour) << kInstructions_;
+  while (!DoGetChoice(local_network_controller_->path_to_bootstrap_file,
+                      &GetDefault().kPathToBootstrap, true))
+    TLOG(kDefaultColour) << '\n' << kInstructions_;
+}
 
- private:
-  std::string Instruction();
-};
+void ChoosePathToBootstrap::HandleChoice() {
+  local_network_controller_->current_command =
+      maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, false);
+}
 
 }  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
-
-#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_

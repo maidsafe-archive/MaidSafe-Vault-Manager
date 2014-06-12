@@ -66,11 +66,9 @@ fs::path GetBootstrapFilePath() {
   return GetPath(kBootstrapFilename);
 }
 
-#ifndef TESTING
 fs::path GetVaultDir(const std::string& debug_id) {
   return GetPath(debug_id);
 }
-#endif
 
 fs::path GetVaultExecutablePath() {
 #ifdef TESTING
@@ -227,7 +225,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
     protobuf::StartVaultRequest start_vault_message{
         ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
-    vault_info.vault_dir = start_vault_message.vault_dir();
+//    vault_info.vault_dir = start_vault_message.vault_dir();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
     vault_info.owner_name = client_name;
 #ifdef TESTING
@@ -241,7 +239,13 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
           std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
       PutPmidAndSigner(*vault_info.pmid_and_signer, kBootstrapFilePath_);
     }
-
+    if (!start_vault_message.has_vault_dir()) {
+      vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
+      if (!fs::exists(vault_info.vault_dir))
+        fs::create_directories(vault_info.vault_dir);
+    } else {
+      vault_info.vault_dir = start_vault_message.vault_dir();
+    }
     process_manager_->AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_->GetAll());
     return;

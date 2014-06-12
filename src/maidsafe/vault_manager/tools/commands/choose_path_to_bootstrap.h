@@ -16,12 +16,8 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
-#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
-
-#include <future>
-
-#include "maidsafe/common/types.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 
@@ -33,14 +29,11 @@ namespace tools {
 
 struct LocalNetworkController;
 
-class ChooseVaultCount : public Command {
+class ChoosePathToBootstrap : public Command {
  public:
-  explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
+  explicit ChoosePathToBootstrap(LocalNetworkController* local_network_controller);
   virtual void GetChoice();
   virtual void HandleChoice();
-
- private:
-  std::string Instruction();
 };
 
 }  // namespace tools
@@ -49,4 +42,4 @@ class ChooseVaultCount : public Command {
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_VAULT_COUNT_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_

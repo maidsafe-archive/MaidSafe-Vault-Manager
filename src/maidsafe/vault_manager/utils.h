@@ -98,7 +98,7 @@ namespace test {
 
 void SetEnvironment(Port test_vault_manager_port, const boost::filesystem::path& test_env_root_dir,
     const boost::filesystem::path& path_to_vault,
-    const routing::BootstrapContact& bootstrap_contact = routing::BootstrapContact(),
+    const routing::BootstrapContacts& bootstrap_contacts,
     int pmid_list_size = 0);
 
 }  // namespace test

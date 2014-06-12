@@ -70,7 +70,7 @@ class ClientInterface {
   // The function should only be called once - further calls are no-ops.
   static void SetTestEnvironment(
       uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
-      boost::filesystem::path path_to_vault, routing::BootstrapContact bootstrap_contact,
+      boost::filesystem::path path_to_vault, routing::BootstrapContacts bootstrap_contacts,
       int pmid_list_size);
 
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(

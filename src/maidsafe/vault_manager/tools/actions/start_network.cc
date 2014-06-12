@@ -45,6 +45,7 @@
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_manager.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -139,14 +140,6 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
   catch (const std::exception&) {
     zero_state_nodes_started.set_exception(std::current_exception());
   }
-}
-
-void StartVaultManagerAndClientInterface(LocalNetworkController* local_network_controller) {
-  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface\n";
-  local_network_controller->vault_manager = maidsafe::make_unique<VaultManager>();
-  passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
-  local_network_controller->client_interface =
-      maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
 }
 
 void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
@@ -249,7 +242,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
       static_cast<Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
-      routing::BootstrapContact{}, local_network_controller->vault_count + 2);
+      routing::BootstrapContacts{}, local_network_controller->vault_count + 2);
 
   auto space_info(fs::space(local_network_controller->test_env_root_dir));
   DiskUsage max_usage{ (9 * space_info.available) / (10 * local_network_controller->vault_count) };
