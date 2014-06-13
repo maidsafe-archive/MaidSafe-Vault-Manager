@@ -80,13 +80,15 @@ fs::path GetVaultExecutablePath() {
 
 void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer,
                       const boost::filesystem::path bootstrap_file_path) {
+  LOG(kVerbose) << "Creating Random client to store public pmid key";
   std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs(nfs_client::MaidNodeNfs::MakeShared(
       passport::MaidAndSigner{ passport::CreateMaidAndSigner() },
       routing::ReadBootstrapFile(bootstrap_file_path)));
-
   client_nfs->Put(passport::PublicPmid{ pmid_and_signer.first }).get();
   client_nfs->Put(passport::PublicAnpmid{ pmid_and_signer.second }).get();
+  LOG(kVerbose) << "stored public pmid key";
   client_nfs->Stop();
+  LOG(kVerbose) << "Stopped Nfs client";
 }
 
 }  // unnamed namespace

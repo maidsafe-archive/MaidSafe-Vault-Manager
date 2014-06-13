@@ -110,7 +110,8 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultRequest(
     const NonEmptyString& label) {
-  std::shared_ptr<VaultRequest> request(std::make_shared<VaultRequest>(asio_service_.service()));
+  std::shared_ptr<VaultRequest> request(std::make_shared<VaultRequest>(asio_service_.service(),
+                                                                       std::chrono::seconds(30)));
   request->timer.async_wait([request, label, this](const boost::system::error_code& ec) {
     if (ec && ec == boost::asio::error::operation_aborted) {
       LOG(kVerbose) << "Timer cancelled. OK";
