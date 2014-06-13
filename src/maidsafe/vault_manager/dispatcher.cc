@@ -59,7 +59,8 @@ void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& va
                            const fs::path& vault_dir, DiskUsage max_disk_usage) {
   protobuf::StartVaultRequest message;
   message.set_label(vault_label.string());
-  message.set_vault_dir(vault_dir.string());
+  if (!vault_dir.empty())
+    message.set_vault_dir(vault_dir.string());
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kStartVaultRequest)));
