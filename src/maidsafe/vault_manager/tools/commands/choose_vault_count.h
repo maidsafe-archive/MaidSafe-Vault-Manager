@@ -39,8 +39,6 @@ class ChooseVaultCount : public Command {
   virtual void GetChoice();
   virtual void HandleChoice();
 
- private:
-  std::string Instruction();
 };
 
 }  // namespace tools

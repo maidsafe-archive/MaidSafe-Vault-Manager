@@ -26,7 +26,7 @@ namespace vault_manager {
 
 namespace tools {
 
-class LocalNetworkController;
+struct LocalNetworkController;
 
 void StartVaultManagerAndClientInterface(LocalNetworkController* local_network_controller);
 
