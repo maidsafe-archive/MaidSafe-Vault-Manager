@@ -23,7 +23,7 @@
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
-#include "maidsafe/vault_manager/tools/commands/choose_vault_manager_port.h"
+#include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
 
 namespace maidsafe {
 
@@ -45,7 +45,7 @@ void ChoosePathToBootstrap::GetChoice() {
 
 void ChoosePathToBootstrap::HandleChoice() {
   local_network_controller_->current_command =
-      maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, false);
+      maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
 }
 
 }  // namespace tools

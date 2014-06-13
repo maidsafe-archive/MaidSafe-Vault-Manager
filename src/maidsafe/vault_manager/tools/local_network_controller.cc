@@ -39,7 +39,7 @@ namespace tools {
 Default::Default()
     : kTestEnvRootDir(boost::filesystem::temp_directory_path() / "MaidSafe_TestNetwork"),
       kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{ "vault" })),
-      kPathToBootstrap(boost::filesystem::temp_directory_path()),
+      kPathToBootstrap(boost::filesystem::temp_directory_path() / "bootstrap.dat"),
       kVaultManagerPort(44444),
       kVaultCountNewNetwork(12),
       kVaultCount(1) {}
