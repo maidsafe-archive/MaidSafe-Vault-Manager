@@ -109,6 +109,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ COMPONENT Development DESTINATI
 if(MaidsafeTesting)
   install(TARGETS local_network_controller COMPONENT Tools CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
   install(TARGETS local_network_controller COMPONENT Tools CONFIGURATIONS Release RUNTIME DESTINATION bin)
-  install(TARGETS TESTvault_manager dummy_vault local_network_controller COMPONENT Tests CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
-  install(TARGETS TESTvault_manager dummy_vault local_network_controller COMPONENT Tests CONFIGURATIONS Release RUNTIME DESTINATION bin)
+  install(TARGETS TESTvault_manager dummy_vault COMPONENT Tests CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
+  install(TARGETS TESTvault_manager dummy_vault COMPONENT Tests CONFIGURATIONS Release RUNTIME DESTINATION bin)
 endif()
