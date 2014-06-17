@@ -278,8 +278,10 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   Sleep(std::chrono::seconds(local_network_controller->vault_count / 2));
 
   TLOG(kDefaultColour) << "Storing PublicPmid keys (this may take a while)\n";
-  PublicPmidStorer public_pmid_storer;
-  public_pmid_storer.Store();
+  {
+    PublicPmidStorer public_pmid_storer;
+    public_pmid_storer.Store();
+  }
   TLOG(kDefaultColour) << "PublicPmid keys stored and verified successfully\n";
   TLOG(kGreen) << "Network setup completed successfully.\n"
       << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
