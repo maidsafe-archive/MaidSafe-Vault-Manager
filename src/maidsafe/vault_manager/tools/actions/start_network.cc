@@ -154,7 +154,7 @@ void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskU
   catch (const std::exception& e) {
     LOG(kWarning) << boost::diagnostic_information(e);
   }
-  Sleep(std::chrono::seconds(1));
+  Sleep(std::chrono::seconds(3));
 
   TLOG(kDefaultColour) << "Starting vault 2\n";  // index 3 in pmid list
   vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
@@ -167,7 +167,7 @@ void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskU
   catch (const std::exception& e) {
     LOG(kWarning) << boost::diagnostic_information(e);
   }
-  Sleep(std::chrono::seconds(1));
+  Sleep(std::chrono::seconds(3));
 }
 
 void StartRemainingVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
