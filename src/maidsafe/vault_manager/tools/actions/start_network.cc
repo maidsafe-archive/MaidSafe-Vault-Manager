@@ -58,7 +58,6 @@ namespace tools {
 
 namespace {
 
-// FIXME (Prakash): Need to do lookup in public pmid list and network as well.
 void GivePublicPmidKey(const NodeId& node_id, routing::GivePublicKeyFunctor give_key,
                        const std::vector<passport::PublicPmid>& public_pmids) {
   assert(!public_pmids.empty());

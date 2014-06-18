@@ -60,9 +60,7 @@ void Begin::HandleChoice() {
     local_network_controller_->current_command =
         maidsafe::make_unique<ChoosePathToBootstrap>(local_network_controller_);
   } else {
-//    local_network_controller_->current_command =
-//        maidsafe::make_unique<ChooseTest>(local_network_controller_);
-      assert(false);                                                                               // FIXME Prakash
+    assert(false);  // TODO(Team) Implement other options
   }
 
 
