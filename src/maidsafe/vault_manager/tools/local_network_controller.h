@@ -45,6 +45,8 @@ struct Default {
   const boost::filesystem::path kPathToVault;
   const int kVaultManagerPort;
   const int kVaultCount;
+  const bool kCreateTestRootDir;
+  const bool kClearTestRootDir;
 };
 
 const Default& GetDefault();

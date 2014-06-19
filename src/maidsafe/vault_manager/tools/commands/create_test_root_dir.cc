@@ -40,12 +40,13 @@ CreateTestRootDir::CreateTestRootDir(LocalNetworkController* local_network_contr
     : Command(local_network_controller, "Create VaultManager root directory.",
               "  Do you wish to create \n\"" +
                 local_network_controller->test_env_root_dir.string() +
-                "\"?\nEnter 'y' or 'n'.\n" + kPrompt_),
+                "\"?\nEnter 'y' or 'n'. ('Enter' to use default " +
+                (GetDefault().kCreateTestRootDir ? "y" : "n") + ")\n" + kPrompt_),
       create_(false) {}
 
 void CreateTestRootDir::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(create_, static_cast<bool*>(nullptr)))
+  while (!DoGetChoice(create_, &GetDefault().kCreateTestRootDir))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 

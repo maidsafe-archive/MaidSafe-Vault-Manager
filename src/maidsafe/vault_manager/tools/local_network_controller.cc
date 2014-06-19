@@ -40,7 +40,9 @@ Default::Default()
     : kTestEnvRootDir(boost::filesystem::temp_directory_path() / "MaidSafe_TestNetwork"),
       kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{ "vault" })),
       kVaultManagerPort(44444),
-      kVaultCount(12) {}
+      kVaultCount(12),
+      kCreateTestRootDir(true),
+      kClearTestRootDir(true) {}
 
 const Default& GetDefault() {
   static Default the_defaults;
