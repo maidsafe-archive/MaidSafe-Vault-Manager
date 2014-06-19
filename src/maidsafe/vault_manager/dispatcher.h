@@ -76,7 +76,7 @@ void SendVaultShutdownRequest(TcpConnectionPtr connection);
 
 void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usage);
 
-void SendLogMessage(TcpConnectionPtr connection, const std::string log_message);
+void SendLogMessage(TcpConnectionPtr connection, const std::string& log_message);
 
 #ifdef TESTING
 void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
