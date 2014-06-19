@@ -172,7 +172,6 @@ void HandleProgramOptions(int argc, char** argv) {
   }
 
   fs::path root_dir, path_to_vault;
-  std::vector<boost::asio::ip::udp::endpoint> booststrap_ips;
   if (variables_map.count("root_dir") != 0)
     root_dir = variables_map["root_dir"].as<std::string>();
   if (variables_map.count("vault_path") != 0)
