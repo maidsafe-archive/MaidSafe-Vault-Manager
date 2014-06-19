@@ -38,7 +38,6 @@ class ChooseVaultCount : public Command {
   explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
   virtual void GetChoice();
   virtual void HandleChoice();
-
 };
 
 }  // namespace tools
