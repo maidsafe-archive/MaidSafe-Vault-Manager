@@ -208,7 +208,7 @@ class PublicPmidStorer {
     passport::PublicMaid public_maid{ kMaidAndSigner_.first };
     passport::PublicAnmaid public_anmaid{ kMaidAndSigner_.second };
     client_nfs_ = maidsafe::make_unique<nfs_client::MaidNodeNfs>(asio_service_, client_routing_,
-        passport::PublicPmid::Name{ Identity{ NodeId{ NodeId::kRandomId }.string() } });
+        passport::PublicPmid::Name{ Identity{ NodeId{ NodeId::IdType::kRandomId }.string() } });
     client_nfs_->CreateAccount(nfs_vault::AccountCreation(public_maid, public_anmaid)).get();
     TLOG(kDefaultColour) << "Account created for Maid " << DebugId(public_maid.name()) << '\n';
   }
