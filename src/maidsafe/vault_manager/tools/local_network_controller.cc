@@ -42,7 +42,9 @@ Default::Default()
       kPathToBootstrap(boost::filesystem::temp_directory_path() / "bootstrap.dat"),
       kVaultManagerPort(44444),
       kVaultCountNewNetwork(12),
-      kVaultCount(1) {}
+      kVaultCount(1),
+      kCreateTestRootDir(true),
+      kClearTestRootDir(true) {}
 
 const Default& GetDefault() {
   static Default the_defaults;

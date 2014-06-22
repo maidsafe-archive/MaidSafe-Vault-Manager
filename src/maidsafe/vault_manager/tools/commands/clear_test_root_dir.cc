@@ -39,13 +39,14 @@ namespace tools {
 ClearTestRootDir::ClearTestRootDir(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Clear VaultManager root directory.",
               "  Do you wish to remove all contents of \n\"" +
-              local_network_controller->test_env_root_dir.string() + "\"?\nEnter 'y' or 'n'.\n" +
+              local_network_controller->test_env_root_dir.string() + "\"?\nEnter 'y' or 'n'." +
+              " ('Enter' to use default " + (GetDefault().kClearTestRootDir ? "y" : "n") + ")\n" +
               kPrompt_),
       clear_(false) {}
 
 void ClearTestRootDir::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(clear_, static_cast<bool*>(nullptr)))
+  while (!DoGetChoice(clear_, &GetDefault().kClearTestRootDir))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 

@@ -47,6 +47,8 @@ struct Default {
   const int kVaultManagerPort;
   const int kVaultCountNewNetwork;
   const int kVaultCount;
+  const bool kCreateTestRootDir;
+  const bool kClearTestRootDir;
 };
 
 const Default& GetDefault();
