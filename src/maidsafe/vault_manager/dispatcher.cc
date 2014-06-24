@@ -181,6 +181,10 @@ void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& va
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                               MessageType::kStartVaultRequest)));
 }
+
+void SendMarkNetworkAsStableRequest(TcpConnectionPtr connection) {
+  connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kMarkNetworkAsStable)));
+}
 #endif
 
 }  //  namespace vault_manager

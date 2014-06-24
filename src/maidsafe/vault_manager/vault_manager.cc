@@ -328,6 +328,10 @@ void VaultManager::HandleBootstrapContactsRequest(TcpConnectionPtr connection) {
   SendBootstrapContactsResponse(connection, bootstrap_file);
 }
 
+void VaultManager::HandleMarkNetworkAsStableRequest(TcpConnectionPtr connection) {
+
+}
+
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
   try {
     VaultInfo vault_info(process_manager_->Find(connection));

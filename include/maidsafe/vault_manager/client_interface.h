@@ -75,6 +75,12 @@ class ClientInterface {
 
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
+
+  // Used by tool to indicate that it is satisfied the new network (or connected network) is stable.
+  void MarkNetworkAsStable();
+
+  // Blocks until MarkNetworkAsStable is called.
+  std::future<void> WaitForStableNetwork();
 #endif
 
  private:

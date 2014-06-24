@@ -69,7 +69,9 @@ DEFINE_OSTREAMABLE_ENUM_VALUES(MessageType, int32_t,
     (BootstrapContactsResponse)
     (JoinedNetwork)
     (BootstrapContact)
-    (LogMessage))
+    (LogMessage)
+    (MarkNetworkAsStable)
+    (NetworkStable))
 
 typedef std::pair<std::string, MessageType> MessageAndType;
 
