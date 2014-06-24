@@ -110,6 +110,7 @@ VaultManager::VaultManager()
     VaultInfo vault_info;
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
+    PutPmidAndSigner(*vault_info.pmid_and_signer, kBootstrapFilePath_);
     vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
     if (!fs::exists(vault_info.vault_dir))
       fs::create_directories(vault_info.vault_dir);
