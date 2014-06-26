@@ -37,6 +37,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
+#include "maidsafe/routing/bootstrap_file_operations.h"
+
 #include "maidsafe/vault_manager/vault_manager.h"
 #include "maidsafe/vault_manager/utils.h"
 
@@ -177,7 +179,8 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("vault_path") != 0)
     path_to_vault = variables_map["vault_path"].as<std::string>();
 
-  maidsafe::vault_manager::test::SetEnvironment(port, root_dir, path_to_vault);
+  maidsafe::vault_manager::test::SetEnvironment(port, root_dir, path_to_vault,
+                                                maidsafe::routing::BootstrapContacts());
 #endif
 }
 

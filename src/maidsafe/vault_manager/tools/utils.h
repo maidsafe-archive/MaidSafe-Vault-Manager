@@ -19,11 +19,16 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_UTILS_H_
 #define MAIDSAFE_VAULT_MANAGER_TOOLS_UTILS_H_
 
+
 namespace maidsafe {
 
 namespace vault_manager {
 
 namespace tools {
+
+struct LocalNetworkController;
+
+void StartVaultManagerAndClientInterface(LocalNetworkController* local_network_controller);
 
 }  // namespace tools
 

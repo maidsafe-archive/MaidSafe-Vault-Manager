@@ -43,7 +43,9 @@ struct Default {
   Default();
   const boost::filesystem::path kTestEnvRootDir;
   const boost::filesystem::path kPathToVault;
+  const boost::filesystem::path kPathToBootstrap;
   const int kVaultManagerPort;
+  const int kVaultCountNewNetwork;
   const int kVaultCount;
   const bool kCreateTestRootDir;
   const bool kClearTestRootDir;
@@ -59,8 +61,9 @@ struct LocalNetworkController {
   std::unique_ptr<Command> current_command;
   std::unique_ptr<ClientInterface> client_interface;
   std::unique_ptr<VaultManager> vault_manager;
-  boost::filesystem::path test_env_root_dir, path_to_vault;
+  boost::filesystem::path test_env_root_dir, path_to_vault, path_to_bootstrap_file;
   int vault_manager_port, vault_count;
+  bool new_network;  // fixme
 };
 
 }  // namespace tools

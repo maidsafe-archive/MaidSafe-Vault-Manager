@@ -185,7 +185,7 @@ Port GetInitialListeningPort() {
 namespace test {
 
 void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_dir,
-    const fs::path& path_to_vault, const routing::BootstrapContact& bootstrap_contact,
+    const fs::path& path_to_vault, const routing::BootstrapContacts& bootstrap_contacts,
     int pmid_list_size) {
   std::call_once(test_env_flag, [=] {
     if (!fs::exists(test_env_root_dir) || !fs::is_directory(test_env_root_dir)) {
@@ -195,9 +195,8 @@ void SetEnvironment(Port test_vault_manager_port, const fs::path& test_env_root_
     g_test_vault_manager_port = test_vault_manager_port;
     g_test_env_root_dir = test_env_root_dir;
     g_path_to_vault = path_to_vault;
-    if (bootstrap_contact != routing::BootstrapContact{}) {
-      routing::WriteBootstrapFile(routing::BootstrapContacts{ 1, bootstrap_contact },
-                                  test_env_root_dir / kBootstrapFilename);
+    if (!bootstrap_contacts.empty()) {
+      routing::WriteBootstrapFile(bootstrap_contacts, test_env_root_dir / kBootstrapFilename);
     }
     protobuf::PublicPmidList protobuf_public_pmid_list;
     for (int i(0); i < pmid_list_size; ++i) {

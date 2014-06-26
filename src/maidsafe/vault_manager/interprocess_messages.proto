@@ -51,7 +51,7 @@ message PublicPmidList {
 // will trigger the StartVaultResponse in reply this message.
 message StartVaultRequest {
   required bytes label = 1;
-  required bytes vault_dir = 2;
+  optional bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
   optional int32 pmid_list_index = 4;  // TESTING only
 }

@@ -46,7 +46,8 @@ TEST(ClientInterfaceTest, BEH_Basic) {
       maidsafe::test::CreateTestPath("MaidSafe_TestClientInterface") };
   fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
   routing::BootstrapContact bootstrap_contact{ GetLocalIp(), maidsafe::test::GetRandomPort() };
-  SetEnvironment(Port{ 8888 }, *test_env_root_dir, path_to_vault, bootstrap_contact);
+  routing::BootstrapContacts bootstrap_contacts(1, bootstrap_contact);
+  SetEnvironment(Port{ 8888 }, *test_env_root_dir, path_to_vault, bootstrap_contacts);
 
   VaultManager vault_manager;
   static_cast<void>(vault_manager);

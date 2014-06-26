@@ -38,15 +38,6 @@ class ChooseVaultCount : public Command {
   explicit ChooseVaultCount(LocalNetworkController* local_network_controller);
   virtual void GetChoice();
   virtual void HandleChoice();
-
- private:
-  void StartZeroStateRoutingNodes();
-  void StartVaultManagerAndClientInterface();
-  void StartFirstTwoVaults();
-  void StartRemainingVaults();
-
-  std::promise<void> zero_state_nodes_started_, finished_with_zero_state_nodes_;
-  DiskUsage max_disk_usage_;
 };
 
 }  // namespace tools

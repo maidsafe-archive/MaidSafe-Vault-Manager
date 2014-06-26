@@ -16,44 +16,30 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/vault_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_
 
-#include <memory>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
-
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
+#include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+namespace tools {
 
-TEST(VaultManagerTest, BEH_Basic) {
-  std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager") };
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  routing::BootstrapContact bootstrap_contact(GetLocalIp(), maidsafe::test::GetRandomPort());
-  routing::BootstrapContacts bootstrap_contacts(1, bootstrap_contact);
-  SetEnvironment(Port{ 7777 }, *test_env_root_dir, path_to_vault, bootstrap_contacts);
+struct LocalNetworkController;
 
-  VaultManager vault_manager;
+class ChoosePathToBootstrap : public Command {
+ public:
+  explicit ChoosePathToBootstrap(LocalNetworkController* local_network_controller);
+  virtual void GetChoice();
+  virtual void HandleChoice();
+};
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-}
-
-}  // namespace test
+}  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_CHOOSE_PATH_TO_BOOTSTRAP_H_

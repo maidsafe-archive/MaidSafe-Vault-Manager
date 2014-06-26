@@ -44,7 +44,9 @@ namespace detail {
 
 template <typename ResultType>
 struct PromiseAndTimer {
-  explicit PromiseAndTimer(boost::asio::io_service& io_service);
+  PromiseAndTimer(boost::asio::io_service& io_service,
+                  const std::chrono::steady_clock::duration& timeout = kRpcTimeout);
+
   void ParseAndSetValue(const std::string& message);
   void SetValue(ResultType&& result);  // Check
   void SetException(std::exception_ptr exception);
@@ -57,9 +59,10 @@ struct PromiseAndTimer {
 };
 
 template <typename ResultType>
-PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service)
+PromiseAndTimer<ResultType>::PromiseAndTimer(boost::asio::io_service& io_service,
+                                             const std::chrono::steady_clock::duration& timeout)
     : promise(),
-      timer(io_service, kRpcTimeout),
+      timer(io_service, timeout),
       once_flag() {}
 
 template <typename ResultType>

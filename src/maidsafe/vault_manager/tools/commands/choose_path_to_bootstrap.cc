@@ -16,43 +16,39 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/vault_manager.h"
+#include "maidsafe/vault_manager/tools/commands/choose_path_to_bootstrap.h"
+#include <string>
 
-#include <memory>
+#include "maidsafe/common/log.h"
+#include "maidsafe/common/make_unique.h"
 
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
-
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
+#include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+namespace tools {
 
-TEST(VaultManagerTest, BEH_Basic) {
-  std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager") };
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  routing::BootstrapContact bootstrap_contact(GetLocalIp(), maidsafe::test::GetRandomPort());
-  routing::BootstrapContacts bootstrap_contacts(1, bootstrap_contact);
-  SetEnvironment(Port{ 7777 }, *test_env_root_dir, path_to_vault, bootstrap_contacts);
+ChoosePathToBootstrap::ChoosePathToBootstrap(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Path to bootstrap file.",
+              "  'Enter' to use default\n\"" + GetDefault().kPathToBootstrap.string() + "\"\n" +
+              kPrompt_) {}
 
-  VaultManager vault_manager;
-
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+void ChoosePathToBootstrap::GetChoice() {
+  TLOG(kDefaultColour) << kInstructions_;
+  while (!DoGetChoice(local_network_controller_->path_to_bootstrap_file,
+                      &GetDefault().kPathToBootstrap, true))
+    TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 
-}  // namespace test
+void ChoosePathToBootstrap::HandleChoice() {
+  local_network_controller_->current_command =
+      maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
+}
+
+}  // namespace tools
 
 }  // namespace vault_manager
 

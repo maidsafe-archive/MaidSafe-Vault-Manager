@@ -45,6 +45,7 @@
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_manager.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/utils.h"
 
 
 namespace fs = boost::filesystem;
@@ -140,14 +141,6 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
   }
 }
 
-void StartVaultManagerAndClientInterface(LocalNetworkController* local_network_controller) {
-  TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface\n";
-  local_network_controller->vault_manager = maidsafe::make_unique<VaultManager>();
-  passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
-  local_network_controller->client_interface =
-      maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
-}
-
 void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
   TLOG(kDefaultColour) << "Starting vault 1\n";  // index 2 in pmid list
   std::string vault_dir_name{ DebugId(GetPmidAndSigner(2).first.name().value) };
@@ -189,28 +182,23 @@ void StartRemainingVaults(LocalNetworkController* local_network_controller, Disk
   }
 }
 
+}  // unnamed namespace
+
 class PublicPmidStorer {
  public:
   PublicPmidStorer()
-      : kMaidAndSigner_(passport::CreateMaidAndSigner()),
-        client_routing_(kMaidAndSigner_.first),
-        client_nfs_(),
-        asio_service_(2) {
-    vault_manager::ClientInterface client_interface(kMaidAndSigner_.first);
-    auto routing_future(RoutingJoin(client_interface.GetBootstrapContacts().get()));
-    auto status(routing_future.wait_for(std::chrono::minutes(1)));
-    if (status == std::future_status::timeout) {
-      LOG(kError) << "Pmid storer can't join network";
-      BOOST_THROW_EXCEPTION(MakeError(RoutingErrors::not_connected));
-    }
-    routing_future.get();
-    LOG(kInfo) << "Pmid storer joined network";
-    passport::PublicMaid public_maid{ kMaidAndSigner_.first };
-    passport::PublicAnmaid public_anmaid{ kMaidAndSigner_.second };
-    client_nfs_ = maidsafe::make_unique<nfs_client::MaidNodeNfs>(asio_service_, client_routing_,
-        passport::PublicPmid::Name{ Identity{ NodeId{ NodeId::IdType::kRandomId }.string() } });
-    client_nfs_->CreateAccount(nfs_vault::AccountCreation(public_maid, public_anmaid)).get();
-    TLOG(kDefaultColour) << "Account created for Maid " << DebugId(public_maid.name()) << '\n';
+      : client_nfs_() {
+    const passport::MaidAndSigner kMaidAndSigner { passport::CreateMaidAndSigner() };
+    vault_manager::ClientInterface client_interface(kMaidAndSigner.first);
+    auto bootstrap_contacts = client_interface.GetBootstrapContacts().get();
+    client_nfs_ = nfs_client::MaidNodeNfs::MakeSharedZeroState(kMaidAndSigner, bootstrap_contacts,
+                                                               GetPublicPmids());
+    TLOG(kDefaultColour) << "Account created for Maid " << DebugId(kMaidAndSigner.first.name())
+                         << '\n';
+  }
+
+  ~PublicPmidStorer() {
+    client_nfs_->Stop();
   }
 
   void Store() {
@@ -238,43 +226,14 @@ class PublicPmidStorer {
   }
 
  private:
-  std::future<void> RoutingJoin(const routing::BootstrapContacts& bootstrap_contacts) {
-    std::shared_ptr<std::once_flag> joined_flag{ std::make_shared<std::once_flag>() };
-    std::shared_ptr<std::promise<void>> join_promise{ std::make_shared<std::promise<void>>() };
-    routing::Functors functors;
-    functors.network_status = [joined_flag, join_promise](int result) {
-      LOG(kVerbose) << "Network health: " << result;
-      if (result == 100)
-        std::call_once(*joined_flag, [join_promise] { join_promise->set_value(); });
-    };
-    functors.typed_message_and_caching.group_to_group.message_received =
-        [&](const routing::GroupToGroupMessage& msg) { client_nfs_->HandleMessage(msg); };
-    functors.typed_message_and_caching.group_to_single.message_received =
-        [&](const routing::GroupToSingleMessage& msg) { client_nfs_->HandleMessage(msg); };
-    functors.typed_message_and_caching.single_to_group.message_received =
-        [&](const routing::SingleToGroupMessage& msg) { client_nfs_->HandleMessage(msg); };
-    functors.typed_message_and_caching.single_to_single.message_received =
-        [&](const routing::SingleToSingleMessage& msg) { client_nfs_->HandleMessage(msg); };
-    std::vector<passport::PublicPmid> public_pmids{ GetPublicPmids() };  // From test environment
-    functors.request_public_key =
-        [public_pmids](const NodeId& node_id, const routing::GivePublicKeyFunctor& give_key) {
-      GivePublicPmidKey(node_id, give_key, public_pmids);
-    };
-    client_routing_.Join(functors, bootstrap_contacts);
-    return std::move(join_promise->get_future());
-  }
-
   bool EqualKeys(const passport::PublicPmid& lhs, const passport::PublicPmid& rhs) const {
     return lhs.name() == rhs.name() && asymm::MatchingKeys(lhs.public_key(), rhs.public_key());
   }
 
-  const passport::MaidAndSigner kMaidAndSigner_;
-  routing::Routing client_routing_;
-  std::unique_ptr<nfs_client::MaidNodeNfs> client_nfs_;
-  AsioService asio_service_;
+  std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs_;
 };
 
-}  // unnamed namespace
+
 
 void StartNetwork(LocalNetworkController* local_network_controller) {
   TLOG(kDefaultColour) << "\nCreating " << local_network_controller->vault_count
@@ -282,7 +241,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
       static_cast<Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
-      routing::BootstrapContact{}, local_network_controller->vault_count + 2);
+      routing::BootstrapContacts{}, local_network_controller->vault_count + 2);
 
   auto space_info(fs::space(local_network_controller->test_env_root_dir));
   DiskUsage max_usage{ (9 * space_info.available) / (10 * local_network_controller->vault_count) };
@@ -318,8 +277,10 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   Sleep(std::chrono::seconds(local_network_controller->vault_count / 2));
 
   TLOG(kDefaultColour) << "Storing PublicPmid keys (this may take a while)\n";
-  PublicPmidStorer public_pmid_storer;
-  public_pmid_storer.Store();
+  {
+    PublicPmidStorer public_pmid_storer;
+    public_pmid_storer.Store();
+  }
   TLOG(kDefaultColour) << "PublicPmid keys stored and verified successfully\n";
   TLOG(kGreen) << "Network setup completed successfully.\n"
       << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";
