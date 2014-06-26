@@ -24,6 +24,7 @@
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
+#include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 

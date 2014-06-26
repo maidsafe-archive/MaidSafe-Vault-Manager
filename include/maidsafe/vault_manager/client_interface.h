@@ -37,14 +37,19 @@
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
-#include "maidsafe/vault_manager/rpc_helper.h"
-#include "maidsafe/vault_manager/utils.h"
-
 namespace maidsafe {
 
 namespace vault_manager {
 
 class TcpConnection;
+
+namespace detail {
+
+template <typename ResultType>
+struct PromiseAndTimer;
+
+}  // namespace detail
+
 
 class ClientInterface {
  public:
