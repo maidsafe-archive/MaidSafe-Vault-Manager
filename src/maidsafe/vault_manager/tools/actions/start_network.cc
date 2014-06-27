@@ -281,6 +281,9 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
     PublicPmidStorer public_pmid_storer;
     public_pmid_storer.Store();
   }
+
+  local_network_controller->client_interface->MarkNetworkAsStable();
+
   TLOG(kDefaultColour) << "PublicPmid keys stored and verified successfully\n";
   TLOG(kGreen) << "Network setup completed successfully.\n"
       << "To keep the network alive or stay connected to VaultManager, do not exit this tool.\n";

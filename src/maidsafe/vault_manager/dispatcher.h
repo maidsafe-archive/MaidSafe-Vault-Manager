@@ -84,6 +84,10 @@ void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& va
                            int pmid_list_index);
 
 void SendMarkNetworkAsStableRequest(TcpConnectionPtr connection);
+
+void SendNetworkStableRequest(TcpConnectionPtr connection);
+
+void SendNetworkStableResponse(TcpConnectionPtr connection);
 #endif
 
 }  // namespace vault_manager

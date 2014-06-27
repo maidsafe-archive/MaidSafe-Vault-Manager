@@ -66,7 +66,8 @@ class VaultManager {
   void HandleStartVaultRequest(TcpConnectionPtr connection, const std::string& message);
   void HandleTakeOwnershipRequest(TcpConnectionPtr connection, const std::string& message);
   void HandleBootstrapContactsRequest(TcpConnectionPtr connection);
-  void HandleMarkNetworkAsStableRequest(TcpConnectionPtr connection);
+  void HandleMarkNetworkAsStable();
+  void HandleNetworkStableRequest(TcpConnectionPtr connection);
 
   // Messages from Vault
   void HandleVaultStarted(TcpConnectionPtr connection, const std::string& message);
@@ -78,6 +79,7 @@ class VaultManager {
 
   const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
+  bool network_stable_;
   AsioService asio_service_;
   std::shared_ptr<TcpListener> listener_;
   std::shared_ptr<ProcessManager> process_manager_;

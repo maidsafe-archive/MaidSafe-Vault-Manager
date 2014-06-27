@@ -96,6 +96,7 @@ void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer,
 VaultManager::VaultManager()
     : kBootstrapFilePath_(GetBootstrapFilePath()),
       config_file_handler_(GetConfigFilePath()),
+      network_stable_(false),
       asio_service_(1),
       listener_(TcpListener::MakeShared(asio_service_,
           [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
@@ -182,10 +183,18 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
         assert(message_and_type.first.empty());
         HandleJoinedNetwork(connection);
         break;
-    case MessageType::kBootstrapContactsRequest:
-      assert(message_and_type.first.empty());
-      HandleBootstrapContactsRequest(connection);
-      break;
+      case MessageType::kBootstrapContactsRequest:
+        assert(message_and_type.first.empty());
+        HandleBootstrapContactsRequest(connection);
+        break;
+      case MessageType::kMarkNetworkAsStable:
+        assert(message_and_type.first.empty());
+        HandleMarkNetworkAsStable();
+        break;
+      case MessageType::kNetworkStableRequest:
+        assert(message_and_type.first.empty());
+        HandleNetworkStableRequest(connection);
+        break;
       case MessageType::kLogMessage:
         HandleLogMessage(connection, message_and_type.first);
         break;
@@ -348,8 +357,22 @@ void VaultManager::HandleBootstrapContactsRequest(TcpConnectionPtr connection) {
   SendBootstrapContactsResponse(connection, bootstrap_file);
 }
 
-void VaultManager::HandleMarkNetworkAsStableRequest(TcpConnectionPtr connection) {
+void VaultManager::HandleMarkNetworkAsStable() {
+  asio_service_.service().dispatch([=] {
+    std::vector<TcpConnectionPtr> all_clients{ client_connections_->GetAll() };
+    for (const auto& client : all_clients)
+      SendNetworkStableResponse(client);
+    network_stable_ = true;
+  });
+}
 
+void VaultManager::HandleNetworkStableRequest(TcpConnectionPtr connection) {
+  asio_service_.service().dispatch([=] {
+    // If network is already stable send reply, else do nothing since all clients get notified once
+    // stable anyway.
+    if (network_stable_)
+      SendNetworkStableResponse(connection);
+  });
 }
 
 void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
