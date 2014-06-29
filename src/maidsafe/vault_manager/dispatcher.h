@@ -86,6 +86,12 @@ void SendStartVaultRequest(transport::TcpConnectionPtr connection,
                            const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index);
+
+void SendMarkNetworkAsStableRequest(transport::TcpConnectionPtr connection);
+
+void SendNetworkStableRequest(transport::TcpConnectionPtr connection);
+
+void SendNetworkStableResponse(transport::TcpConnectionPtr connection);
 #endif
 
 }  // namespace vault_manager

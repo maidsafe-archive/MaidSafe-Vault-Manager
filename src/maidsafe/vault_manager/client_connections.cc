@@ -133,6 +133,15 @@ transport::TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name)
   return itr->first;
 }
 
+std::vector<transport::TcpConnectionPtr> ClientConnections::GetAll() const {
+  std::vector<transport::TcpConnectionPtr> all_connections;
+  for (auto connection : clients_)
+    all_connections.push_back(connection.first);
+  for (auto connection : unvalidated_clients_)
+    all_connections.push_back(connection.first);
+  return all_connections;
+}
+
 }  //  namespace vault_manager
 
 }  //  namespace maidsafe

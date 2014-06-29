@@ -65,8 +65,10 @@ void ConnectToNetwork(LocalNetworkController* local_network_controller) {
 
   StartVaultManagerAndClientInterface(local_network_controller);
   StartVaults(local_network_controller, max_usage);
-  TLOG(kDefaultColour) << "Started " << local_network_controller->vault_count << " Vaults\n";
 
+  local_network_controller->client_interface->MarkNetworkAsStable();
+
+  TLOG(kDefaultColour) << "Started " << local_network_controller->vault_count << " Vaults\n";
   TLOG(kGreen) << "Started Vaults successfully.\n"
       << "To keep the Vault(s) alive or stay connected to VaultManager, do not exit this tool.\n";
 }

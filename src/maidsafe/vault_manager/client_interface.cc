@@ -26,6 +26,7 @@
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
+#include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/utils.h"
 
 namespace maidsafe {
@@ -56,6 +57,8 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
       mutex_(),
       on_challenge_(),
       on_bootstrap_contacts_response_(),
+      network_stable_(),
+      network_stable_flag_(),
       asio_service_(1),
       tcp_connection_(ConnectToVaultManager()),
       connection_closer_([&] { tcp_connection_->Close(); }) {
@@ -66,7 +69,12 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
                         asymm::Sign(*challenge, kMaid_.private_key()));
 }
 
-transport::TcpConnectionPtr ClientInterface::ConnectToVaultManager() {
+ClientInterface::~ClientInterface() {
+  // Ensure promise is set if required.
+  HandleNetworkStableResponse();
+}
+
+std::shared_ptr<transport::TcpConnection> ClientInterface::ConnectToVaultManager() {
   unsigned attempts{ 0 };
   transport::Port initial_port{ GetInitialListeningPort() };
   transport::Port port{ initial_port };
@@ -149,6 +157,9 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
       case MessageType::kVaultRunningResponse:
         HandleVaultRunningResponse(message_and_type.first);
         break;
+      case MessageType::kNetworkStableResponse:
+        HandleNetworkStableResponse();
+        break;
       case MessageType::kLogMessage:
         HandleLogMessage(message_and_type.first);
         break;
@@ -193,6 +204,10 @@ void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
   }
 }
 
+void ClientInterface::HandleNetworkStableResponse() {
+  std::call_once(network_stable_flag_, [&] { network_stable_.set_value(); });
+}
+
 void ClientInterface::InvokeCallBack(const std::string& message,
                                      std::function<void(std::string)>& callback) {
   if (callback) {
@@ -219,6 +234,15 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
   NonEmptyString label{ GenerateLabel() };
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);
   return AddVaultRequest(label);
+}
+
+void ClientInterface::MarkNetworkAsStable() {
+  SendMarkNetworkAsStableRequest(tcp_connection_);
+}
+
+std::future<void> ClientInterface::WaitForStableNetwork() {
+  SendNetworkStableRequest(tcp_connection_);
+  return network_stable_.get_future();
 }
 #endif
 

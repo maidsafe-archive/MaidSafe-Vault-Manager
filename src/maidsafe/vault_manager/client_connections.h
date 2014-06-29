@@ -22,6 +22,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "boost/asio/io_service.hpp"
 
@@ -46,6 +47,7 @@ class ClientConnections {
   void CloseAll();
   MaidName FindValidated(transport::TcpConnectionPtr connection) const;
   transport::TcpConnectionPtr FindValidated(MaidName maid_name) const;
+  std::vector<transport::TcpConnectionPtr> GetAll() const;
 
  private:
   explicit ClientConnections(boost::asio::io_service& io_service);

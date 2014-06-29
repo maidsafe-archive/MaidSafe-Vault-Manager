@@ -37,17 +37,21 @@
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 
-#include "maidsafe/vault_manager/rpc_helper.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/config.h"
-
 namespace maidsafe {
 
 namespace vault_manager {
 
+namespace detail {
+
+template <typename ResultType>
+struct PromiseAndTimer;
+
+}  // namespace detail
+
 class ClientInterface {
  public:
   explicit ClientInterface(const passport::Maid& maid);
+  ~ClientInterface();
 
   std::future<routing::BootstrapContacts> GetBootstrapContacts();
 
@@ -74,6 +78,12 @@ class ClientInterface {
 
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
+
+  // Used by tool to indicate that it is satisfied the new network (or connected network) is stable.
+  void MarkNetworkAsStable();
+
+  // Blocks until MarkNetworkAsStable is called.
+  std::future<void> WaitForStableNetwork();
 #endif
 
  private:
@@ -88,6 +98,7 @@ class ClientInterface {
       const NonEmptyString& label);
   void HandleReceivedMessage(const std::string& wrapped_message);
   void HandleVaultRunningResponse(const std::string& message);
+  void HandleNetworkStableResponse();
   void HandleBootstrapContactsResponse(const std::string& message);
   void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
   void HandleLogMessage(const std::string& message);
@@ -96,6 +107,8 @@ class ClientInterface {
   std::mutex mutex_;
   std::function<void(std::string)> on_challenge_;
   std::function<void(std::string)> on_bootstrap_contacts_response_;
+  std::promise<void> network_stable_;
+  std::once_flag network_stable_flag_;
   std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;
   AsioService asio_service_;
   std::shared_ptr<transport::TcpConnection> tcp_connection_;
