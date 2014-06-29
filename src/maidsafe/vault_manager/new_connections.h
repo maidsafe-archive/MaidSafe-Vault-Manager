@@ -24,6 +24,8 @@
 
 #include "boost/asio/io_service.hpp"
 
+#include "maidsafe/common/types.h"
+
 #include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
@@ -34,15 +36,16 @@ class NewConnections : public std::enable_shared_from_this<NewConnections> {
  public:
   static std::shared_ptr<NewConnections> MakeShared(boost::asio::io_service& io_service);
   ~NewConnections();
-  void Add(TcpConnectionPtr connection);
-  bool Remove(TcpConnectionPtr connection);
+  void Add(transport::TcpConnectionPtr connection);
+  bool Remove(transport::TcpConnectionPtr connection);
   void CloseAll();
 
  private:
   explicit NewConnections(boost::asio::io_service& io_service);
 
   boost::asio::io_service& io_service_;
-  std::map<TcpConnectionPtr, TimerPtr, std::owner_less<TcpConnectionPtr>> connections_;
+  std::map<transport::TcpConnectionPtr, TimerPtr,
+    std::owner_less<transport::TcpConnectionPtr>> connections_;
 };
 
 }  // namespace vault_manager

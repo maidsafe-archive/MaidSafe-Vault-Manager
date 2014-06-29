@@ -39,21 +39,22 @@ class ClientConnections {
   typedef passport::PublicMaid::Name MaidName;
   static std::shared_ptr<ClientConnections> MakeShared(boost::asio::io_service& io_service);
   ~ClientConnections();
-  void Add(TcpConnectionPtr connection, const asymm::PlainText& challenge);
-  void Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
+  void Add(transport::TcpConnectionPtr connection, const asymm::PlainText& challenge);
+  void Validate(transport::TcpConnectionPtr connection, const passport::PublicMaid& maid,
                 const asymm::Signature& signature);
-  bool Remove(TcpConnectionPtr connection);
+  bool Remove(transport::TcpConnectionPtr connection);
   void CloseAll();
-  MaidName FindValidated(TcpConnectionPtr connection) const;
-  TcpConnectionPtr FindValidated(MaidName maid_name) const;
+  MaidName FindValidated(transport::TcpConnectionPtr connection) const;
+  transport::TcpConnectionPtr FindValidated(MaidName maid_name) const;
 
  private:
   explicit ClientConnections(boost::asio::io_service& io_service);
 
   boost::asio::io_service& io_service_;
-  std::map<TcpConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
-           std::owner_less<TcpConnectionPtr>> unvalidated_clients_;
-  std::map<TcpConnectionPtr, MaidName, std::owner_less<TcpConnectionPtr>> clients_;
+  std::map<transport::TcpConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
+    std::owner_less<transport::TcpConnectionPtr >> unvalidated_clients_;
+  std::map<transport::TcpConnectionPtr, MaidName,
+    std::owner_less<transport::TcpConnectionPtr>> clients_;
 };
 
 }  // namespace vault_manager

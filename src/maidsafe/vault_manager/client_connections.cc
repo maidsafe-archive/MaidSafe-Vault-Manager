@@ -22,8 +22,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/common/transport/tcp_connection.h"
 
 namespace maidsafe {
 
@@ -41,7 +40,8 @@ ClientConnections::~ClientConnections() {
   assert(unvalidated_clients_.empty() && clients_.empty());
 }
 
-void ClientConnections::Add(TcpConnectionPtr connection, const asymm::PlainText& challenge) {
+void ClientConnections::Add(transport::TcpConnectionPtr connection,
+                            const asymm::PlainText& challenge) {
   assert(clients_.find(connection) == std::end(clients_));
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
   timer->async_wait([=](const boost::system::error_code& error_code) {
@@ -57,7 +57,8 @@ void ClientConnections::Add(TcpConnectionPtr connection, const asymm::PlainText&
   static_cast<void>(result);
 }
 
-void ClientConnections::Validate(TcpConnectionPtr connection, const passport::PublicMaid& maid,
+void ClientConnections::Validate(transport::TcpConnectionPtr connection,
+                                 const passport::PublicMaid& maid,
                                  const asymm::Signature& signature) {
   auto itr(unvalidated_clients_.find(connection));
   if (itr == std::end(unvalidated_clients_)) {
@@ -81,7 +82,7 @@ void ClientConnections::Validate(TcpConnectionPtr connection, const passport::Pu
   static_cast<void>(result);
 }
 
-bool ClientConnections::Remove(TcpConnectionPtr connection) {
+bool ClientConnections::Remove(transport::TcpConnectionPtr connection) {
   auto itr(clients_.find(connection));
   if (itr != std::end(clients_)) {
     clients_.erase(itr);
@@ -104,7 +105,8 @@ void ClientConnections::CloseAll() {
     connection.first->Close();
 }
 
-ClientConnections::MaidName ClientConnections::FindValidated(TcpConnectionPtr connection) const {
+ClientConnections::MaidName
+    ClientConnections::FindValidated(transport::TcpConnectionPtr connection) const {
   auto itr(clients_.find(connection));
   if (itr == std::end(clients_)) {
     auto unvalidated_itr(unvalidated_clients_.find(connection));
@@ -119,11 +121,11 @@ ClientConnections::MaidName ClientConnections::FindValidated(TcpConnectionPtr co
   return itr->second;
 }
 
-TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
+transport::TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
   auto itr(std::find_if(std::begin(clients_), std::end(clients_),
-                        [&maid_name](const std::pair<TcpConnectionPtr, MaidName> client) {
-                          return client.second == maid_name;
-                        }));
+      [&maid_name](const std::pair<transport::TcpConnectionPtr, MaidName> client) {
+        return client.second == maid_name;
+      }));
   if (itr == std::end(clients_)) {
     LOG(kWarning) << "Client TCP connection not found.";
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));

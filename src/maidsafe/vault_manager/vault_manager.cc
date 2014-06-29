@@ -28,6 +28,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/common/transport/tcp_connection.h"
+#include "maidsafe/common/transport/tcp_listener.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 #include "maidsafe/nfs/client/maid_node_nfs.h"
@@ -37,8 +39,6 @@
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/new_connections.h"
 #include "maidsafe/vault_manager/process_manager.h"
-#include "maidsafe/vault_manager/tcp_connection.h"
-#include "maidsafe/vault_manager/tcp_listener.h"
 #include "maidsafe/vault_manager/utils.h"
 #include "maidsafe/vault_manager/vault_info.pb.h"
 
@@ -97,8 +97,8 @@ VaultManager::VaultManager()
     : kBootstrapFilePath_(GetBootstrapFilePath()),
       config_file_handler_(GetConfigFilePath()),
       asio_service_(1),
-      listener_(TcpListener::MakeShared(asio_service_,
-          [this](TcpConnectionPtr connection) { HandleNewConnection(connection); },
+      listener_(transport::TcpListener::MakeShared(asio_service_,
+          [this](transport::TcpConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialListeningPort())),
       process_manager_(ProcessManager::MakeShared(asio_service_.service(),
                        GetVaultExecutablePath(), listener_->ListeningPort())),
@@ -140,15 +140,15 @@ VaultManager::~VaultManager() {
   asio_service_.Stop();
 }
 
-void VaultManager::HandleNewConnection(TcpConnectionPtr connection) {
+void VaultManager::HandleNewConnection(transport::TcpConnectionPtr connection) {
   new_connections_->Add(connection);
-  MessageReceivedFunctor on_message{ [=](const std::string& message) {
+  transport::MessageReceivedFunctor on_message{ [=](const std::string& message) {
     HandleReceivedMessage(connection, message);
   } };
   connection->Start(on_message, [=] { HandleConnectionClosed(connection); });
 }
 
-void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
+void VaultManager::HandleConnectionClosed(transport::TcpConnectionPtr connection) {
   if (process_manager_->HandleConnectionClosed(connection) ||
     client_connections_->Remove(connection)) {
     return;
@@ -156,7 +156,7 @@ void VaultManager::HandleConnectionClosed(TcpConnectionPtr connection) {
   new_connections_->Remove(connection);
 }
 
-void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
+void VaultManager::HandleReceivedMessage(transport::TcpConnectionPtr connection,
                                          const std::string& wrapped_message) {
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
@@ -198,7 +198,7 @@ void VaultManager::HandleReceivedMessage(TcpConnectionPtr connection,
   }
 }
 
-void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) {
+void VaultManager::HandleValidateConnectionRequest(transport::TcpConnectionPtr connection) {
   RemoveFromNewConnections(connection);
   asymm::PlainText challenge{ RandomString((RandomUint32() % 100) + 100) };
 
@@ -206,7 +206,7 @@ void VaultManager::HandleValidateConnectionRequest(TcpConnectionPtr connection) 
   SendChallenge(connection, challenge);
 }
 
-void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
+void VaultManager::HandleChallengeResponse(transport::TcpConnectionPtr connection,
                                            const std::string& message) {
   protobuf::ChallengeResponse challenge_response{
       ParseProto<protobuf::ChallengeResponse>(message) };
@@ -219,7 +219,7 @@ void VaultManager::HandleChallengeResponse(TcpConnectionPtr connection,
 }
 
 
-void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
+void VaultManager::HandleStartVaultRequest(transport::TcpConnectionPtr connection,
                                            const std::string& message) {
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
@@ -263,7 +263,7 @@ void VaultManager::HandleStartVaultRequest(TcpConnectionPtr connection,
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
-void VaultManager::HandleTakeOwnershipRequest(TcpConnectionPtr connection,
+void VaultManager::HandleTakeOwnershipRequest(transport::TcpConnectionPtr connection,
                                               const std::string& message) {
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
@@ -314,7 +314,8 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
   process_manager_->StopProcess(vault_info.tcp_connection, on_exit);
 }
 
-void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::string& message) {
+void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
+                                      const std::string& message) {
   // TODO(Fraser#5#): 2014-05-20 - We should validate received ProcessID since a malicious process
   //                  could have spotted a new vault process starting and jumped in with this TCP
   //                  connection before the new vault can connect, passing itself off as the new
@@ -331,7 +332,8 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
     try {
-      TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
+      transport::TcpConnectionPtr client{
+          client_connections_->FindValidated(vault_info.owner_name) };
       SendVaultRunningResponse(client, vault_info.label, vault_info.pmid_and_signer.get());
     }
     catch (const std::exception&) {}  // We don't care if the client isn't connected.
@@ -342,36 +344,39 @@ void VaultManager::HandleVaultStarted(TcpConnectionPtr connection, const std::st
       << vault_started.process_id() << "  Label: " << vault_info.label.string();
 }
 
-void VaultManager::HandleBootstrapContactsRequest(TcpConnectionPtr connection) {
+void VaultManager::HandleBootstrapContactsRequest(transport::TcpConnectionPtr connection) {
   auto bootstrap_file = routing::ReadBootstrapFile(kBootstrapFilePath_);
   LOG(kInfo) << " Number of Contacts in BootstrapContacts file : " << bootstrap_file.size();
   SendBootstrapContactsResponse(connection, bootstrap_file);
 }
 
-void VaultManager::HandleJoinedNetwork(TcpConnectionPtr connection) {
+void VaultManager::HandleJoinedNetwork(transport::TcpConnectionPtr connection) {
   try {
     VaultInfo vault_info(process_manager_->Find(connection));
     // TODO(Prakash) do vault_info need joined field
     std::string log_message("Vault running as " +
                             HexSubstr(vault_info.pmid_and_signer->first.name().value));
     LOG(kInfo) << log_message;
-    TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
+    transport::TcpConnectionPtr client{
+        client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, log_message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
-void VaultManager::HandleLogMessage(TcpConnectionPtr connection, const std::string& message) {
+void VaultManager::HandleLogMessage(transport::TcpConnectionPtr connection,
+                                    const std::string& message) {
   LOG(kInfo) << message;
   try {
     VaultInfo vault_info(process_manager_->Find(connection));
-    TcpConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
+    transport::TcpConnectionPtr client{
+        client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
-void VaultManager::RemoveFromNewConnections(TcpConnectionPtr connection) {
+void VaultManager::RemoveFromNewConnections(transport::TcpConnectionPtr connection) {
   if (!new_connections_->Remove(connection)) {
     LOG(kWarning) << "Connection not found in new_connections_.";
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));

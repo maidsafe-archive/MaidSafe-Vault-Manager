@@ -30,56 +30,60 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpConnection;
-typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 struct VaultInfo;
 
-void SendValidateConnectionRequest(TcpConnectionPtr connection);
+void SendValidateConnectionRequest(transport::TcpConnectionPtr connection);
 
-void SendChallenge(TcpConnectionPtr connection, const asymm::PlainText& challenge);
+void SendChallenge(transport::TcpConnectionPtr connection, const asymm::PlainText& challenge);
 
-void SendChallengeResponse(TcpConnectionPtr connection, const passport::PublicMaid& public_maid,
+void SendChallengeResponse(transport::TcpConnectionPtr connection,
+                           const passport::PublicMaid& public_maid,
                            const asymm::Signature& signature);
 
-void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+void SendStartVaultRequest(transport::TcpConnectionPtr connection,
+                           const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
-void SendTakeOwnershipRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+void SendTakeOwnershipRequest(transport::TcpConnectionPtr connection,
+                              const NonEmptyString& vault_label,
                               const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
-void SendVaultRunningResponse(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+void SendVaultRunningResponse(transport::TcpConnectionPtr connection,
+                              const NonEmptyString& vault_label,
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error = nullptr);
 
-void SendVaultStarted(TcpConnectionPtr connection);
+void SendVaultStarted(transport::TcpConnectionPtr connection);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts);
 
-void SendJoinedNetwork(TcpConnectionPtr connection);
+void SendJoinedNetwork(transport::TcpConnectionPtr connection);
 
-void SendBootstrapContact(TcpConnectionPtr connection,
+void SendBootstrapContact(transport::TcpConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact);
 
-void SendBootstrapContactsRequest(TcpConnectionPtr connection);
+void SendBootstrapContactsRequest(transport::TcpConnectionPtr connection);
 
-void SendBootstrapContactsResponse(TcpConnectionPtr connection,
+void SendBootstrapContactsResponse(transport::TcpConnectionPtr connection,
                                    const routing::BootstrapContacts& bootstrap_contacts);
 
-void SendVaultShutdownRequest(TcpConnectionPtr connection);
+void SendVaultShutdownRequest(transport::TcpConnectionPtr connection);
 
-void SendMaxDiskUsageUpdate(TcpConnectionPtr connection, DiskUsage max_disk_usage);
+void SendMaxDiskUsageUpdate(transport::TcpConnectionPtr connection, DiskUsage max_disk_usage);
 
-void SendLogMessage(TcpConnectionPtr connection, const std::string& log_message);
+void SendLogMessage(transport::TcpConnectionPtr connection, const std::string& log_message);
 
 #ifdef TESTING
-void SendStartVaultRequest(TcpConnectionPtr connection, const NonEmptyString& vault_label,
+void SendStartVaultRequest(transport::TcpConnectionPtr connection,
+                           const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index);
 #endif

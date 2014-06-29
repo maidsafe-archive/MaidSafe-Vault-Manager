@@ -56,23 +56,24 @@ class ProcessManager {
   typedef std::function<void(maidsafe_error, int)> OnExitFunctor;
   static std::shared_ptr<ProcessManager> MakeShared(boost::asio::io_service& io_service,
                                                     boost::filesystem::path vault_executable_path,
-                                                    Port listening_port);
+                                                    transport::Port listening_port);
   ~ProcessManager();
   void StopAll();
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info, int restart_count = 0);
-  VaultInfo HandleVaultStarted(TcpConnectionPtr connection, ProcessId process_id);
+  VaultInfo HandleVaultStarted(transport::TcpConnectionPtr connection, ProcessId process_id);
   void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
                    DiskUsage max_disk_usage);
-  void StopProcess(TcpConnectionPtr connection, OnExitFunctor on_exit_functor = nullptr);
+  void StopProcess(transport::TcpConnectionPtr connection,
+                   OnExitFunctor on_exit_functor = nullptr);
   // Returns false if the process doesn't exist.
-  bool HandleConnectionClosed(TcpConnectionPtr connection);
+  bool HandleConnectionClosed(transport::TcpConnectionPtr connection);
   VaultInfo Find(const NonEmptyString& label) const;
-  VaultInfo Find(TcpConnectionPtr connection) const;
+  VaultInfo Find(transport::TcpConnectionPtr connection) const;
 
  private:
   ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
-                 Port listening_port);
+                 transport::Port listening_port);
 
   ProcessManager(const ProcessManager&) = delete;
   ProcessManager(ProcessManager&&) = delete;
@@ -102,8 +103,8 @@ class ProcessManager {
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
-  std::vector<Child>::const_iterator DoFind(TcpConnectionPtr connection) const;
-  std::vector<Child>::iterator DoFind(TcpConnectionPtr connection);
+  std::vector<Child>::const_iterator DoFind(transport::TcpConnectionPtr connection) const;
+  std::vector<Child>::iterator DoFind(transport::TcpConnectionPtr connection);
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
@@ -116,7 +117,7 @@ class ProcessManager {
   boost::asio::signal_set signal_set_;
 #endif
   std::once_flag stop_all_flag_;
-  const Port kListeningPort_;
+  const transport::Port kListeningPort_;
   const boost::filesystem::path kVaultExecutablePath_;
   std::vector<Child> vaults_;
 };

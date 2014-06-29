@@ -39,14 +39,9 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpConnection;
-class VaultInterface;
-
-typedef uint16_t Port;
-
 class VaultInterface {
  public:
-  explicit VaultInterface(Port vault_manager_port);
+  explicit VaultInterface(transport::Port vault_manager_port);
 
   VaultConfig GetConfiguration();
 
@@ -75,11 +70,11 @@ class VaultInterface {
 
   std::promise<int> exit_code_promise_;
   std::once_flag exit_code_flag_;
-  Port vault_manager_port_;
+  transport::Port vault_manager_port_;
   std::function<void(std::string)> on_vault_started_response_;
   std::unique_ptr<VaultConfig> vault_config_;
   AsioService asio_service_;
-  std::shared_ptr<TcpConnection> tcp_connection_;
+  std::shared_ptr<transport::TcpConnection> tcp_connection_;
   // We need to ensure the connection is closed in the event of the constructor throwing, or the
   // asio_service destructor will hang.
   on_scope_exit connection_closer_;

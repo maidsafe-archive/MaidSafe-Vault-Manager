@@ -39,12 +39,11 @@
 
 #include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
-
-class TcpConnection;
 
 class ClientInterface {
  public:
@@ -84,7 +83,7 @@ class ClientInterface {
   ClientInterface(ClientInterface&&) = delete;
   ClientInterface& operator=(ClientInterface) = delete;
 
-  std::shared_ptr<TcpConnection> ConnectToVaultManager();
+  std::shared_ptr<transport::TcpConnection> ConnectToVaultManager();
   std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(
       const NonEmptyString& label);
   void HandleReceivedMessage(const std::string& wrapped_message);
@@ -99,7 +98,7 @@ class ClientInterface {
   std::function<void(std::string)> on_bootstrap_contacts_response_;
   std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;
   AsioService asio_service_;
-  std::shared_ptr<TcpConnection> tcp_connection_;
+  std::shared_ptr<transport::TcpConnection> tcp_connection_;
   // We need to ensure the connection is closed in the event of the constructor throwing, or the
   // asio_service destructor will hang.
   on_scope_exit connection_closer_;

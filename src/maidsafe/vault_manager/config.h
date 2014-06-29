@@ -34,21 +34,11 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class TcpConnection;
-class TcpListener;
-
-typedef uint16_t Port;
-typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
-typedef std::shared_ptr<TcpListener> TcpListenerPtr;
-typedef std::function<void(std::string)> MessageReceivedFunctor;
-typedef std::function<void(TcpConnectionPtr)> NewConnectionFunctor;
-typedef std::function<void()> ConnectionClosedFunctor;
 typedef boost::asio::steady_timer Timer;
 typedef std::shared_ptr<Timer> TimerPtr;
 
 extern const std::string kConfigFilename;
 extern const std::string kBootstrapFilename;
-extern const unsigned kMaxRangeAboveDefaultPort;
 extern const std::chrono::seconds kRpcTimeout;
 extern const std::chrono::seconds kVaultStopTimeout;
 extern const int kMaxVaultRestarts;

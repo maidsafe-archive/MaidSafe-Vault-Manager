@@ -23,8 +23,7 @@
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/tcp_connection.h"
+#include "maidsafe/common/transport/tcp_connection.h"
 
 namespace maidsafe {
 
@@ -41,7 +40,7 @@ NewConnections::~NewConnections() {
   assert(connections_.empty());
 }
 
-void NewConnections::Add(TcpConnectionPtr connection) {
+void NewConnections::Add(transport::TcpConnectionPtr connection) {
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
   timer->async_wait([connection](const boost::system::error_code& error_code) {
     if (error_code && error_code == boost::asio::error::operation_aborted) {
@@ -56,7 +55,7 @@ void NewConnections::Add(TcpConnectionPtr connection) {
   static_cast<void>(result);
 }
 
-bool NewConnections::Remove(TcpConnectionPtr connection) {
+bool NewConnections::Remove(transport::TcpConnectionPtr connection) {
   return connections_.erase(connection) == 1U;
 }
 

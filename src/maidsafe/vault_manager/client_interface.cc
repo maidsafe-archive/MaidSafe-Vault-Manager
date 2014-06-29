@@ -20,11 +20,12 @@
 
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/common/config.h"
+#include "maidsafe/common/transport/tcp_connection.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
-#include "maidsafe/vault_manager/tcp_connection.h"
 #include "maidsafe/vault_manager/utils.h"
 
 namespace maidsafe {
@@ -65,13 +66,15 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
                         asymm::Sign(*challenge, kMaid_.private_key()));
 }
 
-std::shared_ptr<TcpConnection> ClientInterface::ConnectToVaultManager() {
+transport::TcpConnectionPtr ClientInterface::ConnectToVaultManager() {
   unsigned attempts{ 0 };
-  Port initial_port{ GetInitialListeningPort() };
-  Port port{ initial_port };
-  while (attempts <= kMaxRangeAboveDefaultPort && port <= std::numeric_limits<Port>::max()) {
+  transport::Port initial_port{ GetInitialListeningPort() };
+  transport::Port port{ initial_port };
+  while (attempts <= transport::kMaxRangeAboveDefaultPort &&
+         port <= std::numeric_limits<transport::Port>::max()) {
     try {
-      TcpConnectionPtr tcp_connection{ TcpConnection::MakeShared(asio_service_, port) };
+      transport::TcpConnectionPtr tcp_connection{
+          transport::TcpConnection::MakeShared(asio_service_, port) };
       tcp_connection->Start([this](std::string message) { HandleReceivedMessage(message); },
                             [this] {});  // FIXME OnConnectionClosed
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
@@ -204,7 +207,7 @@ void ClientInterface::HandleLogMessage(const std::string& message) {
 }
 
 #ifdef TESTING
-void ClientInterface::SetTestEnvironment(Port test_vault_manager_port,
+void ClientInterface::SetTestEnvironment(transport::Port test_vault_manager_port,
     boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
     routing::BootstrapContacts bootstrap_contacts, int pmid_list_size) {
   test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault,

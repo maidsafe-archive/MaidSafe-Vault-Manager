@@ -162,7 +162,7 @@ void HandleProgramOptions(int argc, char** argv) {
   }
 
 #ifdef TESTING
-  typedef maidsafe::vault_manager::Port Port;
+  typedef maidsafe::transport::Port Port;
   Port port(maidsafe::kLivePort + 100);
   if (variables_map.count("port") != 0) {
     if (variables_map.at("port").as<int>() < 1025 ||

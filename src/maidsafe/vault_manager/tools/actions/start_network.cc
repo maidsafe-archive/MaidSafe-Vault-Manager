@@ -239,7 +239,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   TLOG(kDefaultColour) << "\nCreating " << local_network_controller->vault_count
                        << " sets of Pmid keys (this may take a while)\n";
   ClientInterface::SetTestEnvironment(
-      static_cast<Port>(local_network_controller->vault_manager_port),
+      static_cast<transport::Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
       routing::BootstrapContacts{}, local_network_controller->vault_count + 2);
 
