@@ -44,6 +44,8 @@ ms_glob_dir(VaultManager ${VaultManagerSourcesDir} "Vault Manager")
 list(REMOVE_ITEM VaultManagerAllFiles "${VaultManagerSourcesDir}/vault_manager_main.cc")
 
 ms_glob_dir(VaultManagerTools ${VaultManagerSourcesDir}/tools "Tools")
+set(NetworkTestHelperFile ${VaultManagerSourcesDir}/tools/network_test_helper.cc)
+list(REMOVE_ITEM VaultManagerToolsAllFiles ${NetworkTestHelperFile})
 ms_glob_dir(VaultManagerToolsCommands ${VaultManagerSourcesDir}/tools/commands "Tool Commands")
 ms_glob_dir(VaultManagerToolsActions ${VaultManagerSourcesDir}/tools/actions "Tool Actions")
 
@@ -93,6 +95,12 @@ if(MaidsafeTesting)
   target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_nfs_vault maidsafe_test)
   add_dependencies(local_network_controller vault)
 
+  ms_add_executable(network_test_helper "Tools/Vault Manager" ${NetworkTestHelperFile})
+  target_link_libraries(network_test_helper maidsafe_vault_manager)
+  add_custom_command(TARGET network_test_helper POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E copy "${VaultManagerSourcesDir}/tools/network_test_helper.script"
+                                                      "$<TARGET_FILE_DIR:network_test_helper>/network_test_helper.script")
+
   ms_add_style_test()
   ms_add_gtests(TESTvault_manager)
   ms_add_project_experimental()
@@ -107,8 +115,8 @@ install(TARGETS maidsafe_vault_manager COMPONENT Development CONFIGURATIONS Debu
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ COMPONENT Development DESTINATION include)
 
 if(MaidsafeTesting)
-  install(TARGETS local_network_controller COMPONENT Tools CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
-  install(TARGETS local_network_controller COMPONENT Tools CONFIGURATIONS Release RUNTIME DESTINATION bin)
+  install(TARGETS local_network_controller network_test_helper COMPONENT Tools CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
+  install(TARGETS local_network_controller network_test_helper COMPONENT Tools CONFIGURATIONS Release RUNTIME DESTINATION bin)
   install(TARGETS TESTvault_manager dummy_vault COMPONENT Tests CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
   install(TARGETS TESTvault_manager dummy_vault COMPONENT Tests CONFIGURATIONS Release RUNTIME DESTINATION bin)
 endif()
