@@ -1,0 +1,14 @@
+### Commands begin.
+### Initial options.
+1
+### Path to VaultManager root directory.
+
+### Clear VaultManager root directory.
+
+### Path to vault executable.
+
+### VaultManager listening port.
+5583
+### Number of Vaults to start.
+
+### Commands end.
