@@ -85,13 +85,13 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
     std::unique_ptr<routing::Routing> node0{
         maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(0).first) };
     routing::NodeInfo node_info0;
-    node_info0.node_id = NodeId{ GetPmidAndSigner(0).first.name()->string() };
+    node_info0.id = NodeId{ GetPmidAndSigner(0).first.name()->string() };
     node_info0.public_key = GetPmidAndSigner(0).first.public_key();
 
     std::unique_ptr<routing::Routing> node1{
         maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(1).first) };
     routing::NodeInfo node_info1;
-    node_info1.node_id = NodeId{ GetPmidAndSigner(1).first.name()->string() };
+    node_info1.id = NodeId{ GetPmidAndSigner(1).first.name()->string() };
     node_info1.public_key = GetPmidAndSigner(1).first.public_key();
 
     nfs_client::DataGetter public_key_getter{ asio_service, *node0 };
