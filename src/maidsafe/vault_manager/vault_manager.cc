@@ -28,8 +28,8 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/common/transport/tcp_connection.h"
-#include "maidsafe/common/transport/tcp_listener.h"
+#include "maidsafe/common/tcp/connection.h"
+#include "maidsafe/common/tcp/listener.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
 #include "maidsafe/nfs/client/maid_node_nfs.h"
@@ -98,8 +98,8 @@ VaultManager::VaultManager()
       config_file_handler_(GetConfigFilePath()),
       network_stable_(false),
       asio_service_(1),
-      listener_(transport::TcpListener::MakeShared(asio_service_,
-          [this](transport::TcpConnectionPtr connection) { HandleNewConnection(connection); },
+      listener_(tcp::Listener::MakeShared(asio_service_,
+          [this](tcp::ConnectionPtr connection) { HandleNewConnection(connection); },
           GetInitialListeningPort())),
       process_manager_(ProcessManager::MakeShared(asio_service_.service(),
                        GetVaultExecutablePath(), listener_->ListeningPort())),
@@ -141,15 +141,15 @@ VaultManager::~VaultManager() {
   asio_service_.Stop();
 }
 
-void VaultManager::HandleNewConnection(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleNewConnection(tcp::ConnectionPtr connection) {
   new_connections_->Add(connection);
-  transport::MessageReceivedFunctor on_message{ [=](const std::string& message) {
+  tcp::MessageReceivedFunctor on_message{ [=](const std::string& message) {
     HandleReceivedMessage(connection, message);
   } };
   connection->Start(on_message, [=] { HandleConnectionClosed(connection); });
 }
 
-void VaultManager::HandleConnectionClosed(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   if (process_manager_->HandleConnectionClosed(connection) ||
     client_connections_->Remove(connection)) {
     return;
@@ -157,7 +157,7 @@ void VaultManager::HandleConnectionClosed(transport::TcpConnectionPtr connection
   new_connections_->Remove(connection);
 }
 
-void VaultManager::HandleReceivedMessage(transport::TcpConnectionPtr connection,
+void VaultManager::HandleReceivedMessage(tcp::ConnectionPtr connection,
                                          const std::string& wrapped_message) {
   try {
     MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
@@ -207,7 +207,7 @@ void VaultManager::HandleReceivedMessage(transport::TcpConnectionPtr connection,
   }
 }
 
-void VaultManager::HandleValidateConnectionRequest(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleValidateConnectionRequest(tcp::ConnectionPtr connection) {
   RemoveFromNewConnections(connection);
   asymm::PlainText challenge{ RandomString((RandomUint32() % 100) + 100) };
 
@@ -215,7 +215,7 @@ void VaultManager::HandleValidateConnectionRequest(transport::TcpConnectionPtr c
   SendChallenge(connection, challenge);
 }
 
-void VaultManager::HandleChallengeResponse(transport::TcpConnectionPtr connection,
+void VaultManager::HandleChallengeResponse(tcp::ConnectionPtr connection,
                                            const std::string& message) {
   protobuf::ChallengeResponse challenge_response{
       ParseProto<protobuf::ChallengeResponse>(message) };
@@ -228,7 +228,7 @@ void VaultManager::HandleChallengeResponse(transport::TcpConnectionPtr connectio
 }
 
 
-void VaultManager::HandleStartVaultRequest(transport::TcpConnectionPtr connection,
+void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
                                            const std::string& message) {
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
@@ -272,7 +272,7 @@ void VaultManager::HandleStartVaultRequest(transport::TcpConnectionPtr connectio
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
-void VaultManager::HandleTakeOwnershipRequest(transport::TcpConnectionPtr connection,
+void VaultManager::HandleTakeOwnershipRequest(tcp::ConnectionPtr connection,
                                               const std::string& message) {
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
@@ -323,8 +323,7 @@ void VaultManager::ChangeChunkstorePath(VaultInfo vault_info) {
   process_manager_->StopProcess(vault_info.tcp_connection, on_exit);
 }
 
-void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
-                                      const std::string& message) {
+void VaultManager::HandleVaultStarted(tcp::ConnectionPtr connection, const std::string& message) {
   // TODO(Fraser#5#): 2014-05-20 - We should validate received ProcessID since a malicious process
   //                  could have spotted a new vault process starting and jumped in with this TCP
   //                  connection before the new vault can connect, passing itself off as the new
@@ -341,8 +340,7 @@ void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
     try {
-      transport::TcpConnectionPtr client{
-          client_connections_->FindValidated(vault_info.owner_name) };
+      tcp::ConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
       SendVaultRunningResponse(client, vault_info.label, vault_info.pmid_and_signer.get());
     }
     catch (const std::exception&) {}  // We don't care if the client isn't connected.
@@ -353,7 +351,7 @@ void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
       << vault_started.process_id() << "  Label: " << vault_info.label.string();
 }
 
-void VaultManager::HandleBootstrapContactsRequest(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleBootstrapContactsRequest(tcp::ConnectionPtr connection) {
   auto bootstrap_file = routing::ReadBootstrapFile(kBootstrapFilePath_);
   LOG(kInfo) << " Number of Contacts in BootstrapContacts file : " << bootstrap_file.size();
   SendBootstrapContactsResponse(connection, bootstrap_file);
@@ -361,14 +359,14 @@ void VaultManager::HandleBootstrapContactsRequest(transport::TcpConnectionPtr co
 
 void VaultManager::HandleMarkNetworkAsStable() {
   asio_service_.service().dispatch([=] {
-    std::vector<transport::TcpConnectionPtr> all_clients{ client_connections_->GetAll() };
+    std::vector<tcp::ConnectionPtr> all_clients{ client_connections_->GetAll() };
     for (const auto& client : all_clients)
       SendNetworkStableResponse(client);
     network_stable_ = true;
   });
 }
 
-void VaultManager::HandleNetworkStableRequest(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleNetworkStableRequest(tcp::ConnectionPtr connection) {
   asio_service_.service().dispatch([=] {
     // If network is already stable send reply, else do nothing since all clients get notified once
     // stable anyway.
@@ -377,33 +375,30 @@ void VaultManager::HandleNetworkStableRequest(transport::TcpConnectionPtr connec
   });
 }
 
-void VaultManager::HandleJoinedNetwork(transport::TcpConnectionPtr connection) {
+void VaultManager::HandleJoinedNetwork(tcp::ConnectionPtr connection) {
   try {
     VaultInfo vault_info(process_manager_->Find(connection));
     // TODO(Prakash) do vault_info need joined field
     std::string log_message("Vault running as " +
                             HexSubstr(vault_info.pmid_and_signer->first.name().value));
     LOG(kInfo) << log_message;
-    transport::TcpConnectionPtr client{
-        client_connections_->FindValidated(vault_info.owner_name) };
+    tcp::ConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, log_message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
-void VaultManager::HandleLogMessage(transport::TcpConnectionPtr connection,
-                                    const std::string& message) {
+void VaultManager::HandleLogMessage(tcp::ConnectionPtr connection, const std::string& message) {
   LOG(kInfo) << message;
   try {
     VaultInfo vault_info(process_manager_->Find(connection));
-    transport::TcpConnectionPtr client{
-        client_connections_->FindValidated(vault_info.owner_name) };
+    tcp::ConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
     SendLogMessage(client, message);
   }
   catch (const std::exception&) {}  // We don't care if the client isn't connected.
 }
 
-void VaultManager::RemoveFromNewConnections(transport::TcpConnectionPtr connection) {
+void VaultManager::RemoveFromNewConnections(tcp::ConnectionPtr connection) {
   if (!new_connections_->Remove(connection)) {
     LOG(kWarning) << "Connection not found in new_connections_.";
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));

@@ -48,42 +48,40 @@ class ProcessManager;
 // * Maintains the bootstrap list (peer contacts known to its vault(s)).
 class VaultManager {
  public:
-  VaultManager();
-  ~VaultManager();
-
- private:
   VaultManager(const VaultManager&) = delete;
   VaultManager(VaultManager&&) = delete;
   VaultManager operator=(VaultManager) = delete;
 
-  void HandleNewConnection(transport::TcpConnectionPtr connection);
-  void HandleConnectionClosed(transport::TcpConnectionPtr connection);
-  void HandleReceivedMessage(transport::TcpConnectionPtr connection,
-                             const std::string& wrapped_message);
+  VaultManager();
+  ~VaultManager();
+
+ private:
+  void HandleNewConnection(tcp::ConnectionPtr connection);
+  void HandleConnectionClosed(tcp::ConnectionPtr connection);
+  void HandleReceivedMessage(tcp::ConnectionPtr connection, const std::string& wrapped_message);
 
   // Messages from Client
-  void HandleValidateConnectionRequest(transport::TcpConnectionPtr connection);
-  void HandleChallengeResponse(transport::TcpConnectionPtr connection, const std::string& message);
-  void HandleStartVaultRequest(transport::TcpConnectionPtr connection, const std::string& message);
-  void HandleTakeOwnershipRequest(transport::TcpConnectionPtr connection,
-                                  const std::string& message);
-  void HandleBootstrapContactsRequest(transport::TcpConnectionPtr connection);
+  void HandleValidateConnectionRequest(tcp::ConnectionPtr connection);
+  void HandleChallengeResponse(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleStartVaultRequest(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleTakeOwnershipRequest(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleBootstrapContactsRequest(tcp::ConnectionPtr connection);
   void HandleMarkNetworkAsStable();
-  void HandleNetworkStableRequest(transport::TcpConnectionPtr connection);
+  void HandleNetworkStableRequest(tcp::ConnectionPtr connection);
 
   // Messages from Vault
-  void HandleVaultStarted(transport::TcpConnectionPtr connection, const std::string& message);
-  void HandleJoinedNetwork(transport::TcpConnectionPtr connection);
-  void HandleLogMessage(transport::TcpConnectionPtr connection, const std::string& message);
+  void HandleVaultStarted(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleJoinedNetwork(tcp::ConnectionPtr connection);
+  void HandleLogMessage(tcp::ConnectionPtr connection, const std::string& message);
 
-  void RemoveFromNewConnections(transport::TcpConnectionPtr connection);
+  void RemoveFromNewConnections(tcp::ConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
 
   const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
   bool network_stable_;
   AsioService asio_service_;
-  std::shared_ptr<transport::TcpListener> listener_;
+  std::shared_ptr<tcp::Listener> listener_;
   std::shared_ptr<ProcessManager> process_manager_;
   std::shared_ptr<ClientConnections> client_connections_;
   std::shared_ptr<NewConnections> new_connections_;

@@ -46,7 +46,7 @@ struct VaultInfo {
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   NonEmptyString label;
-  transport::TcpConnectionPtr tcp_connection;
+  tcp::ConnectionPtr tcp_connection;
 };
 
 void swap(VaultInfo& lhs, VaultInfo& rhs);

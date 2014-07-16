@@ -38,60 +38,55 @@ namespace vault_manager {
 
 struct VaultInfo;
 
-void SendValidateConnectionRequest(transport::TcpConnectionPtr connection);
+void SendValidateConnectionRequest(tcp::ConnectionPtr connection);
 
-void SendChallenge(transport::TcpConnectionPtr connection, const asymm::PlainText& challenge);
+void SendChallenge(tcp::ConnectionPtr connection, const asymm::PlainText& challenge);
 
-void SendChallengeResponse(transport::TcpConnectionPtr connection,
-                           const passport::PublicMaid& public_maid,
+void SendChallengeResponse(tcp::ConnectionPtr connection, const passport::PublicMaid& public_maid,
                            const asymm::Signature& signature);
 
-void SendStartVaultRequest(transport::TcpConnectionPtr connection,
-                           const NonEmptyString& vault_label,
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
-void SendTakeOwnershipRequest(transport::TcpConnectionPtr connection,
-                              const NonEmptyString& vault_label,
+void SendTakeOwnershipRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                               const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
-void SendVaultRunningResponse(transport::TcpConnectionPtr connection,
-                              const NonEmptyString& vault_label,
+void SendVaultRunningResponse(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error = nullptr);
 
-void SendVaultStarted(transport::TcpConnectionPtr connection);
+void SendVaultStarted(tcp::ConnectionPtr connection);
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv,
                               const routing::BootstrapContacts& bootstrap_contacts);
 
-void SendJoinedNetwork(transport::TcpConnectionPtr connection);
+void SendJoinedNetwork(tcp::ConnectionPtr connection);
 
-void SendBootstrapContact(transport::TcpConnectionPtr connection,
+void SendBootstrapContact(tcp::ConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact);
 
-void SendBootstrapContactsRequest(transport::TcpConnectionPtr connection);
+void SendBootstrapContactsRequest(tcp::ConnectionPtr connection);
 
-void SendBootstrapContactsResponse(transport::TcpConnectionPtr connection,
+void SendBootstrapContactsResponse(tcp::ConnectionPtr connection,
                                    const routing::BootstrapContacts& bootstrap_contacts);
 
-void SendVaultShutdownRequest(transport::TcpConnectionPtr connection);
+void SendVaultShutdownRequest(tcp::ConnectionPtr connection);
 
-void SendMaxDiskUsageUpdate(transport::TcpConnectionPtr connection, DiskUsage max_disk_usage);
+void SendMaxDiskUsageUpdate(tcp::ConnectionPtr connection, DiskUsage max_disk_usage);
 
-void SendLogMessage(transport::TcpConnectionPtr connection, const std::string& log_message);
+void SendLogMessage(tcp::ConnectionPtr connection, const std::string& log_message);
 
 #ifdef TESTING
-void SendStartVaultRequest(transport::TcpConnectionPtr connection,
-                           const NonEmptyString& vault_label,
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index);
 
-void SendMarkNetworkAsStableRequest(transport::TcpConnectionPtr connection);
+void SendMarkNetworkAsStableRequest(tcp::ConnectionPtr connection);
 
-void SendNetworkStableRequest(transport::TcpConnectionPtr connection);
+void SendNetworkStableRequest(tcp::ConnectionPtr connection);
 
-void SendNetworkStableResponse(transport::TcpConnectionPtr connection);
+void SendNetworkStableResponse(tcp::ConnectionPtr connection);
 #endif
 
 }  // namespace vault_manager

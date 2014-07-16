@@ -22,7 +22,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/common/transport/tcp_connection.h"
+#include "maidsafe/common/tcp/connection.h"
 
 namespace maidsafe {
 
@@ -40,8 +40,7 @@ ClientConnections::~ClientConnections() {
   assert(unvalidated_clients_.empty() && clients_.empty());
 }
 
-void ClientConnections::Add(transport::TcpConnectionPtr connection,
-                            const asymm::PlainText& challenge) {
+void ClientConnections::Add(tcp::ConnectionPtr connection, const asymm::PlainText& challenge) {
   assert(clients_.find(connection) == std::end(clients_));
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
   timer->async_wait([=](const boost::system::error_code& error_code) {
@@ -57,8 +56,7 @@ void ClientConnections::Add(transport::TcpConnectionPtr connection,
   static_cast<void>(result);
 }
 
-void ClientConnections::Validate(transport::TcpConnectionPtr connection,
-                                 const passport::PublicMaid& maid,
+void ClientConnections::Validate(tcp::ConnectionPtr connection, const passport::PublicMaid& maid,
                                  const asymm::Signature& signature) {
   auto itr(unvalidated_clients_.find(connection));
   if (itr == std::end(unvalidated_clients_)) {
@@ -82,7 +80,7 @@ void ClientConnections::Validate(transport::TcpConnectionPtr connection,
   static_cast<void>(result);
 }
 
-bool ClientConnections::Remove(transport::TcpConnectionPtr connection) {
+bool ClientConnections::Remove(tcp::ConnectionPtr connection) {
   auto itr(clients_.find(connection));
   if (itr != std::end(clients_)) {
     clients_.erase(itr);
@@ -106,7 +104,7 @@ void ClientConnections::CloseAll() {
 }
 
 ClientConnections::MaidName
-    ClientConnections::FindValidated(transport::TcpConnectionPtr connection) const {
+    ClientConnections::FindValidated(tcp::ConnectionPtr connection) const {
   auto itr(clients_.find(connection));
   if (itr == std::end(clients_)) {
     auto unvalidated_itr(unvalidated_clients_.find(connection));
@@ -121,9 +119,9 @@ ClientConnections::MaidName
   return itr->second;
 }
 
-transport::TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
+tcp::ConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
   auto itr(std::find_if(std::begin(clients_), std::end(clients_),
-      [&maid_name](const std::pair<transport::TcpConnectionPtr, MaidName> client) {
+      [&maid_name](const std::pair<tcp::ConnectionPtr, MaidName> client) {
         return client.second == maid_name;
       }));
   if (itr == std::end(clients_)) {
@@ -133,8 +131,8 @@ transport::TcpConnectionPtr ClientConnections::FindValidated(MaidName maid_name)
   return itr->first;
 }
 
-std::vector<transport::TcpConnectionPtr> ClientConnections::GetAll() const {
-  std::vector<transport::TcpConnectionPtr> all_connections;
+std::vector<tcp::ConnectionPtr> ClientConnections::GetAll() const {
+  std::vector<tcp::ConnectionPtr> all_connections;
   for (auto connection : clients_)
     all_connections.push_back(connection.first);
   for (auto connection : unvalidated_clients_)

@@ -20,7 +20,7 @@
 
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/common/transport/tcp_connection.h"
+#include "maidsafe/common/tcp/connection.h"
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
@@ -33,20 +33,19 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-void SendValidateConnectionRequest(transport::TcpConnectionPtr connection) {
+void SendValidateConnectionRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{},
                                               MessageType::kValidateConnectionRequest)));
 }
 
-void SendChallenge(transport::TcpConnectionPtr connection, const asymm::PlainText& challenge) {
+void SendChallenge(tcp::ConnectionPtr connection, const asymm::PlainText& challenge) {
   protobuf::Challenge message;
   message.set_plaintext(challenge.string());
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                    MessageType::kChallenge)));
 }
 
-void SendChallengeResponse(transport::TcpConnectionPtr connection,
-                           const passport::PublicMaid& public_maid,
+void SendChallengeResponse(tcp::ConnectionPtr connection, const passport::PublicMaid& public_maid,
                            const asymm::Signature& signature) {
   protobuf::ChallengeResponse message;
   message.set_public_maid_name(public_maid.name()->string());
@@ -56,8 +55,7 @@ void SendChallengeResponse(transport::TcpConnectionPtr connection,
                    MessageType::kChallengeResponse)));
 }
 
-void SendStartVaultRequest(transport::TcpConnectionPtr connection,
-                           const NonEmptyString& vault_label,
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const fs::path& vault_dir, DiskUsage max_disk_usage) {
   protobuf::StartVaultRequest message;
   message.set_label(vault_label.string());
@@ -68,8 +66,7 @@ void SendStartVaultRequest(transport::TcpConnectionPtr connection,
                    MessageType::kStartVaultRequest)));
 }
 
-void SendTakeOwnershipRequest(transport::TcpConnectionPtr connection,
-                              const NonEmptyString& vault_label,
+void SendTakeOwnershipRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                               const fs::path& vault_dir, DiskUsage max_disk_usage) {
   protobuf::TakeOwnershipRequest message;
   message.set_label(vault_label.string());
@@ -79,7 +76,7 @@ void SendTakeOwnershipRequest(transport::TcpConnectionPtr connection,
                    MessageType::kTakeOwnershipRequest)));
 }
 
-void SendVaultRunningResponse(transport::TcpConnectionPtr connection,
+void SendVaultRunningResponse(tcp::ConnectionPtr connection,
                               const NonEmptyString& vault_label,
                               const passport::PmidAndSigner* const pmid_and_signer,
                               const maidsafe_error* const error) {
@@ -104,7 +101,7 @@ void SendVaultRunningResponse(transport::TcpConnectionPtr connection,
                    MessageType::kVaultRunningResponse)));
 }
 
-void SendVaultStarted(transport::TcpConnectionPtr connection) {
+void SendVaultStarted(tcp::ConnectionPtr connection) {
   protobuf::VaultStarted message;
   message.set_process_id(process::GetProcessId());
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
@@ -132,7 +129,7 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                                                              MessageType::kVaultStartedResponse)));
 }
 
-void SendBootstrapContact(transport::TcpConnectionPtr connection,
+void SendBootstrapContact(tcp::ConnectionPtr connection,
                           const routing::BootstrapContact& bootstrap_contact) {
   protobuf::BootstrapContact message;
 //  assert(false);  static_cast<void>(bootstrap_contact);
@@ -141,16 +138,16 @@ void SendBootstrapContact(transport::TcpConnectionPtr connection,
                                MessageType::kBootstrapContact)));
 }
 
-void SendJoinedNetwork(transport::TcpConnectionPtr connection) {
+void SendJoinedNetwork(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kJoinedNetwork)));
 }
 
-void SendBootstrapContactsRequest(transport::TcpConnectionPtr connection) {
+void SendBootstrapContactsRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{},
                                               MessageType::kBootstrapContactsRequest)));
 }
 
-void SendBootstrapContactsResponse(transport::TcpConnectionPtr connection,
+void SendBootstrapContactsResponse(tcp::ConnectionPtr connection,
                                    const routing::BootstrapContacts& bootstrap_contacts) {
   protobuf::BootstrapContactsResponse message;
   message.set_serialised_bootstrap_contacts(
@@ -159,24 +156,23 @@ void SendBootstrapContactsResponse(transport::TcpConnectionPtr connection,
                                MessageType::kBootstrapContactsResponse)));
 }
 
-void SendVaultShutdownRequest(transport::TcpConnectionPtr connection) {
+void SendVaultShutdownRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kVaultShutdownRequest)));
 }
 
-void SendMaxDiskUsageUpdate(transport::TcpConnectionPtr connection, DiskUsage max_disk_usage) {
+void SendMaxDiskUsageUpdate(tcp::ConnectionPtr connection, DiskUsage max_disk_usage) {
   protobuf::MaxDiskUsageUpdate message;
   message.set_max_disk_usage(max_disk_usage.data);
   connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                               MessageType::kMaxDiskUsageUpdate)));
 }
 
-void SendLogMessage(transport::TcpConnectionPtr connection, const std::string& log_message) {
+void SendLogMessage(tcp::ConnectionPtr connection, const std::string& log_message) {
   connection->Send(WrapMessage(std::make_pair(log_message, MessageType::kLogMessage)));
 }
 
 #ifdef TESTING
-void SendStartVaultRequest(transport::TcpConnectionPtr connection,
-                           const NonEmptyString& vault_label,
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index) {
   protobuf::StartVaultRequest message;
@@ -188,15 +184,15 @@ void SendStartVaultRequest(transport::TcpConnectionPtr connection,
                                               MessageType::kStartVaultRequest)));
 }
 
-void SendMarkNetworkAsStableRequest(transport::TcpConnectionPtr connection) {
+void SendMarkNetworkAsStableRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kMarkNetworkAsStable)));
 }
 
-void SendNetworkStableRequest(transport::TcpConnectionPtr connection) {
+void SendNetworkStableRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kNetworkStableRequest)));
 }
 
-void SendNetworkStableResponse(transport::TcpConnectionPtr connection) {
+void SendNetworkStableResponse(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kNetworkStableResponse)));
 }
 #endif

@@ -21,7 +21,7 @@
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/common/transport/tcp_connection.h"
+#include "maidsafe/common/tcp/connection.h"
 
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/rpc_helper.h"
@@ -33,14 +33,14 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-VaultInterface::VaultInterface(transport::Port vault_manager_port)
+VaultInterface::VaultInterface(tcp::Port vault_manager_port)
     : exit_code_promise_(),
       exit_code_flag_(),
       vault_manager_port_(vault_manager_port),
       on_vault_started_response_(),
       vault_config_(),
       asio_service_(1),
-      tcp_connection_(transport::TcpConnection::MakeShared(asio_service_, vault_manager_port_)),
+      tcp_connection_(tcp::Connection::MakeShared(asio_service_, vault_manager_port_)),
       connection_closer_([&] { tcp_connection_->Close(); }) {
   tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
                          [this] { OnConnectionClosed(); });

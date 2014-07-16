@@ -56,7 +56,7 @@ void ConnectToNetwork(LocalNetworkController* local_network_controller) {
     routing::ReadBootstrapFile(local_network_controller->path_to_bootstrap_file) };
 
   ClientInterface::SetTestEnvironment(
-      static_cast<transport::Port>(local_network_controller->vault_manager_port),
+      static_cast<tcp::Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
       bootstrap_contacts, local_network_controller->vault_count);
 

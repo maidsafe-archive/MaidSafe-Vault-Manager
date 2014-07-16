@@ -91,20 +91,20 @@ MessageAndType UnwrapMessage(std::string wrapped_message);
 
 NonEmptyString GenerateLabel();
 
-transport::Port GetInitialListeningPort();
+tcp::Port GetInitialListeningPort();
 
 #ifdef TESTING
 namespace test {
 
-void SetEnvironment(transport::Port test_vault_manager_port,
-    const boost::filesystem::path& test_env_root_dir,
-    const boost::filesystem::path& path_to_vault,
-    const routing::BootstrapContacts& bootstrap_contacts,
-    int pmid_list_size = 0);
+void SetEnvironment(tcp::Port test_vault_manager_port,
+                    const boost::filesystem::path& test_env_root_dir,
+                    const boost::filesystem::path& path_to_vault,
+                    const routing::BootstrapContacts& bootstrap_contacts,
+                    int pmid_list_size = 0);
 
 }  // namespace test
 
-transport::Port GetTestVaultManagerPort();
+tcp::Port GetTestVaultManagerPort();
 boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
 passport::PmidAndSigner GetPmidAndSigner(int index);

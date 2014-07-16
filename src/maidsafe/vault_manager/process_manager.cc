@@ -43,7 +43,6 @@ extern "C" char **environ;
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/common/transport/tcp_connection.h"
 
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/utils.h"
@@ -58,8 +57,7 @@ namespace vault_manager {
 
 namespace {
 
-bool ConnectionsEqual(const transport::TcpConnectionPtr& lhs,
-                      const transport::TcpConnectionPtr& rhs) {
+bool ConnectionsEqual(const tcp::ConnectionPtr& lhs, const tcp::ConnectionPtr& rhs) {
   return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
 }
 
@@ -139,7 +137,7 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
 
 
 ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vault_executable_path,
-                               transport::Port listening_port)
+                               tcp::Port listening_port)
     : io_service_(io_service),
 #ifndef MAIDSAFE_WIN32
       signal_set_(io_service_, SIGCHLD),
@@ -170,7 +168,7 @@ ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vau
 
 std::shared_ptr<ProcessManager> ProcessManager::MakeShared(
     boost::asio::io_service& io_service, boost::filesystem::path vault_executable_path,
-    transport::Port listening_port) {
+    tcp::Port listening_port) {
   return std::shared_ptr<ProcessManager>{ new ProcessManager{ io_service, vault_executable_path,
                                                               listening_port } };
 }
@@ -216,8 +214,7 @@ void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
   strong_guarantee.Release();
 }
 
-VaultInfo ProcessManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
-                                             ProcessId process_id) {
+VaultInfo ProcessManager::HandleVaultStarted(tcp::ConnectionPtr connection, ProcessId process_id) {
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, process_id](const Child& vault) {
                           return GetProcessId(vault) == process_id;
@@ -319,8 +316,7 @@ void ProcessManager::InitSignalHandler() {
 #endif
 }
 
-void ProcessManager::StopProcess(transport::TcpConnectionPtr connection,
-                                 OnExitFunctor on_exit_functor) {
+void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on_exit_functor) {
   auto itr(std::begin(vaults_));
   try {
     itr = DoFind(connection);
@@ -344,7 +340,7 @@ void ProcessManager::StopProcess(transport::TcpConnectionPtr connection,
   });
 }
 
-bool ProcessManager::HandleConnectionClosed(transport::TcpConnectionPtr connection) {
+bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   try {
     OnProcessExit(DoFind(connection)->info.label, -1, true);
   }
@@ -385,12 +381,12 @@ std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(const NonEmp
   return itr;
 }
 
-VaultInfo ProcessManager::Find(transport::TcpConnectionPtr connection) const {
+VaultInfo ProcessManager::Find(tcp::ConnectionPtr connection) const {
   return DoFind(connection)->info;
 }
 
 std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
-    transport::TcpConnectionPtr connection) const {
+    tcp::ConnectionPtr connection) const {
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, connection](const Child& vault) {
                           return ConnectionsEqual(vault.info.tcp_connection, connection);
@@ -400,8 +396,7 @@ std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
   return itr;
 }
 
-std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(
-    transport::TcpConnectionPtr connection) {
+std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(tcp::ConnectionPtr connection) {
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, connection](const Child& vault) {
                           return ConnectionsEqual(vault.info.tcp_connection, connection);
