@@ -78,12 +78,10 @@ fs::path GetVaultExecutablePath() {
   return process::GetOtherExecutablePath(fs::path{ "vault" });
 }
 
-void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer,
-                      const boost::filesystem::path bootstrap_file_path) {
+void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer) {
   LOG(kVerbose) << "Creating Random client to store public pmid key";
   std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs(nfs_client::MaidNodeNfs::MakeShared(
-      passport::MaidAndSigner{ passport::CreateMaidAndSigner() },
-      routing::ReadBootstrapFile(bootstrap_file_path)));
+      passport::MaidAndSigner{ passport::CreateMaidAndSigner() }));
   client_nfs->Put(passport::PublicPmid{ pmid_and_signer.first }).get();
   client_nfs->Put(passport::PublicAnpmid{ pmid_and_signer.second }).get();
   LOG(kVerbose) << "stored public pmid key";
@@ -111,7 +109,7 @@ VaultManager::VaultManager()
     VaultInfo vault_info;
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
-    PutPmidAndSigner(*vault_info.pmid_and_signer, kBootstrapFilePath_);
+    PutPmidAndSigner(*vault_info.pmid_and_signer);
     vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
     if (!fs::exists(vault_info.vault_dir))
       fs::create_directories(vault_info.vault_dir);
@@ -249,7 +247,7 @@ void VaultManager::HandleStartVaultRequest(transport::TcpConnectionPtr connectio
     if (!vault_info.pmid_and_signer) {
       vault_info.pmid_and_signer =
           std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
-      PutPmidAndSigner(*vault_info.pmid_and_signer, kBootstrapFilePath_);
+      PutPmidAndSigner(*vault_info.pmid_and_signer);
     }
     if (!start_vault_message.has_vault_dir()) {
       vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
