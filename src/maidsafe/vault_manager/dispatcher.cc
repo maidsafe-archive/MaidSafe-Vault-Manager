@@ -112,8 +112,7 @@ void SendVaultStarted(transport::TcpConnectionPtr connection) {
 }
 
 void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
-                              crypto::AES256InitialisationVector symm_iv,
-                              const routing::BootstrapContacts& bootstrap_contacts) {
+                              crypto::AES256InitialisationVector symm_iv) {
   protobuf::VaultStartedResponse message;
   message.set_aes256key(symm_key.string());
   message.set_aes256iv(symm_iv.string());
@@ -121,8 +120,6 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
       passport::EncryptPmid(vault_info.pmid_and_signer->first, symm_key, symm_iv)->string());
   message.set_vault_dir(vault_info.vault_dir.string());
   message.set_max_disk_usage(vault_info.max_disk_usage.data);
-  message.set_serialised_bootstrap_contacts(
-      routing::SerialiseBootstrapContacts(bootstrap_contacts));
 #ifdef TESTING
   auto serialised_public_pmids = GetSerialisedPublicPmids();
   if (!serialised_public_pmids.empty())
@@ -132,31 +129,8 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                                                              MessageType::kVaultStartedResponse)));
 }
 
-void SendBootstrapContact(transport::TcpConnectionPtr connection,
-                          const routing::BootstrapContact& bootstrap_contact) {
-  protobuf::BootstrapContact message;
-//  assert(false);  static_cast<void>(bootstrap_contact);
-  message.set_serialised_contact(routing::SerialiseBootstrapContact(bootstrap_contact));
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                               MessageType::kBootstrapContact)));
-}
-
 void SendJoinedNetwork(transport::TcpConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{}, MessageType::kJoinedNetwork)));
-}
-
-void SendBootstrapContactsRequest(transport::TcpConnectionPtr connection) {
-  connection->Send(WrapMessage(std::make_pair(std::string{},
-                                              MessageType::kBootstrapContactsRequest)));
-}
-
-void SendBootstrapContactsResponse(transport::TcpConnectionPtr connection,
-                                   const routing::BootstrapContacts& bootstrap_contacts) {
-  protobuf::BootstrapContactsResponse message;
-  message.set_serialised_bootstrap_contacts(
-      routing::SerialiseBootstrapContacts(bootstrap_contacts));
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                               MessageType::kBootstrapContactsResponse)));
 }
 
 void SendVaultShutdownRequest(transport::TcpConnectionPtr connection) {

@@ -56,7 +56,6 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
     : kMaid_(maid),
       mutex_(),
       on_challenge_(),
-      on_bootstrap_contacts_response_(),
       network_stable_(),
       network_stable_flag_(),
       asio_service_(1),
@@ -97,12 +96,6 @@ std::shared_ptr<transport::TcpConnection> ClientInterface::ConnectToVaultManager
   LOG(kError) << "Failed to connect to VaultManager.  Attempted port range " << initial_port
               << " to " << --port;
   BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::failed_to_connect));
-}
-
-std::future<routing::BootstrapContacts> ClientInterface::GetBootstrapContacts() {
-  SendBootstrapContactsRequest(tcp_connection_);
-  return SetResponseCallback<routing::BootstrapContacts>(on_bootstrap_contacts_response_,
-                                                         asio_service_.service(), mutex_);
 }
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwnership(
@@ -150,9 +143,6 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
     switch (message_and_type.second) {
       case MessageType::kChallenge:
         InvokeCallBack(message_and_type.first, on_challenge_);
-        break;
-      case MessageType::kBootstrapContactsResponse:
-        InvokeCallBack(message_and_type.first, on_bootstrap_contacts_response_);
         break;
       case MessageType::kVaultRunningResponse:
         HandleVaultRunningResponse(message_and_type.first);
@@ -224,9 +214,8 @@ void ClientInterface::HandleLogMessage(const std::string& message) {
 #ifdef TESTING
 void ClientInterface::SetTestEnvironment(transport::Port test_vault_manager_port,
     boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
-    routing::BootstrapContacts bootstrap_contacts, int pmid_list_size) {
-  test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault,
-                       bootstrap_contacts, pmid_list_size);
+    int pmid_list_size) {
+  test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, pmid_list_size);
 }
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(

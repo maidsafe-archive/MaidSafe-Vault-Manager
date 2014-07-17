@@ -37,8 +37,6 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/routing/bootstrap_file_operations.h"
-
 #include "maidsafe/vault_manager/vault_manager.h"
 #include "maidsafe/vault_manager/utils.h"
 
@@ -146,7 +144,7 @@ void HandleProgramOptions(int argc, char** argv) {
 #ifdef TESTING
       ("port", po::value<int>(), "Listening port")
       ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
-      ("root_dir", po::value<std::string>(), "Path to folder of config file and bootstrap file")
+      ("root_dir", po::value<std::string>(), "Path to folder of config file")
 #endif
       ("help", "produce help message");
   po::variables_map variables_map;
@@ -179,8 +177,7 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("vault_path") != 0)
     path_to_vault = variables_map["vault_path"].as<std::string>();
 
-  maidsafe::vault_manager::test::SetEnvironment(port, root_dir, path_to_vault,
-                                                maidsafe::routing::BootstrapContacts());
+  maidsafe::vault_manager::test::SetEnvironment(port, root_dir, path_to_vault);
 #endif
 }
 

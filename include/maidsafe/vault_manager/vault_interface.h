@@ -31,7 +31,6 @@
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/vault_config.h"
 
@@ -48,7 +47,6 @@ class VaultInterface {
   // Doesn't throw.
   int WaitForExit();
 
-  void SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact);
   void SendJoined();
 
 #ifdef TESTING

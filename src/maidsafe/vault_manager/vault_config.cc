@@ -27,33 +27,29 @@ namespace vault_manager {
 
 VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
                          const boost::filesystem::path& vault_dir_in,
-                         const DiskUsage& max_disk_usage_in,
-                         routing::BootstrapContacts bootstrap_contacts_in)
+                         const DiskUsage& max_disk_usage_in)
     : pmid(pmid_in),
       vault_dir(vault_dir_in),
-      max_disk_usage(max_disk_usage_in),
 #ifdef TESTING
       test_config(),
 #endif
-      bootstrap_contacts(bootstrap_contacts_in) {}
+      max_disk_usage(max_disk_usage_in) {}
 
 VaultConfig::VaultConfig(const VaultConfig& other)
     : pmid(other.pmid),
       vault_dir(other.vault_dir),
-      max_disk_usage(other.max_disk_usage),
 #ifdef TESTING
       test_config(other.test_config),
 #endif
-      bootstrap_contacts(other.bootstrap_contacts) {}
+      max_disk_usage(other.max_disk_usage) {}
 
 VaultConfig::VaultConfig(VaultConfig&& other)
     : pmid(std::move(other.pmid)),
       vault_dir(std::move(other.vault_dir)),
-      max_disk_usage(std::move(other.max_disk_usage)),
 #ifdef TESTING
       test_config(std::move(other.test_config)),
 #endif
-      bootstrap_contacts(std::move(other.bootstrap_contacts)) {}
+      max_disk_usage(std::move(other.max_disk_usage)) {}
 
 VaultConfig& VaultConfig::operator=(VaultConfig other) {
   swap(*this, other);
@@ -64,11 +60,10 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
   using std::swap;
   swap(lhs.pmid, rhs.pmid);
   swap(lhs.vault_dir, rhs.vault_dir);
-  swap(lhs.max_disk_usage, rhs.max_disk_usage);
 #ifdef TESTING
   swap(lhs.test_config, rhs.test_config);
 #endif
-  swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
+  swap(lhs.max_disk_usage, rhs.max_disk_usage);
 }
 
 

@@ -35,7 +35,6 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 
 namespace maidsafe {
 
@@ -53,8 +52,6 @@ class ClientInterface {
   explicit ClientInterface(const passport::Maid& maid);
   ~ClientInterface();
 
-  std::future<routing::BootstrapContacts> GetBootstrapContacts();
-
   std::future<std::unique_ptr<passport::PmidAndSigner>> TakeOwnership(const NonEmptyString& label,
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
@@ -66,15 +63,13 @@ class ClientInterface {
   // * the desired TCP listening port of the VaultManager (VM)
   // * a root dir for the VM to which it will write its config file and bootstrap list
   // * the path to an executable which the VM will treat as a MaidSafe vault
-  // * a bootstrap contact which will be used to initialise the bootstrap list the VM manages
   // * a list of PublicPmids to allow starting a zero-state network
   //
   // 'test_env_root_dir' must exist when this call is made or an error will be thrown.
   // The function should only be called once - further calls are no-ops.
   static void SetTestEnvironment(
       uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
-      boost::filesystem::path path_to_vault, routing::BootstrapContacts bootstrap_contacts,
-      int pmid_list_size);
+      boost::filesystem::path path_to_vault, int pmid_list_size);
 
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
@@ -99,14 +94,12 @@ class ClientInterface {
   void HandleReceivedMessage(const std::string& wrapped_message);
   void HandleVaultRunningResponse(const std::string& message);
   void HandleNetworkStableResponse();
-  void HandleBootstrapContactsResponse(const std::string& message);
   void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
   void HandleLogMessage(const std::string& message);
 
   const passport::Maid kMaid_;
   std::mutex mutex_;
   std::function<void(std::string)> on_challenge_;
-  std::function<void(std::string)> on_bootstrap_contacts_response_;
   std::promise<void> network_stable_;
   std::once_flag network_stable_flag_;
   std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;

@@ -45,7 +45,6 @@ class ProcessManager;
 // * Reads config file on startup and restarts vaults listed in file.
 // * Writes details of all vaults to config file.
 // * Listens and responds to client and vault requests on the loopback address.
-// * Maintains the bootstrap list (peer contacts known to its vault(s)).
 class VaultManager {
  public:
   VaultManager();
@@ -67,7 +66,6 @@ class VaultManager {
   void HandleStartVaultRequest(transport::TcpConnectionPtr connection, const std::string& message);
   void HandleTakeOwnershipRequest(transport::TcpConnectionPtr connection,
                                   const std::string& message);
-  void HandleBootstrapContactsRequest(transport::TcpConnectionPtr connection);
   void HandleMarkNetworkAsStable();
   void HandleNetworkStableRequest(transport::TcpConnectionPtr connection);
 
@@ -79,7 +77,6 @@ class VaultManager {
   void RemoveFromNewConnections(transport::TcpConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
 
-  const boost::filesystem::path kBootstrapFilePath_;
   ConfigFileHandler config_file_handler_;
   bool network_stable_;
   AsioService asio_service_;

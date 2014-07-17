@@ -43,9 +43,7 @@ TEST(VaultManagerTest, BEH_Basic) {
   std::shared_ptr<fs::path> test_env_root_dir{
       maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager") };
   fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  routing::BootstrapContact bootstrap_contact(GetLocalIp(), maidsafe::test::GetRandomPort());
-  routing::BootstrapContacts bootstrap_contacts(1, bootstrap_contact);
-  SetEnvironment(transport::Port{ 7777 }, *test_env_root_dir, path_to_vault, bootstrap_contacts);
+  SetEnvironment(transport::Port{ 7777 }, *test_env_root_dir, path_to_vault);
 
   VaultManager vault_manager;
 

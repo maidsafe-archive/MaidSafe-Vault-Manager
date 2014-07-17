@@ -26,8 +26,6 @@
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/types.h"
 
-#include "maidsafe/routing/bootstrap_file_operations.h"
-
 namespace maidsafe {
 
 namespace vault_manager {
@@ -35,15 +33,13 @@ namespace vault_manager {
 struct VaultConfig {
   VaultConfig(const passport::Pmid& pmid_in,
               const boost::filesystem::path& vault_dir_in,
-              const DiskUsage& max_disk_usage_in,
-              routing::BootstrapContacts bootstrap_contacts_in);
+              const DiskUsage& max_disk_usage_in);
   VaultConfig(const VaultConfig&);
   VaultConfig(VaultConfig&& other);
   VaultConfig& operator=(VaultConfig other);
 
   passport::Pmid pmid;
   boost::filesystem::path vault_dir;
-  DiskUsage max_disk_usage;
 #ifdef TESTING
   enum class TestType : int32_t {
     kNone,
@@ -60,8 +56,7 @@ struct VaultConfig {
     std::vector<passport::PublicPmid> public_pmid_list;
   } test_config;
 #endif
-
-  routing::BootstrapContacts bootstrap_contacts;
+  DiskUsage max_disk_usage;
 };
 
 void swap(VaultConfig& lhs, VaultConfig& rhs);

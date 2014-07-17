@@ -90,20 +90,10 @@ message VaultStartedResponse {
   required bytes encrypted_pmid = 3;
   required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
-  required bytes serialised_bootstrap_contacts = 6;
-  optional bytes serialised_public_pmids = 7;  // TESTING only
+  optional bytes serialised_public_pmids = 6;  // TESTING only
 }
 
 // Client to VaultManager and VaultManager to Vault
 message MaxDiskUsageUpdate {
   required uint64 max_disk_usage = 1;
-}
-
-// Vault to VaultManager and VaultManager to Client
-message BootstrapContact {
-  required bytes serialised_contact = 1;
-}
-
-message BootstrapContactsResponse {
-  required bytes serialised_bootstrap_contacts = 1;
 }

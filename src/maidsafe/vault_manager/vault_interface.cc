@@ -61,10 +61,6 @@ int VaultInterface::WaitForExit() {
   return exit_code_promise_.get_future().get();
 }
 
-void VaultInterface::SendBootstrapContactToVaultManager(const routing::BootstrapContact& contact) {
-  SendBootstrapContact(tcp_connection_, contact);
-}
-
 void VaultInterface::SendJoined() {
   SendJoinedNetwork(tcp_connection_);
 }

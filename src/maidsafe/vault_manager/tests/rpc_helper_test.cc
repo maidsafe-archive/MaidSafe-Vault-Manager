@@ -36,41 +36,41 @@ namespace vault_manager {
 
 namespace test {
 
-TEST(RpcHelperTest, BEH_SetResponseCallback) {
-  AsioService asio_service(1);
-  boost::asio::io_service& io_service(asio_service.service());
-  std::function<void(std::string)> callback;
-  std::mutex mutex;
-  typedef routing::BootstrapContacts BootstrapList;
-  BootstrapList bootstrap_list{ 1, { maidsafe::GetLocalIp(), maidsafe::test::GetRandomPort() } };
+//TEST(RpcHelperTest, BEH_SetResponseCallback) {
+//  AsioService asio_service(1);
+//  boost::asio::io_service& io_service(asio_service.service());
+//  std::function<void(std::string)> callback;
+//  std::mutex mutex;
+//  typedef routing::BootstrapContacts BootstrapList;
+//  BootstrapList bootstrap_list{ 1, { maidsafe::GetLocalIp(), maidsafe::test::GetRandomPort() } };
 
-  std::vector<std::future<BootstrapList>> futures;
-  for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
+//  std::vector<std::future<BootstrapList>> futures;
+//  for (int i(0); i < 3; ++i)
+//    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
 
-  for (auto& future : futures)
-    EXPECT_THROW(future.get(), maidsafe_error) << "must have failed";
+//  for (auto& future : futures)
+//    EXPECT_THROW(future.get(), maidsafe_error) << "must have failed";
 
-  futures.clear();
-  for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
+//  futures.clear();
+//  for (int i(0); i < 3; ++i)
+//    futures.emplace_back(SetResponseCallback<BootstrapList>(callback, io_service, mutex));
 
-  protobuf::BootstrapContactsResponse message;
-  message.set_serialised_bootstrap_contacts(routing::SerialiseBootstrapContacts(bootstrap_list));
+//  protobuf::BootstrapContactsResponse message;
+//  message.set_serialised_bootstrap_contacts(routing::SerialiseBootstrapContacts(bootstrap_list));
 
-  std::thread t([&]() {
-    Sleep(std::chrono::milliseconds(100));
-    callback(message.SerializeAsString());
-  });
+//  std::thread t([&]() {
+//    Sleep(std::chrono::milliseconds(100));
+//    callback(message.SerializeAsString());
+//  });
 
-  BootstrapList retrieved_bootstrap_list;
-  for (auto& future : futures) {
-    EXPECT_NO_THROW(retrieved_bootstrap_list = future.get());
-    EXPECT_EQ(bootstrap_list, retrieved_bootstrap_list);
-  }
+//  BootstrapList retrieved_bootstrap_list;
+//  for (auto& future : futures) {
+//    EXPECT_NO_THROW(retrieved_bootstrap_list = future.get());
+//    EXPECT_EQ(bootstrap_list, retrieved_bootstrap_list);
+//  }
 
-  t.join();
-}
+//  t.join();
+//}
 
 }  // namespace test
 

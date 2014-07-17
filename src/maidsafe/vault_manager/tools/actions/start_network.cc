@@ -76,12 +76,10 @@ void GivePublicPmidKey(const NodeId& node_id, routing::GivePublicKeyFunctor give
   }
 }
 
-void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller,
-                                std::promise<void>& zero_state_nodes_started,
+void StartZeroStateRoutingNodes(std::promise<void>& zero_state_nodes_started,
                                 std::future<void> finished_with_zero_state_nodes) {
   try {
     TLOG(kDefaultColour) << "Creating two zero state routing nodes\n";
-    AsioService asio_service{ 1 };
     std::unique_ptr<routing::Routing> node0{
         maidsafe::make_unique<routing::Routing>(GetPmidAndSigner(0).first) };
     routing::NodeInfo node_info0;
@@ -93,8 +91,6 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
     routing::NodeInfo node_info1;
     node_info1.id = NodeId{ GetPmidAndSigner(1).first.name()->string() };
     node_info1.public_key = GetPmidAndSigner(1).first.public_key();
-
-    nfs_client::DataGetter public_key_getter{ asio_service, *node0 };
 
     routing::Functors functors0, functors1;
     auto public_pmids = GetPublicPmids();  // from env
@@ -120,6 +116,11 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
 
     routing::BootstrapContact contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
     routing::BootstrapContact contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+    const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / "bootstrap.dat");              // FIXME prakash
+    boost::filesystem::remove(kBootstrapFilePath);
+    routing::WriteBootstrapContacts(routing::BootstrapContacts{ contact0, contact1 },
+                                    kBootstrapFilePath);
+
     auto join_future0(std::async(std::launch::async,
         [&] { return node0->ZeroStateJoin(functors0, contact0, contact1, node_info1); }));
     auto join_future1(std::async(std::launch::async,
@@ -129,8 +130,6 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
       BOOST_THROW_EXCEPTION(MakeError(RoutingErrors::not_connected));
     }
 
-    routing::WriteBootstrapFile(routing::BootstrapContacts{ contact0, contact1 },
-                                local_network_controller->test_env_root_dir / kBootstrapFilename);
     zero_state_nodes_started.set_value();
 
     finished_with_zero_state_nodes.get();
@@ -189,10 +188,7 @@ class PublicPmidStorer {
   PublicPmidStorer()
       : client_nfs_() {
     const passport::MaidAndSigner kMaidAndSigner { passport::CreateMaidAndSigner() };
-    vault_manager::ClientInterface client_interface(kMaidAndSigner.first);
-    auto bootstrap_contacts = client_interface.GetBootstrapContacts().get();
-    client_nfs_ = nfs_client::MaidNodeNfs::MakeSharedZeroState(kMaidAndSigner, bootstrap_contacts,
-                                                               GetPublicPmids());
+    client_nfs_ = nfs_client::MaidNodeNfs::MakeSharedZeroState(kMaidAndSigner, GetPublicPmids());
     TLOG(kDefaultColour) << "Account created for Maid " << DebugId(kMaidAndSigner.first.name())
                          << '\n';
   }
@@ -241,7 +237,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
       static_cast<transport::Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
-      routing::BootstrapContacts{}, local_network_controller->vault_count + 2);
+      local_network_controller->vault_count + 2);
 
   auto space_info(fs::space(local_network_controller->test_env_root_dir));
   DiskUsage max_usage{ (9 * space_info.available) / (10 * local_network_controller->vault_count) };
@@ -249,7 +245,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
   std::thread zero_state_launcher;
   try {
     zero_state_launcher = std::move(std::thread{
-        [&] { StartZeroStateRoutingNodes(local_network_controller, zero_state_nodes_started,
+        [&] { StartZeroStateRoutingNodes(zero_state_nodes_started,
                                          finished_with_zero_state_nodes.get_future());
             } });
     zero_state_nodes_started.get_future().get();
@@ -266,10 +262,12 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
     throw;
   }
   Sleep(std::chrono::seconds(2));
+  const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / "bootstrap.dat");        //FIXME Prakash
 
-  routing::WriteBootstrapFile(
+  boost::filesystem::remove(kBootstrapFilePath);
+  routing::WriteBootstrapContacts(
       routing::BootstrapContacts{ 1, routing::BootstrapContact{ GetLocalIp(), kLivePort } },
-      local_network_controller->test_env_root_dir / kBootstrapFilename);
+      kBootstrapFilePath);
 
   StartRemainingVaults(local_network_controller, max_usage);
   TLOG(kDefaultColour) << "Started Network of " << local_network_controller->vault_count

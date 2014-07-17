@@ -31,7 +31,6 @@
 #include "maidsafe/common/transport/tcp_connection.h"
 #include "maidsafe/common/transport/tcp_listener.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 #include "maidsafe/nfs/client/maid_node_nfs.h"
 
 #include "maidsafe/vault_manager/client_connections.h"
@@ -62,10 +61,6 @@ fs::path GetConfigFilePath() {
   return GetPath(kConfigFilename);
 }
 
-fs::path GetBootstrapFilePath() {
-  return GetPath(kBootstrapFilename);
-}
-
 fs::path GetVaultDir(const std::string& debug_id) {
   return GetPath(debug_id);
 }
@@ -92,8 +87,7 @@ void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer) {
 }  // unnamed namespace
 
 VaultManager::VaultManager()
-    : kBootstrapFilePath_(GetBootstrapFilePath()),
-      config_file_handler_(GetConfigFilePath()),
+    : config_file_handler_(GetConfigFilePath()),
       network_stable_(false),
       asio_service_(1),
       listener_(transport::TcpListener::MakeShared(asio_service_,
@@ -180,10 +174,6 @@ void VaultManager::HandleReceivedMessage(transport::TcpConnectionPtr connection,
       case MessageType::kJoinedNetwork:
         assert(message_and_type.first.empty());
         HandleJoinedNetwork(connection);
-        break;
-      case MessageType::kBootstrapContactsRequest:
-        assert(message_and_type.first.empty());
-        HandleBootstrapContactsRequest(connection);
         break;
       case MessageType::kMarkNetworkAsStable:
         assert(message_and_type.first.empty());
@@ -333,8 +323,7 @@ void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
       process_manager_->HandleVaultStarted(connection, { vault_started.process_id() }) };
 
   // Send vault its credentials
-  SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
-      config_file_handler_.SymmIv(), routing::ReadBootstrapFile(kBootstrapFilePath_));
+  SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(), config_file_handler_.SymmIv());
 
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
@@ -349,12 +338,6 @@ void VaultManager::HandleVaultStarted(transport::TcpConnectionPtr connection,
   LOG(kSuccess) << "Vault started.  Pmid ID: "
       << DebugId(vault_info.pmid_and_signer->first.name().value) << "  Process ID: "
       << vault_started.process_id() << "  Label: " << vault_info.label.string();
-}
-
-void VaultManager::HandleBootstrapContactsRequest(transport::TcpConnectionPtr connection) {
-  auto bootstrap_file = routing::ReadBootstrapFile(kBootstrapFilePath_);
-  LOG(kInfo) << " Number of Contacts in BootstrapContacts file : " << bootstrap_file.size();
-  SendBootstrapContactsResponse(connection, bootstrap_file);
 }
 
 void VaultManager::HandleMarkNetworkAsStable() {

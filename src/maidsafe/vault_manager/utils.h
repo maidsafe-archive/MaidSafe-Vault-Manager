@@ -30,7 +30,6 @@
 
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/types.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -51,9 +50,6 @@ template <typename T>
 T Parse(const std::string& /*message*/) {
   return T::need_to_specialise;
 }
-
-template <>
-routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& serialised_message);
 
 template <>
 std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(
@@ -99,7 +95,6 @@ namespace test {
 void SetEnvironment(transport::Port test_vault_manager_port,
     const boost::filesystem::path& test_env_root_dir,
     const boost::filesystem::path& path_to_vault,
-    const routing::BootstrapContacts& bootstrap_contacts,
     int pmid_list_size = 0);
 
 }  // namespace test

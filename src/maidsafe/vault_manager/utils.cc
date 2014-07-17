@@ -76,15 +76,6 @@ std::vector<passport::PublicPmid> ParsePublicPmidList(const std::string& seriali
 namespace detail {
 
 template <>
-routing::BootstrapContacts Parse<routing::BootstrapContacts>(const std::string& message) {
-  protobuf::BootstrapContactsResponse bootstrap_contact_response{
-      ParseProto<protobuf::BootstrapContactsResponse>(message) };
-
-  return routing::ParseBootstrapContacts(
-      bootstrap_contact_response.serialised_bootstrap_contacts());
-}
-
-template <>
 std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::string& message) {
   protobuf::VaultStartedResponse
       vault_started_response{ ParseProto<protobuf::VaultStartedResponse>(message) };
@@ -94,10 +85,7 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
       crypto::AES256InitialisationVector{ vault_started_response.aes256iv() }) };
   boost::filesystem::path vault_dir(vault_started_response.vault_dir());
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
-  routing::BootstrapContacts bootstrap_contacts(
-          routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
-  auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage,
-                                                         bootstrap_contacts);
+  auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage);
 #ifdef TESTING
   if (vault_started_response.has_serialised_public_pmids())
     vault_config->test_config.public_pmid_list = ParsePublicPmidList(
@@ -185,8 +173,7 @@ transport::Port GetInitialListeningPort() {
 namespace test {
 
 void SetEnvironment(transport::Port test_vault_manager_port, const fs::path& test_env_root_dir,
-    const fs::path& path_to_vault, const routing::BootstrapContacts& bootstrap_contacts,
-    int pmid_list_size) {
+    const fs::path& path_to_vault, int pmid_list_size) {
   std::call_once(test_env_flag, [=] {
     if (!fs::exists(test_env_root_dir) || !fs::is_directory(test_env_root_dir)) {
       LOG(kError) << test_env_root_dir << " doesn't exist or is not a directory.";
@@ -195,9 +182,6 @@ void SetEnvironment(transport::Port test_vault_manager_port, const fs::path& tes
     g_test_vault_manager_port = test_vault_manager_port;
     g_test_env_root_dir = test_env_root_dir;
     g_path_to_vault = path_to_vault;
-    if (!bootstrap_contacts.empty()) {
-      routing::WriteBootstrapFile(bootstrap_contacts, test_env_root_dir / kBootstrapFilename);
-    }
     protobuf::PublicPmidList protobuf_public_pmid_list;
     for (int i(0); i < pmid_list_size; ++i) {
       g_pmids_and_signers.emplace_back(passport::CreatePmidAndSigner());
