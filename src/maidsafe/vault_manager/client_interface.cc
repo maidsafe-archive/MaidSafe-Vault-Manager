@@ -21,7 +21,7 @@
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/config.h"
-#include "maidsafe/common/transport/tcp_connection.h"
+#include "maidsafe/common/tcp/connection.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/dispatcher.h"
@@ -73,15 +73,14 @@ ClientInterface::~ClientInterface() {
   HandleNetworkStableResponse();
 }
 
-std::shared_ptr<transport::TcpConnection> ClientInterface::ConnectToVaultManager() {
+std::shared_ptr<tcp::Connection> ClientInterface::ConnectToVaultManager() {
   unsigned attempts{ 0 };
-  transport::Port initial_port{ GetInitialListeningPort() };
-  transport::Port port{ initial_port };
-  while (attempts <= transport::kMaxRangeAboveDefaultPort &&
-         port <= std::numeric_limits<transport::Port>::max()) {
+  tcp::Port initial_port{ GetInitialListeningPort() };
+  tcp::Port port{ initial_port };
+  while (attempts <= tcp::kMaxRangeAboveDefaultPort &&
+         port <= std::numeric_limits<tcp::Port>::max()) {
     try {
-      transport::TcpConnectionPtr tcp_connection{
-          transport::TcpConnection::MakeShared(asio_service_, port) };
+      tcp::ConnectionPtr tcp_connection{ tcp::Connection::MakeShared(asio_service_, port) };
       tcp_connection->Start([this](std::string message) { HandleReceivedMessage(message); },
                             [this] {});  // FIXME OnConnectionClosed
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
@@ -212,7 +211,7 @@ void ClientInterface::HandleLogMessage(const std::string& message) {
 }
 
 #ifdef TESTING
-void ClientInterface::SetTestEnvironment(transport::Port test_vault_manager_port,
+void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
     boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
     int pmid_list_size) {
   test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, pmid_list_size);

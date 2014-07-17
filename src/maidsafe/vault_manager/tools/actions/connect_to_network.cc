@@ -53,7 +53,7 @@ void StartVaults(LocalNetworkController* local_network_controller, DiskUsage max
 
 void ConnectToNetwork(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
-      static_cast<transport::Port>(local_network_controller->vault_manager_port),
+      static_cast<tcp::Port>(local_network_controller->vault_manager_port),
       local_network_controller->test_env_root_dir, local_network_controller->path_to_vault,
       local_network_controller->vault_count);
 

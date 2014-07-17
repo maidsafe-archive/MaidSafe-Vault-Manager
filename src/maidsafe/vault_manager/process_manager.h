@@ -37,6 +37,7 @@
 
 #include "maidsafe/common/error.h"
 #include "maidsafe/common/types.h"
+#include "maidsafe/common/tcp/connection.h"
 #include "maidsafe/passport/types.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -54,30 +55,30 @@ enum class ProcessStatus { kBeforeStarted, kStarting, kRunning, kStopping };
 class ProcessManager {
  public:
   typedef std::function<void(maidsafe_error, int)> OnExitFunctor;
-  static std::shared_ptr<ProcessManager> MakeShared(boost::asio::io_service& io_service,
-                                                    boost::filesystem::path vault_executable_path,
-                                                    transport::Port listening_port);
-  ~ProcessManager();
-  void StopAll();
-  std::vector<VaultInfo> GetAll() const;
-  void AddProcess(VaultInfo info, int restart_count = 0);
-  VaultInfo HandleVaultStarted(transport::TcpConnectionPtr connection, ProcessId process_id);
-  void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
-                   DiskUsage max_disk_usage);
-  void StopProcess(transport::TcpConnectionPtr connection,
-                   OnExitFunctor on_exit_functor = nullptr);
-  // Returns false if the process doesn't exist.
-  bool HandleConnectionClosed(transport::TcpConnectionPtr connection);
-  VaultInfo Find(const NonEmptyString& label) const;
-  VaultInfo Find(transport::TcpConnectionPtr connection) const;
-
- private:
-  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
-                 transport::Port listening_port);
 
   ProcessManager(const ProcessManager&) = delete;
   ProcessManager(ProcessManager&&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
+
+  static std::shared_ptr<ProcessManager> MakeShared(boost::asio::io_service& io_service,
+                                                    boost::filesystem::path vault_executable_path,
+                                                    tcp::Port listening_port);
+  ~ProcessManager();
+  void StopAll();
+  std::vector<VaultInfo> GetAll() const;
+  void AddProcess(VaultInfo info, int restart_count = 0);
+  VaultInfo HandleVaultStarted(tcp::ConnectionPtr connection, ProcessId process_id);
+  void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
+                   DiskUsage max_disk_usage);
+  void StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on_exit_functor = nullptr);
+  // Returns false if the process doesn't exist.
+  bool HandleConnectionClosed(tcp::ConnectionPtr connection);
+  VaultInfo Find(const NonEmptyString& label) const;
+  VaultInfo Find(tcp::ConnectionPtr connection) const;
+
+ private:
+  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
+                 tcp::Port listening_port);
 
   struct Child {
     Child(VaultInfo info, boost::asio::io_service &io_service, int restarts);
@@ -103,8 +104,8 @@ class ProcessManager {
 
   std::vector<Child>::const_iterator DoFind(const NonEmptyString& label) const;
   std::vector<Child>::iterator DoFind(const NonEmptyString& label);
-  std::vector<Child>::const_iterator DoFind(transport::TcpConnectionPtr connection) const;
-  std::vector<Child>::iterator DoFind(transport::TcpConnectionPtr connection);
+  std::vector<Child>::const_iterator DoFind(tcp::ConnectionPtr connection) const;
+  std::vector<Child>::iterator DoFind(tcp::ConnectionPtr connection);
   ProcessId GetProcessId(const Child& vault) const;
   bool IsRunning(const Child& vault) const;
   void OnProcessExit(const NonEmptyString& label, int exit_code, bool terminate = false);
@@ -117,7 +118,7 @@ class ProcessManager {
   boost::asio::signal_set signal_set_;
 #endif
   std::once_flag stop_all_flag_;
-  const transport::Port kListeningPort_;
+  const tcp::Port kListeningPort_;
   const boost::filesystem::path kVaultExecutablePath_;
   std::vector<Child> vaults_;
 };

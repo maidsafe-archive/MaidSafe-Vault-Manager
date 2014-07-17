@@ -35,7 +35,7 @@ namespace tools {
 
 void ConnectToVaultManager(LocalNetworkController* local_network_controller) {
   ClientInterface::SetTestEnvironment(
-      static_cast<transport::Port>(local_network_controller->vault_manager_port),
+      static_cast<tcp::Port>(local_network_controller->vault_manager_port),
       GetDefault().kTestEnvRootDir, GetDefault().kPathToVault, 0);
   passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
   local_network_controller->client_interface =

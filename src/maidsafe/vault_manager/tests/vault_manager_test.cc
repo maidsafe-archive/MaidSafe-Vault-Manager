@@ -43,7 +43,7 @@ TEST(VaultManagerTest, BEH_Basic) {
   std::shared_ptr<fs::path> test_env_root_dir{
       maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager") };
   fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  SetEnvironment(transport::Port{ 7777 }, *test_env_root_dir, path_to_vault);
+  SetEnvironment(tcp::Port{ 7777 }, *test_env_root_dir, path_to_vault);
 
   VaultManager vault_manager;
 

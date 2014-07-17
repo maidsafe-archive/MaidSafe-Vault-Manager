@@ -47,7 +47,7 @@ namespace {
 
 #ifdef TESTING
 std::once_flag test_env_flag;
-transport::Port g_test_vault_manager_port(0);
+tcp::Port g_test_vault_manager_port(0);
 fs::path g_test_env_root_dir, g_path_to_vault;
 bool g_using_default_environment(true);
 std::vector<passport::PmidAndSigner> g_pmids_and_signers;
@@ -161,7 +161,7 @@ NonEmptyString GenerateLabel() {
   return NonEmptyString{ label };
 }
 
-transport::Port GetInitialListeningPort() {
+tcp::Port GetInitialListeningPort() {
 #ifdef TESTING
   return GetTestVaultManagerPort() == 0 ? kLivePort + 100 : GetTestVaultManagerPort();
 #else
@@ -172,7 +172,7 @@ transport::Port GetInitialListeningPort() {
 #ifdef TESTING
 namespace test {
 
-void SetEnvironment(transport::Port test_vault_manager_port, const fs::path& test_env_root_dir,
+void SetEnvironment(tcp::Port test_vault_manager_port, const fs::path& test_env_root_dir,
     const fs::path& path_to_vault, int pmid_list_size) {
   std::call_once(test_env_flag, [=] {
     if (!fs::exists(test_env_root_dir) || !fs::is_directory(test_env_root_dir)) {
@@ -198,7 +198,7 @@ void SetEnvironment(transport::Port test_vault_manager_port, const fs::path& tes
 
 }  // namespace test
 
-transport::Port GetTestVaultManagerPort() { return g_test_vault_manager_port; }
+tcp::Port GetTestVaultManagerPort() { return g_test_vault_manager_port; }
 fs::path GetTestEnvironmentRootDir() { return g_test_env_root_dir; }
 fs::path GetPathToVault() { return g_path_to_vault; }
 passport::PmidAndSigner GetPmidAndSigner(int index) { return g_pmids_and_signers.at(index); }

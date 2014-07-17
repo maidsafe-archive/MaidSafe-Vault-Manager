@@ -40,7 +40,11 @@ namespace vault_manager {
 
 class VaultInterface {
  public:
-  explicit VaultInterface(transport::Port vault_manager_port);
+  VaultInterface(const VaultInterface&) = delete;
+  VaultInterface(VaultInterface&&) = delete;
+  VaultInterface& operator=(VaultInterface) = delete;
+
+  explicit VaultInterface(tcp::Port vault_manager_port);
 
   VaultConfig GetConfiguration();
 
@@ -56,10 +60,6 @@ class VaultInterface {
 #endif
 
  private:
-  VaultInterface(const VaultInterface&) = delete;
-  VaultInterface(VaultInterface&&) = delete;
-  VaultInterface& operator=(VaultInterface) = delete;
-
   void HandleReceivedMessage(const std::string& wrapped_message);
   void OnConnectionClosed();
 
@@ -68,11 +68,11 @@ class VaultInterface {
 
   std::promise<int> exit_code_promise_;
   std::once_flag exit_code_flag_;
-  transport::Port vault_manager_port_;
+  tcp::Port vault_manager_port_;
   std::function<void(std::string)> on_vault_started_response_;
   std::unique_ptr<VaultConfig> vault_config_;
   AsioService asio_service_;
-  std::shared_ptr<transport::TcpConnection> tcp_connection_;
+  std::shared_ptr<tcp::Connection> tcp_connection_;
   // We need to ensure the connection is closed in the event of the constructor throwing, or the
   // asio_service destructor will hang.
   on_scope_exit connection_closer_;
