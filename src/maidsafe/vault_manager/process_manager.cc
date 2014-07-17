@@ -340,6 +340,9 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   });
 }
 
+#ifndef MAIDSAFE_WIN32
+bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr /*connection*/) {
+#else
 bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   try {
     OnProcessExit(DoFind(connection)->info.label, -1, true);
@@ -349,6 +352,7 @@ bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
       return false;
     throw;
   }
+#endif
   return true;
 }
 
