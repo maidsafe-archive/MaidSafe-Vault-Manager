@@ -112,9 +112,10 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwner
 }
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
-    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+    const std::string& vlog_session_id) {
   NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id);
   return AddVaultRequest(label);
 }
 
@@ -229,15 +230,25 @@ void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
 }
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
-    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+    const std::string& vlog_session_id, bool send_hostname_to_visualiser_server) {
   NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id,
+                        send_hostname_to_visualiser_server);
   return AddVaultRequest(label);
 }
 
-void ClientInterface::MarkNetworkAsStable() {
-  SendMarkNetworkAsStableRequest(tcp_connection_);
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+    const std::string& vlog_session_id, bool send_hostname_to_visualiser_server,
+    int pmid_list_index) {
+  NonEmptyString label{ GenerateLabel() };
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id,
+                        send_hostname_to_visualiser_server, pmid_list_index);
+  return AddVaultRequest(label);
 }
+
+void ClientInterface::MarkNetworkAsStable() { SendMarkNetworkAsStableRequest(tcp_connection_); }
 
 std::future<void> ClientInterface::WaitForStableNetwork() {
   SendNetworkStableRequest(tcp_connection_);

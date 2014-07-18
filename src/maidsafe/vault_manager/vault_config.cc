@@ -28,12 +28,15 @@ namespace vault_manager {
 VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
                          const boost::filesystem::path& vault_dir_in,
                          const DiskUsage& max_disk_usage_in,
+                         const std::string& vlog_session_id_in,
                          routing::BootstrapContacts bootstrap_contacts_in)
     : pmid(pmid_in),
       vault_dir(vault_dir_in),
       max_disk_usage(max_disk_usage_in),
+      vlog_session_id(vlog_session_id_in),
 #ifdef TESTING
       test_config(),
+      send_hostname_to_visualiser_server(false),
 #endif
       bootstrap_contacts(bootstrap_contacts_in) {}
 
@@ -41,8 +44,10 @@ VaultConfig::VaultConfig(const VaultConfig& other)
     : pmid(other.pmid),
       vault_dir(other.vault_dir),
       max_disk_usage(other.max_disk_usage),
+      vlog_session_id(other.vlog_session_id),
 #ifdef TESTING
       test_config(other.test_config),
+      send_hostname_to_visualiser_server(other.send_hostname_to_visualiser_server),
 #endif
       bootstrap_contacts(other.bootstrap_contacts) {}
 
@@ -50,8 +55,10 @@ VaultConfig::VaultConfig(VaultConfig&& other)
     : pmid(std::move(other.pmid)),
       vault_dir(std::move(other.vault_dir)),
       max_disk_usage(std::move(other.max_disk_usage)),
+      vlog_session_id(std::move(other.vlog_session_id)),
 #ifdef TESTING
       test_config(std::move(other.test_config)),
+      send_hostname_to_visualiser_server(std::move(other.send_hostname_to_visualiser_server)),
 #endif
       bootstrap_contacts(std::move(other.bootstrap_contacts)) {}
 
@@ -65,8 +72,10 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
   swap(lhs.pmid, rhs.pmid);
   swap(lhs.vault_dir, rhs.vault_dir);
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
+  swap(lhs.vlog_session_id, rhs.vlog_session_id);
 #ifdef TESTING
   swap(lhs.test_config, rhs.test_config);
+  swap(lhs.send_hostname_to_visualiser_server, rhs.send_hostname_to_visualiser_server);
 #endif
   swap(lhs.bootstrap_contacts, rhs.bootstrap_contacts);
 }
@@ -94,8 +103,8 @@ std::vector<passport::PublicPmid> GetPublicPmidsFromKeysFile(
     public_pmids.push_back(passport::PublicPmid(key_chain.pmid));
   return public_pmids;
 }
-#endif
 
+#endif
 
 }  // namespace vault_manager
 

@@ -55,7 +55,9 @@ message StartVaultRequest {
   required bytes label = 1;
   optional bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
-  optional int32 pmid_list_index = 4;  // TESTING only
+  required bytes vlog_session_id = 4;
+  optional bool send_hostname_to_visualiser_server = 5;  // TESTING only
+  optional int32 pmid_list_index = 6;  // TESTING only
 }
 
 // Client to VaultManager
@@ -90,8 +92,10 @@ message VaultStartedResponse {
   required bytes encrypted_pmid = 3;
   required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
-  required bytes serialised_bootstrap_contacts = 6;
-  optional bytes serialised_public_pmids = 7;  // TESTING only
+  required bytes vlog_session_id = 6;
+  required bytes serialised_bootstrap_contacts = 7;
+  optional bytes serialised_public_pmids = 8;  // TESTING only
+  optional bool send_hostname_to_visualiser_server = 9;  // TESTING only
 }
 
 // Client to VaultManager and VaultManager to Vault

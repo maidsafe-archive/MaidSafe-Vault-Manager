@@ -33,6 +33,29 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+namespace {
+
+void DoSendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                             const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                             const std::string& vlog_session_id,
+                             const bool* const send_hostname_to_visualiser_server,
+                             const int* const pmid_list_index) {
+  protobuf::StartVaultRequest message;
+  message.set_label(vault_label.string());
+  if (!vault_dir.empty())
+    message.set_vault_dir(vault_dir.string());
+  message.set_max_disk_usage(max_disk_usage.data);
+  message.set_vlog_session_id(vlog_session_id);
+  if (send_hostname_to_visualiser_server)
+    message.set_send_hostname_to_visualiser_server(*send_hostname_to_visualiser_server);
+  if (pmid_list_index)
+    message.set_pmid_list_index(*pmid_list_index);
+  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
+                                              MessageType::kStartVaultRequest)));
+}
+
+}  // unnamed namespace
+
 void SendValidateConnectionRequest(tcp::ConnectionPtr connection) {
   connection->Send(WrapMessage(std::make_pair(std::string{},
                                               MessageType::kValidateConnectionRequest)));
@@ -56,14 +79,10 @@ void SendChallengeResponse(tcp::ConnectionPtr connection, const passport::Public
 }
 
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
-                           const fs::path& vault_dir, DiskUsage max_disk_usage) {
-  protobuf::StartVaultRequest message;
-  message.set_label(vault_label.string());
-  if (!vault_dir.empty())
-    message.set_vault_dir(vault_dir.string());
-  message.set_max_disk_usage(max_disk_usage.data);
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                   MessageType::kStartVaultRequest)));
+                           const fs::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id) {
+  DoSendStartVaultRequest(connection, vault_label, vault_dir, max_disk_usage, vlog_session_id,
+                          nullptr, nullptr);
 }
 
 void SendTakeOwnershipRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
@@ -174,14 +193,18 @@ void SendLogMessage(tcp::ConnectionPtr connection, const std::string& log_messag
 #ifdef TESTING
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
-                           int pmid_list_index) {
-  protobuf::StartVaultRequest message;
-  message.set_label(vault_label.string());
-  message.set_vault_dir(vault_dir.string());
-  message.set_max_disk_usage(max_disk_usage.data);
-  message.set_pmid_list_index(pmid_list_index);
-  connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
-                                              MessageType::kStartVaultRequest)));
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server) {
+  DoSendStartVaultRequest(connection, vault_label, vault_dir, max_disk_usage, vlog_session_id,
+                          &send_hostname_to_visualiser_server, nullptr);
+}
+
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server, int pmid_list_index) {
+  DoSendStartVaultRequest(connection, vault_label, vault_dir, max_disk_usage, vlog_session_id,
+                          &send_hostname_to_visualiser_server, &pmid_list_index);
 }
 
 void SendMarkNetworkAsStableRequest(tcp::ConnectionPtr connection) {

@@ -46,7 +46,8 @@ void SendChallengeResponse(tcp::ConnectionPtr connection, const passport::Public
                            const asymm::Signature& signature);
 
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
-                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id);
 
 void SendTakeOwnershipRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                               const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
@@ -80,7 +81,13 @@ void SendLogMessage(tcp::ConnectionPtr connection, const std::string& log_messag
 #ifdef TESTING
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
-                           int pmid_list_index);
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server);
+
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server, int pmid_list_index);
 
 void SendMarkNetworkAsStableRequest(tcp::ConnectionPtr connection);
 
