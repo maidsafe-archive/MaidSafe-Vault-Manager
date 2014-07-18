@@ -63,7 +63,7 @@ struct LocalNetworkController {
   std::unique_ptr<VaultManager> vault_manager;
   boost::filesystem::path test_env_root_dir, path_to_vault, path_to_bootstrap_file;
   int vault_manager_port, vault_count;
-  bool new_network;  // fixme
+  bool new_network;
 };
 
 }  // namespace tools

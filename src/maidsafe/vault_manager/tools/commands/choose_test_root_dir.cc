@@ -37,11 +37,18 @@ namespace vault_manager {
 
 namespace tools {
 
+namespace {
+
+std::string GetTitle(bool new_network) {
+  return new_network ? std::string("Start Network") : std::string("Connect to Network");
+}
+
+}
+
 ChooseTestRootDir::ChooseTestRootDir(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Path to VaultManager root directory.",
               "  'Enter' to use default\n\"" + GetDefault().kTestEnvRootDir.string() + "\"\n" +
-              kPrompt_,
-              "Start Network") {}
+              kPrompt_, GetTitle(local_network_controller->new_network)) {}
 
 void ChooseTestRootDir::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
