@@ -151,7 +151,7 @@ void VaultManager::HandleNewConnection(tcp::ConnectionPtr connection) {
 
 void VaultManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   if (process_manager_->HandleConnectionClosed(connection) ||
-    client_connections_->Remove(connection)) {
+      client_connections_->Remove(connection)) {
     return;
   }
   new_connections_->Remove(connection);

@@ -46,6 +46,9 @@ struct VaultInfo {
   DiskUsage max_disk_usage;
   passport::PublicMaid::Name owner_name;
   NonEmptyString label;
+#ifdef USE_VLOGGING
+  std::string vlog_session_id;
+#endif
   tcp::ConnectionPtr tcp_connection;
 };
 
