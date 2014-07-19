@@ -55,7 +55,7 @@ message StartVaultRequest {
   required bytes label = 1;
   optional bytes vault_dir = 2;
   required uint64 max_disk_usage = 3;
-  required bytes vlog_session_id = 4;
+  optional bytes vlog_session_id = 4;
   optional bool send_hostname_to_visualiser_server = 5;  // TESTING only
   optional int32 pmid_list_index = 6;  // TESTING only
 }
