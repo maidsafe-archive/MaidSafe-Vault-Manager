@@ -90,6 +90,10 @@ template <>
 bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string, bool& choice,
                                              const bool* const default_choice);
 
+template <>
+bool Command::ConvertAndValidateChoice<std::string>(const std::string& choice_as_string,
+    std::string& choice, const std::string* const default_choice);
+
 }  // namespace tools
 
 }  // namespace vault_manager

@@ -28,12 +28,11 @@ namespace vault_manager {
 VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
                          const boost::filesystem::path& vault_dir_in,
                          const DiskUsage& max_disk_usage_in,
-                         const std::string& vlog_session_id_in,
                          routing::BootstrapContacts bootstrap_contacts_in)
     : pmid(pmid_in),
       vault_dir(vault_dir_in),
       max_disk_usage(max_disk_usage_in),
-      vlog_session_id(vlog_session_id_in),
+      vlog_session_id(),
 #ifdef TESTING
       test_config(),
       send_hostname_to_visualiser_server(false),

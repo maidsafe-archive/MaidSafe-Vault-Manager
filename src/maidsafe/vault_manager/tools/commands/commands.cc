@@ -139,6 +139,13 @@ bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string
   BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
 }
 
+template <>
+bool Command::ConvertAndValidateChoice<std::string>(const std::string& choice_as_string,
+    std::string& choice, const std::string* const default_choice) {
+  choice = (choice_as_string.empty() && default_choice) ? *default_choice : choice_as_string;
+  return true;
+}
+
 void Command::CheckForExitCommand(const std::string& input_command) const {
   if (boost::to_lower_copy(input_command) == kQuitCommand_)
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::success));

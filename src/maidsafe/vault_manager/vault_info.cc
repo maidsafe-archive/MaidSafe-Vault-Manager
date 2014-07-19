@@ -32,6 +32,7 @@ VaultInfo::VaultInfo()
       label(),
 #ifdef USE_VLOGGING
       vlog_session_id(),
+      send_hostname_to_visualiser_server(false),
 #endif
       tcp_connection() {}
 
@@ -43,6 +44,7 @@ VaultInfo::VaultInfo(const VaultInfo& other)
       label(other.label),
 #ifdef USE_VLOGGING
       vlog_session_id(other.vlog_session_id),
+      send_hostname_to_visualiser_server(other.send_hostname_to_visualiser_server),
 #endif
       tcp_connection(other.tcp_connection) {}
 
@@ -54,6 +56,7 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       label(std::move(other.label)),
 #ifdef USE_VLOGGING
       vlog_session_id(std::move(other.vlog_session_id)),
+      send_hostname_to_visualiser_server(std::move(other.send_hostname_to_visualiser_server)),
 #endif
       tcp_connection(std::move(other.tcp_connection)) {}
 
@@ -71,6 +74,7 @@ void swap(VaultInfo& lhs, VaultInfo& rhs) {
   swap(lhs.label, rhs.label);
 #ifdef USE_VLOGGING
   swap(lhs.vlog_session_id, rhs.vlog_session_id);
+  swap(lhs.send_hostname_to_visualiser_server, rhs.send_hostname_to_visualiser_server);
 #endif
   swap(lhs.tcp_connection, rhs.tcp_connection);
 }

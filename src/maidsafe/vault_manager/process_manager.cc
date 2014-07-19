@@ -443,8 +443,9 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   int restart_count{ -1 };
   if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
 #ifdef USE_VLOGGING
-    log::VisualiserLogMessage::SendVaultStoppedMessage(DebugId(vault_info.pmid_and_signer->first),
-                                                       vault_info.vlog_session_id, exit_code);
+    log::VisualiserLogMessage::SendVaultStoppedMessage(
+        DebugId(vault_info.pmid_and_signer->first.name().value),
+        vault_info.vlog_session_id, exit_code);
 #endif
     restart_count = child_itr->restart_count;
     vault_info = child_itr->info;

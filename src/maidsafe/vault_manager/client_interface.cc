@@ -111,6 +111,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwner
   return AddVaultRequest(label);
 }
 
+#ifdef USE_VLOGGING
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id) {
@@ -118,6 +119,14 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id);
   return AddVaultRequest(label);
 }
+#else
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
+  NonEmptyString label{ GenerateLabel() };
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  return AddVaultRequest(label);
+}
+#endif
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultRequest(
     const NonEmptyString& label) {
@@ -229,6 +238,7 @@ void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
                        bootstrap_contacts, pmid_list_size);
 }
 
+#ifdef USE_VLOGGING
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id, bool send_hostname_to_visualiser_server) {
@@ -247,6 +257,21 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
                         send_hostname_to_visualiser_server, pmid_list_index);
   return AddVaultRequest(label);
 }
+#else
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
+  NonEmptyString label{ GenerateLabel() };
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  return AddVaultRequest(label);
+}
+
+std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
+    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
+  NonEmptyString label{ GenerateLabel() };
+  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);
+  return AddVaultRequest(label);
+}
+#endif
 
 void ClientInterface::MarkNetworkAsStable() { SendMarkNetworkAsStableRequest(tcp_connection_); }
 

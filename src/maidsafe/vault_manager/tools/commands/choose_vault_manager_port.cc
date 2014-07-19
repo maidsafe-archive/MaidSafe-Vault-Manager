@@ -27,6 +27,7 @@
 #include "maidsafe/vault_manager/tools/actions/connect_to_vault_manager.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test.h"
 #include "maidsafe/vault_manager/tools/commands/choose_vault_count.h"
+#include "maidsafe/vault_manager/tools/commands/enter_vlog_session_id.h"
 
 namespace maidsafe {
 
@@ -37,8 +38,8 @@ namespace tools {
 ChooseVaultManagerPort::ChooseVaultManagerPort(LocalNetworkController* local_network_controller,
                                                bool connect_to_running)
     : Command(local_network_controller, "VaultManager listening port.",
-              "  This should be between\n1025 and 65536 inclusive. ('Enter' to use default " +
-              std::to_string(GetDefault().kVaultManagerPort) + ")\n" + kPrompt_,
+              "  This should be between\n1025 and 65536 inclusive.  'Enter' to use default \"" +
+              std::to_string(GetDefault().kVaultManagerPort) + "\".\n" + kPrompt_,
               connect_to_running ? "Connect to Running VaultManager" : ""),
       connect_to_running_(connect_to_running) {}
 
@@ -57,8 +58,13 @@ void ChooseVaultManagerPort::HandleChoice() {
         maidsafe::make_unique<ChooseTest>(local_network_controller_);
     TLOG(kDefaultColour) << kSeparator_;
   } else {
+#ifdef USE_VLOGGING
+    local_network_controller_->current_command =
+        maidsafe::make_unique<EnterVlogSessionId>(local_network_controller_);
+#else
     local_network_controller_->current_command =
         maidsafe::make_unique<ChooseVaultCount>(local_network_controller_);
+#endif
   }
 }
 

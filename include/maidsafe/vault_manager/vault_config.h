@@ -37,7 +37,6 @@ struct VaultConfig {
   VaultConfig(const passport::Pmid& pmid_in,
               const boost::filesystem::path& vault_dir_in,
               const DiskUsage& max_disk_usage_in,
-              const std::string& vlog_session_id_in,
               routing::BootstrapContacts bootstrap_contacts_in);
   VaultConfig(const VaultConfig&);
   VaultConfig(VaultConfig&& other);

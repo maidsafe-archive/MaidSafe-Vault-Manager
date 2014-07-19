@@ -237,7 +237,6 @@ void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
     protobuf::StartVaultRequest start_vault_message{
         ParseProto<protobuf::StartVaultRequest>(message) };
     vault_info.label = NonEmptyString{ start_vault_message.label() };
-//    vault_info.vault_dir = start_vault_message.vault_dir();
     vault_info.max_disk_usage = DiskUsage{ start_vault_message.max_disk_usage() };
     vault_info.owner_name = client_name;
 #ifdef TESTING
@@ -258,6 +257,16 @@ void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
     } else {
       vault_info.vault_dir = start_vault_message.vault_dir();
     }
+#ifdef USE_VLOGGING
+    if (start_vault_message.has_vlog_session_id())
+      vault_info.vlog_session_id = start_vault_message.vlog_session_id();
+# ifdef TESTING
+    if (start_vault_message.has_send_hostname_to_visualiser_server()) {
+      vault_info.send_hostname_to_visualiser_server =
+          start_vault_message.send_hostname_to_visualiser_server();
+    }
+# endif
+#endif
     process_manager_->AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_->GetAll());
     return;

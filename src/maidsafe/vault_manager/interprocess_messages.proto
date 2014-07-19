@@ -92,7 +92,7 @@ message VaultStartedResponse {
   required bytes encrypted_pmid = 3;
   required bytes vault_dir = 4;
   required uint64 max_disk_usage = 5;
-  required bytes vlog_session_id = 6;
+  optional bytes vlog_session_id = 6;
   required bytes serialised_bootstrap_contacts = 7;
   optional bytes serialised_public_pmids = 8;  // TESTING only
   optional bool send_hostname_to_visualiser_server = 9;  // TESTING only

@@ -93,11 +93,13 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
       crypto::AES256InitialisationVector{ vault_started_response.aes256iv() }) };
   boost::filesystem::path vault_dir(vault_started_response.vault_dir());
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
-  std::string vlog_session_id{ vault_started_response.vlog_session_id() };
+  std::string vlog_session_id;
   routing::BootstrapContacts bootstrap_contacts(
           routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
   auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage,
-                                                         vlog_session_id, bootstrap_contacts);
+                                                         bootstrap_contacts);
+  if (vault_started_response.has_vlog_session_id())
+    vault_config->vlog_session_id = vault_started_response.vlog_session_id();
 #ifdef TESTING
   if (vault_started_response.has_serialised_public_pmids()) {
     vault_config->test_config.public_pmid_list = ParsePublicPmidList(
