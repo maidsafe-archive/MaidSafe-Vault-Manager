@@ -259,13 +259,6 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
 }
 #else
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
-    const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
-  return AddVaultRequest(label);
-}
-
-std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
   NonEmptyString label{ GenerateLabel() };
   SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);

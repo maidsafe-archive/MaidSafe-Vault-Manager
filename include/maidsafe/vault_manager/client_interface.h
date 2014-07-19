@@ -97,9 +97,6 @@ class ClientInterface {
       int pmid_list_index);
 #else
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
-      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
-
-  std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
 #endif
 

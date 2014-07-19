@@ -96,9 +96,6 @@ void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& 
                            bool send_hostname_to_visualiser_server, int pmid_list_index);
 # else
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
-                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
-
-void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index);
 # endif
