@@ -45,8 +45,14 @@ void SendChallenge(tcp::ConnectionPtr connection, const asymm::PlainText& challe
 void SendChallengeResponse(tcp::ConnectionPtr connection, const passport::PublicMaid& public_maid,
                            const asymm::Signature& signature);
 
+#ifdef USE_VLOGGING
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id);
+#else
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
+#endif
 
 void SendTakeOwnershipRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                               const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
@@ -77,10 +83,21 @@ void SendMaxDiskUsageUpdate(tcp::ConnectionPtr connection, DiskUsage max_disk_us
 void SendLogMessage(tcp::ConnectionPtr connection, const std::string& log_message);
 
 #ifdef TESTING
+# ifdef USE_VLOGGING
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server);
+
+void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
+                           const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+                           const std::string& vlog_session_id,
+                           bool send_hostname_to_visualiser_server, int pmid_list_index);
+# else
 void SendStartVaultRequest(tcp::ConnectionPtr connection, const NonEmptyString& vault_label,
                            const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
                            int pmid_list_index);
-
+# endif
 void SendMarkNetworkAsStableRequest(tcp::ConnectionPtr connection);
 
 void SendNetworkStableRequest(tcp::ConnectionPtr connection);

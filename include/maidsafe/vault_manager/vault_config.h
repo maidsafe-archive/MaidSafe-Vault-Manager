@@ -19,6 +19,7 @@
 #ifndef MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 #define MAIDSAFE_VAULT_MANAGER_VAULT_CONFIG_H_
 
+#include <string>
 #include <vector>
 
 #include "boost/filesystem/path.hpp"
@@ -40,6 +41,7 @@ struct VaultConfig {
 
   passport::Pmid pmid;
   boost::filesystem::path vault_dir;
+  DiskUsage max_disk_usage;
 #ifdef TESTING
   enum class TestType : int32_t {
     kNone,
@@ -55,8 +57,10 @@ struct VaultConfig {
     TestType test_type;
     std::vector<passport::PublicPmid> public_pmid_list;
   } test_config;
+
+  bool send_hostname_to_visualiser_server;
 #endif
-  DiskUsage max_disk_usage;
+  std::string vlog_session_id;
 };
 
 void swap(VaultConfig& lhs, VaultConfig& rhs);

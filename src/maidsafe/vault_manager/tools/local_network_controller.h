@@ -49,6 +49,7 @@ struct Default {
   const int kVaultCount;
   const bool kCreateTestRootDir;
   const bool kClearTestRootDir;
+  const bool kSendHostnameToVisualiserServer;
 };
 
 const Default& GetDefault();
@@ -64,6 +65,8 @@ struct LocalNetworkController {
   boost::filesystem::path test_env_root_dir, path_to_vault, path_to_bootstrap_file;
   int vault_manager_port, vault_count;
   bool new_network;
+  std::unique_ptr<std::string> vlog_session_id;
+  std::unique_ptr<bool> send_hostname_to_visualiser_server;
 };
 
 }  // namespace tools
