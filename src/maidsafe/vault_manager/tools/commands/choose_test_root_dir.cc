@@ -39,9 +39,8 @@ namespace tools {
 
 ChooseTestRootDir::ChooseTestRootDir(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Path to VaultManager root directory.",
-              "  'Enter' to use default\n\"" + GetDefault().kTestEnvRootDir.string() + "\"\n" +
-              kPrompt_,
-              "Start Network") {}
+              "  'Enter' to use default\n\"" + GetDefault().kTestEnvRootDir.string() + "\".\n" +
+              kPrompt_, "Start Network") {}
 
 void ChooseTestRootDir::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;

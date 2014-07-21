@@ -16,47 +16,34 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_
-#define MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_ENTER_VLOG_SESSION_ID_H_
+#define MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_ENTER_VLOG_SESSION_ID_H_
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
+#ifdef USE_VLOGGING
 
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/types.h"
-#include "maidsafe/passport/passport.h"
-
-#include "maidsafe/vault_manager/config.h"
+#include "maidsafe/vault_manager/tools/commands/commands.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-struct VaultInfo {
-  VaultInfo();
-  VaultInfo(const VaultInfo&);
-  VaultInfo(VaultInfo&& other);
-  VaultInfo& operator=(VaultInfo other);
+namespace tools {
 
-  std::shared_ptr<passport::PmidAndSigner> pmid_and_signer;
-  boost::filesystem::path vault_dir;
-  DiskUsage max_disk_usage;
-  passport::PublicMaid::Name owner_name;
-  NonEmptyString label;
-#ifdef USE_VLOGGING
-  std::string vlog_session_id;
-  bool send_hostname_to_visualiser_server;
-#endif
-  tcp::ConnectionPtr tcp_connection;
+struct LocalNetworkController;
+
+class EnterVlogSessionId : public Command {
+ public:
+  explicit EnterVlogSessionId(LocalNetworkController* local_network_controller);
+  virtual void GetChoice();
+  virtual void HandleChoice();
 };
 
-void swap(VaultInfo& lhs, VaultInfo& rhs);
+}  // namespace tools
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_VAULT_INFO_H_
+#endif  // defined USE_VLOGGING
+
+#endif  // MAIDSAFE_VAULT_MANAGER_TOOLS_COMMANDS_ENTER_VLOG_SESSION_ID_H_

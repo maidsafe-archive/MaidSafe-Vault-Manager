@@ -43,6 +43,7 @@ extern "C" char **environ;
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
+#include "maidsafe/common/visualiser_log.h"
 
 #include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/utils.h"
@@ -438,6 +439,11 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   VaultInfo vault_info;
   int restart_count{ -1 };
   if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
+#ifdef USE_VLOGGING
+    log::VisualiserLogMessage::SendVaultStoppedMessage(
+        DebugId(vault_info.pmid_and_signer->first.name().value),
+        vault_info.vlog_session_id, exit_code);
+#endif
     restart_count = child_itr->restart_count;
     vault_info = child_itr->info;
     if (vault_info.tcp_connection) {

@@ -16,19 +16,17 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/commands/create_test_root_dir.h"
-#include <string>
+#ifdef USE_VLOGGING
 
-#include "boost/filesystem/operations.hpp"
+#include "maidsafe/vault_manager/tools/commands/choose_to_reveal_hostname.h"
+
+#include "boost/asio/ip/host_name.hpp"
 
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
-#include "maidsafe/vault_manager/tools/commands/choose_path_to_vault.h"
-#include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
-
-namespace fs = boost::filesystem;
+#include "maidsafe/vault_manager/tools/commands/choose_vault_count.h"
 
 namespace maidsafe {
 
@@ -36,30 +34,26 @@ namespace vault_manager {
 
 namespace tools {
 
-CreateTestRootDir::CreateTestRootDir(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Create VaultManager root directory.",
-              "  Do you wish to create \n\"" +
-              local_network_controller->test_env_root_dir.string() + "\"?\n" +
-              "[y/n].  'Enter' to use default \"" + (GetDefault().kCreateTestRootDir ? "y" : "n") +
-              "\".\n" + kPrompt_),
-      create_(false) {}
+ChooseToRevealHostname::ChooseToRevealHostname(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Choose to reveal hostname.",
+              "  Do you wish to send your\nmachine's hostname (\"" + boost::asio::ip::host_name() +
+              "\") to the visualiser\nwhere it can be publicly viewed?  We recommend you don't.\n" +
+              "[y/n].  'Enter' to use default \"" +
+              (GetDefault().kSendHostnameToVisualiserServer ? "y" : "n") + "\".\n" + kPrompt_) {}
 
-void CreateTestRootDir::GetChoice() {
+void ChooseToRevealHostname::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(create_, &GetDefault().kCreateTestRootDir))
+  local_network_controller_->send_hostname_to_visualiser_server =
+      maidsafe::make_unique<bool>(false);
+  while (!DoGetChoice(*local_network_controller_->send_hostname_to_visualiser_server,
+                      &GetDefault().kSendHostnameToVisualiserServer)) {
     TLOG(kDefaultColour) << '\n' << kInstructions_;
+  }
 }
 
-void CreateTestRootDir::HandleChoice() {
-  if (create_) {
-    fs::create_directories(local_network_controller_->test_env_root_dir);
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChoosePathToVault>(local_network_controller_);
-  } else {
-    local_network_controller_->test_env_root_dir.clear();
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
-  }
+void ChooseToRevealHostname::HandleChoice() {
+  local_network_controller_->current_command =
+      maidsafe::make_unique<ChooseVaultCount>(local_network_controller_);
 }
 
 }  // namespace tools
@@ -67,3 +61,5 @@ void CreateTestRootDir::HandleChoice() {
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // defined USE_VLOGGING

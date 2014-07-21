@@ -30,6 +30,10 @@ VaultInfo::VaultInfo()
       max_disk_usage(0),
       owner_name(),
       label(),
+#ifdef USE_VLOGGING
+      vlog_session_id(),
+      send_hostname_to_visualiser_server(false),
+#endif
       tcp_connection() {}
 
 VaultInfo::VaultInfo(const VaultInfo& other)
@@ -38,6 +42,10 @@ VaultInfo::VaultInfo(const VaultInfo& other)
       max_disk_usage(other.max_disk_usage),
       owner_name(other.owner_name),
       label(other.label),
+#ifdef USE_VLOGGING
+      vlog_session_id(other.vlog_session_id),
+      send_hostname_to_visualiser_server(other.send_hostname_to_visualiser_server),
+#endif
       tcp_connection(other.tcp_connection) {}
 
 VaultInfo::VaultInfo(VaultInfo&& other)
@@ -46,6 +54,10 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       max_disk_usage(std::move(other.max_disk_usage)),
       owner_name(std::move(other.owner_name)),
       label(std::move(other.label)),
+#ifdef USE_VLOGGING
+      vlog_session_id(std::move(other.vlog_session_id)),
+      send_hostname_to_visualiser_server(std::move(other.send_hostname_to_visualiser_server)),
+#endif
       tcp_connection(std::move(other.tcp_connection)) {}
 
 VaultInfo& VaultInfo::operator=(VaultInfo other) {
@@ -60,6 +72,10 @@ void swap(VaultInfo& lhs, VaultInfo& rhs) {
   swap(lhs.max_disk_usage, rhs.max_disk_usage);
   swap(lhs.owner_name, rhs.owner_name);
   swap(lhs.label, rhs.label);
+#ifdef USE_VLOGGING
+  swap(lhs.vlog_session_id, rhs.vlog_session_id);
+  swap(lhs.send_hostname_to_visualiser_server, rhs.send_hostname_to_visualiser_server);
+#endif
   swap(lhs.tcp_connection, rhs.tcp_connection);
 }
 

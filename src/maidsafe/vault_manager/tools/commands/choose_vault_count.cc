@@ -39,28 +39,22 @@ namespace vault_manager {
 namespace tools {
 
 namespace {
+
 std::string Instruction(bool new_network) {
-  std::string instruction;
-  if (new_network) {
-    instruction = (
-      "\nThis must be at least 10.\nThere is no upper limit, but more than 20 on one PC "
-      "will probably\ncause noticeable performance slowdown.  'Enter' to use default " +
-      std::to_string(GetDefault().kVaultCountNewNetwork) + '\n');
-    } else {
-      instruction = (
-      "\nThis must be at least 1.\nThere is no upper limit, but more than 20 on one PC "
-      "will probably\ncause noticeable performance slowdown.  'Enter' to use default " +
-      std::to_string(GetDefault().kVaultCount) + '\n');
-    }
-    return instruction;
-  }
+  std::string instruction{ "\nThis must be at least " };
+  instruction += (new_network ? "10" : "1");
+  instruction += ".\nThere is no upper limit, but more than 20 on one PC will probably\n"
+      "cause noticeable performance slowdown.  'Enter' to use default \"" +
+      std::to_string(new_network ? GetDefault().kVaultCountNewNetwork : GetDefault().kVaultCount) +
+      "\".\n";
+  return instruction;
+}
+
 }  // anonymous namespace
 
 ChooseVaultCount::ChooseVaultCount(LocalNetworkController* local_network_controller)
-: Command(local_network_controller, "Number of Vaults to start.",
-          Instruction(local_network_controller->new_network) + kPrompt_) {}
-
-
+    : Command(local_network_controller, "Number of Vaults to start.",
+              Instruction(local_network_controller->new_network) + kPrompt_) {}
 
 void ChooseVaultCount::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;

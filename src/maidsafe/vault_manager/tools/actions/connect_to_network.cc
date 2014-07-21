@@ -42,9 +42,16 @@ namespace {
 void StartVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
   for (int i(0); i < local_network_controller->vault_count; ++i) {
     TLOG(kDefaultColour) << "Starting vault " << i << '\n';
-    auto vault_future(local_network_controller->client_interface->StartVault(
-        boost::filesystem::path(), max_usage));
-    vault_future.get();
+#ifdef USE_VLOGGING
+    assert(local_network_controller->vlog_session_id);
+    assert(local_network_controller->send_hostname_to_visualiser_server);
+    local_network_controller->client_interface->StartVault(
+        boost::filesystem::path(), max_usage, *local_network_controller->vlog_session_id,
+        *local_network_controller->send_hostname_to_visualiser_server).get();
+#else
+    local_network_controller->client_interface->StartVault(boost::filesystem::path(),
+                                                           max_usage).get();
+#endif
     Sleep(std::chrono::milliseconds(500));
   }
 }

@@ -54,7 +54,6 @@ std::vector<passport::PmidAndSigner> g_pmids_and_signers;
 std::vector<passport::PublicPmid> g_public_pmids;
 std::string g_serialised_public_pmids;
 
-
 // Parsing public Pmid list
 std::vector<passport::PublicPmid> ParsePublicPmidList(const std::string& serialised_public_pmids) {
   protobuf::PublicPmidList proto_public_pmids{
@@ -94,18 +93,25 @@ std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(const std::stri
       crypto::AES256InitialisationVector{ vault_started_response.aes256iv() }) };
   boost::filesystem::path vault_dir(vault_started_response.vault_dir());
   DiskUsage max_disk_usage(vault_started_response.max_disk_usage());
+  std::string vlog_session_id;
   routing::BootstrapContacts bootstrap_contacts(
           routing::ParseBootstrapContacts(vault_started_response.serialised_bootstrap_contacts()));
   auto vault_config = maidsafe::make_unique<VaultConfig>(pmid, vault_dir, max_disk_usage,
                                                          bootstrap_contacts);
+  if (vault_started_response.has_vlog_session_id())
+    vault_config->vlog_session_id = vault_started_response.vlog_session_id();
 #ifdef TESTING
-  if (vault_started_response.has_serialised_public_pmids())
+  if (vault_started_response.has_serialised_public_pmids()) {
     vault_config->test_config.public_pmid_list = ParsePublicPmidList(
         vault_started_response.serialised_public_pmids());
+  }
+  if (vault_started_response.has_send_hostname_to_visualiser_server()) {
+    vault_config->send_hostname_to_visualiser_server =
+        vault_started_response.send_hostname_to_visualiser_server();
+  }
 #endif
   return vault_config;
 }
-
 
 template <>
 std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(

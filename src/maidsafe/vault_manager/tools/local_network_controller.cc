@@ -44,7 +44,8 @@ Default::Default()
       kVaultCountNewNetwork(12),
       kVaultCount(1),
       kCreateTestRootDir(true),
-      kClearTestRootDir(true) {}
+      kClearTestRootDir(true),
+      kSendHostnameToVisualiserServer(false) {}
 
 const Default& GetDefault() {
   static Default the_defaults;
@@ -62,7 +63,9 @@ LocalNetworkController::LocalNetworkController(const boost::filesystem::path& sc
       path_to_bootstrap_file(),
       vault_manager_port(0),
       vault_count(0),
-      new_network(false) {
+      new_network(false),
+      vlog_session_id(),
+      send_hostname_to_visualiser_server() {
   if (!script_path.empty()) {
     if (!boost::filesystem::exists(script_path) ||
         !boost::filesystem::is_regular_file(script_path)) {

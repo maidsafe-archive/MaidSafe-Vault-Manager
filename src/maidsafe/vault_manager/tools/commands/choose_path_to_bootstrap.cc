@@ -33,7 +33,7 @@ namespace tools {
 
 ChoosePathToBootstrap::ChoosePathToBootstrap(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Path to bootstrap file.",
-              "  'Enter' to use default\n\"" + GetDefault().kPathToBootstrap.string() + "\"\n" +
+              "  'Enter' to use default\n\"" + GetDefault().kPathToBootstrap.string() + "\".\n" +
               kPrompt_) {}
 
 void ChoosePathToBootstrap::GetChoice() {

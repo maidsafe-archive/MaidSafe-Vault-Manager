@@ -62,8 +62,14 @@ class ClientInterface {
   std::future<std::unique_ptr<passport::PmidAndSigner>> TakeOwnership(const NonEmptyString& label,
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
 
+#ifdef USE_VLOGGING
+  std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
+      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+      const std::string& vlog_session_id);
+#else
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
+#endif
 
 #ifdef TESTING
   // This function sets up global variables specifying:
@@ -80,8 +86,19 @@ class ClientInterface {
       boost::filesystem::path path_to_vault, routing::BootstrapContacts bootstrap_contacts,
       int pmid_list_size);
 
+#ifdef USE_VLOGGING
+  std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
+      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+      const std::string& vlog_session_id, bool send_hostname_to_visualiser_server);
+
+  std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
+      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
+      const std::string& vlog_session_id, bool send_hostname_to_visualiser_server,
+      int pmid_list_index);
+#else
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
       const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index);
+#endif
 
   // Used by tool to indicate that it is satisfied the new network (or connected network) is stable.
   void MarkNetworkAsStable();

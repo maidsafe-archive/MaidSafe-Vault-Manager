@@ -141,11 +141,26 @@ void StartZeroStateRoutingNodes(LocalNetworkController* local_network_controller
   }
 }
 
+std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
+    LocalNetworkController* local_network_controller, const boost::filesystem::path& vault_dir,
+    DiskUsage max_usage, int pmid_list_index) {
+#ifdef USE_VLOGGING
+  assert(local_network_controller->vlog_session_id);
+  assert(local_network_controller->send_hostname_to_visualiser_server);
+  return local_network_controller->client_interface->StartVault(vault_dir, max_usage,
+      *local_network_controller->vlog_session_id,
+      *local_network_controller->send_hostname_to_visualiser_server, pmid_list_index);
+#else
+  return local_network_controller->client_interface->StartVault(vault_dir, max_usage,
+                                                                pmid_list_index);
+#endif
+}
+
 void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskUsage max_usage) {
   TLOG(kDefaultColour) << "Starting vault 1\n";  // index 2 in pmid list
   std::string vault_dir_name{ DebugId(GetPmidAndSigner(2).first.name().value) };
   fs::create_directories(local_network_controller->test_env_root_dir / vault_dir_name);
-  auto first_vault_future(local_network_controller->client_interface->StartVault(
+  auto first_vault_future(StartVault(local_network_controller,
       local_network_controller->test_env_root_dir / vault_dir_name, max_usage, 2));
   try {
     first_vault_future.get();
@@ -158,7 +173,7 @@ void StartFirstTwoVaults(LocalNetworkController* local_network_controller, DiskU
   TLOG(kDefaultColour) << "Starting vault 2\n";  // index 3 in pmid list
   vault_dir_name = DebugId(GetPmidAndSigner(3).first.name().value);
   fs::create_directories(local_network_controller->test_env_root_dir / vault_dir_name);
-  auto second_vault_future(local_network_controller->client_interface->StartVault(
+  auto second_vault_future(StartVault(local_network_controller,
       local_network_controller->test_env_root_dir / vault_dir_name, max_usage, 3));
   try {
     second_vault_future.get();
@@ -175,7 +190,7 @@ void StartRemainingVaults(LocalNetworkController* local_network_controller, Disk
     TLOG(kDefaultColour) << "Starting vault " << i - 1 << '\n';  // index i in pmid list
     std::string vault_dir_name{ DebugId(GetPmidAndSigner(i).first.name().value) };
     fs::create_directories(local_network_controller->test_env_root_dir / vault_dir_name);
-    auto vault_future(local_network_controller->client_interface->StartVault(
+    auto vault_future(StartVault(local_network_controller,
         local_network_controller->test_env_root_dir / vault_dir_name, max_usage, i));
     vault_future.get();
     Sleep(std::chrono::milliseconds(500));
