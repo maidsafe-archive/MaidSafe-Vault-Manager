@@ -288,6 +288,8 @@ void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
   LOG(kVerbose) << "Initialising signal handler.";
   signal_set_.async_wait([this](const boost::system::error_code& error_code, int signum) {
+    maidsafe::on_scope_exit init_on_exit([this]() { InitSignalHandler(); });
+
     if (error_code && error_code == boost::asio::error::operation_aborted) {
       LOG(kVerbose) << "Cancelled waiting for SIGCHLD signal.";
       return;
@@ -311,7 +313,6 @@ void ProcessManager::InitSignalHandler() {
       return;
 
     OnProcessExit(child_itr->info.label, BOOST_PROCESS_EXITSTATUS(exit_code));
-    InitSignalHandler();
   });
 #endif
 }
@@ -340,9 +341,6 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   });
 }
 
-#ifndef MAIDSAFE_WIN32
-bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr /*connection*/) {
-#else
 bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   try {
     OnProcessExit(DoFind(connection)->info.label, -1, true);
@@ -352,7 +350,6 @@ bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
       return false;
     throw;
   }
-#endif
   return true;
 }
 
