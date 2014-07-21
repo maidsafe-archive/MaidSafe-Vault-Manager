@@ -35,6 +35,7 @@
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
 #include "maidsafe/routing/bootstrap_file_operations.h"
+#include "maidsafe/routing/config.h"
 #include "maidsafe/routing/routing_api.h"
 #include "maidsafe/routing/node_info.h"
 #include "maidsafe/nfs/utils.h"
@@ -116,7 +117,7 @@ void StartZeroStateRoutingNodes(std::promise<void>& zero_state_nodes_started,
 
     routing::BootstrapContact contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
     routing::BootstrapContact contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
-    const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / "bootstrap.dat");              // FIXME prakash
+    const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / kBootstrapFilename);
     boost::filesystem::remove(kBootstrapFilePath);
     routing::WriteBootstrapContacts(routing::BootstrapContacts{ contact0, contact1 },
                                     kBootstrapFilePath);
@@ -277,7 +278,7 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
     throw;
   }
   Sleep(std::chrono::seconds(2));
-  const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / "bootstrap.dat");        //FIXME Prakash
+  const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / kBootstrapFilename);
 
   boost::filesystem::remove(kBootstrapFilePath);
   routing::WriteBootstrapContacts(

@@ -331,7 +331,8 @@ void VaultManager::HandleVaultStarted(tcp::ConnectionPtr connection, const std::
       process_manager_->HandleVaultStarted(connection, { vault_started.process_id() }) };
 
   // Send vault its credentials
-  SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(), config_file_handler_.SymmIv());
+  SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
+                           config_file_handler_.SymmIv());
 
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
