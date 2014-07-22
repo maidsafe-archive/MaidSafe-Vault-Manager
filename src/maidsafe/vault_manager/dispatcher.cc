@@ -151,12 +151,16 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
 #ifdef USE_VLOGGING
   message.set_vlog_session_id(vault_info.vlog_session_id);
 # ifdef TESTING
-  auto serialised_public_pmids = GetSerialisedPublicPmids();
-  if (!serialised_public_pmids.empty())
-    message.set_serialised_public_pmids(serialised_public_pmids);
   message.set_send_hostname_to_visualiser_server(vault_info.send_hostname_to_visualiser_server);
 # endif
 #endif
+
+#ifdef TESTING
+  auto serialised_public_pmids = GetSerialisedPublicPmids();
+  if (!serialised_public_pmids.empty())
+    message.set_serialised_public_pmids(serialised_public_pmids);
+#endif
+
   vault_info.tcp_connection->Send(WrapMessage(std::make_pair(message.SerializeAsString(),
                                                              MessageType::kVaultStartedResponse)));
 }
