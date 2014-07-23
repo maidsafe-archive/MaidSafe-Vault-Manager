@@ -21,8 +21,9 @@
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/log.h"
+#include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
+#include "maidsafe/routing/tests/zero_state_helpers.h"
 
 #include "maidsafe/vault_manager/client_interface.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
@@ -66,6 +67,8 @@ void ConnectToNetwork(LocalNetworkController* local_network_controller) {
 
   auto space_info(fs::space(local_network_controller->test_env_root_dir));
   DiskUsage max_usage{ (9 * space_info.available) / (10 * local_network_controller->vault_count) };
+
+  maidsafe::test::PrepareBootstrapFile(local_network_controller->path_to_bootstrap_file);
 
   StartVaultManagerAndClientInterface(local_network_controller);
   StartVaults(local_network_controller, max_usage);

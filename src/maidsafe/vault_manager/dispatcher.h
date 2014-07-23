@@ -29,7 +29,6 @@
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 #include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
@@ -67,14 +66,6 @@ void SendVaultStartedResponse(VaultInfo& vault_info, crypto::AES256Key symm_key,
                               crypto::AES256InitialisationVector symm_iv);
 
 void SendJoinedNetwork(tcp::ConnectionPtr connection);
-
-void SendBootstrapContact(tcp::ConnectionPtr connection,
-                          const routing::BootstrapContact& bootstrap_contact);
-
-void SendBootstrapContactsRequest(tcp::ConnectionPtr connection);
-
-void SendBootstrapContactsResponse(tcp::ConnectionPtr connection,
-                                   const routing::BootstrapContacts& bootstrap_contacts);
 
 void SendVaultShutdownRequest(tcp::ConnectionPtr connection);
 

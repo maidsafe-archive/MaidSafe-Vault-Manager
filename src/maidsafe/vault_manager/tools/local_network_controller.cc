@@ -26,6 +26,7 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/process.h"
+#include "maidsafe/routing/tests/zero_state_helpers.h"
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 #include "maidsafe/vault_manager/tools/commands/begin.h"
@@ -85,6 +86,11 @@ LocalNetworkController::~LocalNetworkController() {
   current_command.reset();
   if (entered_commands.size() == 1U)
     return;
+
+  // Try to remove the local_network_bootstrap.dat file - not a problem if it fails.
+  boost::system::error_code ignored_ec;
+  boost::filesystem::remove(routing::test::LocalNetworkBootstrapFile(), ignored_ec);
+
   TLOG(kDefaultColour) << "\n\nSequence of entered commands:\n\n";
   for (const auto& command : entered_commands)
     TLOG(kDefaultColour) << command << '\n';

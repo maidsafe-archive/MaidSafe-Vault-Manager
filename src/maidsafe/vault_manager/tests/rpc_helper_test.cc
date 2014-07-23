@@ -24,8 +24,6 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/routing/bootstrap_file_operations.h"
-
 #include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/utils.h"
 

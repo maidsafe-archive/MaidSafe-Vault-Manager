@@ -24,6 +24,7 @@
 #include <thread>
 #include <vector>
 
+#include "boost/asio/ip/udp.hpp"
 #include "boost/filesystem/operations.hpp"
 
 #include "maidsafe/common/asio_service.h"
@@ -34,10 +35,9 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
-#include "maidsafe/routing/config.h"
 #include "maidsafe/routing/routing_api.h"
 #include "maidsafe/routing/node_info.h"
+#include "maidsafe/routing/tests/zero_state_helpers.h"
 #include "maidsafe/nfs/utils.h"
 #include "maidsafe/nfs/client/data_getter.h"
 #include "maidsafe/nfs/client/maid_node_nfs.h"
@@ -115,12 +115,9 @@ void StartZeroStateRoutingNodes(std::promise<void>& zero_state_nodes_started,
         functors1.typed_message_and_caching.single_to_group_relay.message_received =
             [&](const routing::SingleToGroupRelayMessage&) {};
 
-    routing::BootstrapContact contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
-    routing::BootstrapContact contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
-    const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / kBootstrapFilename);
-    boost::filesystem::remove(kBootstrapFilePath);
-    routing::WriteBootstrapContacts(routing::BootstrapContacts{ contact0, contact1 },
-                                    kBootstrapFilePath);
+    boost::asio::ip::udp::endpoint contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+    boost::asio::ip::udp::endpoint contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+    routing::test::WriteZeroStateBootstrapFile(contact0, contact1);
 
     auto join_future0(std::async(std::launch::async,
         [&] { return node0->ZeroStateJoin(functors0, contact0, contact1, node_info1); }));
@@ -278,12 +275,11 @@ void StartNetwork(LocalNetworkController* local_network_controller) {
     throw;
   }
   Sleep(std::chrono::seconds(2));
-  const boost::filesystem::path kBootstrapFilePath(ThisExecutableDir() / kBootstrapFilename);
 
-  boost::filesystem::remove(kBootstrapFilePath);
-  routing::WriteBootstrapContacts(
-      routing::BootstrapContacts{ 1, routing::BootstrapContact{ GetLocalIp(), kLivePort } },
-      kBootstrapFilePath);
+  // Writes "local_network_bootstrap.dat".  This file is deleted if the tool exits normally.
+  routing::test::WriteLocalNetworkBootstrapFile();
+  // Copies "local_network_bootstrap.dat" to "bootstrap_override.dat".
+  maidsafe::test::PrepareBootstrapFile(routing::test::LocalNetworkBootstrapFile());
 
   StartRemainingVaults(local_network_controller, max_usage);
   TLOG(kDefaultColour) << "Started Network of " << local_network_controller->vault_count

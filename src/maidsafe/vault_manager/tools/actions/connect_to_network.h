@@ -34,6 +34,7 @@ namespace tools {
 struct LocalNetworkController;
 
 void ConnectToNetwork(LocalNetworkController* local_network_controller);
+
 }  // namespace tools
 
 }  // namespace vault_manager

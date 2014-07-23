@@ -21,7 +21,6 @@
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/client_interface.h"
 #include "maidsafe/vault_manager/utils.h"

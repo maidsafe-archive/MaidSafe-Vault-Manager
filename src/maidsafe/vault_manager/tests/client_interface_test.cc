@@ -26,7 +26,6 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/routing/bootstrap_file_operations.h"
 
 #include "maidsafe/vault_manager/config.h"
 #include "maidsafe/vault_manager/utils.h"

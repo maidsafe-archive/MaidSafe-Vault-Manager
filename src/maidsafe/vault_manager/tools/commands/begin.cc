@@ -23,6 +23,7 @@
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+#include "maidsafe/vault_manager/tools/commands/choose_path_to_bootstrap.h"
 #include "maidsafe/vault_manager/tools/commands/choose_vault_manager_port.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
 
@@ -48,20 +49,23 @@ void Begin::GetChoice() {
 }
 
 void Begin::HandleChoice() {
-  if (choice_ == 1) {
-    local_network_controller_->new_network = true;
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
-  } else if (choice_ == 2) {
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
-  } else if (choice_ == 3) {
-    local_network_controller_->current_command =
-        maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
-  } else {
-    assert(false);  // TODO(Team) Implement other options
+  switch (choice_) {
+    case 1:
+      local_network_controller_->new_network = true;
+      local_network_controller_->current_command =
+          maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
+      break;
+    case 2:
+      local_network_controller_->current_command =
+          maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
+      break;
+    case 3:
+      local_network_controller_->current_command =
+          maidsafe::make_unique<ChoosePathToBootstrap>(local_network_controller_);
+      break;
+    default:
+      assert(false);  // TODO(Team) Implement other options
   }
-
 
   TLOG(kDefaultColour) << kSeparator_;
 }
