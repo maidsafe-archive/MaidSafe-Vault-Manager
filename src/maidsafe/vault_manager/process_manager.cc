@@ -294,6 +294,8 @@ void ProcessManager::InitSignalHandler() {
       return;
     }
 
+    maidsafe::on_scope_exit init_on_exit([this]() { InitSignalHandler(); });
+
     if (signum != SIGCHLD) {
       LOG(kWarning) << "Process ID " << process::GetProcessId() << " received signal " << signum;
       return;
@@ -312,7 +314,6 @@ void ProcessManager::InitSignalHandler() {
       return;
 
     OnProcessExit(child_itr->info.label, BOOST_PROCESS_EXITSTATUS(exit_code));
-    InitSignalHandler();
   });
 #endif
 }
@@ -341,9 +342,6 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   });
 }
 
-#ifndef MAIDSAFE_WIN32
-bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr /*connection*/) {
-#else
 bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
   try {
     OnProcessExit(DoFind(connection)->info.label, -1, true);
@@ -353,7 +351,6 @@ bool ProcessManager::HandleConnectionClosed(tcp::ConnectionPtr connection) {
       return false;
     throw;
   }
-#endif
   return true;
 }
 
@@ -442,13 +439,15 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   VaultInfo vault_info;
   int restart_count{ -1 };
   if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
+    restart_count = child_itr->restart_count;
+    vault_info = child_itr->info;
+    LOG(kError) << "Vault " << DebugId(vault_info.pmid_and_signer->first.name().value)
+                << " stopped unexpectedly";
 #ifdef USE_VLOGGING
     log::VisualiserLogMessage::SendVaultStoppedMessage(
         DebugId(vault_info.pmid_and_signer->first.name().value),
         vault_info.vlog_session_id, exit_code);
 #endif
-    restart_count = child_itr->restart_count;
-    vault_info = child_itr->info;
     if (vault_info.tcp_connection) {
       vault_info.tcp_connection->Close();
       vault_info.tcp_connection.reset();

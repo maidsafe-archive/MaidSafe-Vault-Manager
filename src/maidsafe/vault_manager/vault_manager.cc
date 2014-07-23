@@ -218,6 +218,7 @@ void VaultManager::HandleChallengeResponse(tcp::ConnectionPtr connection,
 
 void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
                                            const std::string& message) {
+  LOG(kVerbose) << "VaultManager::HandleStartVaultRequest";
   maidsafe_error error{ MakeError(CommonErrors::unknown) };
   VaultInfo vault_info;
   try {
@@ -233,11 +234,13 @@ void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
           GetPmidAndSigner(start_vault_message.pmid_list_index()));
     }
 #endif
+    LOG(kVerbose) << "VaultManager::HandleStartVaultRequest PutPmidAndSigner";
     if (!vault_info.pmid_and_signer) {
       vault_info.pmid_and_signer =
           std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
       PutPmidAndSigner(*vault_info.pmid_and_signer);
     }
+    LOG(kVerbose) << "VaultManager::HandleStartVaultRequest vault_dir";
     if (!start_vault_message.has_vault_dir()) {
       vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
       if (!fs::exists(vault_info.vault_dir))
@@ -255,6 +258,7 @@ void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
     }
 # endif
 #endif
+    LOG(kVerbose) << "VaultManager::HandleStartVaultRequest recording";
     process_manager_->AddProcess(std::move(vault_info));
     config_file_handler_.WriteConfigFile(process_manager_->GetAll());
     return;
@@ -266,6 +270,7 @@ void VaultManager::HandleStartVaultRequest(tcp::ConnectionPtr connection,
   catch (const std::exception& e) {
     LOG(kWarning) << boost::diagnostic_information(e);
   }
+  LOG(kError) << "VaultManager::HandleStartVaultRequest reporting error";
   SendVaultRunningResponse(connection, vault_info.label, nullptr, &error);
 }
 
@@ -325,18 +330,21 @@ void VaultManager::HandleVaultStarted(tcp::ConnectionPtr connection, const std::
   //                  could have spotted a new vault process starting and jumped in with this TCP
   //                  connection before the new vault can connect, passing itself off as the new
   //                  vault (i.e. lying about its own Process ID).
+  LOG(kVerbose) << "VaultManager::HandleVaultStarted";
   RemoveFromNewConnections(connection);
   protobuf::VaultStarted vault_started{ ParseProto<protobuf::VaultStarted>(message) };
   VaultInfo vault_info{
       process_manager_->HandleVaultStarted(connection, { vault_started.process_id() }) };
 
   // Send vault its credentials
+  LOG(kVerbose) << "VaultManager::HandleVaultStarted Send vault its credentials";
   SendVaultStartedResponse(vault_info, config_file_handler_.SymmKey(),
                            config_file_handler_.SymmIv());
 
   // If the corresponding client is connected, send it the credentials too
   if (vault_info.owner_name->IsInitialised()) {
     try {
+      LOG(kVerbose) << "VaultManager::HandleVaultStarted Send client its credentials";
       tcp::ConnectionPtr client{ client_connections_->FindValidated(vault_info.owner_name) };
       SendVaultRunningResponse(client, vault_info.label, vault_info.pmid_and_signer.get());
     }
