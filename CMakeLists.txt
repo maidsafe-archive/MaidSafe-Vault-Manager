@@ -101,9 +101,8 @@ if(MaidsafeTesting)
                      COMMAND ${CMAKE_COMMAND} -E copy "${VaultManagerSourcesDir}/tools/network_test_helper.script"
                                                       "$<TARGET_FILE_DIR:network_test_helper>/network_test_helper.script")
 
-  ms_add_style_test()
+  ms_add_default_tests()
   ms_add_gtests(TESTvault_manager)
-  ms_add_project_experimental()
   ms_test_summary_output()
 endif()
 
