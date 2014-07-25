@@ -92,7 +92,7 @@ if(MaidsafeTesting)
                     ${VaultManagerToolsCommandsAllFiles}
                     ${VaultManagerToolsActionsAllFiles})
   target_include_directories(local_network_controller PRIVATE ${PROJECT_SOURCE_DIR}/src)
-  target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_nfs_vault maidsafe_test)
+  target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_nfs_vault maidsafe_routing_test_helper maidsafe_test)
   add_dependencies(local_network_controller vault)
 
   ms_add_executable(network_test_helper "Tools/Vault Manager" ${NetworkTestHelperFile})
