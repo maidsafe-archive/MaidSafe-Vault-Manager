@@ -16,15 +16,13 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/tools/commands/begin.h"
+#include "maidsafe/vault_manager/tools/commands/choose_existing_network.h"
 
-#include "maidsafe/common/config.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
-#include "maidsafe/vault_manager/tools/commands/choose_existing_network.h"
-#include "maidsafe/vault_manager/tools/commands/choose_vault_manager_port.h"
+#include "maidsafe/vault_manager/tools/commands/choose_path_to_bootstrap.h"
 #include "maidsafe/vault_manager/tools/commands/choose_test_root_dir.h"
 
 namespace maidsafe {
@@ -33,40 +31,32 @@ namespace vault_manager {
 
 namespace tools {
 
-Begin::Begin(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Initial options.",
-              "\nPlease choose from the following options ('" + kQuitCommand_ + "' to quit):\n\n"
-              "  1. Start a new network on this machine.\n"
-              "  2. Connect to an existing VaultManager on this machine.\n"
-              "  3. Connect to an existing Network.\n" + kPrompt_,
-              "MaidSafe Local Network Controller " + kApplicationVersion() + ": Main Options"),
+ChooseExistingNetwork::ChooseExistingNetwork(LocalNetworkController* local_network_controller)
+    : Command(local_network_controller, "Choose Existing Network.",
+              "  \n  1. Connect to MaidSafe Test Network. "
+              "  \n  2. Connect to other network.\n" + kPrompt_),
       choice_(0) {}
 
-void Begin::GetChoice() {
+void ChooseExistingNetwork::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
-  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 3))
+  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }
 
-void Begin::HandleChoice() {
+void ChooseExistingNetwork::HandleChoice() {
   switch (choice_) {
     case 1:
-      local_network_controller_->new_network = true;
+      local_network_controller_->path_to_bootstrap_file = "none";
       local_network_controller_->current_command =
           maidsafe::make_unique<ChooseTestRootDir>(local_network_controller_);
       break;
     case 2:
       local_network_controller_->current_command =
-          maidsafe::make_unique<ChooseVaultManagerPort>(local_network_controller_, true);
-      break;
-    case 3:
-      local_network_controller_->current_command =
-          maidsafe::make_unique<ChooseExistingNetwork>(local_network_controller_);
+          maidsafe::make_unique<ChoosePathToBootstrap>(local_network_controller_);
       break;
     default:
-      assert(false);  // TODO(Team) Implement other options
+      assert(false);
   }
-
   TLOG(kDefaultColour) << kSeparator_;
 }
 
