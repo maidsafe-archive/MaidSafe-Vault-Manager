@@ -42,7 +42,7 @@ namespace {
 
 std::string Instruction(bool new_network) {
   std::string instruction{ "\nThis must be at least " };
-  instruction += (new_network ? "10" : "1");
+  instruction += std::to_string(new_network ? GetDefault().kVaultCountNewNetwork : 1);
   instruction += ".\nThere is no upper limit, but more than 20 on one PC will probably\n"
       "cause noticeable performance slowdown.  'Enter' to use default \"" +
       std::to_string(new_network ? GetDefault().kVaultCountNewNetwork : GetDefault().kVaultCount) +
@@ -60,7 +60,7 @@ void ChooseVaultCount::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
   if (local_network_controller_->new_network) {
     while (!DoGetChoice(local_network_controller_->vault_count, &GetDefault().kVaultCountNewNetwork,
-                        10, std::numeric_limits<int>::max())) {
+                        GetDefault().kVaultCountNewNetwork, std::numeric_limits<int>::max())) {
       TLOG(kDefaultColour) << '\n' << kInstructions_;
     }
   } else {

@@ -42,7 +42,7 @@ Default::Default()
       kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{ "vault" })),
       kPathToBootstrap(boost::filesystem::temp_directory_path() / "bootstrap.dat"),
       kVaultManagerPort(44444),
-      kVaultCountNewNetwork(12),
+      kVaultCountNewNetwork(16),
       kVaultCount(1),
       kCreateTestRootDir(true),
       kClearTestRootDir(true),
