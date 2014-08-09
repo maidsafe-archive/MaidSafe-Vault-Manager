@@ -27,6 +27,7 @@
 
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
 #include "maidsafe/vault_manager/tools/commands/choose_to_reveal_hostname.h"
+#include "maidsafe/vault_manager/tools/commands/choose_vault_count.h"
 
 namespace maidsafe {
 
@@ -50,8 +51,15 @@ void EnterVlogSessionId::GetChoice() {
 }
 
 void EnterVlogSessionId::HandleChoice() {
-  local_network_controller_->current_command =
-      maidsafe::make_unique<ChooseToRevealHostname>(local_network_controller_);
+  if (local_network_controller_->vlog_session_id->empty()) {
+    local_network_controller_->send_hostname_to_visualiser_server =
+        maidsafe::make_unique<bool>(false);
+    local_network_controller_->current_command =
+        maidsafe::make_unique<ChooseVaultCount>(local_network_controller_);
+  } else {
+    local_network_controller_->current_command =
+        maidsafe::make_unique<ChooseToRevealHostname>(local_network_controller_);
+  }
 }
 
 }  // namespace tools
