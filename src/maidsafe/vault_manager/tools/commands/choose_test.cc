@@ -37,8 +37,13 @@ ChooseTest::ChooseTest(LocalNetworkController* local_network_controller)
 
 void ChooseTest::GetChoice() {
   TLOG(kYellow) << kInstructions_;
-  while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
-    TLOG(kDefaultColour) << '\n' << kInstructions_;
+  try {
+    while (!DoGetChoice(choice_, static_cast<int*>(nullptr), 1, 2))
+      TLOG(kDefaultColour) << '\n' << kInstructions_;
+  } catch (...) {
+    // ctrl+C will trigger CommonErrors::unknown error to be raised
+    throw;
+  }
 }
 
 void ChooseTest::HandleChoice() {
