@@ -34,6 +34,20 @@ void ShutDownLocalNetworkController(int /*signal*/) {
   throw MakeError(maidsafe::CommonErrors::success);
 }
 
+#ifdef MAIDSAFE_WIN32
+BOOL CtrlHandler(DWORD control_type) {
+  switch (control_type) {
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+      ShutDownLocalNetworkController(0);
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+#endif
+
 int main(int argc, char* argv[]) {
   try {
     boost::filesystem::path script_path;
@@ -49,6 +63,8 @@ int main(int argc, char* argv[]) {
 #ifndef MAIDSAFE_WIN32
     signal(SIGINT, ShutDownLocalNetworkController);
     signal(SIGTERM, ShutDownLocalNetworkController);
+#else
+    SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE);
 #endif
     for(;;) {
       local_network_controller.current_command->PrintTitle();
