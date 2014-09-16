@@ -110,10 +110,20 @@ endif()
 #==================================================================================================#
 # Package                                                                                          #
 #==================================================================================================#
-install(TARGETS maidsafe_vault_manager COMPONENT Development CONFIGURATIONS Debug Release ARCHIVE DESTINATION lib)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ COMPONENT Development DESTINATION include)
 
-if(MaidsafeTesting)
+if(UNIX)
+install(TARGETS vault_manager COMPONENT Development DESTINATION /opt/maidsafe/vault)
+install(FILES ${PROJECT_SOURCE_DIR}/installer/linux/scripts/ubuntu/vault_manager COMPONENT Development DESTINATION /etc/init.d/vault_manager)
+add_custom_command(TARGET vault_manager POST_BUILD  
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  ${PROJECT_SOURCE_DIR}/installer/linux/scripts/ubuntu/post_install 
+  "${PROJECT_BINARY_DIR}/post_install")
+
+endif(UNIX)
+
+if(MaidsafeTesting AND NOT $ENV{DESTDIR})
+  install(TARGETS maidsafe_vault_manager COMPONENT Development CONFIGURATIONS Debug Release ARCHIVE DESTINATION lib)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ COMPONENT Development DESTINATION include)
   install(TARGETS local_network_controller network_test_helper COMPONENT Tools CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
   install(TARGETS local_network_controller network_test_helper COMPONENT Tools CONFIGURATIONS Release RUNTIME DESTINATION bin)
   install(TARGETS test_vault_manager dummy_vault COMPONENT Tests CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
