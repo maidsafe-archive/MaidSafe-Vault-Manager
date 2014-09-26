@@ -31,7 +31,8 @@ namespace tools {
 
 ChooseTest::ChooseTest(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Test options.",
-              "\nUnimplemented as yet. (type 100 for quit or 101 for tear down vaults with interval)\n",
+              "\nUnimplemented as yet. "
+              "(type 100 for quit or 101 for tear down vaults with interval)\n",
               "Main Test Choices"),
       choice_(0) {}
 

@@ -55,6 +55,7 @@ class VaultManager {
   ~VaultManager();
 
   void TearDownWithInterval();
+
  private:
   void HandleNewConnection(tcp::ConnectionPtr connection);
   void HandleConnectionClosed(tcp::ConnectionPtr connection);
