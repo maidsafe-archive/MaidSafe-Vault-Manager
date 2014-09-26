@@ -65,6 +65,7 @@ class ProcessManager {
                                                     tcp::Port listening_port);
   ~ProcessManager();
   void StopAll();
+  void StopAllWithInterval();
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info, int restart_count = 0);
   VaultInfo HandleVaultStarted(tcp::ConnectionPtr connection, ProcessId process_id);

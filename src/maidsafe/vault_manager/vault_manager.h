@@ -54,6 +54,7 @@ class VaultManager {
   VaultManager();
   ~VaultManager();
 
+  void TearDownWithInterval();
  private:
   void HandleNewConnection(tcp::ConnectionPtr connection);
   void HandleConnectionClosed(tcp::ConnectionPtr connection);
@@ -76,7 +77,7 @@ class VaultManager {
   void ChangeChunkstorePath(VaultInfo vault_info);
 
   ConfigFileHandler config_file_handler_;
-  bool network_stable_;
+  bool network_stable_, tear_down_with_interval_;
   AsioService asio_service_;
   std::shared_ptr<tcp::Listener> listener_;
   std::shared_ptr<ProcessManager> process_manager_;
