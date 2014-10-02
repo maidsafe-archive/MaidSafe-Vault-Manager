@@ -16,6 +16,12 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
+#ifdef MAIDSAFE_WIN32
+#include <windows.h>
+#else
+#include <signal.h>
+#endif
+
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/error.h"
@@ -23,6 +29,24 @@
 
 #include "maidsafe/vault_manager/tools/commands/commands.h"
 #include "maidsafe/vault_manager/tools/local_network_controller.h"
+
+void ShutDownLocalNetworkController(int /*signal*/) {
+  throw MakeError(maidsafe::CommonErrors::success);
+}
+
+#ifdef MAIDSAFE_WIN32
+BOOL CtrlHandler(DWORD control_type) {
+  switch (control_type) {
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+      ShutDownLocalNetworkController(0);
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+#endif
 
 int main(int argc, char* argv[]) {
   try {
@@ -35,15 +59,28 @@ int main(int argc, char* argv[]) {
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
 
     maidsafe::vault_manager::tools::LocalNetworkController local_network_controller{ script_path };
-    for (;;) {
+
+#ifndef MAIDSAFE_WIN32
+    signal(SIGINT, ShutDownLocalNetworkController);
+    signal(SIGTERM, ShutDownLocalNetworkController);
+#else
+    SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(CtrlHandler), TRUE);
+#endif
+    for(;;) {
       local_network_controller.current_command->PrintTitle();
-      local_network_controller.current_command->GetChoice();
+      try {
+        local_network_controller.current_command->GetChoice();
+      } catch (...) {
+        throw;
+      }
+
       local_network_controller.current_command->HandleChoice();
     }
   }
   catch (const maidsafe::maidsafe_error& error) {
     // Success is thrown when Quit option is invoked.
-    if (error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::success))
+    if ((error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::success)) ||
+        (error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::unknown)))
       return 0;
     TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
     return maidsafe::ErrorToInt(error);
