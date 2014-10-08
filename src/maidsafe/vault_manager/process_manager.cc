@@ -189,6 +189,25 @@ void ProcessManager::StopAll() {
   });
 }
 
+void ProcessManager::StopAllWithInterval() {
+  int index(0);
+  std::call_once(stop_all_flag_, [this, &index] {
+    std::vector<tcp::ConnectionPtr> connections;
+    for (const auto& vault : vaults_)
+      connections.push_back(vault.info.tcp_connection);
+    for (const auto& connection : connections) {
+      ++index;
+      TLOG(kDefaultColour) << "stopping vault " << index << '\n';
+      StopProcess(connection);
+      Sleep(std::chrono::seconds(5));
+    }
+#ifndef MAIDSAFE_WIN32
+    boost::system::error_code ignored_ec;
+    signal_set_.cancel(ignored_ec);
+#endif
+  });
+}
+
 std::vector<VaultInfo> ProcessManager::GetAll() const {
   std::vector<VaultInfo> all_vaults;
   for (const auto& vault : vaults_)

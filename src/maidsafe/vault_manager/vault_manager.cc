@@ -89,6 +89,7 @@ void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer) {
 VaultManager::VaultManager()
     : config_file_handler_(GetConfigFilePath()),
       network_stable_(false),
+      tear_down_with_interval_(false),
       asio_service_(1),
       listener_(tcp::Listener::MakeShared(asio_service_,
           [this](tcp::ConnectionPtr connection) { HandleNewConnection(connection); },
@@ -119,18 +120,36 @@ VaultManager::VaultManager()
   LOG(kInfo) << "VaultManager started";
 }
 
-VaultManager::~VaultManager() {
+void VaultManager::TearDownWithInterval() {
+  tear_down_with_interval_ = true;
   auto listener(listener_);
   auto new_connections(new_connections_);
   auto client_connections(client_connections_);
   auto process_manager(process_manager_);
-  asio_service_.service().post([=] {
+  auto future(std::async(std::launch::async, [=] {
     listener->StopListening();
     new_connections->CloseAll();
     client_connections->CloseAll();
-    process_manager->StopAll();
-  });
+    process_manager->StopAllWithInterval();
+  }));
+  future.get();
   asio_service_.Stop();
+}
+
+VaultManager::~VaultManager() {
+  if (!tear_down_with_interval_) {
+    auto listener(listener_);
+    auto new_connections(new_connections_);
+    auto client_connections(client_connections_);
+    auto process_manager(process_manager_);
+    asio_service_.service().post([=] {
+      listener->StopListening();
+      new_connections->CloseAll();
+      client_connections->CloseAll();
+      process_manager->StopAll();
+    });
+    asio_service_.Stop();
+  }
 }
 
 void VaultManager::HandleNewConnection(tcp::ConnectionPtr connection) {
