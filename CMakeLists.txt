@@ -78,7 +78,7 @@ target_compile_definitions(maidsafe_vault_manager PRIVATE COMPANY_NAME=MaidSafe 
 #==================================================================================================#
 # Tests                                                                                            #
 #==================================================================================================#
-if(MaidsafeTesting)
+if(INCLUDE_TESTS)
   ms_add_executable(test_vault_manager "Tests/Vault Manager" ${VaultManagerTestsAllFiles})
   target_include_directories(test_vault_manager PRIVATE ${PROJECT_SOURCE_DIR}/src)
   ms_add_executable(dummy_vault "Tests/Vault Manager" "${VaultManagerSourcesDir}/tests/dummy_vault.cc")
@@ -121,7 +121,7 @@ add_custom_command(TARGET vault_manager POST_BUILD
 
 endif(UNIX)
 
-if(MaidsafeTesting AND NOT $ENV{DESTDIR})
+if(INCLUDE_TESTS AND NOT $ENV{DESTDIR})
   install(TARGETS maidsafe_vault_manager COMPONENT Development CONFIGURATIONS Debug Release ARCHIVE DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ COMPONENT Development DESTINATION include)
   install(TARGETS local_network_controller network_test_helper COMPONENT Tools CONFIGURATIONS Debug RUNTIME DESTINATION bin/debug)
