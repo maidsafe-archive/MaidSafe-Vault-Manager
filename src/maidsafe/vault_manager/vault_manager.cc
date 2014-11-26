@@ -104,7 +104,18 @@ VaultManager::VaultManager()
     VaultInfo vault_info;
     vault_info.pmid_and_signer =
         std::make_shared<passport::PmidAndSigner>(passport::CreatePmidAndSigner());
-    PutPmidAndSigner(*vault_info.pmid_and_signer);
+    // Try infinitely to put PmidAndSigner for a new Vault
+    bool stored_pmid_and_signer(false);
+    do {
+      try {
+        PutPmidAndSigner(*vault_info.pmid_and_signer);
+        stored_pmid_and_signer = true;
+        LOG(kSuccess) << "Put PmidAndSigner Successfully";
+      } catch (const std::exception& e) {
+        LOG(kError) << " Failed to put PmidAndSigner : " << boost::diagnostic_information(e);
+      }
+    } while (!stored_pmid_and_signer);
+
     vault_info.vault_dir = GetVaultDir(DebugId(vault_info.pmid_and_signer->first.name().value));
     if (!fs::exists(vault_info.vault_dir))
       fs::create_directories(vault_info.vault_dir);
@@ -112,6 +123,8 @@ VaultManager::VaultManager()
     vault_info.max_disk_usage = DiskUsage{ (9 * space_info.available) / 10 };
     vault_info.label = GenerateLabel();
     process_manager_->AddProcess(std::move(vault_info));
+    LOG(kSuccess) << "Vault process handed over to process manager.";
+    config_file_handler_.WriteConfigFile(process_manager_->GetAll());
 #endif
   } else {
     for (auto& vault_info : vaults)
@@ -194,6 +207,7 @@ void VaultManager::HandleReceivedMessage(tcp::ConnectionPtr connection,
         assert(message_and_type.first.empty());
         HandleJoinedNetwork(connection);
         break;
+#ifdef TESTING
       case MessageType::kMarkNetworkAsStable:
         assert(message_and_type.first.empty());
         HandleMarkNetworkAsStable();
@@ -202,6 +216,7 @@ void VaultManager::HandleReceivedMessage(tcp::ConnectionPtr connection,
         assert(message_and_type.first.empty());
         HandleNetworkStableRequest(connection);
         break;
+#endif
       case MessageType::kLogMessage:
         HandleLogMessage(connection, message_and_type.first);
         break;
@@ -375,6 +390,7 @@ void VaultManager::HandleVaultStarted(tcp::ConnectionPtr connection, const std::
       << vault_started.process_id() << "  Label: " << vault_info.label.string();
 }
 
+#ifdef TESTING
 void VaultManager::HandleMarkNetworkAsStable() {
   asio_service_.service().dispatch([=] {
     std::vector<tcp::ConnectionPtr> all_clients{ client_connections_->GetAll() };
@@ -392,6 +408,7 @@ void VaultManager::HandleNetworkStableRequest(tcp::ConnectionPtr connection) {
       SendNetworkStableResponse(connection);
   });
 }
+#endif
 
 void VaultManager::HandleJoinedNetwork(tcp::ConnectionPtr connection) {
   try {

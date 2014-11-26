@@ -110,7 +110,9 @@ class ClientInterface {
       const NonEmptyString& label);
   void HandleReceivedMessage(const std::string& wrapped_message);
   void HandleVaultRunningResponse(const std::string& message);
+#ifdef TESTING
   void HandleNetworkStableResponse();
+#endif
   void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
   void HandleLogMessage(const std::string& message);
 
