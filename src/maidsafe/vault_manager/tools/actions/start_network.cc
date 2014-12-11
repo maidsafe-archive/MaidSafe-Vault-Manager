@@ -121,6 +121,8 @@ void StartZeroStateRoutingNodes(std::promise<void>& zero_state_nodes_started,
 
     auto join_future0(std::async(std::launch::async,
         [&] { return node0->ZeroStateJoin(functors0, contact0, contact1, node_info1); }));
+    // allowing access to database using different time slot to avoid racing
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     auto join_future1(std::async(std::launch::async,
         [&] { return node1->ZeroStateJoin(functors1, contact1, contact0, node_info0); }));
     if (join_future0.get() != 0 || join_future1.get() != 0) {
