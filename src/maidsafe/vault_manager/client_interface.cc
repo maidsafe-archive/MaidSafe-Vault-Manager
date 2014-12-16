@@ -181,8 +181,9 @@ void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
     pmid_and_signer = ParseVaultKeys(vault_running_response.vault_keys());
     LOG(kVerbose) << "Got pmid_and_signer for vault label: " << label.string();
   } else if (vault_running_response.has_serialised_maidsafe_error()) {
-    error = maidsafe::make_unique<maidsafe_error>(Parse(maidsafe_error::serialised_type(
-        vault_running_response.serialised_maidsafe_error())));
+    SerialisedData serialised_error{std::begin(vault_running_response.serialised_maidsafe_error()),
+                                    std::end(vault_running_response.serialised_maidsafe_error())};
+    error = maidsafe::make_unique<maidsafe_error>(Parse<maidsafe_error>(serialised_error));
     LOG(kError) << "Got error for vault label: " << label.string()
                 << "   Error: " << error->what();
   } else {
