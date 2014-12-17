@@ -72,7 +72,7 @@ ms_rename_outdated_built_exes()
 # Set compiler and linker flags                                                                    #
 #==================================================================================================#
 include(standard_flags)
-target_compile_definitions(maidsafe_vault_manager PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=VaultManager)
+target_compile_definitions(maidsafe_vault_manager PRIVATE COMPANY_NAME=maidsafe APPLICATION_NAME=vaultmanager)
 
 
 #==================================================================================================#
@@ -112,11 +112,11 @@ endif()
 #==================================================================================================#
 
 if(UNIX)
-install(TARGETS vault_manager COMPONENT Development DESTINATION /opt/maidsafe/vault)
+install(TARGETS vault_manager COMPONENT Development DESTINATION /opt/maidsafe/)
 install(FILES ${PROJECT_SOURCE_DIR}/installer/linux/scripts/ubuntu/vault_manager COMPONENT Development DESTINATION /etc/init.d/vault_manager)
-add_custom_command(TARGET vault_manager POST_BUILD  
+add_custom_command(TARGET vault_manager POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-  ${PROJECT_SOURCE_DIR}/installer/linux/scripts/ubuntu/post_install 
+  ${PROJECT_SOURCE_DIR}/installer/linux/scripts/ubuntu/post_install
   "${PROJECT_BINARY_DIR}/post_install")
 
 endif(UNIX)
