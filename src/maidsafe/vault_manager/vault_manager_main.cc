@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
     std::cout << "Successfully stopped vault_manager" << std::endl;
   } catch(const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
-    return -5; // TODO 2014-11-26 Ben: what is this return value?
+    return -5;  // TODO(Ben) 2014-11-26: what is this return value?
   }
 #endif
   return 0;

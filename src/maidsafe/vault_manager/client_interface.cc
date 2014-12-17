@@ -164,7 +164,7 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
         HandleNetworkStableResponse();
         break;
 #endif
-case MessageType::kLogMessage:
+      case MessageType::kLogMessage:
         HandleLogMessage(message_and_type.first);
         break;
       default:
