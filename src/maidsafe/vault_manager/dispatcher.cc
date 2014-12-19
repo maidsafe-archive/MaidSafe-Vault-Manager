@@ -112,7 +112,9 @@ void SendVaultRunningResponse(tcp::ConnectionPtr connection,
   if (error) {
     assert(!pmid_and_signer);
     message.set_label(vault_label.string());
-    message.set_serialised_maidsafe_error(Serialise(*error).data);
+    auto serialised_error = Serialise(*error);
+    message.set_serialised_maidsafe_error(std::string(std::begin(serialised_error),
+                                                      std::end(serialised_error)));
   } else {
     assert(pmid_and_signer);
     message.set_label(vault_label.string());
