@@ -72,7 +72,7 @@ ms_rename_outdated_built_exes()
 # Set compiler and linker flags                                                                    #
 #==================================================================================================#
 include(standard_flags)
-target_compile_definitions(maidsafe_vault_manager PRIVATE COMPANY_NAME=maidsafe APPLICATION_NAME=vaultmanager)
+target_compile_definitions(maidsafe_vault_manager PRIVATE COMPANY_NAME=MaidSafe APPLICATION_NAME=VaultManager)
 
 
 #==================================================================================================#
