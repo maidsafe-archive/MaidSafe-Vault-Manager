@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VAULT_MANAGER_PATH=/opt/maidsafe/vault_manager
+VAULT_MANAGER_PATH=/opt/maidsafe/sbin/vault_manager
 
 if [ ! -f $VAULT_MANAGER_PATH ] ; then
   echo "vault manager executable is missing at $VAULT_MANAGER_PATH" >&2

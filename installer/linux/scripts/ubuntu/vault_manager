@@ -4,8 +4,8 @@
 # Provides:          vault_manager
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
-# Default-Start:     3 4 5
-# Default-Stop:      0 1 2 6
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
 # Short-Description: Start or stop the MaidSafe LifeStuff Invigilator.
 # Description:       This file should be placed in /etc/init.d.
 ### END INIT INFO
@@ -19,7 +19,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="MaidSafe Farmer Manager"
 NAME=vault_manager
-DAEMON=/opt/maidsafe/$NAME
+DAEMON=/opt/maidsafe/sbin/$NAME
 DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
