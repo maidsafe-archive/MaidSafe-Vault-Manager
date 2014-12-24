@@ -1,7 +1,6 @@
 #!/bin/sh
 
-VAULT_PATH=/opt/maidsafe/vault
+VAULT_PATH=/opt/maidsafe/
 /etc/init.d/maidsafe_vault_manager stop
 /usr/sbin/update-rc.d -f maidsafe_vault_manager remove
 rm /usr/bin/maidsafe_vault_manager /etc/init.d/maidsafe_vault_manager
-

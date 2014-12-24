@@ -70,7 +70,9 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
 
 ClientInterface::~ClientInterface() {
   // Ensure promise is set if required.
+#ifdef TESTING
   HandleNetworkStableResponse();
+#endif
 }
 
 std::shared_ptr<tcp::Connection> ClientInterface::ConnectToVaultManager() {
@@ -157,9 +159,11 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
       case MessageType::kVaultRunningResponse:
         HandleVaultRunningResponse(message_and_type.first);
         break;
+#ifdef TESTING
       case MessageType::kNetworkStableResponse:
         HandleNetworkStableResponse();
         break;
+#endif
       case MessageType::kLogMessage:
         HandleLogMessage(message_and_type.first);
         break;
@@ -205,9 +209,11 @@ void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
   }
 }
 
+#ifdef TESTING
 void ClientInterface::HandleNetworkStableResponse() {
   std::call_once(network_stable_flag_, [&] { network_stable_.set_value(); });
 }
+#endif
 
 void ClientInterface::InvokeCallBack(const std::string& message,
                                      std::function<void(std::string)>& callback) {

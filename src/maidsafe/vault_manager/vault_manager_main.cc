@@ -156,7 +156,7 @@ void HandleProgramOptions(int argc, char** argv) {
   if (variables_map.count("help") != 0) {
     LOG(kError) << "Printing out help menu";
     std::cout << options_description;
-    BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::uninitialised));
+    BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::success));
   }
 
 #ifdef TESTING
@@ -211,20 +211,18 @@ int main(int argc, char** argv) {
   StartServiceCtrlDispatcher(service_table);
 #endif
 #else
-  //  try {
-  HandleProgramOptions(argc, argv);
-  maidsafe::vault_manager::VaultManager vault_manager;
-  std::cout << "Successfully started vault_manager" << std::endl;
-  signal(SIGINT, ShutDownVaultManager);
-  signal(SIGTERM, ShutDownVaultManager);
-  g_shutdown_promise.get_future().get();
-  std::cout << "Successfully stopped vault_manager" << std::endl;
-  //  }
-  //  catch(const std::exception& e) {
-  //    LOG(kError) << "Error: " << e.what();
-  //    return -5;
-  //  }
-  std::cout << "After try/catch, only return pending." << std::endl;
+  try {
+    HandleProgramOptions(argc, argv);
+    maidsafe::vault_manager::VaultManager vault_manager;
+    std::cout << "Successfully started vault_manager" << std::endl;
+    signal(SIGINT, ShutDownVaultManager);
+    signal(SIGTERM, ShutDownVaultManager);
+    g_shutdown_promise.get_future().get();
+    std::cout << "Successfully stopped vault_manager" << std::endl;
+  } catch(const std::exception& e) {
+    LOG(kError) << "Error: " << e.what();
+    return -5;  // TODO(Ben) 2014-11-26: what is this return value?
+  }
 #endif
   return 0;
 }

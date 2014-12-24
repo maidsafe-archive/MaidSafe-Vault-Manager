@@ -1,12 +1,12 @@
 #!/bin/sh
 
-VAULT_PATH=/opt/maidsafe/vault
+VAULT_MANAGER_PATH=/opt/maidsafe/sbin/vault_manager
 
-if [ ! -f $VAULT_PATH/vault_manager ] ; then
-  echo "vault manager executable is missing in $VAULT_PATH" >&2
+if [ ! -f $VAULT_MANAGER_PATH ] ; then
+  echo "vault manager executable is missing at $VAULT_MANAGER_PATH" >&2
   exit 1
 fi
-ln -s $VAULT_PATH/vault_manager /usr/bin/maidsafe_vault_manager
+ln -s $VAULT_MANAGER_PATH /usr/bin/maidsafe_vault_manager
 /usr/sbin/update-rc.d vault_manager defaults
 /etc/init.d/vault_manager start
 
