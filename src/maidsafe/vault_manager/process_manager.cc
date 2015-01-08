@@ -332,7 +332,14 @@ void ProcessManager::InitSignalHandler() {
     if (child_itr == std::end(vaults_))
       return;
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
     OnProcessExit(child_itr->info.label, BOOST_PROCESS_EXITSTATUS(exit_code));
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
   });
 #endif
 }
