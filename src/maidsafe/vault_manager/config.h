@@ -26,7 +26,7 @@
 #include <string>
 #include <utility>
 
-#include "boost/asio/steady_timer.hpp"
+#include "asio/steady_timer.hpp"
 
 #include "maidsafe/common/type_macros.h"
 
@@ -34,7 +34,7 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-typedef boost::asio::steady_timer Timer;
+typedef asio::steady_timer Timer;
 typedef std::shared_ptr<Timer> TimerPtr;
 
 extern const std::string kConfigFilename;

@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include "boost/asio/io_service.hpp"
+#include "asio/io_service.hpp"
 
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/types.h"
@@ -38,7 +38,7 @@ namespace vault_manager {
 class ClientConnections {
  public:
   typedef passport::PublicMaid::Name MaidName;
-  static std::shared_ptr<ClientConnections> MakeShared(boost::asio::io_service& io_service);
+  static std::shared_ptr<ClientConnections> MakeShared(asio::io_service& io_service);
   ~ClientConnections();
   void Add(tcp::ConnectionPtr connection, const asymm::PlainText& challenge);
   void Validate(tcp::ConnectionPtr connection, const passport::PublicMaid& maid,
@@ -50,9 +50,9 @@ class ClientConnections {
   std::vector<tcp::ConnectionPtr> GetAll() const;
 
  private:
-  explicit ClientConnections(boost::asio::io_service& io_service);
+  explicit ClientConnections(asio::io_service& io_service);
 
-  boost::asio::io_service& io_service_;
+  asio::io_service& io_service_;
   std::map<tcp::ConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
     std::owner_less<tcp::ConnectionPtr >> unvalidated_clients_;
   std::map<tcp::ConnectionPtr, MaidName,
