@@ -43,10 +43,10 @@ namespace vault_manager {
 namespace test {
 
 TEST(ProcessManagerTest, BEH_Constructor) {
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  std::unique_ptr<AsioService> asio_service{ maidsafe::make_unique<AsioService>(1) };
-  std::shared_ptr<ProcessManager> process_manager{ ProcessManager::MakeShared(
-      asio_service->service(), path_to_vault, tcp::Port{ 7777 }) };
+  fs::path path_to_vault{process::GetOtherExecutablePath("dummy_vault")};
+  std::unique_ptr<AsioService> asio_service{maidsafe::make_unique<AsioService>(1)};
+  std::shared_ptr<ProcessManager> process_manager{
+      ProcessManager::MakeShared(asio_service->service(), path_to_vault, tcp::Port{7777})};
   process_manager->StopAll();
   LOG(kInfo) << "Destroying asio...";
   asio_service.reset();

@@ -115,8 +115,10 @@ void StartZeroStateRoutingNodes(std::promise<void>& zero_state_nodes_started,
         functors1.typed_message_and_caching.single_to_group_relay.message_received =
             [&](const routing::SingleToGroupRelayMessage&) {};
 
-    boost::asio::ip::udp::endpoint contact0{ GetLocalIp(), maidsafe::test::GetRandomPort() };
-    boost::asio::ip::udp::endpoint contact1{ GetLocalIp(), maidsafe::test::GetRandomPort() };
+    boost::asio::ip::udp::endpoint contact0{AsioToBoostAsio(GetLocalIp()),
+                                            maidsafe::test::GetRandomPort()};
+    boost::asio::ip::udp::endpoint contact1{AsioToBoostAsio(GetLocalIp()),
+                                            maidsafe::test::GetRandomPort()};
     routing::test::WriteZeroStateBootstrapFile(contact0, contact1);
 
     auto join_future0(std::async(std::launch::async,

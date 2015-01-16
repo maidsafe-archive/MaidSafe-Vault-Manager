@@ -26,11 +26,11 @@
 #include <string>
 #include <vector>
 
-#include "boost/asio/io_service.hpp"
+#include "asio/io_service.hpp"
 #ifdef MAIDSAFE_WIN32
-#include "boost/asio/windows/object_handle.hpp"
+#include "asio/windows/object_handle.hpp"
 #else
-#include "boost/asio/signal_set.hpp"
+#include "asio/signal_set.hpp"
 #endif
 #include "boost/filesystem/path.hpp"
 #include "boost/process/child.hpp"
@@ -60,7 +60,7 @@ class ProcessManager {
   ProcessManager(ProcessManager&&) = delete;
   ProcessManager& operator=(ProcessManager) = delete;
 
-  static std::shared_ptr<ProcessManager> MakeShared(boost::asio::io_service& io_service,
+  static std::shared_ptr<ProcessManager> MakeShared(asio::io_service& io_service,
                                                     boost::filesystem::path vault_executable_path,
                                                     tcp::Port listening_port);
   ~ProcessManager();
@@ -78,11 +78,11 @@ class ProcessManager {
   VaultInfo Find(tcp::ConnectionPtr connection) const;
 
  private:
-  ProcessManager(boost::asio::io_service &io_service, boost::filesystem::path vault_executable_path,
+  ProcessManager(asio::io_service &io_service, boost::filesystem::path vault_executable_path,
                  tcp::Port listening_port);
 
   struct Child {
-    Child(VaultInfo info, boost::asio::io_service &io_service, int restarts);
+    Child(VaultInfo info, asio::io_service &io_service, int restarts);
     Child(Child&& other);
     Child& operator=(Child other);
     VaultInfo info;
@@ -92,7 +92,7 @@ class ProcessManager {
     std::vector<std::string> process_args;
     ProcessStatus status;
 #ifdef MAIDSAFE_WIN32
-    boost::asio::windows::object_handle handle;
+    asio::windows::object_handle handle;
 #endif
     boost::process::child process;
    private:
@@ -114,9 +114,9 @@ class ProcessManager {
   void InvokeOnExitFunctor(OnExitFunctor on_exit, int exit_code, bool terminate);
   void RestartIfRequired(int restart_count, VaultInfo vault_info);
 
-  boost::asio::io_service &io_service_;
+  asio::io_service &io_service_;
 #ifndef MAIDSAFE_WIN32
-  boost::asio::signal_set signal_set_;
+  asio::signal_set signal_set_;
 #endif
   std::once_flag stop_all_flag_;
   const tcp::Port kListeningPort_;

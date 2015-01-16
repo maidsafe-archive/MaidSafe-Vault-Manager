@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#include "boost/asio/steady_timer.hpp"
-#include "boost/asio/error.hpp"
+#include "asio/steady_timer.hpp"
+#include "asio/error.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/crypto.h"

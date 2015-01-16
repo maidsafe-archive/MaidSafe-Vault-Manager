@@ -29,10 +29,10 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-NewConnections::NewConnections(boost::asio::io_service& io_service)
+NewConnections::NewConnections(asio::io_service& io_service)
     : io_service_(io_service), connections_() {}
 
-std::shared_ptr<NewConnections> NewConnections::MakeShared(boost::asio::io_service& io_service) {
+std::shared_ptr<NewConnections> NewConnections::MakeShared(asio::io_service& io_service) {
   return std::shared_ptr<NewConnections>{ new NewConnections{ io_service } };
 }
 
@@ -42,8 +42,8 @@ NewConnections::~NewConnections() {
 
 void NewConnections::Add(tcp::ConnectionPtr connection) {
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
-  timer->async_wait([connection](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
+  timer->async_wait([connection](const std::error_code& error_code) {
+    if (error_code && error_code == asio::error::operation_aborted) {
       LOG(kVerbose) << "New connection timer cancelled OK.";
     } else {
       LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
