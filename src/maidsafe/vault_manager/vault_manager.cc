@@ -31,7 +31,7 @@
 #include "maidsafe/common/tcp/connection.h"
 #include "maidsafe/common/tcp/listener.h"
 #include "maidsafe/passport/passport.h"
-#include "maidsafe/nfs/client/maid_node_nfs.h"
+#include "maidsafe/nfs/client/maid_client.h"
 
 #include "maidsafe/vault_manager/client_connections.h"
 #include "maidsafe/vault_manager/dispatcher.h"
@@ -75,7 +75,7 @@ fs::path GetVaultExecutablePath() {
 
 void PutPmidAndSigner(const passport::PmidAndSigner& pmid_and_signer) {
   LOG(kVerbose) << "Creating Random client to store public pmid key";
-  std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs(nfs_client::MaidNodeNfs::MakeShared(
+  std::shared_ptr<nfs_client::MaidClient> client_nfs(nfs_client::MaidClient::MakeShared(
       passport::MaidAndSigner{ passport::CreateMaidAndSigner() }));
   client_nfs->Put(passport::PublicPmid{ pmid_and_signer.first }).get();
   client_nfs->Put(passport::PublicAnpmid{ pmid_and_signer.second }).get();
