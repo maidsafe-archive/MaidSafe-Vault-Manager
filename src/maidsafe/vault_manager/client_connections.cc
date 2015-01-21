@@ -28,11 +28,11 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-ClientConnections::ClientConnections(boost::asio::io_service& io_service)
+ClientConnections::ClientConnections(asio::io_service& io_service)
     : io_service_(io_service), unvalidated_clients_(), clients_() {}
 
 std::shared_ptr<ClientConnections> ClientConnections::MakeShared(
-    boost::asio::io_service& io_service) {
+    asio::io_service& io_service) {
   return std::shared_ptr<ClientConnections>{ new ClientConnections{ io_service } };
 }
 
@@ -43,8 +43,8 @@ ClientConnections::~ClientConnections() {
 void ClientConnections::Add(tcp::ConnectionPtr connection, const asymm::PlainText& challenge) {
   assert(clients_.find(connection) == std::end(clients_));
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
-  timer->async_wait([=](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
+  timer->async_wait([=](const std::error_code& error_code) {
+    if (error_code && error_code == asio::error::operation_aborted) {
       LOG(kVerbose) << "Client connection timer cancelled OK.";
     } else {
       LOG(kWarning) << "Timed out waiting for Client to validate.";

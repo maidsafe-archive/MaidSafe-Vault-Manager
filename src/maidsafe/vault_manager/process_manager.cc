@@ -88,7 +88,7 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
 
 }  // unnamed namespace
 
-ProcessManager::Child::Child(VaultInfo info, boost::asio::io_service &io_service, int restarts)
+ProcessManager::Child::Child(VaultInfo info, asio::io_service &io_service, int restarts)
     : info(std::move(info)),
       on_exit(),
       timer(maidsafe::make_unique<Timer>(io_service)),
@@ -137,7 +137,7 @@ void swap(ProcessManager::Child& lhs, ProcessManager::Child& rhs){
 
 
 
-ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vault_executable_path,
+ProcessManager::ProcessManager(asio::io_service &io_service, fs::path vault_executable_path,
                                tcp::Port listening_port)
     : io_service_(io_service),
 #ifndef MAIDSAFE_WIN32
@@ -168,7 +168,7 @@ ProcessManager::ProcessManager(boost::asio::io_service &io_service, fs::path vau
 }
 
 std::shared_ptr<ProcessManager> ProcessManager::MakeShared(
-    boost::asio::io_service& io_service, boost::filesystem::path vault_executable_path,
+    asio::io_service& io_service, boost::filesystem::path vault_executable_path,
     tcp::Port listening_port) {
   return std::shared_ptr<ProcessManager>{ new ProcessManager{ io_service, vault_executable_path,
                                                               listening_port } };
@@ -183,7 +183,7 @@ void ProcessManager::StopAll() {
     for (const auto& vault : vaults_)
       StopProcess(vault.info.tcp_connection);
 #ifndef MAIDSAFE_WIN32
-    boost::system::error_code ignored_ec;
+    std::error_code ignored_ec;
     signal_set_.cancel(ignored_ec);
 #endif
   });
@@ -202,7 +202,7 @@ void ProcessManager::StopAllWithInterval() {
       Sleep(std::chrono::seconds(5));
     }
 #ifndef MAIDSAFE_WIN32
-    boost::system::error_code ignored_ec;
+    std::error_code ignored_ec;
     signal_set_.cancel(ignored_ec);
 #endif
   });
@@ -286,7 +286,7 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
                   &copied_handle, 0, FALSE, DUPLICATE_SAME_ACCESS);
   itr->handle.assign(copied_handle);
   HANDLE native_handle{ itr->handle.native_handle() };
-  itr->handle.async_wait([this, label, native_handle](const boost::system::error_code&) {
+  itr->handle.async_wait([this, label, native_handle](const std::error_code&) {
     DWORD exit_code;
     GetExitCodeProcess(native_handle, &exit_code);
     OnProcessExit(label, BOOST_PROCESS_EXITSTATUS(exit_code));
@@ -294,8 +294,8 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 #endif
 
   itr->timer->expires_from_now(kRpcTimeout);
-  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
+  itr->timer->async_wait([this, label](const std::error_code& error_code) {
+    if (error_code && error_code == asio::error::operation_aborted) {
       LOG(kVerbose) << "New process timer cancelled OK.";
       return;
     }
@@ -307,8 +307,8 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
   LOG(kVerbose) << "Initialising signal handler.";
-  signal_set_.async_wait([this](const boost::system::error_code& error_code, int signum) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
+  signal_set_.async_wait([this](const std::error_code& error_code, int signum) {
+    if (error_code && error_code == asio::error::operation_aborted) {
       LOG(kVerbose) << "Cancelled waiting for SIGCHLD signal.";
       return;
     }
@@ -358,8 +358,8 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   SendVaultShutdownRequest(itr->info.tcp_connection);
   NonEmptyString label{ itr->info.label };
   itr->timer->expires_from_now(kVaultStopTimeout);
-  itr->timer->async_wait([this, label](const boost::system::error_code& error_code) {
-    if (error_code && error_code == boost::asio::error::operation_aborted) {
+  itr->timer->async_wait([this, label](const std::error_code& error_code) {
+    if (error_code && error_code == asio::error::operation_aborted) {
       LOG(kVerbose) << "Vault termination timer cancelled OK.";
       return;
     }
