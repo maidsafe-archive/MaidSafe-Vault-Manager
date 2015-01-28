@@ -43,9 +43,7 @@ NewConnections::~NewConnections() {
 void NewConnections::Add(tcp::ConnectionPtr connection) {
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
   timer->async_wait([connection](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "New connection timer cancelled OK.";
-    } else {
+    if (!error_code || error_code != asio::error::operation_aborted) {
       LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
       connection->Close();
     }

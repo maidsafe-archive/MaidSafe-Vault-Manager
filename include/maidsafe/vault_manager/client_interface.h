@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 
+#include "asio/io_service_strand.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/asio_service.h"
@@ -42,10 +43,15 @@ namespace vault_manager {
 
 namespace detail {
 
-template <typename ResultType>
+template <typename ResultType, typename MessageType>
 struct PromiseAndTimer;
 
 }  // namespace detail
+
+struct Challenge;
+struct LogMessage;
+struct VaultRunningResponse;
+struct VaultStartedResponse;
 
 class ClientInterface {
  public:
@@ -103,26 +109,28 @@ class ClientInterface {
 #endif
 
  private:
-  typedef detail::PromiseAndTimer<std::unique_ptr<passport::PmidAndSigner>> VaultRequest;
+  typedef detail::PromiseAndTimer<std::unique_ptr<passport::PmidAndSigner>, VaultStartedResponse>
+      VaultRequest;
 
   std::shared_ptr<tcp::Connection> ConnectToVaultManager();
   std::future<std::unique_ptr<passport::PmidAndSigner>> AddVaultRequest(
       const NonEmptyString& label);
-  void HandleReceivedMessage(const std::string& wrapped_message);
-  void HandleVaultRunningResponse(const std::string& message);
+  void HandleReceivedMessage(tcp::Message&& message);
+  void HandleVaultRunningResponse(VaultRunningResponse&& vault_running_response);
 #ifdef TESTING
   void HandleNetworkStableResponse();
 #endif
-  void InvokeCallBack(const std::string& message, std::function<void(std::string)>& callback);
-  void HandleLogMessage(const std::string& message);
+  void InvokeCallBack(Challenge&& challenge, std::function<void(Challenge&&)>& callback);
+  void HandleLogMessage(LogMessage&& log_message);
 
   const passport::Maid kMaid_;
   std::mutex mutex_;
-  std::function<void(std::string)> on_challenge_;
+  std::function<void(Challenge&&)> on_challenge_;
   std::promise<void> network_stable_;
   std::once_flag network_stable_flag_;
   std::map<NonEmptyString, std::shared_ptr<VaultRequest>> ongoing_vault_requests_;
   AsioService asio_service_;
+  asio::io_service::strand strand_;
   std::shared_ptr<tcp::Connection> tcp_connection_;
   // We need to ensure the connection is closed in the event of the constructor throwing, or the
   // asio_service destructor will hang.

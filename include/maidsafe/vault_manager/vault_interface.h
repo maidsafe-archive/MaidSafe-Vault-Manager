@@ -27,9 +27,12 @@
 #include <mutex>
 #include <string>
 
+#include "asio/io_service_strand.hpp"
+
 #include "maidsafe/common/asio_service.h"
 #include "maidsafe/common/on_scope_exit.h"
 #include "maidsafe/common/rsa.h"
+#include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/vault_config.h"
@@ -37,6 +40,8 @@
 namespace maidsafe {
 
 namespace vault_manager {
+
+struct VaultStartedResponse;
 
 class VaultInterface {
  public:
@@ -60,18 +65,19 @@ class VaultInterface {
 #endif
 
  private:
-  void HandleReceivedMessage(const std::string& wrapped_message);
+  void HandleReceivedMessage(tcp::Message&& message);
   void OnConnectionClosed();
 
-  void HandleVaultStartedResponse(const std::string& message);
+  void HandleVaultStartedResponse(VaultStartedResponse&& vault_started_response);
   void HandleVaultShutdownRequest();
 
   std::promise<int> exit_code_promise_;
   std::once_flag exit_code_flag_;
   tcp::Port vault_manager_port_;
-  std::function<void(std::string)> on_vault_started_response_;
+  std::function<void(VaultStartedResponse&&)> on_vault_started_response_;
   std::unique_ptr<VaultConfig> vault_config_;
   AsioService asio_service_;
+  asio::io_service::strand strand_;
   std::shared_ptr<tcp::Connection> tcp_connection_;
   // We need to ensure the connection is closed in the event of the constructor throwing, or the
   // asio_service destructor will hang.

@@ -45,9 +45,8 @@ extern "C" char **environ;
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/visualiser_log.h"
 
-#include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/vault_info.pb.h"
+#include "maidsafe/vault_manager/messages/vault_shutdown_request.h"
 
 namespace bp = boost::process;
 namespace fs = boost::filesystem;
@@ -163,7 +162,6 @@ ProcessManager::ProcessManager(asio::io_service &io_service, fs::path vault_exec
     LOG(kError) << kVaultExecutablePath_ << " is a symlink.  " << (ec ? ec.message() : "");
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
-  LOG(kVerbose) << "Vault executable found at " << kVaultExecutablePath_;
   InitSignalHandler();
 }
 
@@ -295,10 +293,8 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 
   itr->timer->expires_from_now(kRpcTimeout);
   itr->timer->async_wait([this, label](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "New process timer cancelled OK.";
+    if (!error_code || error_code != asio::error::operation_aborted)
       return;
-    }
     LOG(kWarning) << "Timed out waiting for new process to connect via TCP.";
     OnProcessExit(label, -1, true);
   });
@@ -306,12 +302,9 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 
 void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
-  LOG(kVerbose) << "Initialising signal handler.";
   signal_set_.async_wait([this](const std::error_code& error_code, int signum) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "Cancelled waiting for SIGCHLD signal.";
+    if (!error_code || error_code != asio::error::operation_aborted)
       return;
-    }
 
     maidsafe::on_scope_exit init_on_exit([this]() { InitSignalHandler(); });
 
@@ -355,14 +348,12 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   }
   itr->on_exit = on_exit_functor;
   itr->status = ProcessStatus::kStopping;
-  SendVaultShutdownRequest(itr->info.tcp_connection);
+  Send(itr->info.tcp_connection, VaultShutdownRequest());
   NonEmptyString label{ itr->info.label };
   itr->timer->expires_from_now(kVaultStopTimeout);
   itr->timer->async_wait([this, label](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "Vault termination timer cancelled OK.";
+    if (!error_code || error_code != asio::error::operation_aborted)
       return;
-    }
     LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
     OnProcessExit(label, -1, true);
   });
@@ -481,8 +472,6 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   }
 
   bool is_running{ IsRunning(*child_itr) };
-  LOG(kVerbose) << "On exit for Vault " << label.string() << std::boolalpha << "  Is running: "
-      << is_running << "   Exit code: " << exit_code << "   Terminate requested: " << terminate;
   if (terminate && is_running)
     TerminateProcess(child_itr);
 

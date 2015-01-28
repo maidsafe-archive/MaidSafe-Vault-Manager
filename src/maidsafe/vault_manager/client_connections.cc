@@ -44,9 +44,7 @@ void ClientConnections::Add(tcp::ConnectionPtr connection, const asymm::PlainTex
   assert(clients_.find(connection) == std::end(clients_));
   TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
   timer->async_wait([=](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "Client connection timer cancelled OK.";
-    } else {
+    if (!error_code || error_code != asio::error::operation_aborted) {
       LOG(kWarning) << "Timed out waiting for Client to validate.";
       connection->Close();
     }

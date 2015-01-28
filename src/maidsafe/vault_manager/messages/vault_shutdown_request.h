@@ -1,4 +1,4 @@
-/*  Copyright 2014 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,52 +16,19 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
-#define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_SHUTDOWN_REQUEST_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_SHUTDOWN_REQUEST_H_
 
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <utility>
-
-#include "asio/steady_timer.hpp"
-
-#include "maidsafe/common/type_macros.h"
+#include "maidsafe/vault_manager/messages/empty_message.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-typedef asio::steady_timer Timer;
-typedef std::shared_ptr<Timer> TimerPtr;
-
-extern const std::string kConfigFilename;
-extern const std::string kBootstrapFilename;
-extern const std::chrono::seconds kRpcTimeout;
-extern const std::chrono::seconds kVaultStopTimeout;
-extern const int kMaxVaultRestarts;
-
-DEFINE_OSTREAMABLE_ENUM_VALUES(MessageTag, std::uint8_t,
-    (ValidateConnectionRequest)
-    (Challenge)
-    (ChallengeResponse)
-    (StartVaultRequest)
-    (TakeOwnershipRequest)
-    (VaultRunningResponse)
-    (VaultStarted)
-    (VaultStartedResponse)
-    (VaultShutdownRequest)
-    (MaxDiskUsageUpdate)
-    (JoinedNetwork)
-    (LogMessage)
-    (SetNetworkAsStable)
-    (NetworkStableRequest)
-    (NetworkStableResponse))
+using VaultShutdownRequest = EmptyMessage<MessageTag::kVaultShutdownRequest>;
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_SHUTDOWN_REQUEST_H_

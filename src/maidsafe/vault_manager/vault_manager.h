@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 
+#include "asio/io_service_strand.hpp"
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/asio_service.h"
@@ -37,9 +38,14 @@ namespace maidsafe {
 
 namespace vault_manager {
 
+struct ChallengeResponse;
 class ClientConnections;
+struct LogMessage;
 class NewConnections;
 class ProcessManager;
+struct StartVaultRequest;
+struct TakeOwnershipRequest;
+struct VaultStarted;
 
 // The VaultManager has several responsibilities:
 // * Reads config file on startup and restarts vaults listed in file.
@@ -59,20 +65,23 @@ class VaultManager {
  private:
   void HandleNewConnection(tcp::ConnectionPtr connection);
   void HandleConnectionClosed(tcp::ConnectionPtr connection);
-  void HandleReceivedMessage(tcp::ConnectionPtr connection, const std::string& wrapped_message);
+  void HandleReceivedMessage(tcp::ConnectionPtr connection, tcp::Message&& message);
 
   // Messages from Client
   void HandleValidateConnectionRequest(tcp::ConnectionPtr connection);
-  void HandleChallengeResponse(tcp::ConnectionPtr connection, const std::string& message);
-  void HandleStartVaultRequest(tcp::ConnectionPtr connection, const std::string& message);
-  void HandleTakeOwnershipRequest(tcp::ConnectionPtr connection, const std::string& message);
-  void HandleMarkNetworkAsStable();
+  void HandleChallengeResponse(tcp::ConnectionPtr connection,
+                               ChallengeResponse&& challenge_response);
+  void HandleStartVaultRequest(tcp::ConnectionPtr connection,
+                               StartVaultRequest&& start_vault_request);
+  void HandleTakeOwnershipRequest(tcp::ConnectionPtr connection,
+                                  TakeOwnershipRequest&& take_ownership_request);
+  void HandleSetNetworkAsStable();
   void HandleNetworkStableRequest(tcp::ConnectionPtr connection);
 
   // Messages from Vault
-  void HandleVaultStarted(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleVaultStarted(tcp::ConnectionPtr connection, VaultStarted&& vault_started);
   void HandleJoinedNetwork(tcp::ConnectionPtr connection);
-  void HandleLogMessage(tcp::ConnectionPtr connection, const std::string& message);
+  void HandleLogMessage(tcp::ConnectionPtr connection, LogMessage&& log_message);
 
   void RemoveFromNewConnections(tcp::ConnectionPtr connection);
   void ChangeChunkstorePath(VaultInfo vault_info);
@@ -80,6 +89,7 @@ class VaultManager {
   ConfigFileHandler config_file_handler_;
   bool network_stable_, tear_down_with_interval_;
   AsioService asio_service_;
+  asio::io_service::strand strand_;
   std::shared_ptr<tcp::Listener> listener_;
   std::shared_ptr<ProcessManager> process_manager_;
   std::shared_ptr<ClientConnections> client_connections_;

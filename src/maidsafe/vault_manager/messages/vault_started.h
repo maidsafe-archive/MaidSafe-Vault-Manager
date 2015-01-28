@@ -1,4 +1,4 @@
-/*  Copyright 2014 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,52 +16,43 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#ifndef MAIDSAFE_VAULT_MANAGER_CONFIG_H_
-#define MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_STARTED_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_STARTED_H_
 
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <utility>
+#include "maidsafe/common/config.h"
+#include "maidsafe/common/process.h"
 
-#include "asio/steady_timer.hpp"
-
-#include "maidsafe/common/type_macros.h"
+#include "maidsafe/vault_manager/config.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-typedef asio::steady_timer Timer;
-typedef std::shared_ptr<Timer> TimerPtr;
+// Vault to VaultManager
+struct VaultStarted {
+  static const MessageTag tag = MessageTag::kVaultStarted;
 
-extern const std::string kConfigFilename;
-extern const std::string kBootstrapFilename;
-extern const std::chrono::seconds kRpcTimeout;
-extern const std::chrono::seconds kVaultStopTimeout;
-extern const int kMaxVaultRestarts;
+  VaultStarted() = default;
+  VaultStarted(const VaultStarted&) = delete;
+  VaultStarted(VaultStarted&& other) MAIDSAFE_NOEXCEPT : process_id(std::move(other.process_id)) {}
+  explicit VaultStarted(process::ProcessId process_id_in) : process_id(process_id_in) {}
+  ~VaultStarted() = default;
+  VaultStarted& operator=(const VaultStarted&) = delete;
+  VaultStarted& operator=(VaultStarted&& other) MAIDSAFE_NOEXCEPT {
+    process_id = std::move(other.process_id);
+    return *this;
+  };
 
-DEFINE_OSTREAMABLE_ENUM_VALUES(MessageTag, std::uint8_t,
-    (ValidateConnectionRequest)
-    (Challenge)
-    (ChallengeResponse)
-    (StartVaultRequest)
-    (TakeOwnershipRequest)
-    (VaultRunningResponse)
-    (VaultStarted)
-    (VaultStartedResponse)
-    (VaultShutdownRequest)
-    (MaxDiskUsageUpdate)
-    (JoinedNetwork)
-    (LogMessage)
-    (SetNetworkAsStable)
-    (NetworkStableRequest)
-    (NetworkStableResponse))
+  template <typename Archive>
+  void serialize(Archive& archive) {
+    archive(process_id);
+  }
+
+  process::ProcessId process_id;
+};
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
 
-#endif  // MAIDSAFE_VAULT_MANAGER_CONFIG_H_
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_VAULT_STARTED_H_
