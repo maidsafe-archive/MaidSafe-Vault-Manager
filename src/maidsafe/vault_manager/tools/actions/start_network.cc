@@ -40,7 +40,7 @@
 #include "maidsafe/routing/tests/zero_state_helpers.h"
 #include "maidsafe/nfs/utils.h"
 #include "maidsafe/nfs/client/data_getter.h"
-#include "maidsafe/nfs/client/maid_node_nfs.h"
+#include "maidsafe/nfs/client/maid_client.h"
 
 #include "maidsafe/vault_manager/client_interface.h"
 #include "maidsafe/vault_manager/utils.h"
@@ -205,7 +205,7 @@ class PublicPmidStorer {
   PublicPmidStorer()
       : client_nfs_() {
     const passport::MaidAndSigner kMaidAndSigner { passport::CreateMaidAndSigner() };
-    client_nfs_ = nfs_client::MaidNodeNfs::MakeSharedZeroState(kMaidAndSigner, GetPublicPmids());
+    client_nfs_ = nfs_client::MaidClient::MakeSharedZeroState(kMaidAndSigner, GetPublicPmids());
     TLOG(kDefaultColour) << "Account created for Maid " << DebugId(kMaidAndSigner.first.name())
                          << '\n';
   }
@@ -243,7 +243,7 @@ class PublicPmidStorer {
     return lhs.name() == rhs.name() && asymm::MatchingKeys(lhs.public_key(), rhs.public_key());
   }
 
-  std::shared_ptr<nfs_client::MaidNodeNfs> client_nfs_;
+  std::shared_ptr<nfs_client::MaidClient> client_nfs_;
 };
 
 
