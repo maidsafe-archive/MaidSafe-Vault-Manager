@@ -39,7 +39,7 @@ ChooseVaultManagerPort::ChooseVaultManagerPort(LocalNetworkController* local_net
                                                bool connect_to_running)
     : Command(local_network_controller, "VaultManager listening port.",
               "  This should be between\n1025 and 65536 inclusive.  'Enter' to use default \"" +
-              std::to_string(GetDefault().kVaultManagerPort) + "\".\n" + kPrompt_,
+                  std::to_string(GetDefault().kVaultManagerPort) + "\".\n" + kPrompt_,
               connect_to_running ? "Connect to Running VaultManager" : ""),
       connect_to_running_(connect_to_running) {}
 

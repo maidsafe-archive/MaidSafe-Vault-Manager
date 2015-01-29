@@ -78,11 +78,11 @@ class ProcessManager {
   VaultInfo Find(tcp::ConnectionPtr connection) const;
 
  private:
-  ProcessManager(asio::io_service &io_service, boost::filesystem::path vault_executable_path,
+  ProcessManager(asio::io_service& io_service, boost::filesystem::path vault_executable_path,
                  tcp::Port listening_port);
 
   struct Child {
-    Child(VaultInfo info, asio::io_service &io_service, int restarts);
+    Child(VaultInfo info, asio::io_service& io_service, int restarts);
     Child(Child&& other);
     Child& operator=(Child other);
     VaultInfo info;
@@ -95,6 +95,7 @@ class ProcessManager {
     asio::windows::object_handle handle;
 #endif
     boost::process::child process;
+
    private:
     Child(const Child&) = delete;
   };
@@ -114,7 +115,7 @@ class ProcessManager {
   void InvokeOnExitFunctor(OnExitFunctor on_exit, int exit_code, bool terminate);
   void RestartIfRequired(int restart_count, VaultInfo vault_info);
 
-  asio::io_service &io_service_;
+  asio::io_service& io_service_;
 #ifndef MAIDSAFE_WIN32
   asio::signal_set signal_set_;
 #endif

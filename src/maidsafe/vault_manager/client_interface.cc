@@ -58,20 +58,20 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
 }
 
 ClientInterface::~ClientInterface() {
-  // Ensure promise is set if required.
+// Ensure promise is set if required.
 #ifdef TESTING
   HandleNetworkStableResponse();
 #endif
 }
 
 std::shared_ptr<tcp::Connection> ClientInterface::ConnectToVaultManager() {
-  unsigned attempts{ 0 };
-  tcp::Port initial_port{ GetInitialListeningPort() };
-  tcp::Port port{ initial_port };
+  unsigned attempts{0};
+  tcp::Port initial_port{GetInitialListeningPort()};
+  tcp::Port port{initial_port};
   while (attempts <= tcp::kMaxRangeAboveDefaultPort &&
          port <= std::numeric_limits<tcp::Port>::max()) {
     try {
-      tcp::ConnectionPtr tcp_connection{ tcp::Connection::MakeShared(strand_, port) };
+      tcp::ConnectionPtr tcp_connection{tcp::Connection::MakeShared(strand_, port)};
       tcp_connection->Start(
           [this](tcp::Message message) { HandleReceivedMessage(std::move(message)); },
           [this] {});  // FIXME OnConnectionClosed
@@ -98,7 +98,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwner
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id) {
-  NonEmptyString label{ GenerateLabel() };
+  NonEmptyString label{GenerateLabel()};
   StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
   start_vault_request.vlog_session_id = vlog_session_id;
   Send(tcp_connection_, std::move(start_vault_request));
@@ -107,7 +107,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
 #else
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
-  NonEmptyString label{ GenerateLabel() };
+  NonEmptyString label{GenerateLabel()};
   Send(tcp_connection_, StartVaultRequest(label, vault_dir, max_disk_usage));
   return AddVaultRequest(label);
 }
@@ -115,13 +115,13 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultRequest(
     const NonEmptyString& label) {
-  std::shared_ptr<VaultRequest> request(std::make_shared<VaultRequest>(asio_service_.service(),
-                                                                       std::chrono::seconds(30)));
+  std::shared_ptr<VaultRequest> request(
+      std::make_shared<VaultRequest>(asio_service_.service(), std::chrono::seconds(30)));
   request->timer.async_wait([request, label, this](const std::error_code& ec) {
     if (ec && ec == asio::error::operation_aborted)
       return;
     LOG(kWarning) << "Timer expired - i.e. timed out for label: " << label.string();
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     if (ec)
       request->SetException(ec);
     else
@@ -129,7 +129,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
     ongoing_vault_requests_.erase(label);
   });
 
-  std::lock_guard<std::mutex> lock{ mutex_ };
+  std::lock_guard<std::mutex> lock{mutex_};
   ongoing_vault_requests_.insert(std::make_pair(label, request));
   return request->promise.get_future();
 }
@@ -171,13 +171,12 @@ void ClientInterface::HandleVaultRunningResponse(VaultRunningResponse&& vault_ru
         *vault_running_response.vault_keys->pmid_and_signer);
   } else if (vault_running_response.error) {
     error = maidsafe::make_unique<maidsafe_error>(*vault_running_response.error);
-    LOG(kError) << "Got error for vault label: " << label.string()
-                << "   Error: " << error->what();
+    LOG(kError) << "Got error for vault label: " << label.string() << "   Error: " << error->what();
   } else {
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 
-  std::lock_guard<std::mutex> lock{ mutex_ };
+  std::lock_guard<std::mutex> lock{mutex_};
   auto itr = ongoing_vault_requests_.find(label);
   if (ongoing_vault_requests_.end() != itr) {
     if (pmid_and_signer)
@@ -206,14 +205,13 @@ void ClientInterface::InvokeCallBack(Challenge&& challenge,
     LOG(kWarning) << "Call back not available";
 }
 
-void ClientInterface::HandleLogMessage(LogMessage&& log_message) {
-  LOG(kInfo) << log_message.data;
-}
+void ClientInterface::HandleLogMessage(LogMessage&& log_message) { LOG(kInfo) << log_message.data; }
 
 #ifdef TESTING
 void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
-    boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
-    int pmid_list_size) {
+                                         boost::filesystem::path test_env_root_dir,
+                                         boost::filesystem::path path_to_vault,
+                                         int pmid_list_size) {
   test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, pmid_list_size);
 }
 
@@ -221,7 +219,7 @@ void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id, bool send_hostname_to_visualiser_server) {
-  NonEmptyString label{ GenerateLabel() };
+  NonEmptyString label{GenerateLabel()};
   StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
   start_vault_request.vlog_session_id = vlog_session_id;
   start_vault_request.send_hostname_to_visualiser_server = send_hostname_to_visualiser_server;
@@ -233,7 +231,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id, bool send_hostname_to_visualiser_server,
     int pmid_list_index) {
-  NonEmptyString label{ GenerateLabel() };
+  NonEmptyString label{GenerateLabel()};
   StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
   start_vault_request.vlog_session_id = vlog_session_id;
   start_vault_request.send_hostname_to_visualiser_server = send_hostname_to_visualiser_server;
@@ -244,7 +242,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
 #else
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
-  NonEmptyString label{ GenerateLabel() };
+  NonEmptyString label{GenerateLabel()};
   StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
   start_vault_request.pmid_list_index = pmid_list_index;
   Send(tcp_connection_, std::move(start_vault_request));

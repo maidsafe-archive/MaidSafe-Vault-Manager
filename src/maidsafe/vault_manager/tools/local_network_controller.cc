@@ -39,7 +39,7 @@ namespace tools {
 
 Default::Default()
     : kTestEnvRootDir(boost::filesystem::temp_directory_path() / "MaidSafe_TestNetwork"),
-      kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{ "vault" })),
+      kPathToVault(process::GetOtherExecutablePath(boost::filesystem::path{"vault"})),
       kPathToBootstrap(boost::filesystem::temp_directory_path() / "bootstrap.dat"),
       kVaultManagerPort(44444),
       kVaultCountNewNetwork(16),
@@ -55,7 +55,7 @@ const Default& GetDefault() {
 
 LocalNetworkController::LocalNetworkController(const boost::filesystem::path& script_path)
     : script_commands(),
-      entered_commands(1, { "### Commands begin." }),
+      entered_commands(1, {"### Commands begin."}),
       current_command(),
       client_interface(),
       vault_manager(),

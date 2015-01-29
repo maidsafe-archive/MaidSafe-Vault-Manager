@@ -35,10 +35,12 @@ namespace tools {
 
 Begin::Begin(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Initial options.",
-              "\nPlease choose from the following options ('" + kQuitCommand_ + "' to quit):\n\n"
-              "  1. Start a new network on this machine.\n"
-              "  2. Connect to an existing VaultManager on this machine.\n"
-              "  3. Connect to an existing Network.\n" + kPrompt_,
+              "\nPlease choose from the following options ('" + kQuitCommand_ +
+                  "' to quit):\n\n"
+                  "  1. Start a new network on this machine.\n"
+                  "  2. Connect to an existing VaultManager on this machine.\n"
+                  "  3. Connect to an existing Network.\n" +
+                  kPrompt_,
               "MaidSafe Local Network Controller " + kApplicationVersion() + ": Main Options"),
       choice_(0) {}
 

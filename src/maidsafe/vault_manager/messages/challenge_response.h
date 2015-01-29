@@ -57,8 +57,8 @@ struct ChallengeResponse {
     passport::PublicMaid::Name public_maid_name;
     passport::PublicMaid::serialised_type serialised_public_maid;
     archive(public_maid_name, serialised_public_maid, signature);
-    public_maid = maidsafe::make_unique<passport::PublicMaid>(
-        std::move(public_maid_name), std::move(serialised_public_maid));
+    public_maid = maidsafe::make_unique<passport::PublicMaid>(std::move(public_maid_name),
+                                                              std::move(serialised_public_maid));
   }
 
   template <typename Archive>

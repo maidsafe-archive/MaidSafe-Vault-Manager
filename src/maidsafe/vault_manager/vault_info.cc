@@ -34,7 +34,8 @@ VaultInfo::VaultInfo()
       vlog_session_id(),
       send_hostname_to_visualiser_server(false),
 #endif
-      tcp_connection() {}
+      tcp_connection() {
+}
 
 VaultInfo::VaultInfo(const VaultInfo& other)
     : pmid_and_signer(other.pmid_and_signer),
@@ -46,7 +47,8 @@ VaultInfo::VaultInfo(const VaultInfo& other)
       vlog_session_id(other.vlog_session_id),
       send_hostname_to_visualiser_server(other.send_hostname_to_visualiser_server),
 #endif
-      tcp_connection(other.tcp_connection) {}
+      tcp_connection(other.tcp_connection) {
+}
 
 VaultInfo::VaultInfo(VaultInfo&& other)
     : pmid_and_signer(std::move(other.pmid_and_signer)),
@@ -58,7 +60,8 @@ VaultInfo::VaultInfo(VaultInfo&& other)
       vlog_session_id(std::move(other.vlog_session_id)),
       send_hostname_to_visualiser_server(std::move(other.send_hostname_to_visualiser_server)),
 #endif
-      tcp_connection(std::move(other.tcp_connection)) {}
+      tcp_connection(std::move(other.tcp_connection)) {
+}
 
 VaultInfo& VaultInfo::operator=(VaultInfo other) {
   swap(*this, other);

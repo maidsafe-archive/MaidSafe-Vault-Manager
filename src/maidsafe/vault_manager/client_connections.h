@@ -54,9 +54,8 @@ class ClientConnections {
 
   asio::io_service& io_service_;
   std::map<tcp::ConnectionPtr, std::pair<asymm::PlainText, TimerPtr>,
-    std::owner_less<tcp::ConnectionPtr >> unvalidated_clients_;
-  std::map<tcp::ConnectionPtr, MaidName,
-    std::owner_less<tcp::ConnectionPtr>> clients_;
+           std::owner_less<tcp::ConnectionPtr>> unvalidated_clients_;
+  std::map<tcp::ConnectionPtr, MaidName, std::owner_less<tcp::ConnectionPtr>> clients_;
 };
 
 }  // namespace vault_manager

@@ -30,7 +30,7 @@ namespace tools {
 void StartVaultManagerAndClientInterface(LocalNetworkController* local_network_controller) {
   TLOG(kDefaultColour) << "Creating VaultManager and ClientInterface\n";
   local_network_controller->vault_manager = maidsafe::make_unique<VaultManager>();
-  passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
+  passport::MaidAndSigner maid_and_signer{passport::CreateMaidAndSigner()};
   local_network_controller->client_interface =
       maidsafe::make_unique<ClientInterface>(maid_and_signer.first);
 }

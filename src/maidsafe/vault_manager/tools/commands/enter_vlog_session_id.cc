@@ -40,12 +40,12 @@ EnterVlogSessionId::EnterVlogSessionId(LocalNetworkController* local_network_con
               "  To register a new session,\ngo to http://visualiser.maidsafe.net:8080\n"
               "To avoid sending VLOG messages, leave this blank (hit 'Enter').\n"
               "To compile VLOG messages away, run 'cmake . -VLOGGING=OFF' and rebuild.\n" +
-              kPrompt_) {}
+                  kPrompt_) {}
 
 void EnterVlogSessionId::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;
   local_network_controller_->vlog_session_id = maidsafe::make_unique<std::string>();
-  std::string* no_default{ nullptr };
+  std::string* no_default{nullptr};
   while (!DoGetChoice(*local_network_controller_->vlog_session_id, no_default))
     TLOG(kDefaultColour) << '\n' << kInstructions_;
 }

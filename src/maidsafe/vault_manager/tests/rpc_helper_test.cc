@@ -36,7 +36,7 @@ namespace test {
 TEST(RpcHelperTest, BEH_SetResponseCallback) {
   AsioService asio_service(1);
   asio::io_service& io_service(asio_service.service());
-  std::function<void(Challenge&&)> callback;
+  std::function<void(Challenge && )> callback;
   std::mutex mutex;
   Challenge challenge(asymm::PlainText(RandomString((RandomUint32() % 100) + 100)));
 

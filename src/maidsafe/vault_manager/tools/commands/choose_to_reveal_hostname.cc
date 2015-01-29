@@ -35,8 +35,9 @@ namespace vault_manager {
 namespace tools {
 
 ChooseToRevealHostname::ChooseToRevealHostname(LocalNetworkController* local_network_controller)
-    : Command(local_network_controller, "Choose to reveal hostname.",
-              "  Do you wish to send your\nmachine's hostname (\"" + boost::asio::ip::host_name() +
+    : Command(
+          local_network_controller, "Choose to reveal hostname.",
+          "  Do you wish to send your\nmachine's hostname (\"" + boost::asio::ip::host_name() +
               "\") to the visualiser\nwhere it can be publicly viewed?  We recommend you don't.\n" +
               "[y/n].  'Enter' to use default \"" +
               (GetDefault().kSendHostnameToVisualiserServer ? "y" : "n") + "\".\n" + kPrompt_) {}

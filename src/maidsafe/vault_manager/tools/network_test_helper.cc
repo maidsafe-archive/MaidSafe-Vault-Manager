@@ -35,20 +35,20 @@ namespace bp = boost::process;
 namespace fs = boost::filesystem;
 
 void WaitForStableNetwork() {
-  maidsafe::passport::Maid maid{ maidsafe::passport::CreateMaidAndSigner().first };
-  maidsafe::vault_manager::ClientInterface client_interface{ maid };
+  maidsafe::passport::Maid maid{maidsafe::passport::CreateMaidAndSigner().first};
+  maidsafe::vault_manager::ClientInterface client_interface{maid};
   client_interface.WaitForStableNetwork().get();
 }
 
 void StartNetwork() {
   // Invoke the local_network_controller tool to bring up a local test network.
-  fs::path tool_path{ maidsafe::process::GetOtherExecutablePath("local_network_controller") };
+  fs::path tool_path{maidsafe::process::GetOtherExecutablePath("local_network_controller")};
   if (!fs::exists(tool_path)) {
     LOG(kError) << tool_path << " doesn't exist.  Ensure 'local_network_controller' is built.";
     BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::no_such_element));
   }
 
-  fs::path script_path{ maidsafe::ThisExecutableDir() / "network_test_helper.script" };
+  fs::path script_path{maidsafe::ThisExecutableDir() / "network_test_helper.script"};
   if (!fs::exists(script_path)) {
     LOG(kError) << script_path << " doesn't exist.  Ensure 'network_test_helper' is built.";
     BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::no_such_element));
@@ -60,7 +60,7 @@ void StartNetwork() {
   // be shown, and the script will fall out of sync.  Until this is handled better, as a workaround
   // we'll create a dummy file in the default root directory so the optional command is always
   // triggered.
-  fs::path test_env_root_dir{ fs::temp_directory_path() / "MaidSafe_TestNetwork" };
+  fs::path test_env_root_dir{fs::temp_directory_path() / "MaidSafe_TestNetwork"};
   if (!fs::exists(test_env_root_dir)) {
     if (!fs::create_directories(test_env_root_dir))
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::filesystem_io_error));
@@ -73,17 +73,17 @@ void StartNetwork() {
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::filesystem_io_error));
   }
 
-  std::vector<std::string> args{ tool_path.string(), script_path.string() };
+  std::vector<std::string> args{tool_path.string(), script_path.string()};
   bp::execute(bp::initializers::run_exe(tool_path),
-      bp::initializers::set_cmd_line(maidsafe::process::ConstructCommandLine(args)),
-      bp::initializers::throw_on_error());
+              bp::initializers::set_cmd_line(maidsafe::process::ConstructCommandLine(args)),
+              bp::initializers::throw_on_error());
 }
 
 int main(int argc, char* argv[]) {
   const std::error_code kFailedToConnect{
-      maidsafe::make_error_code(maidsafe::VaultManagerErrors::failed_to_connect) };
+      maidsafe::make_error_code(maidsafe::VaultManagerErrors::failed_to_connect)};
   const int kUnknownError{
-      maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::unknown)) };
+      maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::unknown))};
   // See if a local test network is already running.
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
@@ -91,14 +91,12 @@ int main(int argc, char* argv[]) {
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
     WaitForStableNetwork();
     return 0;
-  }
-  catch (const maidsafe::maidsafe_error& error) {
+  } catch (const maidsafe::maidsafe_error& error) {
     if (error.code() != kFailedToConnect) {
       TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
       return maidsafe::ErrorToInt(error);
     }
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     TLOG(kRed) << e.what() << "\n\n";
     return kUnknownError;
   }
@@ -106,12 +104,10 @@ int main(int argc, char* argv[]) {
   // There isn't a local test network running, so start one.
   try {
     StartNetwork();
-  }
-  catch (const maidsafe::maidsafe_error& error) {
+  } catch (const maidsafe::maidsafe_error& error) {
     TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
     return maidsafe::ErrorToInt(error);
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     TLOG(kRed) << e.what() << "\n\n";
     return kUnknownError;
   }
@@ -122,8 +118,7 @@ int main(int argc, char* argv[]) {
     try {
       WaitForStableNetwork();
       return 0;
-    }
-    catch (const maidsafe::maidsafe_error& error) {
+    } catch (const maidsafe::maidsafe_error& error) {
       if (error.code() != kFailedToConnect) {
         TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
         return maidsafe::ErrorToInt(error);

@@ -25,8 +25,7 @@ namespace maidsafe {
 namespace vault_manager {
 
 
-VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
-                         const boost::filesystem::path& vault_dir_in,
+VaultConfig::VaultConfig(const passport::Pmid& pmid_in, const boost::filesystem::path& vault_dir_in,
                          const DiskUsage& max_disk_usage_in)
     : pmid(pmid_in),
       vault_dir(vault_dir_in),
@@ -35,7 +34,8 @@ VaultConfig::VaultConfig(const passport::Pmid& pmid_in,
       test_config(),
       send_hostname_to_visualiser_server(false),
 #endif
-      vlog_session_id() {}
+      vlog_session_id() {
+}
 
 VaultConfig::VaultConfig(const VaultConfig& other)
     : pmid(other.pmid),
@@ -45,7 +45,8 @@ VaultConfig::VaultConfig(const VaultConfig& other)
       test_config(other.test_config),
       send_hostname_to_visualiser_server(other.send_hostname_to_visualiser_server),
 #endif
-      vlog_session_id(other.vlog_session_id) {}
+      vlog_session_id(other.vlog_session_id) {
+}
 
 VaultConfig::VaultConfig(VaultConfig&& other)
     : pmid(std::move(other.pmid)),
@@ -55,7 +56,8 @@ VaultConfig::VaultConfig(VaultConfig&& other)
       test_config(std::move(other.test_config)),
       send_hostname_to_visualiser_server(std::move(other.send_hostname_to_visualiser_server)),
 #endif
-      vlog_session_id(std::move(other.vlog_session_id)) {}
+      vlog_session_id(std::move(other.vlog_session_id)) {
+}
 
 VaultConfig& VaultConfig::operator=(VaultConfig other) {
   swap(*this, other);
@@ -77,8 +79,7 @@ void swap(VaultConfig& lhs, VaultConfig& rhs) {
 
 #ifdef TESTING
 
-passport::Pmid GetPmidFromKeysFile(const boost::filesystem::path keys_path,
-                                   size_t identity_index) {
+passport::Pmid GetPmidFromKeysFile(const boost::filesystem::path keys_path, size_t identity_index) {
   std::vector<passport::detail::AnmaidToPmid> key_chains(
       passport::detail::ReadKeyChainList(keys_path));
   if (identity_index >= key_chains.size()) {

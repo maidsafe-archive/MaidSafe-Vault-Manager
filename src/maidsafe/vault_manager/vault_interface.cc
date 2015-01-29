@@ -58,22 +58,16 @@ VaultInterface::VaultInterface(tcp::Port vault_manager_port)
   LOG(kSuccess) << "Retrieved config info from VaultManager";
 }
 
-VaultConfig VaultInterface::GetConfiguration() {
-  return *vault_config_;
-}
+VaultConfig VaultInterface::GetConfiguration() { return *vault_config_; }
 
-int VaultInterface::WaitForExit() {
-  return exit_code_promise_.get_future().get();
-}
+int VaultInterface::WaitForExit() { return exit_code_promise_.get_future().get(); }
 
-void VaultInterface::SendJoined() {
-  Send(tcp_connection_, JoinedNetwork());
-}
+void VaultInterface::SendJoined() { Send(tcp_connection_, JoinedNetwork()); }
 
 void VaultInterface::OnConnectionClosed() {
   LOG(kError) << "Lost connection to Vault Manager";
   std::call_once(exit_code_flag_, [this] {
-      exit_code_promise_.set_value(ErrorToInt(MakeError(VaultManagerErrors::connection_aborted)));
+    exit_code_promise_.set_value(ErrorToInt(MakeError(VaultManagerErrors::connection_aborted)));
   });
 }
 
@@ -92,8 +86,7 @@ void VaultInterface::HandleReceivedMessage(tcp::Message&& message) {
       default:
         return;
     }
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
   }
 }
@@ -117,7 +110,7 @@ void VaultInterface::KillConnection() {
 }
 
 void VaultInterface::SendInvalidMessage() {
-  tcp_connection_->Send(tcp::Message{ 'R', 'u', 'b', 'b', 'i', 's', 'h' });
+  tcp_connection_->Send(tcp::Message{'R', 'u', 'b', 'b', 'i', 's', 'h'});
 }
 
 void VaultInterface::StopProcess() {

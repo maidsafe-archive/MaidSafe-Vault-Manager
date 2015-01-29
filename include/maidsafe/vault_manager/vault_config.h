@@ -32,8 +32,7 @@ namespace maidsafe {
 namespace vault_manager {
 
 struct VaultConfig {
-  VaultConfig(const passport::Pmid& pmid_in,
-              const boost::filesystem::path& vault_dir_in,
+  VaultConfig(const passport::Pmid& pmid_in, const boost::filesystem::path& vault_dir_in,
               const DiskUsage& max_disk_usage_in);
   VaultConfig(const VaultConfig&);
   VaultConfig(VaultConfig&& other);
@@ -48,12 +47,11 @@ struct VaultConfig {
     kKillConnection,
     kSendInvalidMessage,
     kStopProcess,
-    kIgnoreStopRequest };
+    kIgnoreStopRequest
+  };
 
   struct TestConfig {
-    TestConfig()
-        : test_type(TestType::kNone),
-          public_pmid_list() {}
+    TestConfig() : test_type(TestType::kNone), public_pmid_list() {}
     TestType test_type;
     std::vector<passport::PublicPmid> public_pmid_list;
   } test_config;

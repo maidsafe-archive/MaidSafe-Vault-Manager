@@ -43,22 +43,12 @@ extern const std::chrono::seconds kRpcTimeout;
 extern const std::chrono::seconds kVaultStopTimeout;
 extern const int kMaxVaultRestarts;
 
-DEFINE_OSTREAMABLE_ENUM_VALUES(MessageTag, std::uint8_t,
-    (ValidateConnectionRequest)
-    (Challenge)
-    (ChallengeResponse)
-    (StartVaultRequest)
-    (TakeOwnershipRequest)
-    (VaultRunningResponse)
-    (VaultStarted)
-    (VaultStartedResponse)
-    (VaultShutdownRequest)
-    (MaxDiskUsageUpdate)
-    (JoinedNetwork)
-    (LogMessage)
-    (SetNetworkAsStable)
-    (NetworkStableRequest)
-    (NetworkStableResponse))
+DEFINE_OSTREAMABLE_ENUM_VALUES(
+    MessageTag, std::uint8_t,
+    (ValidateConnectionRequest)(Challenge)(ChallengeResponse)(StartVaultRequest)(
+        TakeOwnershipRequest)(VaultRunningResponse)(VaultStarted)(VaultStartedResponse)(
+        VaultShutdownRequest)(MaxDiskUsageUpdate)(JoinedNetwork)(LogMessage)(SetNetworkAsStable)(
+        NetworkStableRequest)(NetworkStableResponse))
 
 }  // namespace vault_manager
 

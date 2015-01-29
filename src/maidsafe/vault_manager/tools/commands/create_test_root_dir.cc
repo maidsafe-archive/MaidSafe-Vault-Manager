@@ -39,9 +39,9 @@ namespace tools {
 CreateTestRootDir::CreateTestRootDir(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Create VaultManager root directory.",
               "  Do you wish to create \n\"" +
-              local_network_controller->test_env_root_dir.string() + "\"?\n" +
-              "[y/n].  'Enter' to use default \"" + (GetDefault().kCreateTestRootDir ? "y" : "n") +
-              "\".\n" + kPrompt_),
+                  local_network_controller->test_env_root_dir.string() + "\"?\n" +
+                  "[y/n].  'Enter' to use default \"" +
+                  (GetDefault().kCreateTestRootDir ? "y" : "n") + "\".\n" + kPrompt_),
       create_(false) {}
 
 void CreateTestRootDir::GetChoice() {

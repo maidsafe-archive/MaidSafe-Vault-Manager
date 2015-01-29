@@ -62,8 +62,9 @@ class ClientInterface {
   explicit ClientInterface(const passport::Maid& maid);
   ~ClientInterface();
 
-  std::future<std::unique_ptr<passport::PmidAndSigner>> TakeOwnership(const NonEmptyString& label,
-      const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage);
+  std::future<std::unique_ptr<passport::PmidAndSigner>> TakeOwnership(
+      const NonEmptyString& label, const boost::filesystem::path& vault_dir,
+      DiskUsage max_disk_usage);
 
 #ifdef USE_VLOGGING
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
@@ -83,9 +84,9 @@ class ClientInterface {
   //
   // 'test_env_root_dir' must exist when this call is made or an error will be thrown.
   // The function should only be called once - further calls are no-ops.
-  static void SetTestEnvironment(
-      uint16_t test_vault_manager_port, boost::filesystem::path test_env_root_dir,
-      boost::filesystem::path path_to_vault, int pmid_list_size);
+  static void SetTestEnvironment(uint16_t test_vault_manager_port,
+                                 boost::filesystem::path test_env_root_dir,
+                                 boost::filesystem::path path_to_vault, int pmid_list_size);
 
 #ifdef USE_VLOGGING
   std::future<std::unique_ptr<passport::PmidAndSigner>> StartVault(
