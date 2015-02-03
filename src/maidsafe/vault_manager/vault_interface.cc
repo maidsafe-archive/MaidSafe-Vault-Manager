@@ -20,12 +20,15 @@
 
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/on_scope_exit.h"
+#include "maidsafe/common/process.h"
 #include "maidsafe/common/utils.h"
 #include "maidsafe/common/tcp/connection.h"
 
-#include "maidsafe/vault_manager/dispatcher.h"
 #include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/messages/joined_network.h"
+#include "maidsafe/vault_manager/messages/vault_started.h"
+#include "maidsafe/vault_manager/messages/vault_started_response.h"
 
 namespace fs = boost::filesystem;
 
@@ -40,65 +43,59 @@ VaultInterface::VaultInterface(tcp::Port vault_manager_port)
       on_vault_started_response_(),
       vault_config_(),
       asio_service_(1),
-      tcp_connection_(tcp::Connection::MakeShared(asio_service_, vault_manager_port_)),
+      strand_(asio_service_.service()),
+      tcp_connection_(tcp::Connection::MakeShared(strand_, vault_manager_port_)),
       connection_closer_([&] { tcp_connection_->Close(); }) {
-  tcp_connection_->Start([this](std::string message) { HandleReceivedMessage(message); },
-                         [this] { OnConnectionClosed(); });
+  tcp_connection_->Start(
+      [this](tcp::Message message) { HandleReceivedMessage(std::move(message)); },
+      [this] { OnConnectionClosed(); });
   LOG(kSuccess) << "Connected to VaultManager which is listening on port " << vault_manager_port_;
   std::mutex mutex;
-  auto vault_config_future(SetResponseCallback<std::unique_ptr<VaultConfig>>(
+  auto vault_config_future(SetResponseCallback<std::unique_ptr<VaultConfig>, VaultStartedResponse>(
       on_vault_started_response_, asio_service_.service(), mutex));
-  SendVaultStarted(tcp_connection_);
+  Send(tcp_connection_, VaultStarted(process::GetProcessId()));
   vault_config_ = vault_config_future.get();
   LOG(kSuccess) << "Retrieved config info from VaultManager";
 }
 
-VaultConfig VaultInterface::GetConfiguration() {
-  return *vault_config_;
-}
+VaultConfig VaultInterface::GetConfiguration() { return *vault_config_; }
 
-int VaultInterface::WaitForExit() {
-  return exit_code_promise_.get_future().get();
-}
+int VaultInterface::WaitForExit() { return exit_code_promise_.get_future().get(); }
 
-void VaultInterface::SendJoined() {
-  SendJoinedNetwork(tcp_connection_);
-}
+void VaultInterface::SendJoined() { Send(tcp_connection_, JoinedNetwork()); }
 
 void VaultInterface::OnConnectionClosed() {
   LOG(kError) << "Lost connection to Vault Manager";
   std::call_once(exit_code_flag_, [this] {
-      exit_code_promise_.set_value(ErrorToInt(MakeError(VaultManagerErrors::connection_aborted)));
+    exit_code_promise_.set_value(ErrorToInt(MakeError(VaultManagerErrors::connection_aborted)));
   });
 }
 
-void VaultInterface::HandleReceivedMessage(const std::string& wrapped_message) {
+void VaultInterface::HandleReceivedMessage(tcp::Message&& message) {
   try {
-    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
-    LOG(kVerbose) << "Received " << message_and_type.second;
-    switch (message_and_type.second) {
-      case MessageType::kVaultStartedResponse:
-        HandleVaultStartedResponse(message_and_type.first);
+    InputVectorStream binary_input_stream(std::move(message));
+    MessageTag tag(static_cast<MessageTag>(-1));
+    Parse(binary_input_stream, tag);
+    switch (tag) {
+      case MessageTag::kVaultStartedResponse:
+        HandleVaultStartedResponse(Parse<VaultStartedResponse>(binary_input_stream));
         break;
-      case MessageType::kVaultShutdownRequest:
-        assert(message_and_type.first.empty());
+      case MessageTag::kVaultShutdownRequest:
         HandleVaultShutdownRequest();
         break;
       default:
         return;
     }
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << "Failed to handle incoming message: " << boost::diagnostic_information(e);
   }
 }
 
-void VaultInterface::HandleVaultStartedResponse(const std::string& message) {
-  if (on_vault_started_response_) {
-    on_vault_started_response_(message);
-  } else {
+void VaultInterface::HandleVaultStartedResponse(VaultStartedResponse&& vault_started_response) {
+  if (on_vault_started_response_)
+    on_vault_started_response_(std::move(vault_started_response));
+  else
     assert(false);  // already received vault configuration
-  }
 }
 
 void VaultInterface::HandleVaultShutdownRequest() {
@@ -113,7 +110,7 @@ void VaultInterface::KillConnection() {
 }
 
 void VaultInterface::SendInvalidMessage() {
-  tcp_connection_->Send("Rubbish");
+  tcp_connection_->Send(tcp::Message{'R', 'u', 'b', 'b', 'i', 's', 'h'});
 }
 
 void VaultInterface::StopProcess() {

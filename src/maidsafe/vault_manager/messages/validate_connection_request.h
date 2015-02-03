@@ -1,4 +1,4 @@
-/*  Copyright 2014 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,41 +16,19 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/vault_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_VALIDATE_CONNECTION_REQUEST_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_VALIDATE_CONNECTION_REQUEST_H_
 
-#include <memory>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
-
-#include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
+#include "maidsafe/vault_manager/messages/empty_message.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
-
-TEST(VaultManagerTest, BEH_Basic) {
-  std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager")};
-  fs::path path_to_vault{process::GetOtherExecutablePath("dummy_vault")};
-  SetEnvironment(tcp::Port{7777}, *test_env_root_dir, path_to_vault);
-
-  VaultManager vault_manager;
-
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-}
-
-}  // namespace test
+using ValidateConnectionRequest = EmptyMessage<MessageTag::kValidateConnectionRequest>;
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_VALIDATE_CONNECTION_REQUEST_H_

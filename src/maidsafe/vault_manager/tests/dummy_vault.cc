@@ -29,18 +29,18 @@
 
 int main(int argc, char* argv[]) {
   using maidsafe::vault_manager::VaultConfig;
-  bool connected_to_vault_manager{ false }, should_hang{ false };
-  int exit_code{ 0 };
+  bool connected_to_vault_manager{false}, should_hang{false};
+  int exit_code{0};
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() != 2U)
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
-    uint16_t port{ static_cast<uint16_t>(std::stoi(std::string{ &unuseds[1][0] })) };
-    maidsafe::vault_manager::VaultInterface vault_interface{ port };
+    uint16_t port{static_cast<uint16_t>(std::stoi(std::string{&unuseds[1][0]}))};
+    maidsafe::vault_manager::VaultInterface vault_interface{port};
     connected_to_vault_manager = true;
 
     std::future<void> worker;
-    VaultConfig config{ vault_interface.GetConfiguration() };
+    VaultConfig config{vault_interface.GetConfiguration()};
     switch (config.test_config.test_type) {
       case VaultConfig::TestType::kNone:
         break;
@@ -61,15 +61,13 @@ int main(int argc, char* argv[]) {
     }
     exit_code = vault_interface.WaitForExit();
     worker.get();
-  }
-  catch (const maidsafe::maidsafe_error& error) {
+  } catch (const maidsafe::maidsafe_error& error) {
     if (connected_to_vault_manager)
       LOG(kError) << error.what();
     else
       LOG(kError) << "This is only designed to be invoked by VaultManager.";
     exit_code = maidsafe::ErrorToInt(error);
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     if (connected_to_vault_manager)
       LOG(kError) << e.what();
     else

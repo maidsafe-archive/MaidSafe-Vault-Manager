@@ -66,8 +66,7 @@ int GetNumRunningProcesses(std::string process_name) {
     int num_processes(std::stoi(contents));
 #endif
     return num_processes;
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << e.what();
     return -1;
   }

@@ -24,9 +24,8 @@
 #include "maidsafe/common/test.h"
 #include "maidsafe/common/utils.h"
 
-#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/utils.h"
-
+#include "maidsafe/vault_manager/messages/challenge.h"
 
 namespace maidsafe {
 
@@ -37,35 +36,33 @@ namespace test {
 TEST(RpcHelperTest, BEH_SetResponseCallback) {
   AsioService asio_service(1);
   asio::io_service& io_service(asio_service.service());
-  std::function<void(std::string)> callback;
+  std::function<void(Challenge && )> callback;  // NOLINT
   std::mutex mutex;
-  asymm::PlainText challenge{ RandomString((RandomUint32() % 100) + 100) };
+  Challenge challenge(asymm::PlainText(RandomString((RandomUint32() % 100) + 100)));
 
   std::vector<std::future<std::unique_ptr<asymm::PlainText>>> futures;
   for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<std::unique_ptr<asymm::PlainText>>(callback,
-                                                                                io_service, mutex));
+    futures.emplace_back(SetResponseCallback<std::unique_ptr<asymm::PlainText>, Challenge>(
+        callback, io_service, mutex));
 
   for (auto& future : futures)
     EXPECT_THROW(future.get(), maidsafe_error) << "must have failed";
 
   futures.clear();
   for (int i(0); i < 3; ++i)
-    futures.emplace_back(SetResponseCallback<std::unique_ptr<asymm::PlainText>>(callback,
-                                                                                io_service, mutex));
+    futures.emplace_back(SetResponseCallback<std::unique_ptr<asymm::PlainText>, Challenge>(
+        callback, io_service, mutex));
 
-  protobuf::Challenge message;
-  message.set_plaintext(challenge.string());
-
+  auto challenge_plaintext(challenge.plaintext);
   std::thread t([&]() {
     Sleep(std::chrono::milliseconds(100));
-    callback(message.SerializeAsString());
+    callback(std::move(challenge));
   });
 
   std::unique_ptr<asymm::PlainText> retrieved_challenge;
   for (auto& future : futures) {
     EXPECT_NO_THROW(retrieved_challenge = future.get());
-    EXPECT_EQ(challenge, *retrieved_challenge);
+    EXPECT_EQ(challenge_plaintext, *retrieved_challenge);
   }
 
   t.join();

@@ -31,9 +31,8 @@ namespace vault_manager {
 ClientConnections::ClientConnections(asio::io_service& io_service)
     : io_service_(io_service), unvalidated_clients_(), clients_() {}
 
-std::shared_ptr<ClientConnections> ClientConnections::MakeShared(
-    asio::io_service& io_service) {
-  return std::shared_ptr<ClientConnections>{ new ClientConnections{ io_service } };
+std::shared_ptr<ClientConnections> ClientConnections::MakeShared(asio::io_service& io_service) {
+  return std::shared_ptr<ClientConnections>{new ClientConnections{io_service}};
 }
 
 ClientConnections::~ClientConnections() {
@@ -42,16 +41,14 @@ ClientConnections::~ClientConnections() {
 
 void ClientConnections::Add(tcp::ConnectionPtr connection, const asymm::PlainText& challenge) {
   assert(clients_.find(connection) == std::end(clients_));
-  TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
+  TimerPtr timer{std::make_shared<Timer>(io_service_, kRpcTimeout)};
   timer->async_wait([=](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "Client connection timer cancelled OK.";
-    } else {
+    if (!error_code || error_code != asio::error::operation_aborted) {
       LOG(kWarning) << "Timed out waiting for Client to validate.";
       connection->Close();
     }
   });
-  bool result{ unvalidated_clients_.emplace(connection, std::make_pair(challenge, timer)).second };
+  bool result{unvalidated_clients_.emplace(connection, std::make_pair(challenge, timer)).second};
   assert(result);
   static_cast<void>(result);
 }
@@ -64,7 +61,7 @@ void ClientConnections::Validate(tcp::ConnectionPtr connection, const passport::
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));
   }
 
-  on_scope_exit cleanup{ [this, itr] { itr->first->Close(); } };
+  on_scope_exit cleanup{[this, itr] { itr->first->Close(); }};
 
   if (asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
     LOG(kSuccess) << "Client " << DebugId(maid.name().value) << " TCP connection validated.";
@@ -73,7 +70,7 @@ void ClientConnections::Validate(tcp::ConnectionPtr connection, const passport::
     BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
   }
 
-  bool result{ clients_.emplace(connection, maid.name()).second };
+  bool result{clients_.emplace(connection, maid.name()).second};
   unvalidated_clients_.erase(itr);
   cleanup.Release();
   assert(result);
@@ -103,8 +100,7 @@ void ClientConnections::CloseAll() {
     connection.first->Close();
 }
 
-ClientConnections::MaidName
-    ClientConnections::FindValidated(tcp::ConnectionPtr connection) const {
+ClientConnections::MaidName ClientConnections::FindValidated(tcp::ConnectionPtr connection) const {
   auto itr(clients_.find(connection));
   if (itr == std::end(clients_)) {
     auto unvalidated_itr(unvalidated_clients_.find(connection));
@@ -121,9 +117,9 @@ ClientConnections::MaidName
 
 tcp::ConnectionPtr ClientConnections::FindValidated(MaidName maid_name) const {
   auto itr(std::find_if(std::begin(clients_), std::end(clients_),
-      [&maid_name](const std::pair<tcp::ConnectionPtr, MaidName> client) {
-        return client.second == maid_name;
-      }));
+                        [&maid_name](const std::pair<tcp::ConnectionPtr, MaidName> client) {
+    return client.second == maid_name;
+  }));
   if (itr == std::end(clients_)) {
     LOG(kWarning) << "Client TCP connection not found.";
     BOOST_THROW_EXCEPTION(MakeError(VaultManagerErrors::connection_not_found));

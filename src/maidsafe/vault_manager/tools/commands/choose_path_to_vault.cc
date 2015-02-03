@@ -34,7 +34,7 @@ namespace tools {
 ChoosePathToVault::ChoosePathToVault(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Path to vault executable.",
               "  'Enter' to use default\n\"" + GetDefault().kPathToVault.string() + "\".\n" +
-              kPrompt_) {}
+                  kPrompt_) {}
 
 void ChoosePathToVault::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;

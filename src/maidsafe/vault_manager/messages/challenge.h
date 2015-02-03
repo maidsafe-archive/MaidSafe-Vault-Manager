@@ -1,4 +1,4 @@
-/*  Copyright 2014 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,41 +16,43 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/vault_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_CHALLENGE_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_CHALLENGE_H_
 
-#include <memory>
-
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
+#include "maidsafe/common/config.h"
+#include "maidsafe/common/rsa.h"
 
 #include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+// VaultManager to Client
+struct Challenge {
+  static const MessageTag tag = MessageTag::kChallenge;
 
-TEST(VaultManagerTest, BEH_Basic) {
-  std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager")};
-  fs::path path_to_vault{process::GetOtherExecutablePath("dummy_vault")};
-  SetEnvironment(tcp::Port{7777}, *test_env_root_dir, path_to_vault);
+  Challenge() = default;
+  Challenge(const Challenge&) = delete;
+  Challenge(Challenge&& other) MAIDSAFE_NOEXCEPT : plaintext(std::move(other.plaintext)) {}
+  explicit Challenge(asymm::PlainText plaintext_in) : plaintext(std::move(plaintext_in)) {}
+  ~Challenge() = default;
+  Challenge& operator=(const Challenge&) = delete;
+  Challenge& operator=(Challenge&& other) MAIDSAFE_NOEXCEPT {
+    plaintext = std::move(other.plaintext);
+    return *this;
+  };
 
-  VaultManager vault_manager;
+  template <typename Archive>
+  void serialize(Archive& archive) {
+    archive(plaintext);
+  }
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-}
-
-}  // namespace test
+  asymm::PlainText plaintext;
+};
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_CHALLENGE_H_

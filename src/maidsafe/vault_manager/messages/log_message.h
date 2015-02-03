@@ -1,4 +1,4 @@
-/*  Copyright 2014 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,41 +16,43 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-#include "maidsafe/vault_manager/vault_manager.h"
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_LOG_MESSAGE_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_LOG_MESSAGE_H_
 
-#include <memory>
+#include <string>
 
-#include "boost/filesystem/path.hpp"
-
-#include "maidsafe/common/process.h"
-#include "maidsafe/common/test.h"
-#include "maidsafe/common/utils.h"
+#include "maidsafe/common/config.h"
 
 #include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/utils.h"
-#include "maidsafe/vault_manager/tests/test_utils.h"
-
-namespace fs = boost::filesystem;
 
 namespace maidsafe {
 
 namespace vault_manager {
 
-namespace test {
+struct LogMessage {
+  static const MessageTag tag = MessageTag::kLogMessage;
 
-TEST(VaultManagerTest, BEH_Basic) {
-  std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestVaultManager")};
-  fs::path path_to_vault{process::GetOtherExecutablePath("dummy_vault")};
-  SetEnvironment(tcp::Port{7777}, *test_env_root_dir, path_to_vault);
+  LogMessage() = default;
+  LogMessage(const LogMessage&) = delete;
+  LogMessage(LogMessage&& other) MAIDSAFE_NOEXCEPT : data(std::move(other.data)) {}
+  explicit LogMessage(std::string data_in) : data(std::move(data_in)) {}
+  ~LogMessage() = default;
+  LogMessage& operator=(const LogMessage&) = delete;
+  LogMessage& operator=(LogMessage&& other) MAIDSAFE_NOEXCEPT {
+    data = std::move(other.data);
+    return *this;
+  };
 
-  VaultManager vault_manager;
+  template <typename Archive>
+  void serialize(Archive& archive) {
+    archive(data);
+  }
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-}
-
-}  // namespace test
+  std::string data;
+};
 
 }  // namespace vault_manager
 
 }  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_LOG_MESSAGE_H_

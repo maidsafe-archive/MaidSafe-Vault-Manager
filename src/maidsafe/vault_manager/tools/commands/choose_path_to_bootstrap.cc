@@ -33,8 +33,7 @@ namespace tools {
 
 ChoosePathToBootstrap::ChoosePathToBootstrap(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Path to bootstrap file.",
-              "  'Enter' to use no bootstrap file (i.e. connect to SAFE network).\n" +
-              kPrompt_) {}
+              "  'Enter' to use no bootstrap file (i.e. connect to SAFE network).\n" + kPrompt_) {}
 
 void ChoosePathToBootstrap::GetChoice() {
   TLOG(kDefaultColour) << kInstructions_;

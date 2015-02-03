@@ -30,18 +30,17 @@ int main(int argc, char* argv[]) {
     // TODO(Fraser#5#): 2014-05-19 - Use program options to input script_path and help
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() == 2U)
-      script_path = boost::filesystem::path{ std::string{ &unuseds[1][0] } };
+      script_path = boost::filesystem::path{std::string{&unuseds[1][0]}};
     else if (unuseds.size() != 1U)
       BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
 
-    maidsafe::vault_manager::tools::LocalNetworkController local_network_controller{ script_path };
+    maidsafe::vault_manager::tools::LocalNetworkController local_network_controller{script_path};
     for (;;) {
       local_network_controller.current_command->PrintTitle();
       local_network_controller.current_command->GetChoice();
       try {
         local_network_controller.current_command->HandleChoice();
-      }
-      catch (const maidsafe::maidsafe_error& error) {
+      } catch (const maidsafe::maidsafe_error& error) {
         // A quit request asking for a delay interval between destruction of vaults
         if (error.code() == maidsafe::make_error_code(maidsafe::VaultManagerErrors::timed_out)) {
           local_network_controller.vault_manager->TearDownWithInterval();
@@ -50,15 +49,13 @@ int main(int argc, char* argv[]) {
         throw;
       }
     }
-  }
-  catch (const maidsafe::maidsafe_error& error) {
+  } catch (const maidsafe::maidsafe_error& error) {
     // Success is thrown when Quit option is invoked.
     if (error.code() == maidsafe::make_error_code(maidsafe::CommonErrors::success))
       return 0;
     TLOG(kRed) << boost::diagnostic_information(error) << "\n\n";
     return maidsafe::ErrorToInt(error);
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     TLOG(kRed) << e.what() << "\n\n";
     return maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::unknown));
   }

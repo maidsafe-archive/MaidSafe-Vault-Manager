@@ -33,24 +33,20 @@ NewConnections::NewConnections(asio::io_service& io_service)
     : io_service_(io_service), connections_() {}
 
 std::shared_ptr<NewConnections> NewConnections::MakeShared(asio::io_service& io_service) {
-  return std::shared_ptr<NewConnections>{ new NewConnections{ io_service } };
+  return std::shared_ptr<NewConnections>{new NewConnections{io_service}};
 }
 
-NewConnections::~NewConnections() {
-  assert(connections_.empty());
-}
+NewConnections::~NewConnections() { assert(connections_.empty()); }
 
 void NewConnections::Add(tcp::ConnectionPtr connection) {
-  TimerPtr timer{ std::make_shared<Timer>(io_service_, kRpcTimeout) };
+  TimerPtr timer{std::make_shared<Timer>(io_service_, kRpcTimeout)};
   timer->async_wait([connection](const std::error_code& error_code) {
-    if (error_code && error_code == asio::error::operation_aborted) {
-      LOG(kVerbose) << "New connection timer cancelled OK.";
-    } else {
+    if (!error_code || error_code != asio::error::operation_aborted) {
       LOG(kWarning) << "Timed out waiting for new connection to identify itself.";
       connection->Close();
     }
   });
-  bool result{ connections_.emplace(connection, timer).second };
+  bool result{connections_.emplace(connection, timer).second};
   assert(result);
   static_cast<void>(result);
 }

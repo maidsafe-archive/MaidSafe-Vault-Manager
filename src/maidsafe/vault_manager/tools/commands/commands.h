@@ -65,11 +65,10 @@ class Command {
 
 template <typename Choice, typename... Args>
 bool Command::DoGetChoice(Choice& choice, const Choice* const default_choice, Args... args) {
-  std::pair<std::string, Source> line_and_source{ GetLine() };
+  std::pair<std::string, Source> line_and_source{GetLine()};
   try {
     return ConvertAndValidateChoice(line_and_source.first, choice, default_choice, args...);
-  }
-  catch (const std::exception&) {
+  } catch (const std::exception&) {
     TLOG(kRed) << "\n" << line_and_source.first << " is not a valid choice.\n";
     if (line_and_source.second == Source::kScript)
       throw;
@@ -79,7 +78,8 @@ bool Command::DoGetChoice(Choice& choice, const Choice* const default_choice, Ar
 
 template <>
 bool Command::ConvertAndValidateChoice<int, int, int>(const std::string& choice_as_string,
-    int& choice, const int* const default_choice, int min, int max);
+                                                      int& choice, const int* const default_choice,
+                                                      int min, int max);
 
 template <>
 bool Command::ConvertAndValidateChoice<boost::filesystem::path, bool>(
@@ -92,7 +92,8 @@ bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string
 
 template <>
 bool Command::ConvertAndValidateChoice<std::string>(const std::string& choice_as_string,
-    std::string& choice, const std::string* const default_choice);
+                                                    std::string& choice,
+                                                    const std::string* const default_choice);
 
 }  // namespace tools
 

@@ -30,6 +30,7 @@
 
 #include "maidsafe/common/crypto.h"
 #include "maidsafe/common/types.h"
+#include "maidsafe/common/tcp/connection.h"
 #include "maidsafe/passport/passport.h"
 
 #include "maidsafe/vault_manager/config.h"
@@ -40,50 +41,21 @@ namespace maidsafe {
 
 namespace vault_manager {
 
-class LocalTcpTransport;
-struct VaultInfo;
-namespace protobuf { class VaultInfo; }
+struct Challenge;
+struct VaultStartedResponse;
 
 namespace detail {
 
-template <typename T>
-T Parse(const std::string& /*message*/) {
-  return T::need_to_specialise;
-}
+std::unique_ptr<asymm::PlainText> GetValue(const Challenge& challenge);
 
-template <>
-std::unique_ptr<VaultConfig> Parse<std::unique_ptr<VaultConfig>>(
-    const std::string& message);
-
-template <>
-std::unique_ptr<asymm::PlainText> Parse<std::unique_ptr<asymm::PlainText>>(
-    const std::string& message);
-
-template <>
-std::unique_ptr<passport::PmidAndSigner> Parse<std::unique_ptr<passport::PmidAndSigner>>(
-    const std::string& message);
+std::unique_ptr<VaultConfig> GetValue(const VaultStartedResponse& vault_started_response);
 
 }  // namespace detail
 
-
-
-template <typename ProtobufMessage>
-ProtobufMessage ParseProto(const std::string& serialised_message) {
-  ProtobufMessage protobuf_message;
-  if (!protobuf_message.ParseFromString(serialised_message))
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::parsing_error));
-  return protobuf_message;
+template <typename T>
+void Send(tcp::ConnectionPtr connection, T message) {
+  connection->Send(Serialise(T::tag, std::move(message)));
 }
-
-void ToProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
-                const VaultInfo& vault_info, protobuf::VaultInfo* protobuf_vault_info);
-
-void FromProtobuf(crypto::AES256Key symm_key, crypto::AES256InitialisationVector symm_iv,
-                  const protobuf::VaultInfo& protobuf_vault_info, VaultInfo& vault_info);
-
-std::string WrapMessage(MessageAndType message_and_type);
-
-MessageAndType UnwrapMessage(std::string wrapped_message);
 
 NonEmptyString GenerateLabel();
 
@@ -93,9 +65,8 @@ tcp::Port GetInitialListeningPort();
 namespace test {
 
 void SetEnvironment(tcp::Port test_vault_manager_port,
-    const boost::filesystem::path& test_env_root_dir,
-    const boost::filesystem::path& path_to_vault,
-    int pmid_list_size = 0);
+                    const boost::filesystem::path& test_env_root_dir,
+                    const boost::filesystem::path& path_to_vault, int pmid_list_size = 0);
 
 }  // namespace test
 
@@ -104,7 +75,6 @@ boost::filesystem::path GetTestEnvironmentRootDir();
 boost::filesystem::path GetPathToVault();
 passport::PmidAndSigner GetPmidAndSigner(int index);
 std::vector<passport::PublicPmid> GetPublicPmids();
-std::string GetSerialisedPublicPmids();
 #endif
 
 }  // namespace vault_manager

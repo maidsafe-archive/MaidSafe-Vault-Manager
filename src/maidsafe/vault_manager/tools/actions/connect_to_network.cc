@@ -46,12 +46,14 @@ void StartVaults(LocalNetworkController* local_network_controller, DiskUsage max
 #ifdef USE_VLOGGING
     assert(local_network_controller->vlog_session_id);
     assert(local_network_controller->send_hostname_to_visualiser_server);
-    local_network_controller->client_interface->StartVault(
-        boost::filesystem::path(), max_usage, *local_network_controller->vlog_session_id,
-        *local_network_controller->send_hostname_to_visualiser_server).get();
+    local_network_controller->client_interface
+        ->StartVault(boost::filesystem::path(), max_usage,
+                     *local_network_controller->vlog_session_id,
+                     *local_network_controller->send_hostname_to_visualiser_server)
+        .get();
 #else
-    local_network_controller->client_interface->StartVault(boost::filesystem::path(),
-                                                           max_usage).get();
+    local_network_controller->client_interface->StartVault(boost::filesystem::path(), max_usage)
+        .get();
 #endif
     Sleep(std::chrono::milliseconds(500));
   }
@@ -66,7 +68,7 @@ void ConnectToNetwork(LocalNetworkController* local_network_controller) {
       local_network_controller->vault_count);
 
   auto space_info(fs::space(local_network_controller->test_env_root_dir));
-  DiskUsage max_usage{ (9 * space_info.available) / (10 * local_network_controller->vault_count) };
+  DiskUsage max_usage{(9 * space_info.available) / (10 * local_network_controller->vault_count)};
 
   maidsafe::test::PrepareBootstrapFile(local_network_controller->path_to_bootstrap_file);
 
@@ -76,7 +78,8 @@ void ConnectToNetwork(LocalNetworkController* local_network_controller) {
   local_network_controller->client_interface->MarkNetworkAsStable();
 
   TLOG(kDefaultColour) << "Started " << local_network_controller->vault_count << " Vaults\n";
-  TLOG(kGreen) << "Started Vaults successfully.\n"
+  TLOG(kGreen)
+      << "Started Vaults successfully.\n"
       << "To keep the Vault(s) alive or stay connected to VaultManager, do not exit this tool.\n";
 }
 

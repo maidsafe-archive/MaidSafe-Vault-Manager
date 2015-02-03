@@ -41,9 +41,10 @@ namespace tools {
 namespace {
 
 std::string Instruction(bool new_network) {
-  std::string instruction{ "\nThis must be at least " };
+  std::string instruction{"\nThis must be at least "};
   instruction += std::to_string(new_network ? GetDefault().kVaultCountNewNetwork : 1);
-  instruction += ".\nThere is no upper limit, but more than 20 on one PC will probably\n"
+  instruction +=
+      ".\nThere is no upper limit, but more than 20 on one PC will probably\n"
       "cause noticeable performance slowdown.  'Enter' to use default \"" +
       std::to_string(new_network ? GetDefault().kVaultCountNewNetwork : GetDefault().kVaultCount) +
       "\".\n";

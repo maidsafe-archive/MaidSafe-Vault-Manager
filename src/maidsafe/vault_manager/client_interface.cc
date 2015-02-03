@@ -24,33 +24,21 @@
 #include "maidsafe/common/tcp/connection.h"
 
 #include "maidsafe/vault_manager/config.h"
-#include "maidsafe/vault_manager/dispatcher.h"
-#include "maidsafe/vault_manager/interprocess_messages.pb.h"
 #include "maidsafe/vault_manager/rpc_helper.h"
 #include "maidsafe/vault_manager/utils.h"
+#include "maidsafe/vault_manager/messages/challenge.h"
+#include "maidsafe/vault_manager/messages/challenge_response.h"
+#include "maidsafe/vault_manager/messages/log_message.h"
+#include "maidsafe/vault_manager/messages/network_stable_request.h"
+#include "maidsafe/vault_manager/messages/set_network_as_stable.h"
+#include "maidsafe/vault_manager/messages/start_vault_request.h"
+#include "maidsafe/vault_manager/messages/take_ownership_request.h"
+#include "maidsafe/vault_manager/messages/validate_connection_request.h"
+#include "maidsafe/vault_manager/messages/vault_running_response.h"
 
 namespace maidsafe {
 
 namespace vault_manager {
-
-namespace {
-
-std::unique_ptr<passport::PmidAndSigner> ParseVaultKeys(
-    protobuf::VaultRunningResponse::VaultKeys vault_keys) {
-  crypto::AES256Key symm_key{ vault_keys.aes256key() };
-  crypto::AES256InitialisationVector symm_iv{ vault_keys.aes256iv() };
-  std::unique_ptr<passport::PmidAndSigner> pmid_and_signer =
-      maidsafe::make_unique<passport::PmidAndSigner>(std::make_pair(
-          passport::DecryptPmid(
-              crypto::CipherText{ NonEmptyString{ vault_keys.encrypted_pmid() } }, symm_key,
-                  symm_iv),
-          passport::DecryptAnpmid(
-              crypto::CipherText{ NonEmptyString{ vault_keys.encrypted_anpmid() } }, symm_key,
-                  symm_iv)));
-  return pmid_and_signer;
-}
-
-}  // unnamed namespace
 
 ClientInterface::ClientInterface(const passport::Maid& maid)
     : kMaid_(maid),
@@ -59,37 +47,37 @@ ClientInterface::ClientInterface(const passport::Maid& maid)
       network_stable_(),
       network_stable_flag_(),
       asio_service_(1),
+      strand_(asio_service_.service()),
       tcp_connection_(ConnectToVaultManager()),
       connection_closer_([&] { tcp_connection_->Close(); }) {
-  SendValidateConnectionRequest(tcp_connection_);
-  auto challenge = SetResponseCallback<std::unique_ptr<asymm::PlainText>>(
-                   on_challenge_, asio_service_.service(), mutex_).get();
-  SendChallengeResponse(tcp_connection_, passport::PublicMaid(kMaid_),
-                        asymm::Sign(*challenge, kMaid_.private_key()));
+  Send(tcp_connection_, ValidateConnectionRequest());
+  auto challenge = SetResponseCallback<std::unique_ptr<asymm::PlainText>, Challenge>(
+                       on_challenge_, asio_service_.service(), mutex_).get();
+  Send(tcp_connection_, ChallengeResponse(passport::PublicMaid(kMaid_),
+                                          asymm::Sign(*challenge, kMaid_.private_key())));
 }
 
 ClientInterface::~ClientInterface() {
-  // Ensure promise is set if required.
+// Ensure promise is set if required.
 #ifdef TESTING
   HandleNetworkStableResponse();
 #endif
 }
 
 std::shared_ptr<tcp::Connection> ClientInterface::ConnectToVaultManager() {
-  unsigned attempts{ 0 };
-  tcp::Port initial_port{ GetInitialListeningPort() };
-  tcp::Port port{ initial_port };
+  unsigned attempts{0};
+  tcp::Port initial_port{GetInitialListeningPort()};
+  tcp::Port port{initial_port};
   while (attempts <= tcp::kMaxRangeAboveDefaultPort &&
          port <= std::numeric_limits<tcp::Port>::max()) {
     try {
-      tcp::ConnectionPtr tcp_connection{ tcp::Connection::MakeShared(asio_service_, port) };
-      tcp_connection->Start([this](std::string message) { HandleReceivedMessage(message); },
-                            [this] {});  // FIXME OnConnectionClosed
+      tcp::ConnectionPtr tcp_connection{tcp::Connection::MakeShared(strand_, port)};
+      tcp_connection->Start(
+          [this](tcp::Message message) { HandleReceivedMessage(std::move(message)); },
+          [this] {});  // FIXME OnConnectionClosed
       LOG(kSuccess) << "Connected to VaultManager which is listening on port " << port;
       return tcp_connection;
-    } catch (const std::exception& e) {
-      LOG(kVerbose) << "Failed to connect to VaultManager with attempted port " << port
-                    << ": " << boost::diagnostic_information(e);
+    } catch (const std::exception&) {
       ++attempts;
       ++port;
     }
@@ -102,7 +90,7 @@ std::shared_ptr<tcp::Connection> ClientInterface::ConnectToVaultManager() {
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwnership(
     const NonEmptyString& label, const boost::filesystem::path& vault_dir,
     DiskUsage max_disk_usage) {
-  SendTakeOwnershipRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  Send(tcp_connection_, TakeOwnershipRequest(label, vault_dir, max_disk_usage));
   return AddVaultRequest(label);
 }
 
@@ -110,31 +98,30 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::TakeOwner
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id);
+  NonEmptyString label{GenerateLabel()};
+  StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
+  start_vault_request.vlog_session_id = vlog_session_id;
+  Send(tcp_connection_, std::move(start_vault_request));
   return AddVaultRequest(label);
 }
 #else
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage);
+  NonEmptyString label{GenerateLabel()};
+  Send(tcp_connection_, StartVaultRequest(label, vault_dir, max_disk_usage));
   return AddVaultRequest(label);
 }
 #endif
 
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultRequest(
     const NonEmptyString& label) {
-  LOG(kVerbose) << "ClientInterface::AddVaultRequest : " << label.string();
-  std::shared_ptr<VaultRequest> request(std::make_shared<VaultRequest>(asio_service_.service(),
-                                                                       std::chrono::seconds(30)));
+  std::shared_ptr<VaultRequest> request(
+      std::make_shared<VaultRequest>(asio_service_.service(), std::chrono::seconds(30)));
   request->timer.async_wait([request, label, this](const std::error_code& ec) {
-    if (ec && ec == asio::error::operation_aborted) {
-      LOG(kVerbose) << "Timer cancelled. OK";
+    if (ec && ec == asio::error::operation_aborted)
       return;
-    }
     LOG(kWarning) << "Timer expired - i.e. timed out for label: " << label.string();
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     if (ec)
       request->SetException(ec);
     else
@@ -142,30 +129,30 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
     ongoing_vault_requests_.erase(label);
   });
 
-  std::lock_guard<std::mutex> lock{ mutex_ };
-  LOG(kVerbose) << "Added request for vault label:" << label.string();
+  std::lock_guard<std::mutex> lock{mutex_};
   ongoing_vault_requests_.insert(std::make_pair(label, request));
   return request->promise.get_future();
 }
 
-void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) {
+void ClientInterface::HandleReceivedMessage(tcp::Message&& message) {
   try {
-    MessageAndType message_and_type{ UnwrapMessage(wrapped_message) };
-    LOG(kVerbose) << "Received " << message_and_type.second;
-    switch (message_and_type.second) {
-      case MessageType::kChallenge:
-        InvokeCallBack(message_and_type.first, on_challenge_);
+    InputVectorStream binary_input_stream(std::move(message));
+    MessageTag tag(static_cast<MessageTag>(-1));
+    Parse(binary_input_stream, tag);
+    switch (tag) {
+      case MessageTag::kChallenge:
+        InvokeCallBack(Parse<Challenge>(binary_input_stream), on_challenge_);
         break;
-      case MessageType::kVaultRunningResponse:
-        HandleVaultRunningResponse(message_and_type.first);
+      case MessageTag::kVaultRunningResponse:
+        HandleVaultRunningResponse(Parse<VaultRunningResponse>(binary_input_stream));
         break;
 #ifdef TESTING
-      case MessageType::kNetworkStableResponse:
+      case MessageTag::kNetworkStableResponse:
         HandleNetworkStableResponse();
         break;
 #endif
-      case MessageType::kLogMessage:
-        HandleLogMessage(message_and_type.first);
+      case MessageTag::kLogMessage:
+        HandleLogMessage(Parse<LogMessage>(binary_input_stream));
         break;
       default:
         return;
@@ -175,26 +162,21 @@ void ClientInterface::HandleReceivedMessage(const std::string& wrapped_message) 
   }
 }
 
-void ClientInterface::HandleVaultRunningResponse(const std::string& message) {
-  protobuf::VaultRunningResponse
-    vault_running_response{ ParseProto<protobuf::VaultRunningResponse>(message) };
-  NonEmptyString label(vault_running_response.label());
+void ClientInterface::HandleVaultRunningResponse(VaultRunningResponse&& vault_running_response) {
+  NonEmptyString label(vault_running_response.vault_label);
   std::unique_ptr<passport::PmidAndSigner> pmid_and_signer;
   std::unique_ptr<maidsafe_error> error;
-  if (vault_running_response.has_vault_keys()) {
-    pmid_and_signer = ParseVaultKeys(vault_running_response.vault_keys());
-    LOG(kVerbose) << "Got pmid_and_signer for vault label: " << label.string();
-  } else if (vault_running_response.has_serialised_maidsafe_error()) {
-    SerialisedData serialised_error{std::begin(vault_running_response.serialised_maidsafe_error()),
-                                    std::end(vault_running_response.serialised_maidsafe_error())};
-    error = maidsafe::make_unique<maidsafe_error>(Parse<maidsafe_error>(serialised_error));
-    LOG(kError) << "Got error for vault label: " << label.string()
-                << "   Error: " << error->what();
+  if (vault_running_response.vault_keys) {
+    pmid_and_signer = maidsafe::make_unique<passport::PmidAndSigner>(
+        *vault_running_response.vault_keys->pmid_and_signer);
+  } else if (vault_running_response.error) {
+    error = maidsafe::make_unique<maidsafe_error>(*vault_running_response.error);
+    LOG(kError) << "Got error for vault label: " << label.string() << "   Error: " << error->what();
   } else {
-    throw MakeError(CommonErrors::invalid_parameter);
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
   }
 
-  std::lock_guard<std::mutex> lock{ mutex_ };
+  std::lock_guard<std::mutex> lock{mutex_};
   auto itr = ongoing_vault_requests_.find(label);
   if (ongoing_vault_requests_.end() != itr) {
     if (pmid_and_signer)
@@ -215,23 +197,21 @@ void ClientInterface::HandleNetworkStableResponse() {
 }
 #endif
 
-void ClientInterface::InvokeCallBack(const std::string& message,
-                                     std::function<void(std::string)>& callback) {
-  if (callback) {
-    callback(message);
-  } else {
+void ClientInterface::InvokeCallBack(Challenge&& challenge,
+                                     std::function<void(Challenge&&)>& callback) {
+  if (callback)
+    callback(std::move(challenge));
+  else
     LOG(kWarning) << "Call back not available";
-  }
 }
 
-void ClientInterface::HandleLogMessage(const std::string& message) {
-  LOG(kInfo) << message;
-}
+void ClientInterface::HandleLogMessage(LogMessage&& log_message) { LOG(kInfo) << log_message.data; }
 
 #ifdef TESTING
 void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
-    boost::filesystem::path test_env_root_dir, boost::filesystem::path path_to_vault,
-    int pmid_list_size) {
+                                         boost::filesystem::path test_env_root_dir,
+                                         boost::filesystem::path path_to_vault,
+                                         int pmid_list_size) {
   test::SetEnvironment(test_vault_manager_port, test_env_root_dir, path_to_vault, pmid_list_size);
 }
 
@@ -239,9 +219,11 @@ void ClientInterface::SetTestEnvironment(tcp::Port test_vault_manager_port,
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id, bool send_hostname_to_visualiser_server) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id,
-                        send_hostname_to_visualiser_server);
+  NonEmptyString label{GenerateLabel()};
+  StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
+  start_vault_request.vlog_session_id = vlog_session_id;
+  start_vault_request.send_hostname_to_visualiser_server = send_hostname_to_visualiser_server;
+  Send(tcp_connection_, std::move(start_vault_request));
   return AddVaultRequest(label);
 }
 
@@ -249,24 +231,29 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVaul
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage,
     const std::string& vlog_session_id, bool send_hostname_to_visualiser_server,
     int pmid_list_index) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, vlog_session_id,
-                        send_hostname_to_visualiser_server, pmid_list_index);
+  NonEmptyString label{GenerateLabel()};
+  StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
+  start_vault_request.vlog_session_id = vlog_session_id;
+  start_vault_request.send_hostname_to_visualiser_server = send_hostname_to_visualiser_server;
+  start_vault_request.pmid_list_index = pmid_list_index;
+  Send(tcp_connection_, std::move(start_vault_request));
   return AddVaultRequest(label);
 }
 #else
 std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::StartVault(
     const boost::filesystem::path& vault_dir, DiskUsage max_disk_usage, int pmid_list_index) {
-  NonEmptyString label{ GenerateLabel() };
-  SendStartVaultRequest(tcp_connection_, label, vault_dir, max_disk_usage, pmid_list_index);
+  NonEmptyString label{GenerateLabel()};
+  StartVaultRequest start_vault_request(label, vault_dir, max_disk_usage);
+  start_vault_request.pmid_list_index = pmid_list_index;
+  Send(tcp_connection_, std::move(start_vault_request));
   return AddVaultRequest(label);
 }
 #endif
 
-void ClientInterface::MarkNetworkAsStable() { SendMarkNetworkAsStableRequest(tcp_connection_); }
+void ClientInterface::MarkNetworkAsStable() { Send(tcp_connection_, SetNetworkAsStable()); }
 
 std::future<void> ClientInterface::WaitForStableNetwork() {
-  SendNetworkStableRequest(tcp_connection_);
+  Send(tcp_connection_, NetworkStableRequest());
   return network_stable_.get_future();
 }
 #endif

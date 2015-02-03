@@ -42,16 +42,16 @@ namespace test {
 
 TEST(ClientInterfaceTest, BEH_Basic) {
   std::shared_ptr<fs::path> test_env_root_dir{
-      maidsafe::test::CreateTestPath("MaidSafe_TestClientInterface") };
-  fs::path path_to_vault{ process::GetOtherExecutablePath("dummy_vault") };
-  SetEnvironment(tcp::Port{ 8888 }, *test_env_root_dir, path_to_vault);
+      maidsafe::test::CreateTestPath("MaidSafe_TestClientInterface")};
+  fs::path path_to_vault{process::GetOtherExecutablePath("dummy_vault")};
+  SetEnvironment(tcp::Port{8888}, *test_env_root_dir, path_to_vault);
 
   VaultManager vault_manager;
   static_cast<void>(vault_manager);
 
   {
-    passport::MaidAndSigner maid_and_signer{ passport::CreateMaidAndSigner() };
-    ClientInterface client_interface{ maid_and_signer.first };
+    passport::MaidAndSigner maid_and_signer{passport::CreateMaidAndSigner()};
+    ClientInterface client_interface{maid_and_signer.first};
     LOG(kVerbose) << "Client stopping.";
   }
 }

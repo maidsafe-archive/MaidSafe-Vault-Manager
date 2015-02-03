@@ -34,7 +34,8 @@ namespace tools {
 ChooseExistingNetwork::ChooseExistingNetwork(LocalNetworkController* local_network_controller)
     : Command(local_network_controller, "Choose Existing Network.",
               "  \n  1. Connect to MaidSafe Test Network. "
-              "  \n  2. Connect to other network.\n" + kPrompt_),
+              "  \n  2. Connect to other network.\n" +
+                  kPrompt_),
       choice_(0) {}
 
 void ChooseExistingNetwork::GetChoice() {

@@ -42,6 +42,7 @@ include(../../cmake_modules/standard_setup.cmake)
 set(VaultManagerSourcesDir ${PROJECT_SOURCE_DIR}/src/maidsafe/vault_manager)
 ms_glob_dir(VaultManager ${VaultManagerSourcesDir} "Vault Manager")
 list(REMOVE_ITEM VaultManagerAllFiles "${VaultManagerSourcesDir}/vault_manager_main.cc")
+ms_glob_dir(VaultManagerMessages ${VaultManagerSourcesDir}/messages "Vault Manager Messages")
 
 ms_glob_dir(VaultManagerTools ${VaultManagerSourcesDir}/tools "Tools")
 set(NetworkTestHelperFile ${VaultManagerSourcesDir}/tools/network_test_helper.cc)
@@ -56,9 +57,9 @@ list(REMOVE_ITEM VaultManagerTestsAllFiles "${VaultManagerSourcesDir}/tests/dumm
 #==================================================================================================#
 # Define MaidSafe libraries and executables                                                        #
 #==================================================================================================#
-ms_add_static_library(maidsafe_vault_manager ${VaultManagerAllFiles})
-target_include_directories(maidsafe_vault_manager PUBLIC ${CMAKE_BINARY_DIR}/GeneratedProtoFiles ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(maidsafe_vault_manager maidsafe_nfs_client protobuf_lite)
+ms_add_static_library(maidsafe_vault_manager ${VaultManagerAllFiles} ${VaultManagerMessagesAllFiles})
+target_include_directories(maidsafe_vault_manager PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(maidsafe_vault_manager maidsafe_nfs_client)
 
 ms_add_executable(vault_manager "Production" "${VaultManagerSourcesDir}/vault_manager_main.cc")
 target_include_directories(vault_manager PRIVATE ${PROJECT_SOURCE_DIR}/src)

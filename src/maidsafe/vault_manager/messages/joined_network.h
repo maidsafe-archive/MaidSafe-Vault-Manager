@@ -1,4 +1,4 @@
-/*  Copyright 2012 MaidSafe.net limited
+/*  Copyright 2015 MaidSafe.net limited
 
     This MaidSafe Software is licensed to you under (1) the MaidSafe.net Commercial License,
     version 1.0 or later, or (2) The General Public License (GPL), version 3, depending on which
@@ -16,22 +16,19 @@
     See the Licences for the specific language governing permissions and limitations relating to
     use of the MaidSafe Software.                                                                 */
 
-option optimize_for = LITE_RUNTIME;
+#ifndef MAIDSAFE_VAULT_MANAGER_MESSAGES_JOINED_NETWORK_H_
+#define MAIDSAFE_VAULT_MANAGER_MESSAGES_JOINED_NETWORK_H_
 
-package maidsafe.vault_manager.protobuf;
+#include "maidsafe/vault_manager/messages/empty_message.h"
 
-message VaultInfo {
-  required bytes pmid = 1;
-  required bytes anpmid = 2;
-  required bytes vault_dir = 3;
-  required bytes label = 4;
-  optional uint64 max_disk_usage = 5;
-  optional bytes owner_name = 6;
-}
+namespace maidsafe {
 
-message VaultManagerConfig {
-  required bytes AES256Key = 1;
-  required bytes AES256IV = 2;
-  repeated VaultInfo vault_info = 3;
-  optional bytes vault_permissions = 4;
-}
+namespace vault_manager {
+
+using JoinedNetwork = EmptyMessage<MessageTag::kJoinedNetwork>;
+
+}  // namespace vault_manager
+
+}  // namespace maidsafe
+
+#endif  // MAIDSAFE_VAULT_MANAGER_MESSAGES_JOINED_NETWORK_H_

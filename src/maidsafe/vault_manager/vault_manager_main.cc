@@ -54,10 +54,7 @@ void ShutDownVaultManager(int /*signal*/) {
 
 #ifdef MAIDSAFE_WIN32
 
-enum {
-  kMaidSafeVaultManagerStdException = 0x1,
-  kMaidSafeVaultServiceUnknownException
-};
+enum { kMaidSafeVaultManagerStdException = 0x1, kMaidSafeVaultServiceUnknownException };
 
 SERVICE_STATUS g_service_status;
 SERVICE_STATUS_HANDLE g_service_status_handle;
@@ -112,13 +109,11 @@ void ServiceMain() {
     SetServiceStatus(g_service_status_handle, &g_service_status);
     g_shutdown_promise.get_future().get();
     StopService(0, 0);
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << "Exception: " << e.what();
     StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultManagerStdException);
     return;
-  }
-  catch (...) {
+  } catch (...) {
     LOG(kError) << "Exception of unknown type!";
     StopService(ERROR_SERVICE_SPECIFIC_ERROR, kMaidSafeVaultServiceUnknownException);
   }
@@ -142,11 +137,11 @@ void HandleProgramOptions(int argc, char** argv) {
   po::options_description options_description("Allowed options");
   options_description.add_options()
 #ifdef TESTING
-      ("port", po::value<int>(), "Listening port")
-      ("vault_path", po::value<std::string>(), "Path to the vault executable including name")
-      ("root_dir", po::value<std::string>(), "Path to folder of config file")
+      ("port", po::value<int>(), "Listening port")("vault_path", po::value<std::string>(),
+                                                   "Path to the vault executable including name")(
+          "root_dir", po::value<std::string>(), "Path to folder of config file")
 #endif
-      ("help", "produce help message");
+          ("help", "produce help message");
   po::variables_map variables_map;
   po::store(
       po::command_line_parser(argc, argv).options(options_description).allow_unregistered().run(),
@@ -196,8 +191,7 @@ int main(int argc, char** argv) {
       LOG(kError) << "Failed to set control handler.";
       return -3;
     }
-  }
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
     return -4;
   }
@@ -219,7 +213,7 @@ int main(int argc, char** argv) {
     signal(SIGTERM, ShutDownVaultManager);
     g_shutdown_promise.get_future().get();
     std::cout << "Successfully stopped vault_manager" << std::endl;
-  } catch(const std::exception& e) {
+  } catch (const std::exception& e) {
     LOG(kError) << "Error: " << e.what();
     return -5;  // TODO(Ben) 2014-11-26: what is this return value?
   }
