@@ -59,12 +59,12 @@ crypto::AES256Key InitialiseKey(const fs::path& config_file_path, std::mutex& mu
   return config.symm_key;
 }
 
-crypto::AES256InitialisationVector InitialiseIv(const fs::path& config_file_path,
+crypto::AES256IV InitialiseIv(const fs::path& config_file_path,
                                                 std::mutex& mutex) {
   boost::system::error_code error_code;
   if (!fs::exists(config_file_path, error_code) ||
       error_code.value() == boost::system::errc::no_such_file_or_directory) {
-    return crypto::AES256InitialisationVector{RandomString(crypto::AES256_IVSize)};
+    return crypto::AES256IV{RandomString(crypto::AES256_IVSize)};
   }
   ConfigFile config{ParseConfigFile(config_file_path, mutex)};
   return config.symm_iv;

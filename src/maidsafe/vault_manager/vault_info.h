@@ -26,6 +26,7 @@
 
 #include "boost/filesystem/path.hpp"
 
+#include "maidsafe/common/identity.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/passport/passport.h"
 
@@ -44,7 +45,7 @@ struct VaultInfo {
   std::shared_ptr<passport::PmidAndSigner> pmid_and_signer;
   boost::filesystem::path vault_dir;
   DiskUsage max_disk_usage;
-  passport::PublicMaid::Name owner_name;
+  Identity owner_name;
   NonEmptyString label;
 #ifdef USE_VLOGGING
   std::string vlog_session_id;

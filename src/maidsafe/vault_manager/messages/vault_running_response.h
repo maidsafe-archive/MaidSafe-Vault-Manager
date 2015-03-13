@@ -48,13 +48,11 @@ struct VaultRunningResponse {
     VaultKeys(const VaultKeys&) = default;
 
     VaultKeys(VaultKeys&& other) MAIDSAFE_NOEXCEPT
-        : symm_key(std::move(other.symm_key)),
-          symm_iv(std::move(other.symm_iv)),
+        : symm_key_and_iv(std::move(other.symm_key_and_iv)),
           pmid_and_signer(std::move(other.pmid_and_signer)) {}
 
     explicit VaultKeys(passport::PmidAndSigner pmid_and_signer_in)
-        : symm_key(RandomString(crypto::AES256_KeySize)),
-          symm_iv(RandomString(crypto::AES256_IVSize)),
+        : symm_key_and_iv(RandomBytes(crypto::AES256_KeySize + crypto::AES256_IVSize)),
           pmid_and_signer(
               std::make_shared<passport::PmidAndSigner>(std::move(pmid_and_signer_in))) {}
 
@@ -63,8 +61,7 @@ struct VaultRunningResponse {
     VaultKeys& operator=(const VaultKeys&) = default;
 
     VaultKeys& operator=(VaultKeys&& other) MAIDSAFE_NOEXCEPT {
-      symm_key = std::move(other.symm_key);
-      symm_iv = std::move(other.symm_iv);
+      symm_key_and_iv = std::move(other.symm_key_and_iv);
       pmid_and_signer = std::move(other.pmid_and_signer);
       return *this;
     };
@@ -72,21 +69,20 @@ struct VaultRunningResponse {
     template <typename Archive>
     void load(Archive& archive) {
       crypto::CipherText encrypted_anpmid, encrypted_pmid;
-      archive(symm_key, symm_iv, encrypted_anpmid, encrypted_pmid);
+      archive(symm_key_and_iv, encrypted_anpmid, encrypted_pmid);
       pmid_and_signer = std::make_shared<passport::PmidAndSigner>(
-          std::make_pair(passport::DecryptPmid(encrypted_pmid, symm_key, symm_iv),
-                         passport::DecryptAnpmid(encrypted_anpmid, symm_key, symm_iv)));
+          std::make_pair(passport::DecryptPmid(encrypted_pmid, symm_key_and_iv),
+                         passport::DecryptAnpmid(encrypted_anpmid, symm_key_and_iv)));
     }
 
     template <typename Archive>
     void save(Archive& archive) const {
-      archive(symm_key, symm_iv,
-              passport::EncryptAnpmid(pmid_and_signer->second, symm_key, symm_iv),
-              passport::EncryptPmid(pmid_and_signer->first, symm_key, symm_iv));
+      archive(symm_key_and_iv,
+              passport::EncryptAnpmid(pmid_and_signer->second, symm_key_and_iv),
+              passport::EncryptPmid(pmid_and_signer->first, symm_key_and_iv));
     }
 
-    crypto::AES256Key symm_key;
-    crypto::AES256InitialisationVector symm_iv;
+    crypto::AES256KeyAndIV symm_key_and_iv;
     std::shared_ptr<passport::PmidAndSigner> pmid_and_signer;
   };
 
@@ -124,7 +120,7 @@ struct VaultRunningResponse {
   void ValidateOptions() const {
     if ((vault_keys && error) || (!vault_keys && !error)) {
       LOG(kError) << "Should contain exactly one of vault keys or error.";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
     }
   }
 

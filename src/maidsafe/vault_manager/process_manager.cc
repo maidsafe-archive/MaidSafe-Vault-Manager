@@ -156,15 +156,15 @@ ProcessManager::ProcessManager(asio::io_service& io_service, fs::path vault_exec
   boost::system::error_code ec;
   if (!fs::exists(kVaultExecutablePath_, ec) || ec) {
     LOG(kError) << kVaultExecutablePath_ << " doesn't exist.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
   if (!fs::is_regular_file(kVaultExecutablePath_, ec) || ec) {
     LOG(kError) << kVaultExecutablePath_ << " is not a regular file.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
   if (fs::is_symlink(kVaultExecutablePath_, ec) || ec) {
     LOG(kError) << kVaultExecutablePath_ << " is a symlink.  " << (ec ? ec.message() : "");
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
   InitSignalHandler();
 }
@@ -218,11 +218,11 @@ std::vector<VaultInfo> ProcessManager::GetAll() const {
 void ProcessManager::AddProcess(VaultInfo info, int restart_count) {
   if (info.vault_dir.empty() || !info.label.IsInitialised() || !info.pmid_and_signer) {
     LOG(kError) << "Can't add vault: vault_dir path and/or vault label and/or Pmid is empty.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
   if (restart_count > kMaxVaultRestarts) {
     LOG(kError) << "Can't add vault process - too many restarts.";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
   for (const auto& vault : vaults_)
     CheckNewVaultDoesntConflict(info, vault.info);

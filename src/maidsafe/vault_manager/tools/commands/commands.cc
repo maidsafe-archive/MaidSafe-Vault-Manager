@@ -100,7 +100,7 @@ bool Command::ConvertAndValidateChoice<int, int, int>(const std::string& choice_
     choice = std::stoi(choice_as_string);
 
   if (choice < min || choice > max)
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
 
   return true;
 }
@@ -117,7 +117,7 @@ bool Command::ConvertAndValidateChoice<boost::filesystem::path, bool>(
 
   if (must_exist && !fs::exists(choice)) {
     TLOG(kRed) << "\n" << choice_as_string << " doesn't exist.\n";
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
 
   clear_path.Release();
@@ -137,7 +137,7 @@ bool Command::ConvertAndValidateChoice<bool>(const std::string& choice_as_string
     choice = false;
     return true;
   }
-  BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+  BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
 }
 
 template <>

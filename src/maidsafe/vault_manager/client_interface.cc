@@ -173,7 +173,7 @@ void ClientInterface::HandleVaultRunningResponse(VaultRunningResponse&& vault_ru
     error = maidsafe::make_unique<maidsafe_error>(*vault_running_response.error);
     LOG(kError) << "Got error for vault label: " << label.string() << "   Error: " << error->what();
   } else {
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
 
   std::lock_guard<std::mutex> lock{mutex_};

@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() != 1U)  // i.e. if there are any command line args
-      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_argument));
     WaitForStableNetwork();
     return 0;
   } catch (const maidsafe::maidsafe_error& error) {

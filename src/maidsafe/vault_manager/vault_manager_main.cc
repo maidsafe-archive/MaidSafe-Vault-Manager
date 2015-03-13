@@ -161,7 +161,7 @@ void HandleProgramOptions(int argc, char** argv) {
     if (variables_map.at("port").as<int>() < 1025 ||
         variables_map.at("port").as<int>() > std::numeric_limits<Port>::max()) {
       LOG(kError) << "port must lie in range [1025, 65535]";
-      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_argument));
     }
     port = static_cast<Port>(variables_map["port"].as<int>());
   }

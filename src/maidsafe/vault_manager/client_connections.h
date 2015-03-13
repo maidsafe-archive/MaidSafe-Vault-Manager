@@ -26,6 +26,7 @@
 
 #include "asio/io_service.hpp"
 
+#include "maidsafe/common/identity.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/types.h"
 
@@ -37,7 +38,7 @@ namespace vault_manager {
 
 class ClientConnections {
  public:
-  typedef passport::PublicMaid::Name MaidName;
+  using MaidName = Identity;
   static std::shared_ptr<ClientConnections> MakeShared(asio::io_service& io_service);
   ~ClientConnections();
   void Add(tcp::ConnectionPtr connection, const asymm::PlainText& challenge);

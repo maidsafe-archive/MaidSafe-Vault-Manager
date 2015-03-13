@@ -36,6 +36,7 @@
 #include "boost/process/child.hpp"
 
 #include "maidsafe/common/error.h"
+#include "maidsafe/common/identity.h"
 #include "maidsafe/common/types.h"
 #include "maidsafe/common/tcp/connection.h"
 #include "maidsafe/passport/types.h"
@@ -69,7 +70,7 @@ class ProcessManager {
   std::vector<VaultInfo> GetAll() const;
   void AddProcess(VaultInfo info, int restart_count = 0);
   VaultInfo HandleVaultStarted(tcp::ConnectionPtr connection, ProcessId process_id);
-  void AssignOwner(const NonEmptyString& label, const passport::PublicMaid::Name& owner_name,
+  void AssignOwner(const NonEmptyString& label, const Identity& owner_name,
                    DiskUsage max_disk_usage);
   void StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on_exit_functor = nullptr);
   // Returns false if the process doesn't exist.

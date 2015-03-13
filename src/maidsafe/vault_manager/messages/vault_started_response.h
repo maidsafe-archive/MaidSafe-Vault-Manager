@@ -48,8 +48,7 @@ struct VaultStartedResponse {
   VaultStartedResponse(const VaultStartedResponse&) = delete;
 
   VaultStartedResponse(VaultStartedResponse&& other) MAIDSAFE_NOEXCEPT
-      : symm_key(std::move(other.symm_key)),
-        symm_iv(std::move(other.symm_iv)),
+      : symm_key_and_iv(std::move(other.symm_key_and_iv)),
         pmid(std::move(other.pmid)),
         vault_dir(std::move(other.vault_dir)),
 #ifdef USE_VLOGGING
@@ -64,10 +63,8 @@ struct VaultStartedResponse {
         max_disk_usage(std::move(other.max_disk_usage)) {
   }
 
-  VaultStartedResponse(const VaultInfo& vault_info, crypto::AES256Key symm_key_in,
-                       crypto::AES256InitialisationVector symm_iv_in)
-      : symm_key(std::move(symm_key_in)),
-        symm_iv(std::move(symm_iv_in)),
+  VaultStartedResponse(const VaultInfo& vault_info, crypto::AES256KeyAndIV symm_key_and_iv_in)
+      : symm_key_and_iv(std::move(symm_key_and_iv_in)),
         pmid(maidsafe::make_unique<passport::Pmid>(vault_info.pmid_and_signer->first)),
         vault_dir(vault_info.vault_dir),
 #ifdef USE_VLOGGING
@@ -87,8 +84,7 @@ struct VaultStartedResponse {
   VaultStartedResponse& operator=(const VaultStartedResponse&) = delete;
 
   VaultStartedResponse& operator=(VaultStartedResponse&& other) MAIDSAFE_NOEXCEPT {
-    symm_key = std::move(other.symm_key);
-    symm_iv = std::move(other.symm_iv);
+    symm_key_and_iv = std::move(other.symm_key_and_iv);
     pmid = std::move(other.pmid);
     vault_dir = std::move(other.vault_dir);
 #ifdef USE_VLOGGING
@@ -107,9 +103,9 @@ struct VaultStartedResponse {
   template <typename Archive>
   void load(Archive& archive) {
     crypto::CipherText encrypted_pmid;
-    archive(symm_key, symm_iv, encrypted_pmid, vault_dir);
+    archive(symm_key_and_iv, encrypted_pmid, vault_dir);
     pmid = maidsafe::make_unique<passport::Pmid>(
-        passport::DecryptPmid(encrypted_pmid, symm_key, symm_iv));
+        passport::DecryptPmid(encrypted_pmid, symm_key_and_iv));
 #ifdef USE_VLOGGING
     archive(vlog_session_id);
 #endif
@@ -131,7 +127,7 @@ struct VaultStartedResponse {
 
   template <typename Archive>
   void save(Archive& archive) const {
-    archive(symm_key, symm_iv, passport::EncryptPmid(*pmid, symm_key, symm_iv), vault_dir);
+    archive(symm_key_and_iv, passport::EncryptPmid(*pmid, symm_key_and_iv), vault_dir);
 #ifdef USE_VLOGGING
     archive(vlog_session_id);
 #endif
@@ -146,8 +142,7 @@ struct VaultStartedResponse {
     archive(max_disk_usage);
   }
 
-  crypto::AES256Key symm_key;
-  crypto::AES256InitialisationVector symm_iv;
+  crypto::AES256KeyAndIV symm_key_and_iv;
   std::unique_ptr<passport::Pmid> pmid;
   boost::filesystem::path vault_dir;
 #ifdef USE_VLOGGING

@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   try {
     auto unuseds(maidsafe::log::Logging::Instance().Initialise(argc, argv));
     if (unuseds.size() != 2U)
-      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+      BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_argument));
     uint16_t port{static_cast<uint16_t>(std::stoi(std::string{&unuseds[1][0]}))};
     maidsafe::vault_manager::VaultInterface vault_interface{port};
     connected_to_vault_manager = true;
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
         should_hang = true;
         break;
       default:
-        BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+        BOOST_THROW_EXCEPTION(maidsafe::MakeError(maidsafe::CommonErrors::invalid_argument));
     }
     exit_code = vault_interface.WaitForExit();
     worker.get();
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
     else
       LOG(kError) << "This is only designed to be invoked by VaultManager.";
     exit_code =
-        maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::invalid_parameter));
+        maidsafe::ErrorToInt(maidsafe::MakeError(maidsafe::CommonErrors::invalid_argument));
   }
   if (should_hang)
     maidsafe::Sleep(std::chrono::hours(6));
