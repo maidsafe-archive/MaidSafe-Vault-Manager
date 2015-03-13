@@ -71,7 +71,7 @@ LocalNetworkController::LocalNetworkController(const boost::filesystem::path& sc
     if (!boost::filesystem::exists(script_path) ||
         !boost::filesystem::is_regular_file(script_path)) {
       TLOG(kRed) << script_path << " doesn't exist or is not a regular file.\n";
-      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+      BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
     }
 
     std::ifstream script(script_path.string());

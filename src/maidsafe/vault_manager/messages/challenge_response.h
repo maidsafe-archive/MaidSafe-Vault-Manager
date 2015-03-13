@@ -22,6 +22,7 @@
 #include <memory>
 
 #include "maidsafe/common/config.h"
+#include "maidsafe/common/identity.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/rsa.h"
 #include "maidsafe/passport/types.h"
@@ -53,17 +54,8 @@ struct ChallengeResponse {
   };
 
   template <typename Archive>
-  void load(Archive& archive) {
-    passport::PublicMaid::Name public_maid_name;
-    passport::PublicMaid::serialised_type serialised_public_maid;
-    archive(public_maid_name, serialised_public_maid, signature);
-    public_maid = maidsafe::make_unique<passport::PublicMaid>(std::move(public_maid_name),
-                                                              std::move(serialised_public_maid));
-  }
-
-  template <typename Archive>
-  void save(Archive& archive) const {
-    archive(public_maid->name(), public_maid->Serialise(), signature);
+  void serialize(Archive& archive) {
+    archive(public_maid, signature);
   }
 
   std::unique_ptr<passport::PublicMaid> public_maid;

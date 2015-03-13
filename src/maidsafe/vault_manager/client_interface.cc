@@ -120,7 +120,7 @@ std::future<std::unique_ptr<passport::PmidAndSigner>> ClientInterface::AddVaultR
   request->timer.async_wait([request, label, this](const std::error_code& ec) {
     if (ec && ec == asio::error::operation_aborted)
       return;
-    LOG(kWarning) << "Timer expired - i.e. timed out for label: " << label.string();
+    LOG(kWarning) << "Timer expired - i.e. timed out for label: " << label;
     std::lock_guard<std::mutex> lock{mutex_};
     if (ec)
       request->SetException(ec);
@@ -171,9 +171,9 @@ void ClientInterface::HandleVaultRunningResponse(VaultRunningResponse&& vault_ru
         *vault_running_response.vault_keys->pmid_and_signer);
   } else if (vault_running_response.error) {
     error = maidsafe::make_unique<maidsafe_error>(*vault_running_response.error);
-    LOG(kError) << "Got error for vault label: " << label.string() << "   Error: " << error->what();
+    LOG(kError) << "Got error for vault label: " << label << "   Error: " << error->what();
   } else {
-    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_parameter));
+    BOOST_THROW_EXCEPTION(MakeError(CommonErrors::invalid_argument));
   }
 
   std::lock_guard<std::mutex> lock{mutex_};

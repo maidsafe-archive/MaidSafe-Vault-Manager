@@ -38,8 +38,7 @@ class ConfigFileHandler {
   explicit ConfigFileHandler(boost::filesystem::path config_file_path);
   std::vector<VaultInfo> ReadConfigFile() const;
   void WriteConfigFile(std::vector<VaultInfo> vaults) const;
-  const crypto::AES256Key& SymmKey() const { return kSymmKey_; }
-  const crypto::AES256InitialisationVector& SymmIv() const { return kSymmIv_; }
+  const crypto::AES256KeyAndIV& SymmKeyAndIV() const { return kSymmKeyAndIV_; }
 
  private:
   ConfigFileHandler(const ConfigFileHandler&) = delete;
@@ -50,8 +49,7 @@ class ConfigFileHandler {
 
   boost::filesystem::path config_file_path_;
   mutable std::mutex mutex_;
-  const crypto::AES256Key kSymmKey_;
-  const crypto::AES256InitialisationVector kSymmIv_;
+  const crypto::AES256KeyAndIV kSymmKeyAndIV_;
 };
 
 }  // namespace vault_manager

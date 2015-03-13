@@ -64,13 +64,13 @@ void ClientConnections::Validate(tcp::ConnectionPtr connection, const passport::
   on_scope_exit cleanup{[this, itr] { itr->first->Close(); }};
 
   if (asymm::CheckSignature(itr->second.first, signature, maid.public_key())) {
-    LOG(kSuccess) << "Client " << DebugId(maid.name().value) << " TCP connection validated.";
+    LOG(kSuccess) << "Client " << maid.Name() << " TCP connection validated.";
   } else {
     LOG(kError) << "Client TCP connection validation failed.";
     BOOST_THROW_EXCEPTION(MakeError(AsymmErrors::invalid_signature));
   }
 
-  bool result{clients_.emplace(connection, maid.name()).second};
+  bool result{clients_.emplace(connection, maid.Name()).second};
   unvalidated_clients_.erase(itr);
   cleanup.Release();
   assert(result);

@@ -25,6 +25,7 @@
 #include "boost/filesystem/path.hpp"
 
 #include "maidsafe/common/config.h"
+#include "maidsafe/common/convert.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/utils.h"
 
@@ -53,7 +54,7 @@ int GetNumRunningProcesses(std::string process_name) {
   }
 
   try {
-    std::string contents(ReadFile(fs::path(".") / "process_count.txt").string());
+    std::string contents(convert::ToString(ReadFile(fs::path(".") / "process_count.txt").value()));
 #ifdef MAIDSAFE_WIN32
     typedef boost::find_iterator<std::string::iterator> StringFindIterator;
     StringFindIterator itr =
