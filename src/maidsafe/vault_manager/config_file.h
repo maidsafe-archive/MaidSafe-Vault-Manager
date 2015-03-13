@@ -43,8 +43,8 @@ struct ConfigFile {
       : symm_key_and_iv(std::move(other.symm_key_and_iv)),
         vaults(std::move(other.vaults)) {}
 
-  ConfigFile(crypto::AES256KeyAndIV symm_key__and_iv_in, std::vector<VaultInfo> vaults_in)
-      : symm_key_and_iv(std::move(symm_key_and_iv)),
+  ConfigFile(crypto::AES256KeyAndIV symm_key_and_iv_in, std::vector<VaultInfo> vaults_in)
+      : symm_key_and_iv(std::move(symm_key_and_iv_in)),
         vaults(std::move(vaults_in)) {}
 
   ~ConfigFile() = default;
