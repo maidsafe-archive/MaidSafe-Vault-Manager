@@ -113,14 +113,7 @@ struct VaultStartedResponse {
     archive(send_hostname_to_visualiser_server);
 #endif
 #ifdef TESTING
-    std::size_t public_pmid_count(0);
-    archive(public_pmid_count);
-    for (std::size_t i(0); i < public_pmid_count; ++i) {
-      passport::PublicPmid::Name public_pmid_name;
-      passport::PublicPmid::serialised_type serialised_public_pmid;
-      archive(public_pmid_name, serialised_public_pmid);
-      public_pmids.emplace_back(std::move(public_pmid_name), std::move(serialised_public_pmid));
-    }
+    archive(public_pmids);
 #endif
     archive(max_disk_usage);
   }
@@ -135,9 +128,7 @@ struct VaultStartedResponse {
     archive(send_hostname_to_visualiser_server);
 #endif
 #ifdef TESTING
-    archive(public_pmids.size());
-    for (const auto& public_pmid : public_pmids)
-      archive(public_pmid.name(), public_pmid.Serialise());
+    archive(public_pmids);
 #endif
     archive(max_disk_usage);
   }

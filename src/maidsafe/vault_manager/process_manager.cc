@@ -38,6 +38,7 @@ extern "C" char** environ;
 #include "boost/process/terminate.hpp"
 #include "boost/process/wait_for_exit.hpp"
 
+#include "maidsafe/common/convert.h"
 #include "maidsafe/common/log.h"
 #include "maidsafe/common/make_unique.h"
 #include "maidsafe/common/on_scope_exit.h"
@@ -65,7 +66,7 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
   if (new_vault.pmid_and_signer && existing_vault.pmid_and_signer &&
       new_vault.pmid_and_signer->first.name() == existing_vault.pmid_and_signer->first.name()) {
     LOG(kError) << "Vault process with Pmid "
-                << DebugId(new_vault.pmid_and_signer->first.name().value) << " already exists.";
+                << new_vault.pmid_and_signer->first.name() << " already exists.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
 
@@ -75,7 +76,7 @@ void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& ex
   }
 
   if (new_vault.label == existing_vault.label) {
-    LOG(kError) << "Vault process with label " << new_vault.label.string() << " already exists.";
+    LOG(kError) << "Vault process with label " << new_vault.label << " already exists.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
 
@@ -250,7 +251,7 @@ VaultInfo ProcessManager::HandleVaultStarted(tcp::ConnectionPtr connection, Proc
 }
 
 void ProcessManager::AssignOwner(const NonEmptyString& label,
-                                 const passport::PublicMaid::Name& owner_name,
+                                 const Identity& owner_name,
                                  DiskUsage max_disk_usage) {
   auto itr(DoFind(label));
   itr->info.owner_name = owner_name;
@@ -377,7 +378,7 @@ std::vector<ProcessManager::Child>::const_iterator ProcessManager::DoFind(
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, &label](const Child& vault) { return vault.info.label == label; }));
   if (itr == std::end(vaults_)) {
-    LOG(kError) << "Vault process with label " << label.string() << " doesn't exist.";
+    LOG(kError) << "Vault process with label " << label << " doesn't exist.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
   return itr;
@@ -387,7 +388,7 @@ std::vector<ProcessManager::Child>::iterator ProcessManager::DoFind(const NonEmp
   auto itr(std::find_if(std::begin(vaults_), std::end(vaults_),
                         [this, &label](const Child& vault) { return vault.info.label == label; }));
   if (itr == std::end(vaults_)) {
-    LOG(kError) << "Vault process with label " << label.string() << " doesn't exist.";
+    LOG(kError) << "Vault process with label " << label << " doesn't exist.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::no_such_element));
   }
   return itr;
@@ -451,12 +452,12 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
     restart_count = child_itr->restart_count;
     vault_info = child_itr->info;
-    LOG(kError) << "Vault " << DebugId(vault_info.pmid_and_signer->first.name().value)
+    LOG(kError) << "Vault " << vault_info.pmid_and_signer->first.name()
                 << " stopped unexpectedly";
 #ifdef USE_VLOGGING
     log::VisualiserLogMessage::SendVaultStoppedMessage(
-        DebugId(vault_info.pmid_and_signer->first.name().value), vault_info.vlog_session_id,
-        exit_code);
+        convert::ToString(vault_info.pmid_and_signer->first.name().string()),
+        vault_info.vlog_session_id, exit_code);
 #endif
     if (vault_info.tcp_connection) {
       vault_info.tcp_connection->Close();
@@ -507,7 +508,7 @@ void ProcessManager::RestartIfRequired(int restart_count, VaultInfo vault_info) 
   if (restart_count < 0 || restart_count >= kMaxVaultRestarts)
     return;
 
-  LOG(kWarning) << "Restarting vault " << vault_info.label.string();
+  LOG(kWarning) << "Restarting vault " << vault_info.label;
   io_service_.post([vault_info, restart_count, this] {
     try {
       AddProcess(std::move(vault_info), restart_count + 1);

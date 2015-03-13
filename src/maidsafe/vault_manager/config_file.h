@@ -82,8 +82,8 @@ struct ConfigFile {
       archive(passport::EncryptPmid(vault.pmid_and_signer->first, symm_key_and_iv),
               passport::EncryptAnpmid(vault.pmid_and_signer->second, symm_key_and_iv),
               vault.vault_dir, vault.label, vault.max_disk_usage,
-              vault.owner_name->IsInitialised());
-      if (vault.owner_name->IsInitialised())
+              vault.owner_name.IsInitialised());
+      if (vault.owner_name.IsInitialised())
         archive(vault.owner_name);
     }
   }

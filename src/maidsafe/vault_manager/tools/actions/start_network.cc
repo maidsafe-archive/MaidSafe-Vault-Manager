@@ -59,10 +59,10 @@ namespace tools {
 
 namespace {
 
-void GivePublicPmidKey(const NodeId& node_id, routing::GivePublicKeyFunctor give_key,
+void GivePublicPmidKey(const Identity& node_id, routing::GivePublicKeyFunctor give_key,
                        const std::vector<passport::PublicPmid>& public_pmids) {
   assert(!public_pmids.empty());
-  passport::PublicPmid::Name name(Identity(node_id.string()));
+  Identity name(node_id.string()));
   LOG(kVerbose) << "fetch from local list containing " << public_pmids.size() << " pmids";
   auto itr(std::find_if(std::begin(public_pmids), std::end(public_pmids),
                         [&name](const passport::PublicPmid& pmid) { return pmid.name() == name; }));

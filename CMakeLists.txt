@@ -89,19 +89,19 @@ if(INCLUDE_TESTS)
   target_link_libraries(dummy_vault maidsafe_vault_manager)
   add_dependencies(test_vault_manager dummy_vault)
 
-  ms_add_executable(local_network_controller "Tools/Vault Manager"
-                    ${VaultManagerToolsAllFiles}
-                    ${VaultManagerToolsCommandsAllFiles}
-                    ${VaultManagerToolsActionsAllFiles})
-  target_include_directories(local_network_controller PRIVATE ${PROJECT_SOURCE_DIR}/src)
-  target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_test)  # maidsafe_nfs_vault maidsafe_routing_test_helper
-  add_dependencies(local_network_controller vault)
+#  ms_add_executable(local_network_controller "Tools/Vault Manager"
+#                    ${VaultManagerToolsAllFiles}
+#                    ${VaultManagerToolsCommandsAllFiles}
+#                    ${VaultManagerToolsActionsAllFiles})
+#  target_include_directories(local_network_controller PRIVATE ${PROJECT_SOURCE_DIR}/src)
+#  target_link_libraries(local_network_controller maidsafe_vault_manager maidsafe_test)  # maidsafe_nfs_vault maidsafe_routing_test_helper
+#  add_dependencies(local_network_controller vault)
 
-  ms_add_executable(network_test_helper "Tools/Vault Manager" ${NetworkTestHelperFile})
-  target_link_libraries(network_test_helper maidsafe_vault_manager)
-  add_custom_command(TARGET network_test_helper POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy "${VaultManagerSourcesDir}/tools/network_test_helper.script"
-                                                      "$<TARGET_FILE_DIR:network_test_helper>/network_test_helper.script")
+#  ms_add_executable(network_test_helper "Tools/Vault Manager" ${NetworkTestHelperFile})
+#  target_link_libraries(network_test_helper maidsafe_vault_manager)
+#  add_custom_command(TARGET network_test_helper POST_BUILD
+#                     COMMAND ${CMAKE_COMMAND} -E copy "${VaultManagerSourcesDir}/tools/network_test_helper.script"
+#                                                      "$<TARGET_FILE_DIR:network_test_helper>/network_test_helper.script")
 
   ms_add_default_tests()
   ms_add_gtests(test_vault_manager)
