@@ -65,8 +65,8 @@ bool ConnectionsEqual(const tcp::ConnectionPtr& lhs, const tcp::ConnectionPtr& r
 void CheckNewVaultDoesntConflict(const VaultInfo& new_vault, const VaultInfo& existing_vault) {
   if (new_vault.pmid_and_signer && existing_vault.pmid_and_signer &&
       new_vault.pmid_and_signer->first.name() == existing_vault.pmid_and_signer->first.name()) {
-    LOG(kError) << "Vault process with Pmid "
-                << new_vault.pmid_and_signer->first.name() << " already exists.";
+    LOG(kError) << "Vault process with Pmid " << new_vault.pmid_and_signer->first.name()
+                << " already exists.";
     BOOST_THROW_EXCEPTION(MakeError(CommonErrors::already_initialised));
   }
 
@@ -250,8 +250,7 @@ VaultInfo ProcessManager::HandleVaultStarted(tcp::ConnectionPtr connection, Proc
   return itr->info;
 }
 
-void ProcessManager::AssignOwner(const NonEmptyString& label,
-                                 const Identity& owner_name,
+void ProcessManager::AssignOwner(const NonEmptyString& label, const Identity& owner_name,
                                  DiskUsage max_disk_usage) {
   auto itr(DoFind(label));
   itr->info.owner_name = owner_name;
@@ -294,8 +293,11 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 
   itr->timer->expires_from_now(kRpcTimeout);
   itr->timer->async_wait([this, label](const std::error_code& error_code) {
-    if (!error_code || error_code != asio::error::operation_aborted)
+    if (error_code) {
+      if (error_code != asio::error::operation_aborted)
+        LOG(kError) << "Error waiting for new process to connect via TCP: " << error_code.message();
       return;
+    }
     LOG(kWarning) << "Timed out waiting for new process to connect via TCP.";
     OnProcessExit(label, -1, true);
   });
@@ -304,8 +306,11 @@ void ProcessManager::StartProcess(std::vector<Child>::iterator itr) {
 void ProcessManager::InitSignalHandler() {
 #ifndef MAIDSAFE_WIN32
   signal_set_.async_wait([this](const std::error_code& error_code, int signum) {
-    if (!error_code || error_code != asio::error::operation_aborted)
+    if (error_code) {
+      if (error_code != asio::error::operation_aborted)
+        LOG(kError) << "Error waiting for child signal: " << error_code.message();
       return;
+    }
 
     maidsafe::on_scope_exit init_on_exit([this]() { InitSignalHandler(); });
 
@@ -353,8 +358,11 @@ void ProcessManager::StopProcess(tcp::ConnectionPtr connection, OnExitFunctor on
   NonEmptyString label{itr->info.label};
   itr->timer->expires_from_now(kVaultStopTimeout);
   itr->timer->async_wait([this, label](const std::error_code& error_code) {
-    if (!error_code || error_code != asio::error::operation_aborted)
+    if (error_code) {
+      if (error_code != asio::error::operation_aborted)
+        LOG(kError) << "Error waiting for Vault to stop: " << error_code.message();
       return;
+    }
     LOG(kWarning) << "Timed out waiting for Vault to stop; terminating now.";
     OnProcessExit(label, -1, true);
   });
@@ -452,8 +460,7 @@ void ProcessManager::OnProcessExit(const NonEmptyString& label, int exit_code, b
   if (child_itr->status != ProcessStatus::kStopping) {  // Unexpected exit - try to restart.
     restart_count = child_itr->restart_count;
     vault_info = child_itr->info;
-    LOG(kError) << "Vault " << vault_info.pmid_and_signer->first.name()
-                << " stopped unexpectedly";
+    LOG(kError) << "Vault " << vault_info.pmid_and_signer->first.name() << " stopped unexpectedly";
 #ifdef USE_VLOGGING
     log::VisualiserLogMessage::SendVaultStoppedMessage(
         convert::ToString(vault_info.pmid_and_signer->first.name().string()),
