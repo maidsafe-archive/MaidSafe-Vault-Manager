@@ -70,7 +70,7 @@ class PermanentStore {
 
  private:
   PermanentStore(const PermanentStore&);
-  PermanentStore& operator=(const PermanentStore&);
+  PermanentStore& operator=(const PermanentStore&) MAIDSAFE_DELETE;
 
   boost::filesystem::path GetFilePath(const KeyType& key) const;
   bool HasDiskSpace(uint64_t required_space) const;

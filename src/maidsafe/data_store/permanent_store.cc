@@ -41,6 +41,11 @@ struct UsedSpace {
   UsedSpace() {}
   UsedSpace(UsedSpace&& other)
       : directories(std::move(other.directories)), disk_usage(std::move(other.disk_usage)) {}
+  UsedSpace& operator=(const UsedSpace& other) {
+    this->directories = other.directories;
+    this->disk_usage = other.disk_usage;
+    return *this;
+  };
 
   std::vector<fs::path> directories;
   DiskUsage disk_usage;

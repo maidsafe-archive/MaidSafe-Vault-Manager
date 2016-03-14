@@ -282,8 +282,8 @@ void StructuredDataVersions::BranchToProtobuf(
     } else {
       proto_version->set_forking_child_count(static_cast<uint32_t>(itr->second->children.size()));
       for (auto child : itr->second->children) {
-        auto proto_branch(proto_versions.add_branch());
-        BranchToProtobuf(child, proto_versions, proto_branch);
+        auto p_branch(proto_versions.add_branch());
+        BranchToProtobuf(child, proto_versions, p_branch);
       }
       return;
     }
